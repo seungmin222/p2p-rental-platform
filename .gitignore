@@ -1,0 +1,24 @@
+# secrets
+.env
+.env.local
+.env.*.local
+infra/.env
+
+# backend
+backend/build/
+backend/.gradle/
+backend/out/
+*.class
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Claude Code 개인 설정 (팀 공용 .claude/commands 는 커밋)
+.claude/settings.local.json

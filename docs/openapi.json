@@ -1,0 +1,5 @@
+{
+  "openapi": "3.0.1",
+  "info": { "title": "Rental Platform API", "version": "0.0.0", "description": "자동 생성 파일. 직접 수정 금지. backend에서 ./gradlew generateOpenApiDocs 로 재생성." },
+  "paths": {}
+}
