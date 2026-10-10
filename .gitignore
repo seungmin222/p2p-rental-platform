@@ -8,6 +8,7 @@ infra/.env
 backend/build/
 backend/.gradle/
 backend/out/
+backend/uploads/
 *.class
 
 # frontend

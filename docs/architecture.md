@@ -6,13 +6,13 @@
 | --- | --- | --- |
 | 프론트엔드 | React(SPA) + Vite + Tailwind CSS, JavaScript | 반응형(모바일 360px 우선, PC 1280px). 네이티브 앱 없음 |
 | 프론트 서버 상태 | **TanStack Query** (확정) | API 데이터 캐싱·로딩/에러·무한 스크롤·뮤테이션 후 갱신 |
-| 백엔드 | Java 21, Spring Boot 3.x (Web, Data JPA, Security, Validation, WebSocket, Scheduling) | Gradle |
+| 백엔드 | Java 21, **Spring Boot 4.1.x** (확정, Web MVC, Data JPA, Security, Validation, WebSocket, Scheduling) | Gradle. 3.5는 2026-06 OSS 지원 종료, 4.0은 2026-12 종료라 4.1 선택 |
 | 동적 조회 | **QueryDSL** (확정, OpenFeign 포크 `io.github.openfeign.querydsl`) | 필터·정렬이 선택적으로 조합되는 **조회에만** 사용. 범위는 `backend/CLAUDE.md` |
 | 배치 단일 실행 | **ShedLock** (확정, Redis 또는 JDBC 락 저장소) | 서버 2대 이상에서 `@Scheduled`가 한 번만 실행되게 |
-| DB | MySQL 8 | 주 저장소. 마이그레이션은 Flyway |
+| DB | MySQL 8.4 LTS | 주 저장소. 마이그레이션은 Flyway (8.0은 2026-04 지원 종료) |
 | 캐시·락 | Redis + Redisson | 분산 락, Refresh Token, 조회수, 인기 검색어, 추천 캐시, 비밀번호 재설정 토큰. **Pub/Sub 용도로 쓰지 않는다** |
-| 메시지 브로커 | RabbitMQ | STOMP 브로커 릴레이(채팅·알림), AI 비교 작업 큐 |
-| 파일 | AWS S3 | 업로드 시 서버에서 가로 400px 썸네일 생성, DB에는 URL만 |
+| 메시지 브로커 | RabbitMQ 4.x | STOMP 브로커 릴레이(채팅·알림), AI 비교 작업 큐 (3.13은 커뮤니티 지원 종료) |
+| 파일 | AWS S3 (운영) / 로컬 디스크 (local 프로필) | `FileStorage` 인터페이스 뒤에 두고 프로필로 교체. 업로드 시 서버에서 가로 400px 썸네일 생성, DB에는 URL만. 로컬 개발에 AWS 키가 필요 없게 함 |
 | 배포 | AWS EC2 + Docker Compose | Spring Boot 2개 이상 인스턴스로 실행 가능해야 함 |
 | 외부 API | 토스페이먼츠(테스트 키, 카드만), 카카오맵 JS API, 카카오 로컬 API(좌표→행정동), Claude API(`claude-haiku-4-5`, 이미지 입력) | |
 | 문서화 | **springdoc-openapi(Swagger)** (확정) | 필드 명세는 DTO 코드 → Swagger → `docs/openapi.json` |
@@ -65,9 +65,9 @@ STOMP 목적지 접두사(`/pub`, `/sub`)는 구현 제안이며 백엔드·프�
 
 | 코드 | 의미 | 예 |
 | --- | --- | --- |
-| 400 | 형식·검증 오류, 정책 범위 초과 | 대여 기간 31일, 차감 상한 초과 |
+| 400 | 형식·검증 오류, 정책 범위 초과, 요청 자체가 성립하지 않음 | 대여 기간 31일, 차감 상한 초과, **본인 물품에 대한 예약·관심·채팅** (`*_OWN_ITEM`) |
 | 401 | 인증 실패·토큰 만료 | 로그인 실패, Access Token 만료 |
-| 403 | 권한 없음(소유자·당사자 아님) | 남의 물품 수정, 본인 물품 예약 |
+| 403 | 권한 없음(소유자·당사자 아님, 인증·제재 조건 미충족) | 남의 물품 수정, 동네 미인증 상태로 예약 |
 | 404 | 없음 또는 비공개 | 삭제된 물품, 남의 숨김 물품 |
 | 409 | 상태 충돌·중복 | 기간 중복, 허용되지 않은 상태 전이, 이메일 중복 |
 
@@ -80,7 +80,8 @@ STOMP 목적지 접두사(`/pub`, `/sub`)는 구현 제안이며 백엔드·프�
 
 ### 인증
 - Access Token: `Authorization: Bearer <JWT>`, 30분.
-- Refresh Token: HttpOnly·Secure·SameSite 쿠키, 14일, Redis 저장, 재발급마다 교체(Rotation). 이미 교체된 토큰 재사용 시 해당 회원 토큰 전부 무효화.
+- Refresh Token: HttpOnly 쿠키(`SameSite=Lax`, `Path=/api/auth`, local 외 `Secure`), 14일. 로그인마다 토큰 묶음(family)을 새로 만들어 Redis `rt:{memberId}:{familyId}`에 저장하고 재발급마다 교체(Rotation). 이미 교체된 토큰을 재사용하면 **그 family만** 무효화(다른 기기는 유지). 상세는 `domains/member.md` REQ-002·003.
+- 프론트·백엔드는 브라우저 기준 **같은 출처**로 동작시킨다: 로컬은 Vite 개발 서버 프록시(`/api`, `/ws` → `localhost:8080`), 운영은 Nginx가 정적 파일과 API를 같은 도메인으로 서빙. 그래서 CORS 설정 없이 쿠키가 전달된다. 백엔드 CORS는 기본 차단으로 둔다.
 - WebSocket: STOMP CONNECT 프레임 헤더의 JWT로 인증.
 
 ## 5. 데이터 규약
@@ -120,7 +121,7 @@ STOMP 목적지 접두사(`/pub`, `/sub`)는 구현 제안이며 백엔드·프�
 
 모든 과제는 **적용 전후 비교 결과를 표로 남긴다** (`docs/experiments/`에 기록 권장).
 
-1. **예약 동시성** — 격리 수준(READ COMMITTED, REPEATABLE READ) × 락(낙관적 version, 비관적 `SELECT ... FOR UPDATE`, Redisson 분산 락)을 2대 이상 인스턴스에서 JMeter로 비교. TPS·평균 응답·오류율·중복 건수. 기본값은 **Redisson 분산 락(대기 3초, 임대 5초) + READ COMMITTED**.
+1. **예약 동시성** — 격리 수준(READ COMMITTED, REPEATABLE READ) × {낙관적 락(version), 비관적 락(`SELECT ... FOR UPDATE`), Redisson 분산 락, DB 유니크 인덱스(날짜별 점유 테이블 `rental_dates`)}를 2대 이상 인스턴스에서 JMeter로 비교. TPS·평균 응답·오류율·중복 건수. 락 획득 실패·타임아웃 시 처리와 재시도 정책도 정의한다. 기본값은 **Redisson 분산 락(대기 3초, 임대 시간 미지정 → watchdog 자동 연장) + READ COMMITTED**. 임대 시간을 고정하면 watchdog이 꺼져 긴 트랜잭션 중 락이 풀릴 수 있으므로 지정하지 않는다.
 2. **결제 정합성** — 멱등성 키, 결제 상태와 대여 상태 전이 분리, 실패 이력, PG↔내부 상태 조정(reconciliation) 배치. 지연·실패 주입 테스트.
 3. **AI 비교 신뢰성** — 큐 비동기, JSON 스키마 고정·검증 실패 재시도, 캐싱, 호출 한도, "판정이 아닌 참고".
 4. **동네 피드 성능** — 위경도 bounding box 선필터 → 거리 계산, 공간 인덱스 또는 Geohash, 커서 페이징, Redis 캐시·무효화.

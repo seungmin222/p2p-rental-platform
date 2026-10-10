@@ -12,7 +12,7 @@
 ## REQ-026 채팅방 생성 [2 필수]
 `POST /api/chat-rooms { itemId }`
 - (item, renter) 당 1개. 있으면 기존 방 반환(200), 없으면 생성(201). UK(item_id, renter_id)로 동시 생성 경합 방지
-- 본인 물품이면 400. 비회원은 프론트에서 로그인 유도
+- 본인 물품이면 400 `CHAT_OWN_ITEM`. 비회원은 프론트에서 로그인 유도
 - 생성 시 item.chatCount + 1
 - 차단 관계면 생성 불가(REQ-056 이후)
 
@@ -26,14 +26,14 @@
 ## REQ-028 / REQ-029 목록·내역·읽음 [2]
 - `GET /api/chat-rooms`: 상대 프로필 사진·닉네임·동네, 물품 썸네일(삭제 시 "삭제된 물품"), 마지막 메시지·시각, 안 읽은 수. lastMessageAt DESC
 - `GET /api/chat-rooms/{id}/messages?cursor=`: 최신 50건, 커서로 이전 조회
-- 읽음: 방 입장 또는 `/pub/chat-rooms/{id}/read` → 상대가 보낸 미읽음 메시지 readAt 기록 → 상대에게 읽음 이벤트
+- 읽음: 방 입장 또는 `/pub/chat-rooms/{id}/read {lastMessageId}` → 내 `chat_room_members.last_read_message_id` 갱신(값이 커질 때만) → 상대에게 읽음 이벤트. 메시지별 읽음 표시는 상대의 last_read_message_id와 비교해 계산한다
 - 하단 탭 전체 안 읽은 수: `GET /api/chat-rooms/unread-count` + 실시간 이벤트로 갱신
-- 구현 제안: 참여자별 `last_read_message_id`를 두면 안 읽은 수 = `count(id > last_read AND sender != me)`
+- 안 읽은 수 = `count(id > last_read_message_id AND sender_id != me)`. 읽음 기준은 `chat_room_members` 하나뿐이다(메시지별 read_at 컬럼 없음)
 - 예외: 참여자 아님 403, 상대 탈퇴 → "탈퇴한 사용자" + 전송 비활성화
 - 축소 순서상 028·029는 022 다음으로 축소 가능하지만, 채팅방에 들어갈 진입점(목록)은 최소한으로라도 필요
 
 ## 채팅방 상단 대여 상태 (SCR-10)
-- 방 정보 응답에 해당 (item, renter) 조합의 최근 대여 건 요약(id, status, 기간) 포함 → 상단 바에 상태 표시 + 예약/대여 상세 버튼
+- `GET /api/chat-rooms/{id}` 응답에 해당 (item, renter) 조합의 최근 대여 건 요약(id, status, 기간) 포함 → 상단 바에 상태 표시 + 예약/대여 상세 버튼
 - 대여 상태 변경·차감 제안 등은 SYSTEM 메시지로 방에 남긴다(sender=null, type=SYSTEM)
 
 ## 3순위

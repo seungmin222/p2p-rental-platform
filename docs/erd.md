@@ -23,9 +23,13 @@ erDiagram
     RENTAL ||--o{ ITEM_INSPECTION : "인계·반납"
     RENTAL ||--o| SETTLEMENT : ""
     RENTAL ||--o{ RENTAL_STATUS_HISTORY : ""
+    RENTAL ||--o{ RENTAL_CANCEL_AGREEMENT : "양측 동의 취소"
+    RENTAL ||--o{ DEDUCTION_PROPOSAL : "차감 협의 이력"
+    RENTAL ||--o{ RENTAL_DATE : "날짜별 점유(실험)"
     RENTAL ||--o{ REVIEW : "당사자별 1"
     ITEM ||--o{ CHAT_ROOM : "물품-대여자당 1"
     CHAT_ROOM ||--o{ CHAT_MESSAGE : ""
+    CHAT_ROOM ||--|{ CHAT_ROOM_MEMBER : "참여자·읽음 위치"
 ```
 
 > 원본 ERD는 RENTAL–PAYMENT를 1:1로 그렸지만 대여 연장(REQ-038)이 추가 결제를 만들므로 1:N으로 정리했다. `open-issues.md` #1 참고.
@@ -90,25 +94,33 @@ erDiagram
 | 컬럼 | 비고 |
 | --- | --- |
 | id PK | |
-| item_id FK, renter_id FK | owner는 item에서 조회 (조회 편의를 위해 owner_id 비정규화 허용) |
+| item_id FK, renter_id FK | owner는 item에서 조회 (조회 편의를 위해 owner_id 비정규화 허용 — 물품 소유자는 바뀌지 않음) |
 | start_date, end_date DATE | 연장 시 end_date 갱신 |
 | rental_fee INT | 최초 대여료 (연장료는 rental_extensions) |
 | deposit INT | 예약 시점 스냅샷 (물품 가격 변경과 무관) |
 | price_per_day INT | 예약 시점 스냅샷 |
 | status | `RentalStatus` |
 | payment_expires_at DATETIME NULL | PENDING_PAYMENT 만료 시각 |
-| returned_at DATETIME NULL | 반납 요청 시각 (3일 자동 확인 기준) |
-| cancel_reason, canceled_by | |
+| handed_over_at DATETIME NULL | 인계 확인 시각 |
+| returned_at DATETIME NULL | 반납 요청(또는 미반납 신고) 시각 — 3일 자동 확인·연체료 기준 |
+| completed_at DATETIME NULL | 거래 완료 시각 — 후기 7일 기한·정산 예정일 기준 |
+| canceled_at DATETIME NULL | 취소 시각 |
+| cancel_type, cancel_reason, cancel_reason_text, canceled_by NULL | `CancelType`, `CancelReason`. 시스템 취소면 canceled_by NULL |
+| cancel_fee INT | 기본 0. 취소 수수료 (`policies.md` §2) |
+| overdue_fee INT | 기본 0. 반납 시점에 확정 |
 | extension_count INT | 기본 0 |
 | version BIGINT | 낙관적 락 실험용 |
-- 인덱스 `(item_id, status, start_date, end_date)`, `(renter_id, status)`, `(status, end_date)`(연체 배치), `(status, returned_at)`(자동 확인 배치).
-- 기간 겹침은 MySQL 유니크 제약으로 막을 수 없다 → 락 + 검사 쿼리 (도전 과제 ①).
+- 인덱스 `(item_id, status, start_date, end_date)`, `(renter_id, status)`, `(status, end_date)`(연체·반납 리마인더 배치), `(status, start_date)`(인계 없음 자동 취소), `(status, returned_at)`(자동 확인 배치).
+- 기간 겹침은 `rentals`의 시작·종료일 컬럼만으로는 유니크 제약을 걸 수 없다. 대신 아래 `rental_dates`(날짜별 점유)에 유니크 제약을 걸면 DB가 막을 수 있다. 기본 경로는 분산 락 + 검사 쿼리이고, `rental_dates`는 도전 과제 ① 비교 실험의 대상이다.
+
+**rental_dates** [1, 실험용] — item_id, rented_date DATE, rental_id FK, **UK(item_id, rented_date)**. 예약·연장 확정 시 날짜마다 1행 INSERT, 취소·결제 만료·연장 취소 시 삭제. 실험 결과로 채택이 정해지기 전에는 기본 경로에서 쓰지 않는다.
 
 **rental_status_histories** — id, rental_id, from_status, to_status, changed_by NULL, reason, changed_at
-**rental_extensions** [2] — id, rental_id, prev_end_date, new_end_date, additional_fee, payment_id
+**rental_cancel_agreements** [1] — id, rental_id FK, requested_by, reason, reason_text, status(`CancelAgreementStatus`), expires_at, responded_at, created_at. 인덱스 `(rental_id, status)`, `(status, expires_at)`(만료 배치). 한 대여에 REQUESTED는 1건만(애플리케이션 검증).
+**rental_extensions** [2] — id, rental_id, prev_end_date, new_end_date, additional_fee, status(`ExtensionStatus`), expires_at(결제 대기 만료), payment_id NULL. 인덱스 `(status, expires_at)`. PENDING_PAYMENT이고 만료 전인 행의 기간은 예약 겹침 검사 대상.
 
 **item_inspections**
-| id | rental_id | phase(`HANDOVER/RETURN`) | image_urls JSON | checklist JSON(RETURN만) | note | result(`NORMAL/ABNORMAL`, 제공자 판정) | result_note | result_image_urls JSON | ai_result JSON [2] | written_by | created_at |
+| id | rental_id | phase(`HANDOVER/RETURN`) | image_urls JSON | checklist JSON(RETURN만) | note | lost_reported BOOLEAN(미반납 신고, 사진 없음) | result(`NORMAL/ABNORMAL`, 제공자 판정) | result_note | result_image_urls JSON | ai_result JSON [2] | written_by | created_at |
 - UK(rental_id, phase). 제출 후 수정 불가(업데이트 API 없음, 판정 필드만 1회 기록).
 
 ## 결제 [2]
@@ -119,20 +131,22 @@ erDiagram
 | id, rental_id FK | |
 | type | `RENTAL`(대여료+보증금) / `EXTENSION`(연장료) |
 | order_id UK, payment_key | 토스 |
-| amount INT, rental_fee_amount INT, deposit_amount INT | 분리 저장 |
+| amount INT, rental_fee_amount INT, deposit_amount INT | 분리 저장. 결제 금액 0원이면 레코드를 만들지 않음 |
 | status | `PaymentStatus` |
 | deposit_status | `DepositStatus` (type=RENTAL만) |
+| held_at DATETIME NULL | 보증금 보류 시작 — 7일 관리자 확정 기준 |
 | refunded_amount INT | 누적 취소 금액 |
-| damage_grade, deduction_amount, deduction_reason | REQ-049 |
+| refund_retry_count INT, needs_admin_check BOOLEAN | 환불 재시도 횟수, 5회 초과 시 true |
+| damage_grade, deduction_amount, deduction_reason | **확정된 차감 결과만** (협의 이력은 deduction_proposals). 손상 발생률 집계용 |
 | idempotency_key UK | |
 
-**payment_transactions** (구현 제안) — 승인·취소 시도 이력: payment_id, action(APPROVE/CANCEL), amount, idempotency_key, result(SUCCESS/FAIL), pg_response JSON, created_at. 재시도·조정 배치의 근거.
+**payment_transactions** — 승인·취소 시도 이력: payment_id, action(APPROVE/CANCEL), amount, idempotency_key, result(SUCCESS/FAIL), pg_response JSON, created_at. 재시도·조정 배치의 근거.
 
-**deduction_proposals** (구현 제안) — rental_id, grade, amount, reason, evidence_urls JSON, status(PROPOSED/ACCEPTED/REJECTED), created_at. 재제안 이력 보관.
+**deduction_proposals** — id, rental_id, proposed_by, grade, amount, reason, evidence_urls JSON, status(`DeductionProposalStatus`), responded_at, created_at. 인덱스 `(status, created_at)`(72시간 자동 수락 배치). **협의 이력 전용**이며, 확정되면 그 값이 payments에 한 번 복사된다.
 
 **damage_policies** — id, category_id, grade, deduction_type, fixed_amount, cap_rate, recommended_deposit_min_rate, recommended_deposit_max_rate (초기값: `policies.md` §4)
 
-**settlements** — id, rental_id UK, owner_id, rental_fee, fee_amount, deduction_amount, payout_amount, scheduled_date, status
+**settlements** — id, rental_id UK, owner_id, source(`COMPLETED`/`CANCEL_FEE`), gross_amount(대여료+연장료+연체료 또는 취소 수수료), fee_amount, deduction_amount, payout_amount, scheduled_date, status
 
 ## 관심·조회 [2]
 
@@ -142,9 +156,10 @@ erDiagram
 ## 채팅 [2]
 
 **chat_rooms** — id, item_id, renter_id, owner_id, last_message_at, last_message_preview, UK(item_id, renter_id)
-**chat_messages** — id, room_id, sender_id NULL(SYSTEM), type, content, sent_at, read_at
+**chat_room_members** — room_id, member_id, last_read_message_id, PK(room_id, member_id). **읽음 처리의 유일한 기준**
+**chat_messages** — id, room_id, sender_id NULL(SYSTEM), type, content, sent_at
 - 인덱스 `(room_id, id DESC)` 커서 조회
-- 안 읽은 수: 참여자별 `last_read_message_id`를 `chat_room_members`(구현 제안)에 두면 계산이 단순해진다.
+- 안 읽은 수 = `count(id > last_read_message_id AND sender_id != me)`. 메시지별 "읽음" 표시는 상대의 last_read_message_id와 비교해 계산한다(메시지마다 read_at을 따로 두지 않음).
 
 ## 알림 [2]
 
@@ -170,8 +185,9 @@ erDiagram
 
 | 키 | 용도 | TTL |
 | --- | --- | --- |
-| `rt:{memberId}` | Refresh Token | 14일 |
-| `lock:item:{itemId}` | 예약·연장·기간 수정 분산 락 | 임대 5초 |
+| `rt:{memberId}:{familyId}` | 기기(로그인)별 현재 유효한 Refresh Token jti | 14일 |
+| `rt-families:{memberId}` | 회원의 family 목록 Set (전체 기기 로그아웃용) | 14일 |
+| `lock:item:{itemId}` | 예약·연장·기간 수정 분산 락 | 임대 시간 미지정(watchdog 자동 연장) |
 | `view:{itemId}:{memberId or ip}` | 조회수 중복 방지 | 24시간 |
 | `viewcount:{itemId}` | 조회수 증분(주기적 DB 반영) | — |
 | `search:popular` | 인기 검색어 Sorted Set | — |
@@ -179,3 +195,5 @@ erDiagram
 | `recommend:{memberId}` | 추천 결과 | 1시간 |
 | `pwreset:{token}` | 비밀번호 재설정 | 30분 |
 | `pwreset:rate:{email}` | 요청 제한 | 5분 |
+| `ai:usage:{yyyyMM}` | AI 호출 월 사용량 카운터 | 해당 월 말 + 1일 |
+| `shedlock:*` | ShedLock 배치 락 | lockAtMostFor |
