@@ -93,6 +93,8 @@ dependencies {
 }
 
 tasks.named('test') {
+	// JVM 기본 타임존을 운영과 같게 (RentalApplication.main과 동일)
+	systemProperty 'user.timezone', 'Asia/Seoul'
 	useJUnitPlatform {
 		// 외부 API 실호출 테스트는 기본 빌드에서 제외
 		excludeTags 'external'
