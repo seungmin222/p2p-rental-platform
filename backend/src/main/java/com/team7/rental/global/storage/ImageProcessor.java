@@ -5,6 +5,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Iterator;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 
 import org.springframework.stereotype.Component;
 import org.springframework.util.unit.DataSize;
@@ -45,6 +50,7 @@ public class ImageProcessor {
 		byte[] content = readBytes(file);
 		ImageFormat format = ImageFormat.detect(content)
 			.orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_INVALID_TYPE));
+		checkPixelCount(content);
 		BufferedImage image = decode(content, format);
 
 		int longSide = Math.max(image.getWidth(), image.getHeight());
@@ -63,6 +69,35 @@ public class ImageProcessor {
 			return file.getBytes();
 		} catch (IOException e) {
 			throw new UncheckedIOException("업로드 파일 읽기 실패", e);
+		}
+	}
+
+	/**
+	 * 디코딩 전에 헤더의 가로·세로만 읽어 픽셀 수를 검사한다. 파일 용량이 작아도 해상도가 크면 디코딩 중 메모리가 부족해지기 때문이다
+	 * (픽셀당 4바이트). EXIF 회전은 픽셀 수를 바꾸지 않는다.
+	 */
+	private void checkPixelCount(byte[] content) {
+		if (readPixelCount(content) > policy.maxPixels()) {
+			throw new BusinessException(ErrorCode.IMAGE_SIZE_EXCEEDED);
+		}
+	}
+
+	private static long readPixelCount(byte[] content) {
+		try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(content))) {
+			Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+			if (!readers.hasNext()) {
+				throw new IOException("이미지 리더 없음");
+			}
+			ImageReader reader = readers.next();
+			try {
+				reader.setInput(input, true, true);
+				return (long)reader.getWidth(0) * reader.getHeight(0);
+			} finally {
+				reader.dispose();
+			}
+		} catch (IOException | RuntimeException e) {
+			log.info("이미지 헤더 읽기 실패: {}", e.toString());
+			throw new BusinessException(ErrorCode.IMAGE_INVALID_TYPE);
 		}
 	}
 

@@ -20,11 +20,14 @@ public record PolicyProperties(
 	/**
 	 * @param originalMaxLongSide 원본 재인코딩 시 긴 변 최대 픽셀 (image.original-max-long-side)
 	 * @param thumbnailWidth 썸네일 가로 픽셀 (thumbnail.width)
+	 * @param maxPixels 업로드 이미지 최대 픽셀 수(가로 × 세로) (image.max-pixels)
 	 */
 	public record Image(
 		@Positive
 		int originalMaxLongSide,
 		@Positive
-		int thumbnailWidth) {
+		int thumbnailWidth,
+		@Positive
+		long maxPixels) {
 	}
 }

@@ -19,8 +19,32 @@ class ImageProcessorTest {
 
 	private static final DataSize MAX_SIZE = DataSize.ofMegabytes(5);
 
+	private static final long MAX_PIXELS = 60_000_000L;
+
 	private final ImageProcessor imageProcessor = new ImageProcessor(
-		new PolicyProperties(new PolicyProperties.Image(1600, 400)));
+		new PolicyProperties(new PolicyProperties.Image(1600, 400, MAX_PIXELS)));
+
+	@Test
+	@DisplayName("픽셀 수가 60MP를 넘으면 디코딩하기 전에 IMAGE_SIZE_EXCEEDED다")
+	void rejectsTooManyPixels() {
+		// given: 8000 x 7501 = 60,008,000px. 헤더만 있어 디코딩까지 가면 IMAGE_INVALID_TYPE이 된다
+		MockMultipartFile file = new MockMultipartFile("image", "big.png", "image/png",
+			TestImages.pngHeaderOnly(8000, 7501));
+
+		// when, then
+		assertErrorCode(file, ErrorCode.IMAGE_SIZE_EXCEEDED);
+	}
+
+	@Test
+	@DisplayName("픽셀 수가 정확히 60MP면 픽셀 검사를 통과한다")
+	void allowsExactlyMaxPixels() {
+		// given: 8000 x 7500 = 60,000,000px. 검사를 통과하면 디코딩 단계에서 헤더만 있는 파일이라 IMAGE_INVALID_TYPE
+		MockMultipartFile file = new MockMultipartFile("image", "big.png", "image/png",
+			TestImages.pngHeaderOnly(8000, 7500));
+
+		// when, then
+		assertErrorCode(file, ErrorCode.IMAGE_INVALID_TYPE);
+	}
 
 	@Test
 	@DisplayName("픽스처 확인: 일반 ImageIO는 EXIF orientation을 무시하고 저장된 픽셀 그대로(가로) 읽는다")

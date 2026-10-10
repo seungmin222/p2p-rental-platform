@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.zip.CRC32;
 
 import javax.imageio.ImageIO;
 
@@ -54,6 +55,30 @@ final class TestImages {
 		g.fillRect(width / 2, 0, width - width / 2, height);
 		g.dispose();
 		return write(image, "png");
+	}
+
+	/**
+	 * 헤더(IHDR)만 있고 픽셀 데이터(IDAT)가 없는 PNG. 큰 해상도를 메모리 없이 흉내 낸다.
+	 * 헤더로 가로·세로는 읽히지만 디코딩은 실패한다.
+	 */
+	static byte[] pngHeaderOnly(int width, int height) {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		out.writeBytes(ImageFormat.PNG.getMagic());
+		ByteBuffer ihdr = ByteBuffer.allocate(13).putInt(width).putInt(height)
+			.put((byte)8).put((byte)6).put((byte)0).put((byte)0).put((byte)0);
+		out.writeBytes(pngChunk("IHDR", ihdr.array()));
+		out.writeBytes(pngChunk("IEND", new byte[0]));
+		return out.toByteArray();
+	}
+
+	private static byte[] pngChunk(String type, byte[] data) {
+		byte[] typeBytes = type.getBytes(StandardCharsets.US_ASCII);
+		CRC32 crc = new CRC32();
+		crc.update(typeBytes);
+		crc.update(data);
+		return ByteBuffer.allocate(12 + data.length)
+			.putInt(data.length).put(typeBytes).put(data).putInt((int)crc.getValue())
+			.array();
 	}
 
 	static BufferedImage read(byte[] content) {

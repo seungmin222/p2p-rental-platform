@@ -37,6 +37,8 @@ app:
     image:
       original-max-long-side: 1600
       thumbnail-width: 400
+      # 60MP
+      max-pixels: 60000000
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언
