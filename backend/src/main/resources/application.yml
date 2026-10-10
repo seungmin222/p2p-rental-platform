@@ -1,0 +1,17 @@
+# 공통 설정. 인프라 접속 정보는 프로필별 파일(local / prod)에 둔다.
+spring:
+  application:
+    name: rental
+  jpa:
+    open-in-view: false
+    hibernate:
+      # 스키마는 Flyway만 바꾼다. 엔티티와 다르면 기동 실패 (local 포함)
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+app:
+  feature:
+    # 1순위 단계는 false (docs/architecture.md §9)
+    payment-enabled: ${APP_FEATURE_PAYMENT_ENABLED:false}
