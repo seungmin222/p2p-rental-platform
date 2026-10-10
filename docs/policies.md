@@ -89,7 +89,7 @@
 | `thumbnail.width` | 400px | 공통 |
 | `image.original-max-long-side` | 업로드 원본은 EXIF 회전을 반영해 긴 변 1600px 이하로 재인코딩하고 메타데이터(EXIF·GPS)를 제거해 저장 | 공통 |
 | `image.max-pixels` | 60MP(가로 × 세로 6,000만 픽셀). 50MP 센서 폰 사진은 허용하고, 디코딩 메모리를 최대 약 240MB(픽셀당 4바이트)로 묶는다. 초과 시 디코딩 전에 거부 | 공통 |
-| `upload.max-file-size` / `max-request-size` | 10MB / 110MB (multipart 한도. 장당 최대 한도 10MB, 요청은 10장 × 10MB + 본문 여유). 용도별 한도(`profile.image` 등)는 서버에서 다시 검사 | 공통 |
+| `upload.max-file-size` / `max-request-size` / `max-swallow-size` | 10MB / 110MB / 110MB (multipart 한도. 장당 최대 한도 10MB, 요청은 10장 × 10MB + 본문 여유). swallow(Tomcat이 한도 초과 본문을 읽고 버리는 양)는 요청 한도와 같게 둬 초과 시 연결을 끊지 않고 400 JSON으로 응답. 용도별 한도(`profile.image` 등)는 서버에서 다시 검사 | 공통 |
 
 ### 배치 주기
 | 배치 | 주기 | 관련 REQ |

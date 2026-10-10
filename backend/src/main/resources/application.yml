@@ -19,6 +19,12 @@ spring:
       max-file-size: 10MB
       max-request-size: 110MB
 
+server:
+  tomcat:
+    # 한도 초과 요청 본문을 Tomcat이 이만큼은 읽고 버린 뒤 400 JSON을 보낸다. 기본값(2MB)이면 15MB 사진 한 장에도
+    # 응답 전에 연결이 끊긴다. max-request-size와 같게 (docs/policies.md upload 행)
+    max-swallow-size: 110MB
+
 app:
   feature:
     # 1순위 단계는 false (docs/architecture.md §9)
