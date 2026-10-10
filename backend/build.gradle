@@ -106,6 +106,8 @@ openApi {
 	outputDir.set(file("${rootDir}/../docs"))
 	outputFileName.set('openapi.json')
 	customBootRun {
+		// application-local.yml의 ../infra/.env 상대 경로가 맞도록 backend/에서 실행
+		workingDir.set(projectDir)
 		args.set(['--spring.profiles.active=local'])
 	}
 }

@@ -27,3 +27,10 @@ app:
   security:
     # Swagger 경로 공개 여부. local 프로필에서만 true
     permit-swagger: false
+
+springdoc:
+  # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언
+  override-with-generic-response: false
+  default-produces-media-type: application/json
+  # docs/openapi.json diff가 실행마다 흔들리지 않게 키 정렬
+  writer-with-order-by-keys: true
