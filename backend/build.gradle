@@ -26,6 +26,7 @@ ext {
 	redissonVersion = '4.7.0'
 	jjwtVersion = '0.13.0'
 	awsSdkVersion = '2.55.6'
+	thumbnailatorVersion = '0.4.21'
 }
 
 dependencyManagement {
@@ -69,6 +70,8 @@ dependencies {
 
 	// 파일 저장소 (S3Client 빈은 prod 프로필에서만 생성)
 	implementation 'software.amazon.awssdk:s3'
+	// 이미지 리사이즈·재인코딩 (EXIF orientation 자동 반영)
+	implementation "net.coobird:thumbnailator:${thumbnailatorVersion}"
 
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.mysql:mysql-connector-j'

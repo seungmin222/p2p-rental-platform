@@ -17,6 +17,13 @@ spring:
 app:
   shedlock:
     environment: prod
+  storage:
+    # S3FileStorage. 자격 증명은 AWS SDK 기본 체인(AWS_ACCESS_KEY_ID·AWS_SECRET_ACCESS_KEY 또는 EC2 역할)
+    s3:
+      region: ${AWS_REGION}
+      bucket: ${AWS_S3_BUCKET}
+      # CDN을 붙이면 AWS_S3_PUBLIC_URL로 교체
+      public-url: ${AWS_S3_PUBLIC_URL:https://${AWS_S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com}
 
 # 운영에서는 Swagger UI와 API 문서를 노출하지 않는다
 springdoc:

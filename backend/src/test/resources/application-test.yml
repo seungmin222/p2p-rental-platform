@@ -6,3 +6,7 @@ app:
     secret: test-jwt-secret-must-be-at-least-32-bytes-long
   shedlock:
     environment: test
+  storage:
+    local:
+      root-dir: build/test-uploads
+      url-prefix: /files

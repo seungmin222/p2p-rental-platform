@@ -21,7 +21,11 @@ public enum ErrorCode {
 
 	// 인증·인가
 	AUTH_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
-	AUTH_FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다.");
+	AUTH_FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+
+	// 이미지 업로드 (global/storage)
+	IMAGE_INVALID_TYPE(HttpStatus.BAD_REQUEST, "jpg 또는 png 이미지만 업로드할 수 있습니다."),
+	IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "이미지 용량이 너무 큽니다.");
 
 	private final HttpStatus status;
 	private final String message;

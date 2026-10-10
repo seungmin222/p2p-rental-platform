@@ -26,3 +26,8 @@ app:
   shedlock:
     # ShedLock 락 키 접두사(job-lock:{environment}:{name}). 프로필마다 다르게
     environment: local
+  storage:
+    # LocalFileStorage: backend/에서 실행 기준 ./uploads 에 저장, /files/** 로 서빙 (AWS 키 불필요)
+    local:
+      root-dir: ./uploads
+      url-prefix: /files

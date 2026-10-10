@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -105,6 +106,12 @@ public class GlobalExceptionHandler {
 				List.of(new FieldErrorDetail(toFieldPath(cause.getPath()), INVALID_FORMAT)));
 		}
 		return toResponse(ErrorCode.COMMON_INVALID_INPUT, List.of());
+	}
+
+	/** multipart 한도(spring.servlet.multipart.max-file-size·max-request-size) 초과 */
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+		return toResponse(ErrorCode.IMAGE_SIZE_EXCEEDED, List.of());
 	}
 
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)

@@ -87,6 +87,8 @@
 | `ai.monthly-limit` | 월 1,000건 (초과 시 AI 없이 진행) | 040 |
 | `ai.compare.per-rental` | 대여 건당 1회 | 040 |
 | `thumbnail.width` | 400px | 공통 |
+| `image.original-max-long-side` | 업로드 원본은 EXIF 회전을 반영해 긴 변 1600px 이하로 재인코딩하고 메타데이터(EXIF·GPS)를 제거해 저장 | 공통 |
+| `upload.max-file-size` / `max-request-size` | 10MB / 110MB (multipart 한도. 장당 최대 한도 10MB, 요청은 10장 × 10MB + 본문 여유). 용도별 한도(`profile.image` 등)는 서버에서 다시 검사 | 공통 |
 
 ### 배치 주기
 | 배치 | 주기 | 관련 REQ |
