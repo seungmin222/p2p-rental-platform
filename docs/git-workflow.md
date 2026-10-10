@@ -22,8 +22,9 @@
 ### 1순위
 | 브랜치 | REQ | 담당 |
 | --- | --- | --- |
-| `chore/setup-backend` | 공통 기반: 응답·예외·Security·JWT 골격·Flyway·Swagger·QueryDSL·ShedLock 설정 | A+B |
+| `chore/setup-backend` | 공통 기반: 응답·예외·Security·JWT 골격·Flyway·Swagger·QueryDSL·ShedLock·Spotless 설정, `.env` 로딩, 파일 저장소 | A+B |
 | `chore/setup-frontend` | Vite·Tailwind·라우터·TanStack Query·axios·MSW 골격 | FE |
+| `feat/rental-entity` | rentals·rental_status_histories 엔티티·마이그레이션만 (B 작업의 선행 조건, 공통 기반 직후 1~2일 내 머지) | A |
 | `feat/member-auth` | 001–003 | B |
 | `feat/member-region` | 004, 005 | B |
 | `feat/item-crud` | 006–008, 011 | B |
@@ -35,7 +36,7 @@
 | `feat/fe-rental-pages` | SCR-07, 08, 12 | FE |
 
 ### 2순위 (착수 시 확정)
-`feat/payment-core`(024·025) · `feat/payment-deposit`(049) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
+`feat/payment-core`(024·025) · `feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
 
 ## 3. 작업 한 사이클
 
@@ -117,4 +118,5 @@ scope: member | item | rental | payment | chat | notification | review | ai | ad
 3. Settings → Rules → Rulesets → New branch ruleset: 이름 `protect-main-develop`, **Enforcement status `Active`**, Bypass list 비움, Target에 `main`·`develop` 패턴 추가. Rules: Restrict deletions, Block force pushes, Require a pull request before merging(Required approvals `0`, Allowed merge methods `Merge, Squash`). Require linear history는 끈다(`develop`→`main` 일반 merge가 막힘). 무료 계정은 Public 레포에서만 적용된다.
 4. Settings → General → Pull Requests: "Allow merge commits"와 "Allow squash merging" 켜고 "Allow rebase merging"은 끔(작업 PR은 Squash, `develop`→`main`은 Merge), "Automatically delete head branches" 켜기
 5. 팀원 2명 Collaborator 초대
+5-1. CI(`.github/workflows/ci.yml`)가 한 번 돈 뒤, 룰셋에 "Require status checks to pass"를 켜고 `backend`, `frontend` 체크를 추가한다. 승인 없이 작성자가 머지하는 대신 테스트가 깨진 PR은 머지되지 않게 하는 장치다(검사 대상이 없어 건너뛴 체크는 통과로 처리된다)
 6. 각자 PC: `git config --global user.name`/`user.email` 설정, `gh auth login`(GitHub CLI, PR 생성용)

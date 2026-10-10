@@ -3,8 +3,10 @@
 루트 `CLAUDE.md`와 `docs/`를 먼저 읽는다. 이 파일은 백엔드 코드 작성 규칙만 다룬다.
 
 ## 스택
-Java 21 · Spring Boot 3.x · Gradle · Spring Data JPA + **QueryDSL**(OpenFeign 포크) · Spring Security(JWT) · Flyway · Redisson · Spring AMQP / STOMP relay · Spring Scheduling + **ShedLock** · **springdoc-openapi** · JUnit5 + Testcontainers
+Java 21 · **Spring Boot 4.1.x** · Gradle · Spring Data JPA + **QueryDSL**(OpenFeign 포크) · Spring Security(JWT) · Flyway · Redisson · Spring AMQP / STOMP relay · Spring Scheduling + **ShedLock** · **springdoc-openapi** · JUnit5 + Testcontainers
 (굵게 표시한 것은 팀 확정 사항)
+
+**Spring Boot 4 주의**: 학습 자료·기억 속 예제는 대부분 Boot 3 기준이다. Boot 4는 스타터·자동 설정 패키지가 모듈별로 나뉘고 Jackson 3, Hibernate 7을 쓰는 등 import 경로와 설정 키가 다를 수 있다. 의존성·설정을 추가할 때는 기억에 의존하지 말고 해당 라이브러리의 Boot 4 호환 버전과 공식 문서를 확인한다(예: springdoc 3.x, QueryDSL OpenFeign 7.x, Redisson은 Boot 버전에 맞는 `redisson-spring-data-4x` 모듈).
 
 ## 패키지 구조 (도메인 우선)
 
@@ -17,7 +19,7 @@ backend/src/main/java/com/team7/rental/   ← 기본 패키지 (팀 확정 시 �
 │   ├── error/         ErrorCode(enum), BusinessException, GlobalExceptionHandler, @ApiErrorCodes
 │   ├── entity/        BaseTimeEntity
 │   ├── lock/          RentalLockStrategy + 구현체들 (Redisson / Pessimistic / Optimistic)
-│   ├── storage/       FileStorage(S3), ImageResizer
+│   ├── storage/       FileStorage 인터페이스 + S3FileStorage(운영) / LocalFileStorage(local 프로필, 디스크 저장), ImageResizer
 │   └── policy/        PolicyProperties (@ConfigurationProperties "app.policy")
 ├── member/            region 포함
 ├── item/              category, wish, viewlog 포함
@@ -137,7 +139,8 @@ rental/
 
 ## DB 마이그레이션
 - Flyway `src/main/resources/db/migration/V{n}__{설명}.sql`. 이미 머지된 마이그레이션 파일은 **수정하지 않는다** — 새 버전 추가.
-- 시드: 카테고리, damage_policies, 행정동 마스터(`R__` 반복 마이그레이션 또는 별도 로더).
+- 시드: 카테고리, damage_policies는 **버전 마이그레이션(`V`)으로 한 번만** 넣는다. 반복 마이그레이션(`R__`)은 파일이 바뀔 때마다 다시 실행돼 관리자가 고친 값을 덮어쓰므로 쓰지 않는다. 행정동 마스터는 데이터가 커서 별도 CSV + 적재 마이그레이션(`V`)으로 넣는다(출처는 `policies.md` §2 동네 데이터).
+- 번호 충돌 방지: 마이그레이션을 추가하기 전에 develop의 최신 번호를 확인하고 팀에 번호를 공유한다(`docs/git-workflow.md` §4).
 - `ddl-auto`는 `validate`(local 포함). 엔티티와 스키마가 다르면 기동 실패하도록.
 - 테이블·컬럼명은 `docs/erd.md` 기준. 바꾸면 erd.md도 수정. 새 이름은 `docs/conventions.md` §4(접미사, `uk_`/`idx_`/`fk_` 이름, 예약어 금지)를 따른다.
 
@@ -155,7 +158,7 @@ rental/
 
 ## 테스트
 - 단위 테스트(필수): 기간 겹침 판정, 대여료 계산, 상태 전이(허용/불허 전부), 차감 상한 계산, 동네 범위 계산, 신뢰 점수 산정, 정산 금액.
-- 통합 테스트: `@SpringBootTest` + Testcontainers(MySQL, Redis, RabbitMQ). H2 사용 금지(MySQL 문법·락 동작이 다름).
+- 통합 테스트: `@SpringBootTest` + Testcontainers(MySQL, Redis, RabbitMQ). 이미지 버전은 `infra/docker-compose.local.yml`과 같게(`mysql:8.4`, `rabbitmq:4.x`). H2 사용 금지(MySQL 문법·락 동작이 다름).
 - 동시성 테스트: `ExecutorService` + `CountDownLatch`로 N개 동시 예약 → 성공 1건 검증.
 - 외부 API는 Fake/WireMock. 토스 테스트 환경 실호출 테스트는 `@Tag("external")`로 분리해 기본 빌드에서 제외.
 - 테스트 이름은 한국어 `@DisplayName` 허용: `"같은 기간 동시 예약 시 1건만 성공한다"`.
@@ -164,6 +167,16 @@ rental/
 ## 설정·프로필
 - `application.yml`(공통), `application-local.yml`, `application-test.yml`, `application-prod.yml`.
 - 비밀값은 `${ENV_VAR}`로만 참조. 필요한 변수는 `infra/.env.example`에 추가.
+- **로컬 `.env` 로딩**: Spring은 `.env` 파일을 자동으로 읽지 않는다. `application-local.yml`에 아래를 둬서 `infra/.env`를 설정값으로 가져온다(경로는 `backend/`에서 실행하는 기준).
+  ```yaml
+  spring:
+    config:
+      import: optional:file:../infra/.env[.properties]
+  ```
+  `.env`의 키(`DB_HOST` 등)가 그대로 속성이 되므로 `${DB_HOST}`로 참조할 수 있다. 운영은 실제 환경 변수로 주입한다.
+- local 프로필: 파일 저장은 `LocalFileStorage`(디스크 `./uploads`, `/files/**`로 서빙), 메일은 Mailpit(`localhost:1025`, 웹 UI 8025). AWS 키 없이 전체 기능이 동작해야 한다.
+- 쿠키: Refresh Token 쿠키 속성은 `policies.md` `auth.refresh-cookie`. local 프로필에서만 `Secure=false`.
+- CORS: 기본 차단. 로컬은 Vite 프록시, 운영은 Nginx 같은 도메인 서빙이라 필요 없다(`docs/architecture.md` §4).
 - `app.feature.payment-enabled`: 1순위 단계 false (`docs/architecture.md` §9).
 
 ## 작업 체크리스트 (REQ 하나 구현할 때)

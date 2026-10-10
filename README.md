@@ -23,7 +23,7 @@
 | --- | --- |
 | Frontend | React, Vite, Tailwind CSS, TanStack Query |
 | Backend | Java 21, Spring Boot 4 (JPA, Security, WebSocket), QueryDSL, Flyway, ShedLock |
-| Data | MySQL 8, Redis (Redisson), RabbitMQ, AWS S3 |
+| Data | MySQL 8.4, Redis (Redisson), RabbitMQ 4, AWS S3 |
 | External | 토스페이먼츠, 카카오맵·카카오 로컬 API, Claude API |
 | Infra | AWS EC2, Docker Compose |
 | Test | JUnit 5, Testcontainers, JMeter |
@@ -65,8 +65,10 @@ git config --global user.name "이름"
 git config --global user.email "GitHub에 등록한 이메일"
 gh auth login          # 선택
 
-# 환경 변수 파일 만들기 → 값은 팀 채팅에서 받아 채우기 (절대 커밋 금지)
+# 환경 변수 파일 만들기 (절대 커밋 금지). 로컬은 기본값으로 바로 실행되고,
+# 외부 API 키(토스·카카오·Claude)만 필요할 때 팀에서 받아 채운다
 cp infra/.env.example infra/.env
+cp frontend/.env.example frontend/.env.local
 
 # 작업은 develop 브랜치에서 시작
 git switch develop
@@ -77,7 +79,7 @@ IntelliJ를 쓰면 `backend/` 폴더를 열고, 네이버 Java 포맷터를 Code
 ### 3. 실행
 
 ```bash
-# 로컬 인프라 (MySQL 3306, Redis 6379, RabbitMQ 5672/61613, 관리 콘솔 15672)
+# 로컬 인프라 (MySQL 3306, Redis 6379, RabbitMQ 5672/61613·콘솔 15672, Mailpit 1025·웹 8025)
 docker compose -f infra/docker-compose.local.yml --env-file infra/.env up -d
 
 # 백엔드 → http://localhost:8080, API 문서 http://localhost:8080/swagger-ui.html
@@ -86,6 +88,8 @@ cd backend && ./gradlew bootRun --args='--spring.profiles.active=local'
 # 프론트엔드 → http://localhost:5173
 cd frontend && npm install && npm run dev
 ```
+
+백엔드 local 프로필은 `infra/.env`를 설정값으로 읽고, 업로드 파일은 로컬 디스크에, 메일은 Mailpit(http://localhost:8025)으로 보냅니다. AWS 키 없이 실행됩니다. 프론트는 Vite 프록시로 백엔드에 연결됩니다.
 
 DB 테이블은 백엔드가 켜질 때 Flyway가 자동으로 만듭니다. DB를 초기화하려면 `docker compose -f infra/docker-compose.local.yml down -v` 후 다시 실행하세요.
 

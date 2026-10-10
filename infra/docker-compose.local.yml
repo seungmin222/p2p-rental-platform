@@ -1,8 +1,9 @@
-# 로컬 개발용 인프라: MySQL, Redis, RabbitMQ(STOMP 플러그인 포함)
+# 로컬 개발용 인프라: MySQL, Redis, RabbitMQ(STOMP 플러그인 포함), Mailpit(메일 확인용)
 # 사용: docker compose -f infra/docker-compose.local.yml --env-file infra/.env up -d
+# 이미지 버전을 바꾸면 백엔드 Testcontainers 이미지도 같이 바꾼다.
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
     container_name: rental-mysql
     environment:
       MYSQL_DATABASE: ${DB_NAME:-rental}
@@ -11,16 +12,16 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
       TZ: Asia/Seoul
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+09:00
-    ports: ["3306:3306"]
+    ports: ["${DB_PORT:-3306}:3306"]
     volumes: [mysql-data:/var/lib/mysql]
 
   redis:
     image: redis:7-alpine
     container_name: rental-redis
-    ports: ["6379:6379"]
+    ports: ["${REDIS_PORT:-6379}:6379"]
 
   rabbitmq:
-    image: rabbitmq:3.13-management
+    image: rabbitmq:4-management
     container_name: rental-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
@@ -29,9 +30,16 @@ services:
     command: >
       bash -c "rabbitmq-plugins enable --offline rabbitmq_stomp && rabbitmq-server"
     ports:
-      - "5672:5672"     # AMQP (AI 작업 큐)
-      - "61613:61613"   # STOMP (브로커 릴레이)
-      - "15672:15672"   # 관리 콘솔
+      - "${RABBITMQ_PORT:-5672}:5672"              # AMQP (AI 작업 큐)
+      - "${RABBITMQ_STOMP_PORT:-61613}:61613"      # STOMP (브로커 릴레이)
+      - "15672:15672"                              # 관리 콘솔 http://localhost:15672
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: rental-mailpit
+    ports:
+      - "${MAIL_PORT:-1025}:1025"   # SMTP (비밀번호 재설정 메일 발송 대상)
+      - "8025:8025"                 # 받은 메일 확인 http://localhost:8025
 
 volumes:
   mysql-data:

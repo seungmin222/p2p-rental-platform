@@ -27,7 +27,7 @@
 | 응답 DTO | `{Domain}{용도}Response` | `RentalResponse`, `ItemSummaryResponse`, `ItemDetailResponse` |
 | 검색 조건 | `{Domain}SearchCondition` | `ItemSearchCondition` |
 | 도메인 이벤트 | `{Domain}{과거분사}Event` | `RentalReturnedEvent` |
-| 예외 | `BusinessException` + `ErrorCode` enum (도메인별 예외 클래스 남발 금지) | |
+| 예외 | `BusinessException` + `ErrorCode` enum 하나로 통일. **도메인별·상황별 예외 클래스를 만들지 않는다** (상태 전이 위반도 `ErrorCode.RENTAL_INVALID_TRANSITION`) | |
 | Enum | 타입 PascalCase, 값 UPPER_SNAKE | `RentalStatus.PENDING_PAYMENT` |
 | 상수 | `static final` UPPER_SNAKE | `MAX_EXTENSION_COUNT` |
 | boolean 필드·메서드 | `is`/`has`/`can` 접두사 | `isPrimary`, `hasActiveRental()` |
@@ -96,7 +96,7 @@
 - 새 반정규화가 필요해 보이면 구현 전에 이유를 설명하고 확인받는다.
 - 엔진 InnoDB, 문자셋 `utf8mb4` / `utf8mb4_unicode_ci`.
 - 삭제는 소프트 삭제(`status`), 물리 삭제는 연결 테이블(`wishes` 등)만.
-- Flyway 파일명: `V{번호}__{동사}_{대상}.sql` — `V3__create_rental_tables.sql`, `V7__add_region_range_to_member_regions.sql`. 반복 시드는 `R__seed_categories.sql`.
+- Flyway 파일명: `V{번호}__{동사}_{대상}.sql` — `V3__create_rental_tables.sql`, `V7__add_region_range_to_member_regions.sql`. 초기 데이터도 `V`로 넣는다(예: `V2__insert_categories.sql`). 반복 마이그레이션 `R__`은 쓰지 않는다(`backend/CLAUDE.md` DB 마이그레이션).
 
 ## 5. 프론트엔드 이름 규칙
 

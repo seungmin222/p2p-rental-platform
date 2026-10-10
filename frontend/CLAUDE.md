@@ -17,7 +17,7 @@
 
 ## 스택
 **확정**: React · Vite · JavaScript(JSX) · Tailwind CSS · **TanStack Query**(서버 상태)
-**제안**(팀 확정 시 수정): React Router · Zustand(인증·동네 등 클라이언트 상태) · axios · @stomp/stompjs · react-hook-form · dayjs · MSW(목 API) · 토스페이먼츠 결제위젯 SDK · 카카오맵 JS SDK
+**제안**(팀 확정 시 수정): React Router · Zustand(인증·동네 등 클라이언트 상태) · axios · @stomp/stompjs · react-hook-form · dayjs · MSW(목 API) · 토스페이먼츠 결제창 SDK(API 개별 연동, 결제위젯 아님) · 카카오맵 JS SDK
 
 ## 디렉터리
 
@@ -116,15 +116,21 @@ export const RENTAL_STATUS = {
 - 물품 가격(itemPrice)은 등록·수정 화면에서만 입력, 상세에 표시하지 않는다. 등록 시 권장 보증금 범위를 보증금 입력란 아래 안내.
 - 접근성: 버튼에 텍스트 또는 aria-label, 터치 영역 44px 이상.
 
+## 로컬 연동 (백엔드와 같은 출처로)
+- `vite.config.js`의 `server.proxy`로 `/api` → `http://localhost:8080`, `/ws` → `ws://localhost:8080`(`ws: true`)를 넘긴다. 브라우저 기준으로 프론트와 API가 같은 출처라 CORS가 필요 없고, Refresh Token 쿠키(`SameSite=Lax`, `Path=/api/auth`)가 그대로 전달된다.
+- axios `baseURL`은 `VITE_API_URL`(기본 `/api`), `withCredentials: true`. 절대 주소(`http://localhost:8080`)를 코드에 쓰지 않는다.
+- 운영은 Nginx가 정적 파일과 `/api`, `/ws`를 같은 도메인에서 서빙하므로 같은 코드가 그대로 동작한다.
+
 ## 외부 SDK
 - **카카오맵**: 앱 키는 `VITE_KAKAO_MAP_KEY`. 스크립트 동적 로드 래퍼 훅(`useKakaoMap`). 로드 실패 시 주소 텍스트만 표시(REQ-030 예외).
-- **토스페이먼츠**: `VITE_TOSS_CLIENT_KEY`(테스트). 결제창 → successUrl `/payments/success?paymentKey&orderId&amount` → 이 값을 서버 `/api/payments/confirm`으로 전달. **금액 검증은 서버가 한다.**
+- **토스페이먼츠**: `VITE_TOSS_CLIENT_KEY`(테스트, **API 개별 연동 키** — 결제위젯 키와 다름). 카드 결제창 → successUrl `/payments/success?paymentKey&orderId&amount` → 이 값을 서버 `/api/payments/confirm`으로 전달. **금액 검증은 서버가 한다.**
 - **위치**: `navigator.geolocation` 권한 거부 시 안내 후 동네 검색만 제공.
 
 ## 개발 방식
 - 백엔드가 컨트롤러·DTO를 먼저 머지하면 `docs/openapi.json`이 갱신된다. 그 스키마의 응답 형태 그대로 `mocks/` MSW 핸들러를 만들어 먼저 개발한다(공통 래퍼 `{ success, data, error }` 포함). `VITE_USE_MOCK=true`로 전환.
 - 타입 힌트가 필요하면 openapi.json에서 JSDoc 타입을 생성해 쓸 수 있다(선택, `openapi-typescript` 등). 생성 파일은 직접 수정하지 않는다.
-- 환경 변수: `.env.local`(커밋 금지), `.env.example`(커밋).
+- 환경 변수: `frontend/.env.example`을 `frontend/.env.local`로 복사해서 사용(`.env.local`은 커밋 금지). 키를 추가하면 `.env.example`에도 추가.
+- Node 버전: `frontend/.nvmrc`에 LTS 버전을 적어 팀원과 CI가 같은 버전을 쓴다(프로젝트 생성 시 만든다).
 - 포맷은 Prettier, 이름 규칙은 `docs/conventions.md` §5. 커밋 전 `npm run format`.
 - `npm run lint`, `npm run build`가 통과해야 PR.
 - 1순위 단계에서는 결제 화면 대신 "예약 완료 → 대여 상세"로 바로 이동 (백엔드 `payment-enabled=false`와 맞춤). 플래그 `VITE_PAYMENT_ENABLED`.

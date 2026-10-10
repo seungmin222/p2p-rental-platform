@@ -9,10 +9,10 @@
 - 다른 도메인은 알림을 직접 만들지 않고 `NotificationService.send(memberId, type, target, eventId, args)` 또는 도메인 이벤트 리스너를 통해서만 발행한다. 트랜잭션 커밋 후 발행(`AFTER_COMMIT`)
 
 ## REQ-032 거래 활동 알림 [2]
-- 이벤트(NotificationType, `state-machines.md` §5): 예약 확정, 결제 완료, 예약 취소, 인계 확인, 인계 리마인더, 반납 요청, 상태 확인 결과, 보증금 반환·보류·차감 제안, 연체, 대여 연장, 후기 도착, AI 비교 완료
+- 이벤트: `state-machines.md` §5 `NotificationType` 전체(3순위 표시 항목 제외). 수신자는 아래 표
 - 저장 필드: member_id, type, content(표시 문구), target_type(RENTAL/ITEM/CHAT_ROOM/REVIEW), target_id(→ 클릭 시 이동), event_id(UK, 중복 방지), is_read
 - event_id 규칙: `{TYPE}:{targetId}[:{추가키}]` 예) `OVERDUE:123`, `RETURN_REQUESTED:123`, `DEDUCTION_PROPOSED:123:{proposalId}`
-- API: 목록(최신순 20건 커서), 개별 읽음, 모두 읽음, 안 읽은 수
+- API: 목록(최신순 20건 커서), 개별 읽음, 모두 읽음, 안 읽은 수(`GET /api/notifications/unread-count`)
 - 알림 설정(REQ-053) 구현 후에는 수신 거부 종류 미발송
 
 ## REQ-031 연체 알림 [2 필수]
@@ -25,10 +25,15 @@
 | 예약 취소 | 상대방 | 상대방 |
 | 인계 확인 | ✔ | |
 | 인계 리마인더 | ✔ | ✔ |
+| 양측 동의 취소 요청 (`CANCEL_AGREEMENT_REQUESTED`) | 상대방 | 상대방 |
+| 양측 동의 취소 결과 (`CANCEL_AGREEMENT_RESULT`) | ✔ | ✔ |
+| 반납 리마인더 (`RETURN_REMINDER`, 예정일 하루 전) | ✔ | |
+| 미반납 신고 (`LOST_REPORTED`) | ✔ | |
 | 반납 요청 | | ✔ |
 | 상태 확인 결과·보증금 반환/보류 | ✔ | |
 | 차감 제안 | ✔ | |
-| 차감 수락/거절 | | ✔ |
+| 차감 수락·자동 수락·관리자 확정 (`DEDUCTION_ACCEPTED`) | ✔ | ✔ |
+| 차감 거절 (`DEDUCTION_REJECTED`) | | ✔ |
 | 연체 | ✔ | ✔ |
 | 대여 연장 | ✔ | ✔ |
 | 후기 도착 | 받는 사람 | 받는 사람 |

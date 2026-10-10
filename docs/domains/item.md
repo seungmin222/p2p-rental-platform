@@ -12,9 +12,9 @@
 | images | 필수 1~10장, jpg/png, 장당 10MB, 순서 = sortOrder |
 | categoryId | 필수, 활성 카테고리 |
 | condition | `LIKE_NEW` / `LIGHTLY_USED` / `USED` |
-| pricePerDay | 0 ~ 1,000,000 |
+| pricePerDay | 0원(무료) 또는 1,000원 이상, 상한은 `policies.md` `item.price-per-day` |
 | itemPrice | 0 ~ 10,000,000 (**대여자에게 비공개**) |
-| deposit | 0 ~ 3,000,000 |
+| deposit | 0원 또는 1,000원 이상, 상한은 `policies.md` `item.deposit` |
 | availablePeriods | 1개 이상 `[{startDate, endDate}]`, startDate ≥ 오늘, start ≤ end, 구간끼리 겹침 불가 |
 | address, latitude, longitude | 필수 (카카오맵에서 선택) |
 
@@ -76,7 +76,7 @@
 ## REQ-022 관심(찜) [2]
 POST/DELETE `/api/items/{itemId}/wishes`, `GET /api/members/me/wishes`
 - 토글. UK(member, item). wishCount 함께 갱신(원자적 `UPDATE ... SET wish_count = wish_count ± 1`)
-- 본인 물품 불가 400, 비회원은 프론트에서 로그인 유도
+- 본인 물품 불가 400 `WISH_OWN_ITEM`, 비회원은 프론트에서 로그인 유도
 - 목록 최근 추가순, 삭제 물품은 "삭제된 물품" 표시
 - 관심 추가 시 추천 캐시 무효화(REQ-060 이후)
 
