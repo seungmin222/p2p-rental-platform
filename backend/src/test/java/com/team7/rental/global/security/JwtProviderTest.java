@@ -2,10 +2,12 @@ package com.team7.rental.global.security;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.Base64;
 
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.DisplayName;
@@ -103,6 +105,18 @@ class JwtProviderTest {
 	}
 
 	@Test
+	@DisplayName("AT에는 typ=ACCESS, RT에는 typ=REFRESH 클레임이 들어간다")
+	void tokensCarryTypeClaim() {
+		// when
+		String accessPayload = payloadOf(jwtProvider.createAccessToken(1L, "USER"));
+		String refreshPayload = payloadOf(jwtProvider.createRefreshToken(1L, "family-1").token());
+
+		// then
+		assertThat(accessPayload).contains("\"typ\":\"ACCESS\"").doesNotContain("familyId");
+		assertThat(refreshPayload).contains("\"typ\":\"REFRESH\"").doesNotContain("role");
+	}
+
+	@Test
 	@DisplayName("Refresh Token을 Access Token으로, Access Token을 Refresh Token으로 쓸 수 없다")
 	void rejectsWrongTokenType() {
 		// given
@@ -127,6 +141,10 @@ class JwtProviderTest {
 			.hasMessageContaining("32바이트");
 		assertThatThrownBy(() -> new JwtProvider(missingSecret, clockAt(NOW)))
 			.isInstanceOf(IllegalStateException.class);
+	}
+
+	private static String payloadOf(String token) {
+		return new String(Base64.getUrlDecoder().decode(token.split("\\.")[1]), StandardCharsets.UTF_8);
 	}
 
 	private static JwtProvider providerAt(Instant instant) {

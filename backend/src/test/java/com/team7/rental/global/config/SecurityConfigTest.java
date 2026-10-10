@@ -59,7 +59,20 @@ class SecurityConfigTest {
 	@DisplayName("공개 패턴과 겹치는 회원 전용 경로는 토큰이 필요하다")
 	void memberOnlyPathsOverlappingPublicPatterns() throws Exception {
 		expectUnauthorized(mockMvc.perform(get("/api/items/deposit-guide")));
-		expectUnauthorized(mockMvc.perform(post("/api/auth/logout")));
+	}
+
+	@Test
+	@DisplayName("/api/auth/** 는 토큰이 없거나 만료된 AT가 붙어 있어도 접근할 수 있다(로그아웃·재발급)")
+	void authPathsIgnoreAccessToken() throws Exception {
+		// given
+		String expired = expiredProvider().createAccessToken(7L, "USER");
+
+		// when, then
+		mockMvc.perform(post("/api/auth/logout")).andExpect(status().isOk());
+		mockMvc.perform(post("/api/auth/logout").header(HttpHeaders.AUTHORIZATION, bearer(expired)))
+			.andExpect(status().isOk());
+		mockMvc.perform(post("/api/auth/reissue").header(HttpHeaders.AUTHORIZATION, bearer(expired)))
+			.andExpect(status().isOk());
 	}
 
 	@Test
@@ -74,8 +87,7 @@ class SecurityConfigTest {
 	@Test
 	@DisplayName("만료·서명 불일치·형식 오류 토큰으로 보호 경로에 접근하면 401이다")
 	void invalidTokens() throws Exception {
-		JwtProvider past = new JwtProvider(jwtProperties,
-			Clock.fixed(Instant.now().minus(jwtProperties.accessTokenTtl()).minusSeconds(1), ZoneId.of("Asia/Seoul")));
+		JwtProvider past = expiredProvider();
 		JwtProvider otherKey = new JwtProvider(
 			new JwtProperties("another-secret-that-is-also-32-bytes-long!!", jwtProperties.accessTokenTtl(),
 				jwtProperties.refreshTokenTtl()),
@@ -92,16 +104,22 @@ class SecurityConfigTest {
 	}
 
 	@Test
-	@DisplayName("비회원 허용 경로는 토큰이 있으면 memberId, 없거나 무효면 비회원(null)으로 처리한다")
+	@DisplayName("비회원 허용 경로는 헤더가 없으면 비회원(null), 유효한 토큰이면 memberId다")
 	void optionalLogin() throws Exception {
 		mockMvc.perform(get("/api/items/1").header(HttpHeaders.AUTHORIZATION, bearer(userToken())))
 			.andExpect(jsonPath("$.data").value(7));
 		mockMvc.perform(get("/api/items/1"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data").doesNotExist());
-		mockMvc.perform(get("/api/items/1").header(HttpHeaders.AUTHORIZATION, bearer("not-a-jwt")))
-			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.data").doesNotExist());
+	}
+
+	@Test
+	@DisplayName("비회원 허용 경로라도 Authorization 헤더가 무효·만료면 401이다")
+	void optionalLoginWithInvalidToken() throws Exception {
+		expectUnauthorized(mockMvc.perform(get("/api/items/1").header(HttpHeaders.AUTHORIZATION, bearer("not-a-jwt"))));
+		expectUnauthorized(mockMvc.perform(get("/api/items/1")
+			.header(HttpHeaders.AUTHORIZATION, bearer(expiredProvider().createAccessToken(7L, "USER")))));
+		expectUnauthorized(mockMvc.perform(get("/api/items/1").header(HttpHeaders.AUTHORIZATION, "Basic abc")));
 	}
 
 	@Test
@@ -147,6 +165,12 @@ class SecurityConfigTest {
 			.andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
 	}
 
+	/** 지금 발급하면 이미 만료된 토큰을 만드는 Provider */
+	private JwtProvider expiredProvider() {
+		return new JwtProvider(jwtProperties,
+			Clock.fixed(Instant.now().minus(jwtProperties.accessTokenTtl()).minusSeconds(1), ZoneId.of("Asia/Seoul")));
+	}
+
 	private String userToken() {
 		return jwtProvider.createAccessToken(7L, "USER");
 	}
@@ -171,7 +195,7 @@ class SecurityConfigTest {
 	@RestController
 	static class TestController {
 
-		@PostMapping({"/api/auth/login", "/api/auth/logout", "/api/members"})
+		@PostMapping({"/api/auth/login", "/api/auth/logout", "/api/auth/reissue", "/api/members"})
 		ApiResponse<Void> ok() {
 			return ApiResponse.ok();
 		}

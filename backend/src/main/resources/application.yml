@@ -2,6 +2,9 @@
 spring:
   application:
     name: rental
+  autoconfigure:
+    # JWT만 쓰므로 기본 메모리 사용자(generated security password)를 만들지 않는다
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   jpa:
     open-in-view: false
     hibernate:

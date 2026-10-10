@@ -31,6 +31,10 @@ public class JwtProvider {
 	static final int MIN_SECRET_BYTES = 32;
 	private static final String ROLE_CLAIM = "role";
 	private static final String FAMILY_ID_CLAIM = "familyId";
+	// 토큰 종류. AT·RT를 서로 바꿔 쓰지 못하게 검증한다
+	private static final String TYPE_CLAIM = "typ";
+	private static final String ACCESS_TYPE = "ACCESS";
+	private static final String REFRESH_TYPE = "REFRESH";
 
 	private final JwtProperties properties;
 	private final Clock clock;
@@ -57,6 +61,7 @@ public class JwtProvider {
 		Instant now = clock.instant();
 		return Jwts.builder()
 			.subject(memberId.toString())
+			.claim(TYPE_CLAIM, ACCESS_TYPE)
 			.claim(ROLE_CLAIM, role)
 			.issuedAt(Date.from(now))
 			.expiration(Date.from(now.plus(properties.accessTokenTtl())))
@@ -73,6 +78,7 @@ public class JwtProvider {
 		String jti = UUID.randomUUID().toString();
 		String token = Jwts.builder()
 			.subject(memberId.toString())
+			.claim(TYPE_CLAIM, REFRESH_TYPE)
 			.claim(FAMILY_ID_CLAIM, familyId)
 			.id(jti)
 			.issuedAt(Date.from(now))
@@ -88,7 +94,7 @@ public class JwtProvider {
 	public AccessTokenClaims parseAccessToken(String token) {
 		Claims claims = parse(token);
 		String role = claims.get(ROLE_CLAIM, String.class);
-		if (role == null || claims.get(FAMILY_ID_CLAIM) != null) {
+		if (!ACCESS_TYPE.equals(claims.get(TYPE_CLAIM, String.class)) || role == null) {
 			throw new BusinessException(ErrorCode.AUTH_UNAUTHORIZED);
 		}
 		return new AccessTokenClaims(toMemberId(claims), role);
@@ -100,7 +106,8 @@ public class JwtProvider {
 	public RefreshTokenClaims parseRefreshToken(String token) {
 		Claims claims = parse(token);
 		String familyId = claims.get(FAMILY_ID_CLAIM, String.class);
-		if (familyId == null || claims.getId() == null) {
+		if (!REFRESH_TYPE.equals(claims.get(TYPE_CLAIM, String.class)) || familyId == null
+			|| claims.getId() == null) {
 			throw new BusinessException(ErrorCode.AUTH_UNAUTHORIZED);
 		}
 		return new RefreshTokenClaims(toMemberId(claims), familyId, claims.getId());

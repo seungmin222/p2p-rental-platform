@@ -64,14 +64,15 @@ public class SecurityConfig {
 			.exceptionHandling(exception -> exception
 				.authenticationEntryPoint(errorResponder)
 				.accessDeniedHandler(errorResponder))
-			.addFilterBefore(new JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter.class)
+			.addFilterBefore(new JwtAuthenticationFilter(jwtProvider, errorResponder),
+				UsernamePasswordAuthenticationFilter.class)
 			.authorizeHttpRequests(auth -> {
 				auth.requestMatchers("/error").permitAll();
 				if (permitSwagger) {
 					auth.requestMatchers(SWAGGER).permitAll();
 				}
-				auth.requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
-					.requestMatchers(MEMBER_ONLY_OVERLAPPING).authenticated()
+				// /api/auth/** 는 로그아웃 포함 전부 공개 (만료된 AT로도 재발급·로그아웃 가능해야 함)
+				auth.requestMatchers(MEMBER_ONLY_OVERLAPPING).authenticated()
 					.requestMatchers("/api/admin/**").hasRole("ADMIN")
 					.requestMatchers("/api/auth/**").permitAll()
 					.requestMatchers(HttpMethod.POST, "/api/members").permitAll()
