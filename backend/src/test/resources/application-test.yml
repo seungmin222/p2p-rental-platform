@@ -4,3 +4,5 @@ app:
     payment-enabled: false
   jwt:
     secret: test-jwt-secret-must-be-at-least-32-bytes-long
+  shedlock:
+    environment: test

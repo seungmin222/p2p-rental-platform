@@ -23,3 +23,6 @@ logging:
 app:
   security:
     permit-swagger: true
+  shedlock:
+    # ShedLock 락 키 접두사(job-lock:{environment}:{name}). 프로필마다 다르게
+    environment: local
