@@ -3,7 +3,7 @@
 담당: 이승민(A) · 화면: SCR-05(캘린더), 07, 08, 12 · 엔티티: rentals, rental_status_histories, rental_cancel_agreements, item_inspections, rental_extensions
 **반드시 `state-machines.md`와 함께 읽는다.** 수치는 `policies.md`가 기준이다.
 
-> **선행 머지**: `rentals`, `rental_status_histories` 엔티티와 마이그레이션은 B 담당의 피드 "대여 중" 배지(009), 기간 검색(010), 내 물품 관리(020)가 의존한다. 1순위 착수 직후 엔티티·마이그레이션·`ACTIVE_FOR_PERIOD` 상수만 담은 작은 PR(`feat/rental-entity`)을 먼저 머지한다.
+> **선행 머지**: `rentals`, `rental_status_histories` 엔티티와 마이그레이션은 B 담당의 피드 "대여 중" 배지(009), 기간 검색(010), 내 물품 관리(020)가 의존한다. `rentals`가 `items`·`members`를 FK로 참조하므로 `feat/item-crud` 머지 직후, `feat/item-feed-search` 착수 전에 엔티티·마이그레이션·`ACTIVE_FOR_PERIOD` 상수만 담은 작은 PR(`feat/rental-entity`)을 먼저 머지한다.
 
 ## REQ-012 대여 캘린더 조회 [1]
 `GET /api/items/{itemId}/calendar?month=YYYY-MM` (기본 이번 달)

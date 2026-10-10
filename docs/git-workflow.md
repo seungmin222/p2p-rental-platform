@@ -24,7 +24,8 @@
 | --- | --- | --- |
 | `chore/setup-backend` | 공통 기반: 응답·예외·Security·JWT 골격·Flyway·Swagger·QueryDSL·ShedLock·Spotless 설정, `.env` 로딩, 파일 저장소 | A+B |
 | `chore/setup-frontend` | Vite·Tailwind·라우터·TanStack Query·axios·MSW 골격 | FE |
-| `feat/rental-entity` | rentals·rental_status_histories 엔티티·마이그레이션만 (B 작업의 선행 조건, 공통 기반 직후 1~2일 내 머지) | A |
+| `chore/setup-storage-shedlock` | `chore/setup-backend` 잔여분: 파일 저장소(`FileStorage`·`ImageProcessor`) + ShedLock 설정 | A |
+| `feat/rental-entity` | rentals·rental_status_histories 엔티티·마이그레이션만 (`items`·`members` FK 때문에 `feat/item-crud` 머지 직후, B의 `feat/item-feed-search` 착수 전에 머지) | A |
 | `feat/member-auth` | 001–003 | B |
 | `feat/member-region` | 004, 005 | B |
 | `feat/item-crud` | 006–008, 011 | B |
