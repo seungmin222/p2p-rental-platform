@@ -77,6 +77,8 @@ src/
 - Access Token은 **메모리(Zustand)에만**. localStorage 저장 금지. Refresh Token은 HttpOnly 쿠키라 JS가 만지지 않는다(`withCredentials: true`).
 - **401 처리**: 재발급 요청을 **단일 비행(single-flight)**으로 — 동시에 401이 여러 개 와도 `/api/auth/reissue`는 한 번만 호출하고 나머지는 대기 후 재시도. 원 요청은 1회만 재시도. 재발급 실패 → 상태 초기화 후 `/login`.
 - 앱 시작 시 `/api/auth/reissue`를 한 번 호출해 로그인 상태 복원.
+- 로그아웃하거나 재발급에 실패하면 저장된 AT를 지운다.
+- 공개 API(`/api/auth/**`, `POST /api/members`)에는 Authorization 헤더를 붙이지 않는다.
 - **서버에서 온 데이터는 전부 TanStack Query로 다룬다.** `useEffect + useState`로 API를 호출해 상태를 들고 있지 않는다. Zustand에는 서버 데이터를 복사해 두지 않는다(토큰·임시 동네·UI 상태만).
 - 조회는 `useQuery`/`useInfiniteQuery`, 변경은 `useMutation` → `onSuccess`에서 관련 queryKey `invalidateQueries`. 훅은 `features/*/queries.js`에 모으고 컴포넌트에서 axios를 직접 호출하지 않는다.
 - 기본 옵션(`QueryClient`): `retry: 1`(401·403·404·409는 재시도 안 함), `staleTime`은 목록 30초·상세 10초 정도로 시작. 캘린더·대여 상세처럼 상태가 바뀌는 화면은 짧게.
