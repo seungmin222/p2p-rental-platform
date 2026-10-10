@@ -7,6 +7,12 @@ import java.util.stream.Collectors;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationTrustResolver;
+import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterErrors;
@@ -35,11 +41,26 @@ public class GlobalExceptionHandler {
 
 	private static final String INVALID_FORMAT = "형식이 올바르지 않습니다.";
 	private static final String REQUIRED = "필수 값입니다.";
+	private static final AuthenticationTrustResolver TRUST_RESOLVER = new AuthenticationTrustResolverImpl();
 
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e) {
 		log.info("BusinessException: {}", e.getErrorCode().getCode());
 		return toResponse(e.getErrorCode(), List.of());
+	}
+
+	/** 컨트롤러 안의 인증 예외(메서드 보안 등). 처리하지 않으면 아래 Exception 핸들러에 걸려 500이 된다. */
+	@ExceptionHandler(AuthenticationException.class)
+	public ResponseEntity<ApiResponse<Void>> handleAuthentication(AuthenticationException e) {
+		return toResponse(ErrorCode.AUTH_UNAUTHORIZED, List.of());
+	}
+
+	/** 메서드 보안(@PreAuthorize) 거부. 비회원이면 403이 아니라 401(로그인 필요)이다. */
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException e) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		boolean anonymous = authentication == null || TRUST_RESOLVER.isAnonymous(authentication);
+		return toResponse(anonymous ? ErrorCode.AUTH_UNAUTHORIZED : ErrorCode.AUTH_FORBIDDEN, List.of());
 	}
 
 	/** @Valid @RequestBody, @ModelAttribute 검증 실패 (MethodArgumentNotValidException 포함) */

@@ -19,3 +19,7 @@ spring:
 logging:
   level:
     org.hibernate.SQL: debug
+
+app:
+  security:
+    permit-swagger: true
