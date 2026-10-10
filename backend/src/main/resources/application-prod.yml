@@ -1,0 +1,22 @@
+# 운영: 모든 접속 정보는 실제 환경 변수로 주입한다. 기본값을 두지 않아 누락 시 기동 실패.
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?characterEncoding=UTF-8&connectionTimeZone=Asia/Seoul
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
+# 운영에서는 Swagger UI와 API 문서를 노출하지 않는다
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

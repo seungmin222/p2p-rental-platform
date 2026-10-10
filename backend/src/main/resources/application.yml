@@ -1,0 +1,36 @@
+# 공통 설정. 인프라 접속 정보는 프로필별 파일(local / prod)에 둔다.
+spring:
+  application:
+    name: rental
+  autoconfigure:
+    # JWT만 쓰므로 기본 메모리 사용자(generated security password)를 만들지 않는다
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  jpa:
+    open-in-view: false
+    hibernate:
+      # 스키마는 Flyway만 바꾼다. 엔티티와 다르면 기동 실패 (local 포함)
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+app:
+  feature:
+    # 1순위 단계는 false (docs/architecture.md §9)
+    payment-enabled: ${APP_FEATURE_PAYMENT_ENABLED:false}
+  jwt:
+    # 32바이트(256bit) 미만이면 기동 실패 (JwtProvider)
+    secret: ${JWT_SECRET}
+    # docs/policies.md auth.access-token-ttl / auth.refresh-token-ttl
+    access-token-ttl: 30m
+    refresh-token-ttl: 14d
+  security:
+    # Swagger 경로 공개 여부. local 프로필에서만 true
+    permit-swagger: false
+
+springdoc:
+  # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언
+  override-with-generic-response: false
+  default-produces-media-type: application/json
+  # docs/openapi.json diff가 실행마다 흔들리지 않게 키 정렬
+  writer-with-order-by-keys: true

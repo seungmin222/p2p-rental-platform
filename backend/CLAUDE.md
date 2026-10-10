@@ -159,6 +159,10 @@ rental/
 ## 테스트
 - 단위 테스트(필수): 기간 겹침 판정, 대여료 계산, 상태 전이(허용/불허 전부), 차감 상한 계산, 동네 범위 계산, 신뢰 점수 산정, 정산 금액.
 - 통합 테스트: `@SpringBootTest` + Testcontainers(MySQL, Redis, RabbitMQ). 이미지 버전은 `infra/docker-compose.local.yml`과 같게(`mysql:8.4`, `rabbitmq:4.x`). H2 사용 금지(MySQL 문법·락 동작이 다름).
+- 통합 테스트 기반 클래스 `support/IntegrationTestSupport`를 상속한다(`@SpringBootTest` + test 프로필 + `MockMvc` 주입). 컨테이너는 JVM당 한 번 떠서 모든 클래스가 공유한다.
+  - 시각 고정: `testClock.fixAt(LocalDateTime.of(...))`, `testClock.advance(Duration)`. `Clock`을 주입받는 모든 빈에 적용되고 테스트마다 실제 시각으로 돌아온다.
+  - 데이터 정리: 테스트마다 끝나면 MySQL 전 테이블 TRUNCATE + Redis FLUSHDB(동시성 테스트 때문에 롤백 대신 이 방식). 시드 테이블은 `DataCleaner.EXCLUDED_TABLES`에 등록해 지워지지 않게 한다.
+  - 하위 클래스에 `@MockitoBean`·`@TestPropertySource`·`@Import`를 붙이면 컨텍스트가 새로 만들어져 느려진다. 꼭 필요할 때만.
 - 동시성 테스트: `ExecutorService` + `CountDownLatch`로 N개 동시 예약 → 성공 1건 검증.
 - 외부 API는 Fake/WireMock. 토스 테스트 환경 실호출 테스트는 `@Tag("external")`로 분리해 기본 빌드에서 제외.
 - 테스트 이름은 한국어 `@DisplayName` 허용: `"같은 기간 동시 예약 시 1건만 성공한다"`.

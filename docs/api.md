@@ -13,7 +13,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 1 | POST | /api/members | 회원가입 | X | 001 |
 | 1 | POST | /api/auth/login | 로그인 (AT 응답, RT 쿠키) | X | 002 |
-| 1 | POST | /api/auth/logout | 로그아웃 | O | 002 |
+| 1 | POST | /api/auth/logout | 로그아웃 (RT 쿠키 기준, 만료된 AT로도 가능) | X | 002 |
 | 1 | POST | /api/auth/reissue | 토큰 재발급(RT 쿠키) | X | 003 |
 | 1 | GET | /api/members/me | 내 정보 | O | 005 |
 | 1 | PATCH | /api/members/me | 프로필 수정 (multipart) | O | 005 |

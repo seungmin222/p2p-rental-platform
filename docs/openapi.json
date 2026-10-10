@@ -1,5 +1,24 @@
 {
-  "openapi": "3.0.1",
-  "info": { "title": "Rental Platform API", "version": "0.0.0", "description": "자동 생성 파일. 직접 수정 금지. backend에서 ./gradlew generateOpenApiDocs 로 재생성." },
-  "paths": {}
+  "openapi": "3.1.0",
+  "info": {
+    "description": "자동 생성 파일. 직접 수정 금지. backend에서 ./gradlew generateOpenApiDocs 로 재생성.",
+    "title": "Rental Platform API",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {},
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "description": "Access Token. 로그인 응답의 토큰을 그대로 넣는다(Bearer 접두사 제외).",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  }
 }
