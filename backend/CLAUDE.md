@@ -19,7 +19,7 @@ backend/src/main/java/com/team7/rental/   ← 기본 패키지 (팀 확정 시 �
 │   ├── error/         ErrorCode(enum), BusinessException, GlobalExceptionHandler, @ApiErrorCodes
 │   ├── entity/        BaseTimeEntity
 │   ├── lock/          RentalLockStrategy + 구현체들 (Redisson / Pessimistic / Optimistic)
-│   ├── storage/       FileStorage 인터페이스 + S3FileStorage(운영) / LocalFileStorage(local 프로필, 디스크 저장), ImageResizer
+│   ├── storage/       FileStorage 인터페이스 + S3FileStorage(prod) / LocalFileStorage(local·test, 디스크 저장), ImageProcessor(검증·EXIF 회전·재인코딩·썸네일)
 │   └── policy/        PolicyProperties (@ConfigurationProperties "app.policy")
 ├── member/            region 포함
 ├── item/              category, wish, viewlog 포함
@@ -100,6 +100,7 @@ rental/
 ## 배치 단일 실행 (ShedLock)
 - 모든 `@Scheduled` 메서드에 `@SchedulerLock(name = "도메인.배치명", lockAtMostFor = "...", lockAtLeastFor = "...")`. 이름은 배치마다 고유.
 - 락 저장소: Redis(이미 사용 중) — `shedlock-provider-redis-spring`. JDBC로 바꾸면 `shedlock` 테이블 마이그레이션 추가.
+- 설정은 `global/config/SchedulingConfig`(`defaultLockAtMostFor = 10m`). 락 키는 `job-lock:{app.shedlock.environment}:{name}`이고 환경 값은 프로필 파일마다 다르다(local·test·prod).
 - `lockAtMostFor`는 배치가 정상적으로 걸리는 최대 시간보다 넉넉히(서버가 죽어도 락이 풀리도록), `lockAtLeastFor`는 서버 간 시계 차이를 흡수할 만큼 짧게(예: 30s).
 - ShedLock은 "같은 회차를 두 서버가 동시에 돌리는 것"만 막는다. **배치 자체의 멱등성은 별도로 보장**해야 한다(아래 "배치" 참고).
 

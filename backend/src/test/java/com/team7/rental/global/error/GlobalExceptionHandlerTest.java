@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import com.team7.rental.global.response.ApiResponse;
 
@@ -164,8 +165,22 @@ class GlobalExceptionHandlerTest {
 			.andExpect(content().string(not(containsString("secret-detail"))));
 	}
 
+	@Test
+	@DisplayName("multipart 한도 초과는 500이 아니라 400 IMAGE_SIZE_EXCEEDED다")
+	void maxUploadSizeExceeded() throws Exception {
+		// when, then
+		mockMvc.perform(post("/test/upload"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("IMAGE_SIZE_EXCEEDED"));
+	}
+
 	@RestController
 	static class TestController {
+
+		@PostMapping("/test/upload")
+		ApiResponse<Void> upload() {
+			throw new MaxUploadSizeExceededException(10L * 1024 * 1024);
+		}
 
 		@GetMapping("/test/ok")
 		ApiResponse<String> ok() {

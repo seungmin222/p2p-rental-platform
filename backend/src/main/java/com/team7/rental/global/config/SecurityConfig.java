@@ -43,7 +43,9 @@ public class SecurityConfig {
 		"/api/items", "/api/items/feed", "/api/items/*", "/api/items/*/calendar",
 		// 2순위
 		"/api/members/*", "/api/members/*/reviews", "/api/members/*/items",
-		"/api/terms"
+		"/api/terms",
+		// 업로드 이미지 (local·test 프로필의 LocalFileStorage 서빙 경로. 운영은 S3 URL)
+		"/files/**"
 	};
 
 	private static final String[] SWAGGER = {"/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"};

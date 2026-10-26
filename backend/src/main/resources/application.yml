@@ -13,6 +13,17 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      # docs/policies.md upload.max-file-size / upload.max-request-size. 용도별 한도는 ImageProcessor에서 다시 검사
+      max-file-size: 10MB
+      max-request-size: 110MB
+
+server:
+  tomcat:
+    # 한도 초과 요청 본문을 Tomcat이 이만큼은 읽고 버린 뒤 400 JSON을 보낸다. 기본값(2MB)이면 15MB 사진 한 장에도
+    # 응답 전에 연결이 끊긴다. max-request-size와 같게 (docs/policies.md upload 행)
+    max-swallow-size: 110MB
 
 app:
   feature:
@@ -27,6 +38,13 @@ app:
   security:
     # Swagger 경로 공개 여부. local 프로필에서만 true
     permit-swagger: false
+  policy:
+    # docs/policies.md 수치. 바꾸면 policies.md도 함께 수정 (PolicyProperties)
+    image:
+      original-max-long-side: 1600
+      thumbnail-width: 400
+      # 60MP
+      max-pixels: 60000000
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언
