@@ -6,9 +6,11 @@ import {
   buildMonthGrid,
   compareDate,
   countDaysInclusive,
+  formatDateRange,
   formatMonth,
   formatMonthDay,
   todayInSeoul,
+  weekdayOf,
 } from './date';
 
 describe('addDays', () => {
@@ -34,6 +36,32 @@ describe('countDaysInclusive', () => {
     expect(countDaysInclusive('2026-10-01', '2026-10-31')).toBe(31);
     expect(countDaysInclusive('2026-12-30', '2027-01-02')).toBe(4);
     expect(countDaysInclusive('2028-02-28', '2028-03-01')).toBe(3);
+  });
+
+  it('종료일이 시작일보다 앞서면 오류', () => {
+    expect(() => countDaysInclusive('2026-10-02', '2026-10-01')).toThrow();
+  });
+});
+
+describe('날짜 검증', () => {
+  it('없는 날짜는 거부한다', () => {
+    expect(() => addDays('2026-02-30', 0)).toThrow();
+    expect(() => addDays('2026-13-01', 0)).toThrow();
+    expect(() => addDays('2026-00-10', 0)).toThrow();
+    expect(() => addDays('2026-04-31', 0)).toThrow();
+    expect(() => addDays('2026-10-00', 0)).toThrow();
+  });
+
+  it('윤년 2/29는 허용, 평년 2/29는 거부', () => {
+    expect(addDays('2028-02-29', 0)).toBe('2028-02-29');
+    expect(() => addDays('2027-02-29', 0)).toThrow();
+  });
+
+  it('월은 01~12만', () => {
+    expect(() => addMonths('2026-00', 1)).toThrow();
+    expect(() => addMonths('2026-13', 1)).toThrow();
+    expect(() => buildMonthGrid('2026-13')).toThrow();
+    expect(addMonths('2026-12', 0)).toBe('2026-12');
   });
 });
 
@@ -97,5 +125,30 @@ describe('표시 포맷', () => {
   it('월·일 라벨', () => {
     expect(formatMonth('2026-10')).toBe('2026년 10월');
     expect(formatMonthDay('2026-10-03')).toBe('10월 3일');
+  });
+
+  it('요일', () => {
+    expect(weekdayOf('2026-10-09')).toBe('금');
+    expect(weekdayOf('2026-10-11')).toBe('일');
+    expect(weekdayOf('2028-02-29')).toBe('화');
+  });
+});
+
+describe('formatDateRange', () => {
+  it('같은 달', () => {
+    expect(formatDateRange('2026-10-09', '2026-10-11')).toBe('10월 9일(금) ~ 11일(일) · 3일');
+  });
+
+  it('달이 다르면 끝에도 월을 쓴다', () => {
+    expect(formatDateRange('2026-10-30', '2026-11-02')).toBe('10월 30일(금) ~ 11월 2일(월) · 4일');
+    expect(formatDateRange('2026-12-30', '2027-01-02')).toBe('12월 30일(수) ~ 1월 2일(토) · 4일');
+  });
+
+  it('같은 날은 하루', () => {
+    expect(formatDateRange('2026-10-09', '2026-10-09')).toBe('10월 9일(금) · 1일');
+  });
+
+  it('순서가 뒤집히면 오류', () => {
+    expect(() => formatDateRange('2026-10-11', '2026-10-09')).toThrow();
   });
 });
