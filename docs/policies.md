@@ -43,7 +43,7 @@
 | `payment.expire-minutes` | 15분 (초과 시 PENDING_PAYMENT → CANCELED, 기간 선점 해제) | 013, 024 |
 | `cancel.reason-text.max` | 200자 (사유 OTHER일 때 필수) | 015 |
 | `cancel-agreement.expire-hours` | 48시간 (상대 무응답 시 요청 만료) | 015 |
-| `inspection.images` | 1~5장, 장당 10MB | 017, 018 |
+| `inspection.images` | 1~5장, jpg/png, 장당 10MB | 017, 018 |
 | `inspection.handover-memo.max` | 300자 | 017 |
 | `handover.reminder` | 대여 시작일 다음 날까지 인계 확인 없으면 양측 알림 | 017 |
 | `handover.auto-cancel-days` | **대여 시작일 + 3일까지 인계 확인 없으면 자동 취소, 전액 환불** | 017, 015 |
