@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>채팅방</title>
+<style>
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:400;font-display:block;src:url(fonts/ibm-plex-sans-kr-korean-400-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:400;font-display:block;src:url(fonts/ibm-plex-sans-kr-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:500;font-display:block;src:url(fonts/ibm-plex-sans-kr-korean-500-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:500;font-display:block;src:url(fonts/ibm-plex-sans-kr-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:600;font-display:block;src:url(fonts/ibm-plex-sans-kr-korean-600-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:600;font-display:block;src:url(fonts/ibm-plex-sans-kr-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:700;font-display:block;src:url(fonts/ibm-plex-sans-kr-korean-700-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:700;font-display:block;src:url(fonts/ibm-plex-sans-kr-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+body{margin:0}
+a{color:#1F6F54}a:hover{color:#174F3D}
+</style>
+</head>
+<body>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; display: flex; flex-direction: column; background: #FFFFFF; font-family: 'IBM Plex Sans KR', sans-serif; color: #1C1C1A">
+
+  <header style="height: 56px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 12px 0 4px; border-bottom: 1px solid #F0EEE9">
+    <a href="Home.html" aria-label="뒤로" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C1C1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+    <h1 style="margin: 0; font-size: 17px; font-weight: 700">캠핑조아</h1>
+    <span style="font-size: 12px; color: #5C5F5A; margin-left: 4px">신뢰 72 · 보통 10분 내 응답</span>
+  </header>
+
+  <div style="flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid #E4E2DC; background: #FFFFFF">
+    <div style="width: 44px; height: 44px; border-radius: 8px; background: #EDEBE5; flex: none"></div>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 6px"><span style="font-size: 14px; font-weight: 600">4인용 거실형 텐트</span><span style="padding: 2px 8px; border-radius: 999px; background: #E6EDF8; color: #22508F; font-size: 11px; font-weight: 600">대여 예정</span></div>
+      <span style="font-size: 12px; color: #5C5F5A">15,000원/일 · 10/9 ~ 10/11</span>
+    </div>
+    <a href="Booking.html" style="height: 36px; padding: 0 12px; border: 1px solid #E4E2DC; border-radius: 10px; display: flex; align-items: center; font-size: 13px; font-weight: 600; color: #1C1C1A; text-decoration: none; flex: none">예약 보기</a>
+  </div>
+
+  <main style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 10px; padding: 16px; background: #F6F5F1">
+    <span style="align-self: center; font-size: 12px; color: #5C5F5A">10월 7일 수요일</span>
+    <div style="align-self: flex-start; max-width: 74%; padding: 9px 12px; border-radius: 4px 16px 16px 16px; background: #FFFFFF; font-size: 14px; line-height: 1.5">안녕하세요! 이번 주말에 빌릴 수 있을까요?</div>
+    <div style="align-self: flex-end; display: flex; align-items: flex-end; gap: 6px; max-width: 80%">
+      <span style="font-size: 11px; color: #5C5F5A; flex: none">읽음 10:12</span>
+      <div style="padding: 9px 12px; border-radius: 16px 4px 16px 16px; background: #1F6F54; color: #FFFFFF; font-size: 14px; line-height: 1.5">네 가능해요. 금요일 오전 괜찮으세요?</div>
+    </div>
+    <div style="align-self: center; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #E8F1EC; color: #1F6F54; font-size: 12px; font-weight: 600">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1F6F54" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>예약이 확정됐어요 · 보증금 50,000원 보관 중
+    </div>
+    <div style="align-self: flex-start; width: 74%; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; padding: 12px; border-radius: 12px; border: 1px solid #E4E2DC; background: #FFFFFF">
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1C1A" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>약속</div>
+      <span style="font-size: 14px">10/9(금) 오전 10:00</span>
+      <span style="font-size: 13px; color: #5C5F5A">연수동 ○○공원 정문 · 1시간 전에 알려 드려요</span>
+    </div>
+    <div style="align-self: flex-start; max-width: 74%; padding: 9px 12px; border-radius: 4px 16px 16px 16px; background: #FFFFFF; font-size: 14px; line-height: 1.5">구성품 사진 한 번 보여주실 수 있나요?</div>
+    <div style="align-self: flex-end; display: flex; align-items: flex-end; gap: 6px">
+      <span style="font-size: 11px; color: #5C5F5A">읽음 10:15</span>
+      <div style="width: 150px; height: 104px; border-radius: 14px; background: #E2E0D9; border: 1px solid #D6D3CB"></div>
+    </div>
+  </main>
+
+  <div style="flex: none; display: flex; align-items: center; gap: 6px; padding: 10px 12px 14px; border-top: 1px solid #E4E2DC; background: #FFFFFF">
+    <button type="button" aria-label="약속 잡기" style="width: 44px; height: 44px; border: 0; background: none; display: flex; align-items: center; justify-content: center; flex: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C5F5A" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></button>
+    <button type="button" aria-label="사진 보내기" style="width: 44px; height: 44px; border: 0; background: none; display: flex; align-items: center; justify-content: center; flex: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C5F5A" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+    <label for="chat-input" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">메시지</label>
+    <input id="chat-input" placeholder="메시지 보내기" style="flex: 1; min-width: 0; height: 42px; box-sizing: border-box; padding: 0 14px; border: 1px solid #E4E2DC; border-radius: 999px; font: 400 14px 'IBM Plex Sans KR', sans-serif; color: #1C1C1A; background: #F6F5F1">
+    <button type="button" aria-label="보내기" style="width: 44px; height: 44px; border: 0; border-radius: 50%; background: #1F6F54; display: flex; align-items: center; justify-content: center; flex: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg></button>
+  </div>
+</div>
+</body>
+</html>

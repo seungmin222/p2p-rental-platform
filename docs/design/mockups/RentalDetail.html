@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대여 상세 제공자 상태 확인</title>
+<style>
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:400;font-display:block;src:url(fonts/ibm-plex-sans-kr-korean-400-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:400;font-display:block;src:url(fonts/ibm-plex-sans-kr-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:500;font-display:block;src:url(fonts/ibm-plex-sans-kr-korean-500-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:500;font-display:block;src:url(fonts/ibm-plex-sans-kr-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:600;font-display:block;src:url(fonts/ibm-plex-sans-kr-korean-600-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:600;font-display:block;src:url(fonts/ibm-plex-sans-kr-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:700;font-display:block;src:url(fonts/ibm-plex-sans-kr-korean-700-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:700;font-display:block;src:url(fonts/ibm-plex-sans-kr-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+body{margin:0}
+a{color:#1F6F54}a:hover{color:#174F3D}
+</style>
+</head>
+<body>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; display: flex; flex-direction: column; background: #FFFFFF; font-family: 'IBM Plex Sans KR', sans-serif; color: #1C1C1A">
+
+  <header style="height: 56px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 16px 0 4px; border-bottom: 1px solid #F0EEE9">
+    <a href="Home.html" aria-label="뒤로" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C1C1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+    <h1 style="margin: 0; font-size: 18px; font-weight: 700">대여 상세</h1>
+    <span style="margin-left: auto; padding: 4px 10px; border-radius: 999px; background: #FBF1E2; color: #8F560F; font-size: 12px; font-weight: 600">상태 확인 대기</span>
+  </header>
+
+  <main style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 14px 16px 0">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; align-items: center">
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #1F6F54; flex: none"></span><span style="flex: 1; height: 2px; background: #1F6F54"></span>
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #1F6F54; flex: none"></span><span style="flex: 1; height: 2px; background: #1F6F54"></span>
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #1F6F54; flex: none"></span><span style="flex: 1; height: 2px; background: #1F6F54"></span>
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #FFFFFF; border: 3px solid #1F6F54; box-sizing: border-box; flex: none"></span><span style="flex: 1; height: 2px; background: #E4E2DC"></span>
+        <span style="width: 12px; height: 12px; border-radius: 50%; background: #E4E2DC; flex: none"></span>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #5C5F5A"><span>결제</span><span>대여 예정</span><span>대여 중</span><span style="color: #1F6F54; font-weight: 700">반납 완료</span><span>거래 완료</span></div>
+    </div>
+
+    <div style="font-size: 13px; color: #5C5F5A">4인용 거실형 텐트 · 10/9 ~ 10/11 · 대여자 <b style="color: #1C1C1A">텐트초보</b></div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+      <div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 108px; border-radius: 10px; background: #EDEBE5"></div><span style="font-size: 12px; color: #5C5F5A; text-align: center">인계 사진 · 10/9</span></div>
+      <div style="display: flex; flex-direction: column; gap: 4px"><div style="height: 108px; border-radius: 10px; background: #EDEBE5; position: relative"><span style="position: absolute; right: 18px; bottom: 16px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #B0391F"></span></div><span style="font-size: 12px; color: #5C5F5A; text-align: center">반납 사진 · 10/11</span></div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: #F6F5F1">
+      <div style="display: flex; justify-content: space-between; align-items: center"><b style="font-size: 14px">AI 상태 비교 <span style="font-weight: 500; color: #5C5F5A; font-size: 12px">참고용</span></b><span style="font-size: 12px; font-weight: 600; color: #B0391F">변화 감지 · 신뢰도 0.81</span></div>
+      <span style="font-size: 13px; line-height: 1.5">우측 하단 폴대 연결부가 휘어졌을 가능성이 있어요.</span>
+      <span style="font-size: 12px; color: #5C5F5A">조명·각도에 따라 다르게 보일 수 있어요</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 2px; font-size: 13px">
+      <div style="display: flex; justify-content: space-between; padding: 3px 0"><span>구성품이 모두 있나요?</span><span>예</span></div>
+      <div style="display: flex; justify-content: space-between; padding: 3px 0"><span>파손·고장이 없나요?</span><b style="color: #B0391F">아니오</b></div>
+      <div style="display: flex; justify-content: space-between; padding: 3px 0"><span>오염 없이 정리했나요?</span><span>예</span></div>
+    </div>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">손상 등급</h2>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+        <button type="button" aria-pressed="false" style="height: 44px; border-radius: 10px; font: 600 13px 'IBM Plex Sans KR', sans-serif; border: 1px solid #E4E2DC; background: #FFFFFF; color: #1C1C1A;">A 정상</button>
+<button type="button" aria-pressed="false" style="height: 44px; border-radius: 10px; font: 600 13px 'IBM Plex Sans KR', sans-serif; border: 1px solid #E4E2DC; background: #FFFFFF; color: #1C1C1A;">B 경미</button>
+<button type="button" aria-pressed="true" style="height: 44px; border-radius: 10px; font: 600 13px 'IBM Plex Sans KR', sans-serif; border: 0; background: #1C1C1A; color: #FFFFFF;">C 부분</button>
+<button type="button" aria-pressed="false" style="height: 44px; border-radius: 10px; font: 600 13px 'IBM Plex Sans KR', sans-serif; border: 1px solid #E4E2DC; background: #FFFFFF; color: #1C1C1A;">D 전손</button>
+      </div>
+      <span style="font-size: 13px; color: #5C5F5A">캠핑 C 등급: 수리비 실비, 최대 25,000원 (보증금의 50%) · 견적서 첨부 필수</span>
+    </section>
+  </main>
+
+  <div style="flex: none; display: flex; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid #E4E2DC">
+    <button type="button" style="flex: 1; height: 50px; border: 1px solid #B0391F; border-radius: 12px; background: #FFFFFF; color: #B0391F; font: 600 15px 'IBM Plex Sans KR', sans-serif">차감 제안하기</button>
+    <button type="button" style="flex: 1; height: 50px; border: 0; border-radius: 12px; background: #1F6F54; color: #FFFFFF; font: 600 15px 'IBM Plex Sans KR', sans-serif">정상 확인</button>
+  </div>
+</div>
+</body>
+</html>
