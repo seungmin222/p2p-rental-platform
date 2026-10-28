@@ -3,6 +3,7 @@ export { default as BottomSheet } from './BottomSheet';
 export { default as Button } from './Button';
 export { buttonClassName } from './buttonClassName';
 export { default as ButtonLink } from './ButtonLink';
+export { default as Calendar } from './Calendar';
 export { default as ConfirmModal } from './ConfirmModal';
 export { default as EmptyState } from './EmptyState';
 export { default as ErrorState } from './ErrorState';

@@ -87,7 +87,8 @@
   --color-ink: #1c1c1a; /* 본문 */
   --color-ink-muted: #5c5f5a; /* 보조 텍스트 */
   --color-ink-subtle: #8b8e88; /* 요일 머리글·비활성 글씨 */
-  --color-ink-faint: #a3a39c; /* 이미지 자리 아이콘 */
+  --color-ink-faint: #a3a39c; /* 이미지 자리 아이콘, 캘린더 예약됨 */
+  --color-ink-disabled: #c9c7c0; /* 캘린더 예약 불가(지난 날짜·가능 기간 외) */
   --color-surface: #f6f5f1; /* 배경 면 */
   --color-line: #e4e2dc; /* 테두리·탭·하단 바 */
   --color-divider: #f0eee9; /* 헤더 아래선·목록 구분선 */
