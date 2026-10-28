@@ -4,14 +4,15 @@ import NavIcon from './NavIcon';
 import { NAV_ITEMS } from './navItems';
 
 function headerLinkClassName({ isActive }) {
-  return `flex min-h-11 min-w-11 items-center justify-center px-3 text-sm ${
-    isActive ? 'font-bold text-gray-900' : 'text-gray-500'
+  return `flex min-h-11 min-w-11 items-center justify-center px-3 text-[15px] ${
+    isActive ? 'font-semibold text-ink' : 'text-ink-muted'
   }`;
 }
 
+// 시안 하단 탭: 64px, 아이콘 22px + 라벨 11px, 선택은 채운 아이콘 + 600 + Ink
 function tabLinkClassName({ isActive }) {
-  return `flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${
-    isActive ? 'font-bold text-gray-900' : 'text-gray-500'
+  return `flex h-16 flex-col items-center justify-center gap-1 text-[11px] ${
+    isActive ? 'font-semibold text-ink' : 'text-ink-muted'
   }`;
 }
 
@@ -24,8 +25,8 @@ export default function AppLayout() {
   const hideTabBar = matches.some((match) => match.handle?.hideTabBar);
 
   return (
-    <div className="min-h-dvh bg-white text-gray-900">
-      <header className="hidden border-b border-gray-200 xl:block">
+    <div className="min-h-dvh bg-white">
+      <header className="hidden border-b border-divider xl:block">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
           <NavLink to="/" className="flex min-h-11 items-center text-lg font-bold">
             동네 대여
@@ -53,14 +54,18 @@ export default function AppLayout() {
       {!hideTabBar && (
         <nav
           aria-label="하단 탭"
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] xl:hidden"
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] xl:hidden"
         >
           <ul className="mx-auto grid max-w-5xl grid-cols-5">
             {NAV_ITEMS.map((item) => (
               <li key={item.to}>
                 <NavLink to={item.to} end={item.end} className={tabLinkClassName}>
-                  <NavIcon name={item.icon} />
-                  {item.label}
+                  {({ isActive }) => (
+                    <>
+                      <NavIcon name={item.icon} active={isActive} />
+                      {item.label}
+                    </>
+                  )}
                 </NavLink>
               </li>
             ))}

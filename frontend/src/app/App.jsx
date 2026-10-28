@@ -22,7 +22,7 @@ function SessionGate({ sessionRestored, children }) {
 function AppLoading() {
   return (
     <div className="flex min-h-dvh items-center justify-center" role="status">
-      <span className="text-sm text-gray-500">불러오는 중…</span>
+      <span className="text-caption text-ink-muted">불러오는 중…</span>
     </div>
   );
 }

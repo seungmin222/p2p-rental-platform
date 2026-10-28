@@ -4,5 +4,5 @@ export const NAV_ITEMS = [
   { to: '/search', label: '검색', icon: 'search' },
   { to: '/chats', label: '채팅', icon: 'chat' },
   { to: '/notifications', label: '알림', icon: 'bell' },
-  { to: '/me', label: '나의 대여', icon: 'user' },
+  { to: '/me', label: '나의 대여', icon: 'list' },
 ];

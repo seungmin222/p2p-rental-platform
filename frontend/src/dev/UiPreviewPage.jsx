@@ -21,8 +21,8 @@ import {
 
 function Section({ title, children }) {
   return (
-    <section className="border-b border-gray-200 py-6">
-      <h2 className="mb-3 text-sm font-bold text-gray-500">{title}</h2>
+    <section className="border-b border-divider py-6">
+      <h2 className="mb-3 text-caption font-semibold text-ink-muted">{title}</h2>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
     </section>
   );
@@ -53,26 +53,47 @@ export default function UiPreviewPage() {
       <PageHeader
         title="UI 미리보기"
         action={
-          <Button variant="ghost" onClick={() => toast.show({ message: '헤더 액션' })}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => toast.show({ message: '헤더 액션' })}
+          >
             액션
           </Button>
         }
       />
 
-      <Section title="Button">
-        <Button>기본</Button>
-        <Button variant="secondary">보조</Button>
-        <Button variant="ghost">고스트</Button>
-        <Button variant="danger">위험</Button>
-        <Button size="lg">큰 버튼</Button>
-        <Button isLoading>저장 중</Button>
+      <Section title="Typography">
+        <div className="flex w-full flex-col gap-2">
+          <span className="text-title">4인용 거실형 텐트</span>
+          <span className="text-heading">대여 캘린더</span>
+          <span className="text-body">주말 캠핑용으로 두 번 사용했어요.</span>
+          <span className="text-price">{formatDailyPrice(15000)}</span>
+          <span className="text-caption text-ink-muted">연수동 · 3분 전</span>
+        </div>
+      </Section>
+
+      <Section title="Button (시안 5가지)">
+        <Button>예약하기</Button>
+        <Button variant="outline">채팅하기</Button>
+        <Button variant="secondary">취소</Button>
+        <Button variant="danger">이상 있음</Button>
         <Button disabled>비활성</Button>
-        <ButtonLink to="/" variant="secondary">
+      </Section>
+
+      <Section title="Button 상태·크기">
+        <Button isLoading>저장 중</Button>
+        <Button variant="outline" isLoading>
+          저장 중
+        </Button>
+        <Button size="sm">작은 버튼</Button>
+        <Button variant="secondary" size="sm">
+          작은 보조
+        </Button>
+        <ButtonLink to="/" variant="outline">
           링크 버튼
         </ButtonLink>
-        <Button fullWidth size="lg">
-          전체 폭
-        </Button>
+        <Button fullWidth>전체 폭</Button>
       </Section>
 
       <Section title="Badge (RENTAL_STATUS)">
@@ -84,19 +105,19 @@ export default function UiPreviewPage() {
       </Section>
 
       <Section title="포맷">
-        <span className="text-sm">{formatDailyPrice(12000)}</span>
-        <span className="text-sm">{formatDeposit(50000)}</span>
-        <span className="text-sm">{formatDeposit(0)}</span>
-        <span className="text-sm">
+        <span className="text-price">{formatDailyPrice(12000)}</span>
+        <span className="text-xs font-semibold text-accent-strong">{formatDeposit(50000)}</span>
+        <span className="text-xs font-semibold text-accent-strong">{formatDeposit(0)}</span>
+        <span className="text-caption text-ink-muted">
           {formatElapsed('2026-10-07T15:27:00', new Date('2026-10-07T15:30:00+09:00'))}
         </span>
       </Section>
 
       <Section title="Spinner · Skeleton">
         <Spinner label="불러오는 중" />
-        <Spinner size="lg" label="불러오는 중" className="text-primary-600" />
-        <div className="flex w-full gap-3">
-          <Skeleton className="size-24 rounded-lg" />
+        <Spinner size="lg" label="불러오는 중" className="text-primary" />
+        <div className="flex w-full gap-3.5">
+          <Skeleton className="size-26 rounded-[10px]" />
           <div className="flex flex-1 flex-col gap-2">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
@@ -106,14 +127,14 @@ export default function UiPreviewPage() {
       </Section>
 
       <Section title="EmptyState · ErrorState">
-        <div className="w-full rounded-lg border border-gray-200">
+        <div className="w-full rounded-xl border border-line">
           <EmptyState
             title="빌린 물건이 없어요"
             description="동네 이웃의 물건을 둘러보세요."
             action={<ButtonLink to="/">홈으로</ButtonLink>}
           />
         </div>
-        <div className="w-full rounded-lg border border-gray-200">
+        <div className="w-full rounded-xl border border-line">
           <ErrorState
             message="네트워크 연결을 확인해 주세요."
             onRetry={() => toast.show({ message: '다시 시도' })}
@@ -204,11 +225,14 @@ export default function UiPreviewPage() {
       {showFab && <FloatingActionButton to="/dev/ui" label="물품 등록" />}
       {showBottomBar && (
         <BottomActionBar>
-          <div className="flex-1">
-            <p className="text-sm font-bold">{formatDailyPrice(12000)}</p>
-            <p className="text-xs text-gray-500">{formatDeposit(50000)}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[17px] font-bold">{formatDailyPrice(15000)}</p>
+            <p className="text-xs font-semibold text-accent-strong">{formatDeposit(50000)}</p>
           </div>
-          <Button size="lg">예약하기</Button>
+          <Button variant="outline" className="px-3.5">
+            채팅하기
+          </Button>
+          <Button>예약하기</Button>
         </BottomActionBar>
       )}
     </>

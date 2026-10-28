@@ -1,8 +1,8 @@
 import { useToastStore } from './toastStore';
 
 const TONES = {
-  default: 'bg-gray-900 text-white',
-  danger: 'bg-danger-600 text-white',
+  default: 'bg-ink text-white',
+  danger: 'bg-danger text-white',
 };
 
 /**
@@ -20,7 +20,7 @@ export default function Toaster() {
       {toasts.map((t) => (
         <p
           key={t.id}
-          className={`max-w-sm rounded-lg px-4 py-3 text-sm shadow-lg ${TONES[t.tone] ?? TONES.default}`}
+          className={`max-w-sm rounded-xl px-4 py-3 text-sm shadow-lg ${TONES[t.tone] ?? TONES.default}`}
         >
           {t.message}
         </p>

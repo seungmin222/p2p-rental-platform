@@ -15,12 +15,12 @@ export default function PageHeader({ title, action }) {
   }
 
   return (
-    <header className="sticky top-0 z-10 -mx-4 flex h-14 items-center gap-1 border-b border-gray-200 bg-white px-2">
+    <header className="sticky top-0 z-10 -mx-4 flex h-14 items-center gap-1 border-b border-divider bg-white pr-4 pl-1">
       <button
         type="button"
         aria-label="뒤로 가기"
         onClick={handleBackClick}
-        className="flex size-11 shrink-0 items-center justify-center rounded-full text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-primary-600"
+        className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary"
       >
         <svg
           aria-hidden="true"
@@ -30,12 +30,12 @@ export default function PageHeader({ title, action }) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="size-6"
+          className="size-[22px]"
         >
           <path d="M15 5l-7 7 7 7" />
         </svg>
       </button>
-      <h1 className="min-w-0 flex-1 truncate text-base font-bold">{title}</h1>
+      <h1 className="min-w-0 flex-1 truncate text-lg font-bold">{title}</h1>
       {action && <div className="flex shrink-0 items-center">{action}</div>}
     </header>
   );

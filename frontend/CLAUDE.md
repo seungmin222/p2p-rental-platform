@@ -108,8 +108,8 @@ export const RENTAL_STATUS = {
   RESERVED:        { label: '대여 예정', tone: 'blue' },
   RENTING:         { label: '대여 중',   tone: 'green' },
   OVERDUE:         { label: '연체',     tone: 'red' },
-  RETURNED:        { label: '반납 완료', tone: 'amber' },
-  COMPLETED:       { label: '거래 완료', tone: 'gray' },
+  RETURNED:        { label: '상태 확인 대기', tone: 'amber' },
+  COMPLETED:       { label: '거래 완료', tone: 'ink' },
   CANCELED:        { label: '취소',     tone: 'gray' },
 };
 ```
@@ -117,7 +117,7 @@ export const RENTAL_STATUS = {
 
 ## UI 규칙
 - 모바일 우선(360px~). 데스크톱은 중앙 정렬 최대 폭 컨테이너.
-- 사용감은 **기존 동네 중고거래 앱과 최대한 비슷하게**: 카드형 피드, 하단 탭, 상세 하단 고정 바(관심 · 가격/보증금 · 채팅하기 · 예약하기), 채팅 상단 물품 요약, 우측 하단 (+) 등록 버튼. (특정 서비스 로고·브랜드 요소를 복제하지 않는다)
+- 사용감은 **기존 동네 중고거래 앱과 최대한 비슷하게**: 카드형 피드, 하단 탭, 상세 하단 고정 바(관심 · 가격/보증금 · 채팅하기 · 예약하기), 채팅 상단 물품 요약, 우측 하단 "+ 물품 등록" 버튼. (특정 서비스 로고·브랜드 요소를 복제하지 않는다)
 - 가격: `12,000원/일`, 보증금 `보증금 50,000원`. 경과 시간: `3분 전`, `2일 전` (bumpedAt 기준).
 - 이미지: 목록은 thumbnailUrl + `loading="lazy"`. 등록 화면에서 순서 변경(드래그) 지원, 최대 10장.
 - 캘린더: AVAILABLE/BOOKED/UNAVAILABLE 3색 구분, 범위 선택, 1~30일 제한을 UI에서도 안내.
@@ -125,7 +125,9 @@ export const RENTAL_STATUS = {
 - 본인 물품 상세에서는 예약하기 대신 수정·관리 버튼.
 - 물품 가격(itemPrice)은 등록·수정 화면에서만 입력, 상세에 표시하지 않는다. 등록 시 권장 보증금 범위를 보증금 입력란 아래 안내.
 - 접근성: 버튼에 텍스트 또는 aria-label, 터치 영역 44px 이상.
-- 색상: 주 색상·위험 색상은 `styles/index.css`의 `@theme` 토큰(`primary-*`·`danger-*`)으로 쓴다. teal·red 팔레트를 직접 쓰지 않는다.
+- 디자인 기준은 `docs/design/`(정확한 값은 `mockups/*.html` 인라인 스타일, PNG는 전체 모양 참고). 시안과 명세가 다르면 명세가 우선이고 사용자에게 확인한다.
+- 색·글자 크기는 `styles/index.css`의 `@theme` 토큰만 쓴다(색: `primary`·`primary-soft`·`accent`·`accent-strong`·`ink`·`ink-muted`·`surface`·`line`·`divider`·`danger` 등, 글자: `text-title`·`heading`·`body`·`price`·`caption`). Tailwind 기본 팔레트(gray·red 등)를 직접 쓰지 않는다. 모서리는 입력 8px(`rounded-lg`), 카드·버튼 12px(`rounded-xl`), 칩·배지 full.
+- Button variant는 시안 5가지에 맞춘다: `primary`(채움) · `outline`(주 색상 외곽선) · `secondary`(회색 면) · `danger`(위험 **외곽선**) · 비활성(`disabled`). 크기 기본 `md` 48px, 좁은 곳은 `sm` 44px.
 - 토스트: `import { toast } from '../shared/ui'` → `toast.show({ message, tone })`(tone `default`·`danger`). `<Toaster />`는 App에 한 곳만 있다. 모달 안의 오류는 토스트 대신 모달 안에 표시(모달이 top layer라 토스트가 가려짐).
 - 하단 고정 바가 있는 화면은 라우트에 `handle: { hideTabBar: true }`를 달면 AppLayout이 하단 탭을 숨긴다. 바는 `BottomActionBar`(본문이 가려지지 않게 자리도 확보).
 - 날짜: 대여 기간(`startDate`·`endDate`, 캘린더)은 `"YYYY-MM-DD"` 문자열로만 다루고 `shared/lib/date.js`로 계산한다. `new Date('YYYY-MM-DD')`를 쓰지 않는다(UTC 자정이라 시간대에 따라 하루 밀림). 오늘 날짜는 `todayInSeoul()`. 서버 일시(오프셋 없음)는 `parseServerDateTime`이 서울 시각으로 해석.

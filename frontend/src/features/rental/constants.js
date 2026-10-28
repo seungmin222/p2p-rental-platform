@@ -6,8 +6,8 @@ export const RENTAL_STATUS = {
   RESERVED: { label: '대여 예정', tone: 'blue' },
   RENTING: { label: '대여 중', tone: 'green' },
   OVERDUE: { label: '연체', tone: 'red' },
-  RETURNED: { label: '반납 완료', tone: 'amber' },
-  COMPLETED: { label: '거래 완료', tone: 'gray' },
+  RETURNED: { label: '상태 확인 대기', tone: 'amber' },
+  COMPLETED: { label: '거래 완료', tone: 'ink' },
   CANCELED: { label: '취소', tone: 'gray' },
 };
 
