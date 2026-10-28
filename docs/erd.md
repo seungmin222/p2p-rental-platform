@@ -53,7 +53,7 @@ erDiagram
 | id PK | code VARCHAR(10) UK(행정동 코드 10자리) | name VARCHAR(30) | sido VARCHAR(20) | sigungu VARCHAR(30) | center_lat DOUBLE | center_lng DOUBLE |
 
 **member_regions**
-| id PK | member_id FK | region_id FK | is_primary BOOLEAN | verified_at DATETIME NULL | region_range VARCHAR(30)(`NEAR/NORMAL/FAR`, 기본 NORMAL) |
+| id PK | member_id FK | region_id FK | is_primary BOOLEAN | verified_at DATETIME(6) NULL | region_range VARCHAR(30)(`NEAR/NORMAL/FAR`, 기본 NORMAL) |
 - UK(member_id, region_id). 회원당 최대 2행, is_primary=true는 1행(애플리케이션 검증).
 - 인증 유효 = `verified_at + region.verify-valid-days > now` (`policies.md`).
 
@@ -78,7 +78,7 @@ erDiagram
 | address VARCHAR(200), latitude DOUBLE, longitude DOUBLE | 거래 장소 |
 | status VARCHAR(30) | `AVAILABLE/HIDDEN/DELETED` |
 | view_count, wish_count, chat_count INT | 비정규화 카운터, 기본 0 |
-| bumped_at DATETIME | 등록 시 created_at과 동일하게 세팅 → 피드 정렬 키 |
+| bumped_at DATETIME(6) | 등록 시 created_at과 동일하게 세팅 → 피드 정렬 키 |
 
 인덱스(초기안, 실험으로 개선 — 도전 과제 ④):
 - `idx_items_status_bumped_at_id (status, bumped_at DESC, id DESC)` 피드 커서 — 생성됨
@@ -137,7 +137,7 @@ erDiagram
 | amount INT, rental_fee_amount INT, deposit_amount INT | 분리 저장. 결제 금액 0원이면 레코드를 만들지 않음 |
 | status | `PaymentStatus` |
 | deposit_status | `DepositStatus` (type=RENTAL만) |
-| held_at DATETIME NULL | 보증금 보류 시작 — 7일 관리자 확정 기준 |
+| held_at DATETIME(6) NULL | 보증금 보류 시작 — 7일 관리자 확정 기준 |
 | refunded_amount INT | 누적 취소 금액 |
 | refund_retry_count INT, needs_admin_check BOOLEAN | 환불 재시도 횟수, 5회 초과 시 true |
 | damage_grade, deduction_amount, deduction_reason | **확정된 차감 결과만** (협의 이력은 deduction_proposals). 손상 발생률 집계용 |
