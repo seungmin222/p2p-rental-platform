@@ -54,20 +54,31 @@ describe('selectDate', () => {
     });
   });
 
-  it('30일은 허용, 31일은 TOO_LONG', () => {
+  it('30일은 허용, 31일은 TOO_LONG + 누른 날이 새 시작일', () => {
     expect(selectDate(start('2026-10-15'), '2026-11-13', opts)).toEqual({
       value: range('2026-10-15', '2026-11-13'),
     });
     expect(selectDate(start('2026-10-15'), '2026-11-14', opts)).toEqual({
-      value: start('2026-10-15'),
+      value: start('2026-11-14'),
       reason: SELECT_REJECT_REASON.TOO_LONG,
     });
   });
 
-  it('사이에 BOOKED가 하나 있으면 거부하고 시작일 유지', () => {
-    expect(selectDate(start('2026-10-12'), '2026-10-16', opts)).toEqual({
-      value: start('2026-10-12'),
+  it('사이에 BOOKED가 있으면 거부 + 누른 날이 새 시작일, 이어서 범위 완성', () => {
+    const rejected = selectDate(start('2026-10-12'), '2026-10-16', opts);
+    expect(rejected).toEqual({
+      value: start('2026-10-16'),
       reason: SELECT_REJECT_REASON.RANGE_INCLUDES_UNAVAILABLE,
+    });
+    expect(selectDate(rejected.value, '2026-10-18', opts)).toEqual({
+      value: range('2026-10-16', '2026-10-18'),
+    });
+  });
+
+  it('BOOKED를 누르면 기존 시작일 유지', () => {
+    expect(selectDate(start('2026-10-12'), '2026-10-14', opts)).toEqual({
+      value: start('2026-10-12'),
+      reason: SELECT_REJECT_REASON.DAY_NOT_AVAILABLE,
     });
   });
 
@@ -90,10 +101,10 @@ describe('selectDate', () => {
       value: start('2026-10-30'),
       reason: SELECT_REJECT_REASON.DAY_NOT_AVAILABLE,
     });
-    // 끝 날짜만 있고 사이가 비어 있음
+    // 끝 날짜만 있고 사이가 비어 있음 → 범위 거부라 누른 날이 새 시작일
     const gap = [...october, { date: '2026-11-02', status: AVAILABLE }];
     expect(selectDate(start('2026-10-30'), '2026-11-02', options(gap))).toEqual({
-      value: start('2026-10-30'),
+      value: start('2026-11-02'),
       reason: SELECT_REJECT_REASON.RANGE_INCLUDES_UNAVAILABLE,
     });
   });
@@ -119,10 +130,10 @@ describe('selectDate', () => {
     });
   });
 
-  it('고른 뒤 시작일이 BOOKED로 바뀌었으면 범위를 거부', () => {
+  it('고른 뒤 시작일이 BOOKED로 바뀌었으면 범위를 거부하고 누른 날부터 다시', () => {
     const refetched = makeDays('2026-10-01', '2026-10-31', { '2026-10-05': BOOKED });
     expect(selectDate(start('2026-10-05'), '2026-10-07', options(refetched))).toEqual({
-      value: start('2026-10-05'),
+      value: start('2026-10-07'),
       reason: SELECT_REJECT_REASON.RANGE_INCLUDES_UNAVAILABLE,
     });
   });

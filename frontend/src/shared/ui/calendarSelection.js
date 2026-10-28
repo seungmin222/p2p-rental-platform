@@ -33,7 +33,11 @@ export function statusOf(statusByDate, date) {
  * - 시작일만 있을 때: 같은 날 → 1일 범위, 앞선 날 → 시작일 교체, 뒤의 날 → 범위 검사 후 완성
  * - 검사 순서: 누른 날 상태 → TOO_SHORT → TOO_LONG → 사이(시작·끝 포함) 날짜 상태.
  *   시작일도 다시 검사하는 것은 고른 뒤 days가 새로 불러와져 BOOKED가 됐을 수 있어서다.
- * - 거부하면 기존 value를 그대로 돌려준다(시작일 유지).
+ * - 거부 시 value:
+ *   - DAY_NOT_AVAILABLE → 기존 value 유지(누른 날은 시작일이 될 수 없음)
+ *   - TOO_SHORT → 기존 시작일 유지(더 뒤 날짜를 누르면 바로 완성되므로)
+ *   - RANGE_INCLUDES_UNAVAILABLE·TOO_LONG → 누른 날(AVAILABLE)을 새 시작일로. 시작일을 유지하면 뒤 날짜가
+ *     계속 반납일로 해석돼 같은 사유로 거부되므로 빠져나오기 어렵다.
  *
  * @param {{startDate: string, endDate: string | null} | null} value
  * @param {string} date 누른 날짜 "YYYY-MM-DD"
@@ -56,12 +60,13 @@ export function selectDate(value, date, { statusByDate, minDays, maxDays }) {
   if (days < minDays) {
     return { value, reason: SELECT_REJECT_REASON.TOO_SHORT };
   }
+  const restart = { startDate: date, endDate: null };
   if (days > maxDays) {
-    return { value, reason: SELECT_REJECT_REASON.TOO_LONG };
+    return { value: restart, reason: SELECT_REJECT_REASON.TOO_LONG };
   }
   for (let d = startDate; compareDate(d, date) <= 0; d = addDays(d, 1)) {
     if (statusOf(statusByDate, d) !== DAY_STATUS.AVAILABLE) {
-      return { value, reason: SELECT_REJECT_REASON.RANGE_INCLUDES_UNAVAILABLE };
+      return { value: restart, reason: SELECT_REJECT_REASON.RANGE_INCLUDES_UNAVAILABLE };
     }
   }
   return { value: { startDate, endDate: date } };

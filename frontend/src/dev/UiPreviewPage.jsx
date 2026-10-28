@@ -194,8 +194,9 @@ export default function UiPreviewPage() {
       <Section title="Calendar (10~11월 days 합침 · 10/14 예약됨 · 11/26~ 예약 불가)">
         <div className="flex w-full max-w-sm flex-col gap-3">
           <p className="text-caption text-ink-muted">
-            확인: 10/12→10/16 중간 예약됨 거부 · 10/21→11/20 31일 거부(11/19는 30일 허용) ·
-            10/30→11/2 달 넘김 · 10/3 누르면 예약됨 안내 · 같은 날 두 번 = 1일
+            확인: 10/12→10/16 중간 예약됨 거부(10/16이 새 시작일, 이어서 10/18 → 16~18) ·
+            10/21→11/20 31일 거부(11/20이 새 시작일, 11/19는 30일 허용) · 10/30→11/2 달 넘김 ·
+            시작일 있을 때 10/14 누르면 예약됨 안내 + 시작일 유지 · 같은 날 두 번 = 1일
           </p>
           <Calendar
             title={<h3 className="text-price">기간 선택</h3>}

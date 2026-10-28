@@ -45,6 +45,9 @@ function positionSuffix(position, value) {
   }
 }
 
+// 범위 거부 시 누른 날이 새 시작일이 된다(calendarSelection.selectDate)
+const RESTART_HINT = '선택한 날부터 다시 골라 주세요';
+
 function rejectMessage({ reason, status }, { minDays, maxDays }) {
   switch (reason) {
     case SELECT_REJECT_REASON.DAY_NOT_AVAILABLE:
@@ -52,11 +55,11 @@ function rejectMessage({ reason, status }, { minDays, maxDays }) {
         ? '예약된 날짜는 선택할 수 없어요'
         : '선택할 수 없는 날짜예요';
     case SELECT_REJECT_REASON.RANGE_INCLUDES_UNAVAILABLE:
-      return '중간에 예약할 수 없는 날짜가 있어요';
+      return `중간에 예약할 수 없는 날짜가 있어요. ${RESTART_HINT}`;
     case SELECT_REJECT_REASON.TOO_SHORT:
       return `최소 ${minDays}일부터 대여할 수 있어요`;
     case SELECT_REJECT_REASON.TOO_LONG:
-      return `최대 ${maxDays}일까지 대여할 수 있어요`;
+      return `최대 ${maxDays}일까지 대여할 수 있어요. ${RESTART_HINT}`;
     default:
       return '';
   }
@@ -90,7 +93,8 @@ const NAV_BUTTON =
  *   days에 없는 날짜는 UNAVAILABLE로 본다.
  * - `minDays`·`maxDays`는 정책 값을 호출부가 넘긴다(예약: RENTAL_PERIOD). 연장(REQ-038, 회당 7일)도
  *   같은 컴포넌트에 다른 값을 넘겨 쓸 수 있게 기본값을 두지 않는다. 안내 문구는 "대여" 기준이다.
- * - 월을 이동해도 value는 유지된다. 거부된 클릭은 onChange를 부르지 않고 사유만 아래 줄에 표시한다.
+ * - 월을 이동해도 value는 유지된다. 거부 사유는 아래 줄에 표시하고, 범위 거부(사이 예약 불가·최대 초과)는
+ *   누른 날을 새 시작일로 onChange한다. 누른 날 자체가 예약 불가이거나 최소 미만이면 value를 바꾸지 않는다.
  *
  * @param {object} props
  * @param {string} props.month 보이는 달 "YYYY-MM"
@@ -126,12 +130,12 @@ export default function Calendar({
 
   function handleSelect(date) {
     const result = selectDate(value, date, { statusByDate, minDays, maxDays });
-    if (result.reason) {
-      setRejection({ reason: result.reason, status: statusOf(statusByDate, date) });
-      return;
+    setRejection(
+      result.reason ? { reason: result.reason, status: statusOf(statusByDate, date) } : null,
+    );
+    if (result.value !== value) {
+      onChange(result.value);
     }
-    setRejection(null);
-    onChange(result.value);
   }
 
   let message;
