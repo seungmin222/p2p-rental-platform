@@ -91,6 +91,10 @@ export default function UiPreviewPage() {
         <ButtonLink to="/" variant="outline">
           링크 버튼
         </ButtonLink>
+        <ButtonLink to="/" disabled>
+          비활성 링크
+        </ButtonLink>
+        <Badge tone="unknown">없는 tone(gray)</Badge>
         <Button fullWidth>전체 폭</Button>
       </Section>
 
