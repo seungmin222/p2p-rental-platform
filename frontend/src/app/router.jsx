@@ -20,6 +20,20 @@ import AppLayout from './layout/AppLayout';
 import { toLoginPath } from './loginPath';
 import RequireAuth from './RequireAuth';
 
+// 하단 고정 바가 있는 화면은 하단 탭을 숨긴다(AppLayout이 읽음)
+const hideTabBar = { hideTabBar: true };
+
+// 개발 서버에서만 등록. 빌드에서는 import.meta.env.DEV가 false로 바뀌어 이 import가 번들에서 빠진다.
+const devRoutes = import.meta.env.DEV
+  ? [
+      {
+        path: '/dev/ui',
+        lazy: () =>
+          import('../dev/UiPreviewPage').then((module) => ({ Component: module.default })),
+      },
+    ]
+  : [];
+
 // 1순위 라우트만 등록한다(frontend/CLAUDE.md "화면 ↔ 라우트"). 2순위 탭(채팅·알림)은 "준비 중"으로 연결.
 export const router = createBrowserRouter([
   // SCR-01
@@ -31,16 +45,16 @@ export const router = createBrowserRouter([
       { path: '/', element: <HomePage /> }, // SCR-03
       { path: '/search', element: <SearchPage /> }, // SCR-04
       { path: '/regions', element: <RegionPage /> }, // SCR-02 (비회원 임시 동네 선택 가능)
-      { path: '/items/:id', element: <ItemDetailPage /> }, // SCR-05
+      { path: '/items/:id', element: <ItemDetailPage />, handle: hideTabBar }, // SCR-05
       { path: '/chats', element: <ComingSoonPage /> }, // SCR-09 (2순위)
       { path: '/notifications', element: <ComingSoonPage /> }, // SCR-11 (2순위)
       {
         element: <RequireAuth />,
         children: [
-          { path: '/items/new', element: <ItemFormPage /> }, // SCR-06
-          { path: '/items/:id/edit', element: <ItemFormPage /> }, // SCR-06
-          { path: '/items/:id/reserve', element: <RentalReservePage /> }, // SCR-07
-          { path: '/rentals/:id', element: <RentalDetailPage /> }, // SCR-08
+          { path: '/items/new', element: <ItemFormPage />, handle: hideTabBar }, // SCR-06
+          { path: '/items/:id/edit', element: <ItemFormPage />, handle: hideTabBar }, // SCR-06
+          { path: '/items/:id/reserve', element: <RentalReservePage />, handle: hideTabBar }, // SCR-07
+          { path: '/rentals/:id', element: <RentalDetailPage />, handle: hideTabBar }, // SCR-08
           // SCR-12
           { path: '/me', element: <MyPage /> },
           { path: '/me/rentals', element: <MyRentalsPage /> },
@@ -48,6 +62,7 @@ export const router = createBrowserRouter([
           { path: '/me/profile', element: <MyProfilePage /> },
         ],
       },
+      ...devRoutes,
       { path: '*', element: <NotFoundPage /> },
     ],
   },
