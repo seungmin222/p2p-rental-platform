@@ -67,6 +67,16 @@ class IntegrationTestSupportTest extends IntegrationTestSupport {
 		}
 	}
 
+	@Test
+	@DisplayName("정리해도 시드 카테고리 8개는 남는다")
+	void keepSeedCategories() {
+		// when
+		dataCleaner.clean();
+
+		// then
+		assertThat(countRows("categories")).isEqualTo(8);
+	}
+
 	private int countRows(String table) {
 		return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
 	}
