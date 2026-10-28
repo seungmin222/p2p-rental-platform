@@ -107,7 +107,7 @@ erDiagram
 | returned_at DATETIME(6) NULL | 반납 요청(또는 미반납 신고) 시각 — 3일 자동 확인·연체료 기준 |
 | completed_at DATETIME(6) NULL | 거래 완료 시각 — 후기 7일 기한·정산 예정일 기준 |
 | canceled_at DATETIME(6) NULL | 취소 시각 |
-| cancel_type VARCHAR(30), cancel_reason VARCHAR(30), cancel_reason_text VARCHAR(200), canceled_by FK→members NULL | `CancelType`, `CancelReason`. 텍스트 200자는 `cancel.reason-text.max`. 시스템 취소면 canceled_by NULL |
+| cancel_type VARCHAR(30), cancel_reason VARCHAR(30), cancel_reason_text VARCHAR(200), canceled_by FK→members NULL | `CancelType`, `CancelReason`. 텍스트 200자는 `cancel.reason-text-max`. 시스템 취소면 canceled_by NULL |
 | cancel_fee INT | 기본 0. 취소 수수료 (`policies.md` §2) |
 | overdue_fee INT | 기본 0. 반납 시점에 확정 |
 | extension_count INT | 기본 0 |

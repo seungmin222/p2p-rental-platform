@@ -41,7 +41,7 @@
 | `rental.min-days` / `max-days` | 1일 / 30일 (최초 예약 기준) | 013 |
 | `rental.lock-wait` | 분산 락 대기 3초. **임대 시간은 지정하지 않음**(Redisson watchdog 자동 연장, 기본 30초 단위) | 013, 014, 038 |
 | `payment.expire-minutes` | 15분 (초과 시 PENDING_PAYMENT → CANCELED, 기간 선점 해제) | 013, 024 |
-| `cancel.reason-text.max` | 200자 (사유 OTHER일 때 필수) | 015 |
+| `cancel.reason-text-max` | 200자 (사유 OTHER일 때 필수) | 015 |
 | `cancel-agreement.expire-hours` | 48시간 (상대 무응답 시 요청 만료) | 015 |
 | `inspection.images` | 1~5장, jpg/png, 장당 10MB | 017, 018 |
 | `inspection.handover-memo.max` | 300자 | 017 |
