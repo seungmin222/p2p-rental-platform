@@ -5,7 +5,7 @@ description: 현재 브랜치 작업을 마무리하고 PR을 준비한다
 `docs/git-workflow.md` §6 PR 규칙에 따라 진행한다. 각 단계에서 실행한 명령과 의미를 한 줄씩 설명한다.
 
 1. 현재 브랜치가 `main`/`develop`이면 중단하고 알린다.
-2. 포맷터 실행(backend: `./gradlew spotlessApply`, frontend: `npm run format`) — 변경이 생기면 `style(...)` 커밋으로 분리. 이어서 테스트 실행(backend: `./gradlew test`, frontend: `npm run lint && npm run build`). 실패하면 원인을 보고하고 멈춘다. (도구 설정이 아직 없으면 건너뛰고 알린다)
+2. 포맷터 실행(backend: `./gradlew spotlessApply`, frontend: `npm run format`) — 변경이 생기면 `style(...)` 커밋으로 분리. 이어서 테스트 실행(backend: `./gradlew test`, frontend: `npm run lint && npm run test && npm run build`). 실패하면 원인을 보고하고 멈춘다. (도구 설정이 아직 없으면 건너뛰고 알린다)
 3. PR 체크리스트(`.github/pull_request_template.md`)를 하나씩 확인한다. API가 바뀌었으면 `docs/openapi.json` 재생성, 문서 갱신 누락이 있으면 반영해 커밋한다.
 4. `git fetch origin && git rebase origin/develop`. 충돌이 나면 멈추고 설명한다. 이미 push한 브랜치라 강제 push가 필요하면 이유를 설명하고 승인받는다.
 5. `git push -u origin <브랜치>`.

@@ -7,6 +7,7 @@
 - **버전 선택**: 각 패키지의 최신 안정판 중 출시 2주 이상 지난 것(2026-10-14 기준), exact 고정. 백엔드와 같은 규칙.
 - **Node `.nvmrc` = 24** (현재 Active LTS Krypton). 26은 아직 LTS 전. react-router 8은 Node ≥22.22 요구.
 - `prettier-plugin-tailwindcss`로 클래스 순서 자동 정렬 — 리뷰에서 클래스 순서 논쟁을 없애려고.
+- **Prettier에서 `*.md` 제외.** `npm run format`이 `frontend/CLAUDE.md` 표를 패딩 정렬로 바꿔 문서 diff가 커지므로, 문서는 기존 형식 유지.
 
 ## 환경·프록시
 - **`/files`도 프록시.** local 프로필의 `LocalFileStorage`가 `{url-prefix}/{key}` = `/files/...` 상대 URL을 반환하고 `SecurityConfig`가 `/files/**`를 공개로 둠. 운영은 S3 절대 URL이라 영향 없음.
