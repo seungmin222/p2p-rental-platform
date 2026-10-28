@@ -45,6 +45,12 @@ app:
       thumbnail-width: 400
       # 60MP
       max-pixels: 60000000
+    region:
+      # region.verify-valid-days: 인증 후 30일이 지나면 만료 (REQ-004)
+      verify-valid-days: 30
+    trust:
+      # trust.initial: 가입 시 50점 (REQ-001, REQ-054). members.trust_score DB 기본값과 같게
+      initial-score: 50.0
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언
