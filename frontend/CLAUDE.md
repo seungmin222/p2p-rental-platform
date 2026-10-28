@@ -38,7 +38,7 @@ src/
 ├── shared/
 │   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화, 토큰 재발급, authStore(AT)
 │   ├── ws/         STOMP 클라이언트 싱글톤
-│   ├── ui/         Button, ButtonLink, Badge, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Toaster(+ toast) — index.js로 모아 export. Calendar, ImageUploader는 다음 브랜치
+│   ├── ui/         Button, ButtonLink, Badge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
 │   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), validators
 │   └── hooks/
 ├── mocks/          MSW 핸들러 (Swagger 응답 형태 그대로)
@@ -119,14 +119,15 @@ export const RENTAL_STATUS = {
 - 모바일 우선(360px~). 데스크톱은 중앙 정렬 최대 폭 컨테이너.
 - 사용감은 **기존 동네 중고거래 앱과 최대한 비슷하게**: 카드형 피드, 하단 탭, 상세 하단 고정 바(관심 · 가격/보증금 · 채팅하기 · 예약하기), 채팅 상단 물품 요약, 우측 하단 "+ 물품 등록" 버튼. (특정 서비스 로고·브랜드 요소를 복제하지 않는다)
 - 가격: `12,000원/일`, 보증금 `보증금 50,000원`. 경과 시간: `3분 전`, `2일 전` (bumpedAt 기준).
-- 이미지: 목록은 thumbnailUrl + `loading="lazy"`. 등록 화면에서 순서 변경(드래그) 지원, 최대 10장.
-- 캘린더: AVAILABLE/BOOKED/UNAVAILABLE 3색 구분, 범위 선택, 1~30일 제한을 UI에서도 안내.
+- 이미지: 목록은 thumbnailUrl + `loading="lazy"`. 등록·수정·인계·반납은 `ImageUploader`(장수·용량·형식은 `ITEM_IMAGES`·`INSPECTION_IMAGES`로 넘김). 순서 변경은 썸네일의 앞으로·뒤로 버튼과 "대표로"(첫 장 = 대표). 드래그는 넣지 않는다(모바일 브라우저가 HTML5 drag&drop을 지원하지 않음).
+- 캘린더: AVAILABLE/BOOKED/UNAVAILABLE 3색 구분, 범위 선택, 1~30일 제한을 UI에서도 안내(`Calendar`, 기간은 `RENTAL_PERIOD`·라벨은 `RENTAL_DAY_STATUS`로 넘김).
+  - `days`는 지금까지 불러온 여러 달의 응답을 합쳐 넘긴다. 예약이 달을 넘을 수 있어(10/30~11/2) 범위 검사를 받은 days 전체로 하기 때문이다. days에 없는 날짜는 예약 불가로 본다.
 - 빈 상태·로딩·에러 상태를 모든 목록에 구현 (`EmptyState`, 스켈레톤).
 - 본인 물품 상세에서는 예약하기 대신 수정·관리 버튼.
 - 물품 가격(itemPrice)은 등록·수정 화면에서만 입력, 상세에 표시하지 않는다. 등록 시 권장 보증금 범위를 보증금 입력란 아래 안내.
 - 접근성: 버튼에 텍스트 또는 aria-label, 터치 영역 44px 이상.
 - 디자인 기준은 `docs/design/`(정확한 값은 `mockups/*.html` 인라인 스타일, PNG는 전체 모양 참고). 시안과 명세가 다르면 명세가 우선이고 사용자에게 확인한다.
-- 색·글자 크기는 `styles/index.css`의 `@theme` 토큰만 쓴다(색: `primary`·`primary-soft`·`accent`·`accent-strong`·`ink`·`ink-muted`·`surface`·`line`·`divider`·`danger` 등, 글자: `text-title`·`heading`·`body`·`price`·`caption`. 토큰 밖 크기는 다음 예외만 허용: `text-xs` 12px(배지·보조 글씨), `text-sm` 14px(작은 버튼 `sm`·토스트), `text-lg` 18px(헤더 제목), `text-[11px]`(하단 탭 라벨). 그 밖의 직접 값(`text-[15px]` 등)은 쓰지 않는다 — `/dev` 미리보기 예외). Tailwind 기본 팔레트(gray·red 등)를 직접 쓰지 않는다. 모서리는 입력 8px(`rounded-lg`), 카드·버튼 12px(`rounded-xl`), 칩·배지 full.
+- 색·글자 크기는 `styles/index.css`의 `@theme` 토큰만 쓴다(색: `primary`·`primary-soft`·`accent`·`accent-strong`·`ink`·`ink-muted`·`surface`·`line`·`divider`·`danger` 등, 글자: `text-title`·`heading`·`body`·`price`·`caption`. 토큰 밖 크기는 다음 예외만 허용: `text-xs` 12px(배지·보조 글씨), `text-sm` 14px(작은 버튼 `sm`·토스트·캘린더 날짜와 월 표시), `text-lg` 18px(헤더 제목), `text-[11px]`(하단 탭 라벨). 그 밖의 직접 값(`text-[15px]` 등)은 쓰지 않는다 — `/dev` 미리보기 예외). Tailwind 기본 팔레트(gray·red 등)를 직접 쓰지 않는다. 모서리는 입력 8px(`rounded-lg`), 카드·버튼 12px(`rounded-xl`), 칩·배지 full.
 - Button variant는 시안 5가지에 맞춘다: `primary`(채움) · `outline`(주 색상 외곽선) · `secondary`(회색 면) · `danger`(위험 **외곽선**) · 비활성(`disabled`). 크기 기본 `md` 48px, 좁은 곳은 `sm` 44px.
 - 토스트: `import { toast } from '../shared/ui'` → `toast.show({ message, tone })`(tone `default`·`danger`). `<Toaster />`는 App에 한 곳만 있다. 모달 안의 오류는 토스트 대신 모달 안에 표시(모달이 top layer라 토스트가 가려짐).
 - 하단 고정 바가 있는 화면은 라우트에 `handle: { hideTabBar: true }`를 달면 AppLayout이 하단 탭을 숨긴다. 바는 `BottomActionBar`(본문이 가려지지 않게 자리도 확보).
