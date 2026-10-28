@@ -102,18 +102,18 @@ erDiagram
 | deposit INT | 예약 시점 스냅샷 (물품 가격 변경과 무관) |
 | price_per_day INT | 예약 시점 스냅샷 |
 | status VARCHAR(30) | `RentalStatus` |
-| payment_expires_at DATETIME NULL | PENDING_PAYMENT 만료 시각 |
-| handed_over_at DATETIME NULL | 인계 확인 시각 |
-| returned_at DATETIME NULL | 반납 요청(또는 미반납 신고) 시각 — 3일 자동 확인·연체료 기준 |
-| completed_at DATETIME NULL | 거래 완료 시각 — 후기 7일 기한·정산 예정일 기준 |
-| canceled_at DATETIME NULL | 취소 시각 |
+| payment_expires_at DATETIME(6) NULL | PENDING_PAYMENT 만료 시각 |
+| handed_over_at DATETIME(6) NULL | 인계 확인 시각 |
+| returned_at DATETIME(6) NULL | 반납 요청(또는 미반납 신고) 시각 — 3일 자동 확인·연체료 기준 |
+| completed_at DATETIME(6) NULL | 거래 완료 시각 — 후기 7일 기한·정산 예정일 기준 |
+| canceled_at DATETIME(6) NULL | 취소 시각 |
 | cancel_type VARCHAR(30), cancel_reason VARCHAR(30), cancel_reason_text VARCHAR(200), canceled_by FK→members NULL | `CancelType`, `CancelReason`. 텍스트 200자는 `cancel.reason-text.max`. 시스템 취소면 canceled_by NULL |
 | cancel_fee INT | 기본 0. 취소 수수료 (`policies.md` §2) |
 | overdue_fee INT | 기본 0. 반납 시점에 확정 |
 | extension_count INT | 기본 0 |
 | version BIGINT | 기본 0. `@Version`(낙관적 락) — 기본 경로에서도 켜 둔다 |
 - 인덱스 `(item_id, status, start_date, end_date)`(겹침 검사), `(renter_id, status)`(빌린 내역), `(owner_id, status)`(빌려준 내역), `(status, end_date)`(연체·반납 리마인더 배치), `(status, start_date)`(인계 없음 자동 취소), `(status, returned_at)`(자동 확인 배치) — 생성됨(`V4`). 이름은 `idx_rentals_{컬럼들}`.
-- FK 이름: members를 세 번 참조하므로 `fk_rentals_members_{owner|renter|canceled_by}`.
+- FK 이름: members를 세 번 참조하므로 `fk_rentals_members_{owner|renter|canceled_by}`(`conventions.md` §4).
 - 기간 겹침은 `rentals`의 시작·종료일 컬럼만으로는 유니크 제약을 걸 수 없다. 대신 아래 `rental_dates`(날짜별 점유)에 유니크 제약을 걸면 DB가 막을 수 있다. 기본 경로는 분산 락 + 검사 쿼리이고, `rental_dates`는 도전 과제 ① 비교 실험의 대상이다.
 
 **rental_dates** [1, 실험용] — item_id, rented_date DATE, rental_id FK, **UK(item_id, rented_date)**. 예약·연장 확정 시 날짜마다 1행 INSERT, 취소·결제 만료·연장 취소 시 삭제. 실험 결과로 채택이 정해지기 전에는 기본 경로에서 쓰지 않는다.

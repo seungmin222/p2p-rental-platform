@@ -80,6 +80,7 @@
 | 유니크 | `uk_{테이블}_{컬럼들}` | `uk_wishes_member_id_item_id` |
 | 일반 인덱스 | `idx_{테이블}_{컬럼들}` | `idx_rentals_item_id_status` |
 | FK 제약 | `fk_{테이블}_{참조테이블}` | `fk_rentals_items` |
+| FK 제약 (같은 테이블을 두 번 이상 참조) | `fk_{테이블}_{참조테이블}_{역할}`. 역할은 FK 컬럼명에서 `_id`를 뺀 것. 한 번만 참조하면 역할명을 붙이지 않는다 | `fk_rentals_members_owner`, `fk_rentals_members_canceled_by` |
 
 ### 기타
 - **예약어 금지**: `condition`, `range`, `order`, `rank`, `key`, `group`, `desc` 등 MySQL 예약어를 컬럼명으로 쓰지 않는다 (예: `item_condition`, `region_range`).
