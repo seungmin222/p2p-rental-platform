@@ -24,6 +24,8 @@
 | --- | --- | --- |
 | `chore/setup-backend` | 공통 기반: 응답·예외·Security·JWT 골격·Flyway·Swagger·QueryDSL·ShedLock·Spotless 설정, `.env` 로딩, 파일 저장소 | A+B |
 | `chore/setup-frontend` | Vite·Tailwind·라우터·TanStack Query·axios·MSW 골격 | FE |
+| `chore/fe-shared-ui` | 공통 UI·레이아웃·상태 라벨·포맷 | FE |
+| `chore/fe-shared-ui-input` | 공통 입력 컴포넌트: Calendar(범위 선택)·ImageUploader (`chore/fe-shared-ui`에서 분리) | FE |
 | `chore/setup-storage-shedlock` | `chore/setup-backend` 잔여분: 파일 저장소(`FileStorage`·`ImageProcessor`) + ShedLock 설정 | A |
 | `feat/rental-entity` | rentals·rental_status_histories 엔티티·마이그레이션만 (`items`·`members` FK 때문에 `feat/item-crud` 머지 직후, B의 `feat/item-feed-search` 착수 전에 머지) | A |
 | `feat/member-auth` | 001–003 | B |

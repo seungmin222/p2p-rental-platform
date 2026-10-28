@@ -26,7 +26,9 @@
 ```
 src/
 ├── app/            라우터, QueryClientProvider, 레이아웃(하단 탭 / PC 헤더)
+│   └── layout/         AppLayout, PageHeader, BottomActionBar, FloatingActionButton
 ├── pages/          화면 단위 (SCR-xx와 1:1)
+├── dev/            개발 서버 전용 화면(`/dev/ui` 공통 UI 미리보기, 빌드에서 제외)
 ├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
@@ -36,8 +38,8 @@ src/
 ├── shared/
 │   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화, 토큰 재발급, authStore(AT)
 │   ├── ws/         STOMP 클라이언트 싱글톤
-│   ├── ui/         Button, BottomSheet, Modal, Toast, Badge, Calendar, ImageUploader, EmptyState
-│   ├── lib/        format(가격·경과시간), validators
+│   ├── ui/         Button, ButtonLink, Badge, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Toaster(+ toast) — index.js로 모아 export. Calendar, ImageUploader는 다음 브랜치
+│   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), validators
 │   └── hooks/
 ├── mocks/          MSW 핸들러 (Swagger 응답 형태 그대로)
 └── styles/
@@ -123,6 +125,11 @@ export const RENTAL_STATUS = {
 - 본인 물품 상세에서는 예약하기 대신 수정·관리 버튼.
 - 물품 가격(itemPrice)은 등록·수정 화면에서만 입력, 상세에 표시하지 않는다. 등록 시 권장 보증금 범위를 보증금 입력란 아래 안내.
 - 접근성: 버튼에 텍스트 또는 aria-label, 터치 영역 44px 이상.
+- 색상: 주 색상·위험 색상은 `styles/index.css`의 `@theme` 토큰(`primary-*`·`danger-*`)으로 쓴다. teal·red 팔레트를 직접 쓰지 않는다.
+- 토스트: `import { toast } from '../shared/ui'` → `toast.show({ message, tone })`(tone `default`·`danger`). `<Toaster />`는 App에 한 곳만 있다. 모달 안의 오류는 토스트 대신 모달 안에 표시(모달이 top layer라 토스트가 가려짐).
+- 하단 고정 바가 있는 화면은 라우트에 `handle: { hideTabBar: true }`를 달면 AppLayout이 하단 탭을 숨긴다. 바는 `BottomActionBar`(본문이 가려지지 않게 자리도 확보).
+- 날짜: 대여 기간(`startDate`·`endDate`, 캘린더)은 `"YYYY-MM-DD"` 문자열로만 다루고 `shared/lib/date.js`로 계산한다. `new Date('YYYY-MM-DD')`를 쓰지 않는다(UTC 자정이라 시간대에 따라 하루 밀림). 오늘 날짜는 `todayInSeoul()`. 서버 일시(오프셋 없음)는 `parseServerDateTime`이 서울 시각으로 해석.
+- 정책 수치(장수·용량·기간)는 shared/ui에 기본값으로 두지 않는다. `features/*/constants.js`에 policies.md 키 주석과 함께 두고 props로 넘긴다.
 
 ## 로컬 연동 (백엔드와 같은 출처로)
 - `vite.config.js`의 `server.proxy`로 `/api` → `http://localhost:8080`, `/ws` → `ws://localhost:8080`(`ws: true`), `/files` → `http://localhost:8080`(local 프로필 업로드 이미지가 `/files/...` 상대 URL)를 넘긴다. 브라우저 기준으로 프론트와 API가 같은 출처라 CORS가 필요 없고, Refresh Token 쿠키(`SameSite=Lax`, `Path=/api/auth`)가 그대로 전달된다.

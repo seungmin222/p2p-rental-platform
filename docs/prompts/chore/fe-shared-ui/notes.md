@@ -18,7 +18,17 @@
 - **Modal·BottomSheet는 네이티브 `<dialog>` + `useDialog` 훅 하나로.** 포커스 가두기·Esc·top layer를 브라우저에 맡겨 직접 구현할 코드를 줄임. Esc(`cancel`)는 막고 부모 상태로 닫아 open prop이 항상 기준. StrictMode에서 effect가 닫고 바로 다시 여는 경우의 `close` 이벤트는 플래그로 무시.
 - **스크롤 잠금은 모듈 카운터.** 모달 위에 확인 모달이 겹쳐도 마지막이 닫힐 때만 해제.
 - **Toast: 3초 표시, 최대 3개(넘치면 오래된 것부터 버림), 하단에서 6rem + safe-area 위.** 하단 탭·하단 고정 바(4.5rem) 모두 위에 뜨도록 위치를 하나로 고정해 라우트별 계산을 없앰. 열린 모달(top layer) 아래에 그려지므로 모달 안의 오류는 모달 안에 표시.
-- **PR 분리**: 변경 파일이 30개를 넘어 Calendar·ImageUploader는 다음 브랜치로 미룸(사용자 결정).
+- **PR 분리**: 변경 파일이 30개를 넘어 Calendar·ImageUploader는 다음 브랜치 `chore/fe-shared-ui-input`으로 미룸(사용자 결정). 그 브랜치에서 할 일: 선택 규칙·이미지 목록 조작을 순수 함수로 분리해 테스트, 이미지 순서 변경은 모바일에서 HTML5 drag&drop이 안 되므로 "앞으로/뒤로" 버튼 + 첫 장 "대표" 표시(드래그는 `feat/fe-item-pages`에서 결정).
+- **jsdom·testing-library 미도입.** 컴포넌트 렌더 테스트 대신 로직(토스트 스토어·포맷·날짜)을 순수 함수로 두고 node 환경 Vitest로 검증. 화면 동작은 `/dev/ui`에서 수동 확인.
+
+## 레이아웃
+- **하단 탭 숨김은 라우트 `handle.hideTabBar` + `useMatches`.** 숨김 여부를 화면 컴포넌트가 아니라 라우트 표 한 곳에서 보게 하려고. 대상: 물품 상세·등록·수정, 예약, 대여 상세.
+- **BottomActionBar가 자기 높이만큼 빈 자리를 본문 끝에 둔다.** AppLayout이 화면마다 바 유무를 알 필요가 없게.
+- **PageHeader 뒤로 가기는 `location.key === 'default'`(직접 진입)이면 홈으로 replace.** 공유 링크로 들어온 사용자가 앱 밖으로 나가지 않게.
+- **하단 탭 아이콘은 인라인 SVG.** 아이콘 5개라 라이브러리를 추가할 만큼이 아님.
+
+## 미리보기 페이지
+- **`/dev/ui`는 `import.meta.env.DEV`일 때만 라우트 등록 + lazy import.** 빌드에서 조건이 false로 치환돼 import가 빠짐(`npm run build` 후 dist에 없음 확인). 위치는 SCR와 1:1인 `pages/`가 아니라 `src/dev/`.
 
 ## 정책 수치
 - 정책 수치(`RENTAL_PERIOD`·`ITEM_IMAGES`·`INSPECTION_IMAGES`)는 features 상수에 policies.md 키 주석을 달아 두고, shared/ui 컴포넌트는 기본값 없이 props로만 받는다.
