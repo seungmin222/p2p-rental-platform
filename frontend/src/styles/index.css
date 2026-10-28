@@ -1,1 +1,113 @@
 @import 'tailwindcss';
+
+/* IBM Plex Sans KR (OFL 1.1, fonts/OFL.txt). 한글·라틴 서브셋을 unicode-range로 나눠 필요한 파일만 받는다. */
+@font-face {
+  font-family: 'IBM Plex Sans KR';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-sans-kr-korean-400-normal.woff2') format('woff2');
+  unicode-range:
+    U+1100-11FF, U+3000-303F, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans KR';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-sans-kr-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-21FF, U+2212;
+}
+@font-face {
+  font-family: 'IBM Plex Sans KR';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-sans-kr-korean-500-normal.woff2') format('woff2');
+  unicode-range:
+    U+1100-11FF, U+3000-303F, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans KR';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-sans-kr-latin-500-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-21FF, U+2212;
+}
+@font-face {
+  font-family: 'IBM Plex Sans KR';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-sans-kr-korean-600-normal.woff2') format('woff2');
+  unicode-range:
+    U+1100-11FF, U+3000-303F, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans KR';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-sans-kr-latin-600-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-21FF, U+2212;
+}
+@font-face {
+  font-family: 'IBM Plex Sans KR';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-sans-kr-korean-700-normal.woff2') format('woff2');
+  unicode-range:
+    U+1100-11FF, U+3000-303F, U+3130-318F, U+A960-A97F, U+AC00-D7A3, U+D7B0-D7FF, U+FF00-FFEF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans KR';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/ibm-plex-sans-kr-latin-700-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-21FF, U+2212;
+}
+
+/* 디자인 토큰. 값의 기준은 docs/design/mockups/*.html(Main.html = 디자인 시스템). */
+@theme {
+  --font-sans: 'IBM Plex Sans KR', ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #1f6f54; /* 버튼·강조 */
+  --color-primary-hover: #174f3d;
+  --color-primary-soft: #e8f1ec; /* 선택·배지 */
+  --color-accent: #c77a1a; /* 보증금·주의 */
+  --color-accent-strong: #8f560f; /* 보증금 글씨, 주의 배지 글씨 */
+  --color-accent-soft: #fbf1e2;
+  --color-info: #22508f; /* 대여 예정 배지 */
+  --color-info-soft: #e6edf8;
+  --color-danger: #b0391f; /* 연체·이상 */
+  --color-danger-soft: #fbeae5;
+  --color-ink: #1c1c1a; /* 본문 */
+  --color-ink-muted: #5c5f5a; /* 보조 텍스트 */
+  --color-ink-subtle: #8b8e88; /* 요일 머리글·비활성 글씨 */
+  --color-ink-faint: #a3a39c; /* 이미지 자리 아이콘 */
+  --color-surface: #f6f5f1; /* 배경 면 */
+  --color-line: #e4e2dc; /* 테두리·탭·하단 바 */
+  --color-divider: #f0eee9; /* 헤더 아래선·목록 구분선 */
+  --color-placeholder: #edebe5; /* 이미지 자리 */
+
+  /* 글자 크기: text-title 등 하나로 크기와 굵기를 함께 지정 */
+  --text-title: 22px;
+  --text-title--font-weight: 700;
+  --text-heading: 17px;
+  --text-heading--font-weight: 700;
+  --text-body: 15px;
+  --text-body--font-weight: 400;
+  --text-price: 16px;
+  --text-price--font-weight: 700;
+  --text-caption: 13px;
+  --text-caption--font-weight: 400;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-body text-ink;
+  }
+}

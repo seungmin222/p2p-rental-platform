@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>디자인 시스템</title>
+<style>
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:400;font-display:block;src:url(../../../frontend/src/styles/fonts/ibm-plex-sans-kr-korean-400-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:400;font-display:block;src:url(../../../frontend/src/styles/fonts/ibm-plex-sans-kr-latin-400-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:500;font-display:block;src:url(../../../frontend/src/styles/fonts/ibm-plex-sans-kr-korean-500-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:500;font-display:block;src:url(../../../frontend/src/styles/fonts/ibm-plex-sans-kr-latin-500-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:600;font-display:block;src:url(../../../frontend/src/styles/fonts/ibm-plex-sans-kr-korean-600-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:600;font-display:block;src:url(../../../frontend/src/styles/fonts/ibm-plex-sans-kr-latin-600-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:700;font-display:block;src:url(../../../frontend/src/styles/fonts/ibm-plex-sans-kr-korean-700-normal.woff2) format('woff2');unicode-range:U+1100-11FF,U+3000-303F,U+3130-318F,U+A960-A97F,U+AC00-D7A3,U+D7B0-D7FF,U+FF00-FFEF}
+@font-face{font-family:'IBM Plex Sans KR';font-style:normal;font-weight:700;font-display:block;src:url(../../../frontend/src/styles/fonts/ibm-plex-sans-kr-latin-700-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-21FF,U+2212}
+body{margin:0}
+a{color:#1F6F54}a:hover{color:#174F3D}
+</style>
+</head>
+<body>
+<div style="width: 1280px; height: 1040px; box-sizing: border-box; padding: 56px 64px; background: #FFFFFF; font-family: 'IBM Plex Sans KR', sans-serif; color: #1C1C1A; display: flex; flex-direction: column; gap: 40px">
+
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #E4E2DC; padding-bottom: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; font-weight: 600; color: #1F6F54; letter-spacing: 0.04em">DESIGN SYSTEM v0.1</div>
+      <h1 style="margin: 0; font-size: 40px; font-weight: 700; letter-spacing: -0.02em">개인 간 물품 대여 플랫폼</h1>
+    </div>
+    <div style="font-size: 14px; color: #5C5F5A; text-align: right; line-height: 1.6">모바일 우선 360~390px · PC 1280px<br>간격 4px 단위 · Tailwind 기본 스케일과 대응</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px">
+
+    <div style="display: flex; flex-direction: column; gap: 32px">
+      <section style="display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 700">색상</h2>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; border-radius: 12px; background: #1F6F54"></div><div style="font-size: 13px; font-weight: 600">Primary</div><div style="font-size: 12px; color: #5C5F5A">#1F6F54 · 버튼·강조</div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; border-radius: 12px; background: #E8F1EC"></div><div style="font-size: 13px; font-weight: 600">Primary Soft</div><div style="font-size: 12px; color: #5C5F5A">#E8F1EC · 선택·배지</div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; border-radius: 12px; background: #C77A1A"></div><div style="font-size: 13px; font-weight: 600">Accent</div><div style="font-size: 12px; color: #5C5F5A">#C77A1A · 보증금·주의</div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; border-radius: 12px; background: #1C1C1A"></div><div style="font-size: 13px; font-weight: 600">Ink</div><div style="font-size: 12px; color: #5C5F5A">#1C1C1A · 본문</div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; border-radius: 12px; background: #5C5F5A"></div><div style="font-size: 13px; font-weight: 600">Ink Muted</div><div style="font-size: 12px; color: #5C5F5A">#5C5F5A · 보조 텍스트</div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; border-radius: 12px; background: #F6F5F1; border: 1px solid #E4E2DC"></div><div style="font-size: 13px; font-weight: 600">Surface</div><div style="font-size: 12px; color: #5C5F5A">#F6F5F1 · 배경 면</div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; border-radius: 12px; background: #E4E2DC"></div><div style="font-size: 13px; font-weight: 600">Line</div><div style="font-size: 12px; color: #5C5F5A">#E4E2DC · 구분선</div></div>
+          <div style="display: flex; flex-direction: column; gap: 6px"><div style="height: 64px; border-radius: 12px; background: #B0391F"></div><div style="font-size: 13px; font-weight: 600">Danger</div><div style="font-size: 12px; color: #5C5F5A">#B0391F · 연체·이상</div></div>
+        </div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 700">타이포그래피 · IBM Plex Sans KR</h2>
+        <div style="display: flex; flex-direction: column; gap: 10px; border: 1px solid #E4E2DC; border-radius: 12px; padding: 20px">
+          <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 12px; color: #5C5F5A">Title 22/700</span><span style="font-size: 22px; font-weight: 700">4인용 거실형 텐트</span></div>
+          <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 12px; color: #5C5F5A">Heading 17/700</span><span style="font-size: 17px; font-weight: 700">대여 캘린더</span></div>
+          <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 12px; color: #5C5F5A">Body 15/400</span><span style="font-size: 15px">주말 캠핑용으로 두 번 사용했어요.</span></div>
+          <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 12px; color: #5C5F5A">Price 16/700</span><span style="font-size: 16px; font-weight: 700">15,000원<span style="font-weight: 500; color: #5C5F5A"> /일</span></span></div>
+          <div style="display: flex; align-items: baseline; gap: 16px"><span style="width: 92px; font-size: 12px; color: #5C5F5A">Caption 13/400</span><span style="font-size: 13px; color: #5C5F5A">연수동 · 3분 전</span></div>
+        </div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 700">간격 · 모서리</h2>
+        <div style="display: flex; gap: 20px; align-items: flex-end">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><div style="width: 4px; height: 4px; background: #1F6F54"></div><span style="font-size: 12px; color: #5C5F5A">4</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><div style="width: 8px; height: 8px; background: #1F6F54"></div><span style="font-size: 12px; color: #5C5F5A">8</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><div style="width: 12px; height: 12px; background: #1F6F54"></div><span style="font-size: 12px; color: #5C5F5A">12</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><div style="width: 16px; height: 16px; background: #1F6F54"></div><span style="font-size: 12px; color: #5C5F5A">16</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><div style="width: 24px; height: 24px; background: #1F6F54"></div><span style="font-size: 12px; color: #5C5F5A">24</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><div style="width: 32px; height: 32px; background: #1F6F54"></div><span style="font-size: 12px; color: #5C5F5A">32</span></div>
+          <div style="width: 1px; height: 48px; background: #E4E2DC; margin: 0 8px"></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><div style="width: 48px; height: 48px; border: 2px solid #1C1C1A; border-radius: 8px"></div><span style="font-size: 12px; color: #5C5F5A">입력 8</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><div style="width: 48px; height: 48px; border: 2px solid #1C1C1A; border-radius: 12px"></div><span style="font-size: 12px; color: #5C5F5A">카드·버튼 12</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 6px"><div style="width: 48px; height: 48px; border: 2px solid #1C1C1A; border-radius: 999px"></div><span style="font-size: 12px; color: #5C5F5A">칩 999</span></div>
+        </div>
+      </section>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 32px">
+      <section style="display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 700">버튼</h2>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center">
+          <button type="button" style="height: 48px; padding: 0 22px; border: 0; border-radius: 12px; background: #1F6F54; color: #FFFFFF; font: 600 15px 'IBM Plex Sans KR', sans-serif">예약하기</button>
+          <button type="button" style="height: 48px; padding: 0 22px; border: 1px solid #1F6F54; border-radius: 12px; background: #FFFFFF; color: #1F6F54; font: 600 15px 'IBM Plex Sans KR', sans-serif">채팅하기</button>
+          <button type="button" style="height: 48px; padding: 0 22px; border: 0; border-radius: 12px; background: #F6F5F1; color: #1C1C1A; font: 600 15px 'IBM Plex Sans KR', sans-serif">취소</button>
+          <button type="button" style="height: 48px; padding: 0 22px; border: 1px solid #B0391F; border-radius: 12px; background: #FFFFFF; color: #B0391F; font: 600 15px 'IBM Plex Sans KR', sans-serif">이상 있음</button>
+          <button type="button" disabled style="height: 48px; padding: 0 22px; border: 0; border-radius: 12px; background: #E4E2DC; color: #8B8E88; font: 600 15px 'IBM Plex Sans KR', sans-serif">비활성</button>
+        </div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 700">입력 · 칩 · 대여 상태 배지</h2>
+        <div style="display: flex; flex-direction: column; gap: 6px; width: 320px">
+          <label for="ds-price" style="font-size: 13px; font-weight: 600">일 대여 가격</label>
+          <input id="ds-price" value="15,000" style="height: 48px; box-sizing: border-box; padding: 0 14px; border: 1px solid #E4E2DC; border-radius: 8px; font: 400 15px 'IBM Plex Sans KR', sans-serif; color: #1C1C1A">
+          <span style="font-size: 12px; color: #5C5F5A">권장 보증금 300,000 ~ 500,000원 (캠핑 · 물품가 100만 원 기준)</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <button type="button" style="height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: #1C1C1A; color: #FFFFFF; font: 600 13px 'IBM Plex Sans KR', sans-serif">전체</button>
+          <button type="button" style="height: 34px; padding: 0 14px; border: 1px solid #E4E2DC; border-radius: 999px; background: #FFFFFF; color: #1C1C1A; font: 500 13px 'IBM Plex Sans KR', sans-serif">캠핑</button>
+          <button type="button" style="height: 34px; padding: 0 14px; border: 1px solid #E4E2DC; border-radius: 999px; background: #FFFFFF; color: #1C1C1A; font: 500 13px 'IBM Plex Sans KR', sans-serif">공구</button>
+          <button type="button" style="height: 34px; padding: 0 14px; border: 1px solid #E4E2DC; border-radius: 999px; background: #FFFFFF; color: #1C1C1A; font: 500 13px 'IBM Plex Sans KR', sans-serif">촬영 장비</button>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <span style="padding: 4px 10px; border-radius: 999px; background: #F6F5F1; color: #5C5F5A; font-size: 12px; font-weight: 600">결제 대기</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: #E6EDF8; color: #22508F; font-size: 12px; font-weight: 600">대여 예정</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: #E8F1EC; color: #1F6F54; font-size: 12px; font-weight: 600">대여 중</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: #FBEAE5; color: #B0391F; font-size: 12px; font-weight: 600">연체</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: #FBF1E2; color: #8F560F; font-size: 12px; font-weight: 600">상태 확인 대기</span>
+          <span style="padding: 4px 10px; border-radius: 999px; background: #1C1C1A; color: #FFFFFF; font-size: 12px; font-weight: 600">거래 완료</span>
+        </div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 700">물품 카드</h2>
+        <div style="display: flex; gap: 14px; padding: 16px; border: 1px solid #E4E2DC; border-radius: 12px; width: 420px; box-sizing: border-box">
+          <div style="width: 104px; height: 104px; border-radius: 10px; background: #EDEBE5; flex: none; display: flex; align-items: center; justify-content: center"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A3A39C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18L12 4 3 20z"/><path d="M12 4v16"/></svg></div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0">
+            <div style="font-size: 15px; font-weight: 600">4인용 거실형 텐트</div>
+            <div style="font-size: 13px; color: #5C5F5A">연수동 · 3분 전</div>
+            <div style="font-size: 16px; font-weight: 700; margin-top: 2px">15,000원<span style="font-size: 13px; font-weight: 500; color: #5C5F5A"> /일</span></div>
+            <div style="font-size: 12px; color: #8F560F; font-weight: 600">보증금 50,000원</div>
+            <div style="margin-top: auto; align-self: flex-end; font-size: 12px; color: #5C5F5A">관심 3 · 채팅 2</div>
+          </div>
+        </div>
+      </section>
+
+      <section style="display: flex; flex-direction: column; gap: 14px">
+        <h2 style="margin: 0; font-size: 18px; font-weight: 700">하단 탭</h2>
+        <nav aria-label="하단 탭" style="width: 390px; height: 64px; border: 1px solid #E4E2DC; border-radius: 12px; display: flex; box-sizing: border-box">
+          <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; font-weight: 600; color: #1C1C1A; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="#1C1C1A" stroke="#1C1C1A" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6h-6v6H4z"/></svg>홈</a>
+          <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; color: #5C5F5A; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C5F5A" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>검색</a>
+          <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; color: #5C5F5A; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C5F5A" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>채팅</a>
+          <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; color: #5C5F5A; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C5F5A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/></svg>알림</a>
+          <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 11px; color: #5C5F5A; text-decoration: none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C5F5A" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>나의 대여</a>
+        </nav>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>

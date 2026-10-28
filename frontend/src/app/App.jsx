@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { lazy, Suspense, use } from 'react';
 import { RouterProvider } from 'react-router/dom';
 
+import { Toaster } from '../shared/ui';
 import { queryClient } from './queryClient';
 import { router } from './router';
 
@@ -21,7 +22,7 @@ function SessionGate({ sessionRestored, children }) {
 function AppLoading() {
   return (
     <div className="flex min-h-dvh items-center justify-center" role="status">
-      <span className="text-sm text-gray-500">불러오는 중…</span>
+      <span className="text-caption text-ink-muted">불러오는 중…</span>
     </div>
   );
 }
@@ -34,6 +35,7 @@ export default function App({ sessionRestored }) {
           <RouterProvider router={router} />
         </SessionGate>
       </Suspense>
+      <Toaster />
       <Suspense>
         <ReactQueryDevtools />
       </Suspense>
