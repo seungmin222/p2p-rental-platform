@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { lazy, Suspense, use } from 'react';
 import { RouterProvider } from 'react-router/dom';
 
+import { Toaster } from '../shared/ui';
 import { queryClient } from './queryClient';
 import { router } from './router';
 
@@ -34,6 +35,7 @@ export default function App({ sessionRestored }) {
           <RouterProvider router={router} />
         </SessionGate>
       </Suspense>
+      <Toaster />
       <Suspense>
         <ReactQueryDevtools />
       </Suspense>

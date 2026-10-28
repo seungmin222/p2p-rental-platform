@@ -1,1 +1,13 @@
 @import 'tailwindcss';
+
+/* 주 색상(teal)·위험 색상(red) 토큰. 컴포넌트는 teal·red 팔레트 대신 bg-primary-600, bg-danger-600 등을 쓴다. */
+@theme {
+  --color-primary-50: #f0fdfa;
+  --color-primary-100: #ccfbf1;
+  --color-primary-600: #0d9488;
+  --color-primary-700: #0f766e;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+}

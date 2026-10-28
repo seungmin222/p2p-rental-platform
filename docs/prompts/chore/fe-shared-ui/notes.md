@@ -13,4 +13,12 @@
 - **`RENTAL_TABS` 키는 API tab 값(`UPCOMING`·`ONGOING`·`DONE`, rental.md REQ-019).** 화면 탭과 요청 파라미터를 같은 키로 쓰려고.
 - **캘린더 `UNAVAILABLE` 라벨은 "예약 불가".** rental.md에 한글 라벨이 없어(설명만 "가능 기간 외 또는 지난 날짜") "예약 가능"과 짝을 맞춤(사용자 결정).
 - **`REGION_RANGE` 라벨은 거리 그대로(1.5km·3km·6km).** state-machines §5에 거리만 있어 별도 이름을 만들지 않음.
+## shared/ui
+- **주 색상 teal, 위험 색상 red를 `@theme` 토큰(`primary-*`·`danger-*`)으로.** teal은 대여 상태 Badge 색(blue·green·amber·red)과 겹치지 않아 구분이 쉬움(사용자 결정). 주 색상을 바꿀 때 토큰만 고치면 되도록 컴포넌트는 토큰 클래스만 쓴다.
+- **Modal·BottomSheet는 네이티브 `<dialog>` + `useDialog` 훅 하나로.** 포커스 가두기·Esc·top layer를 브라우저에 맡겨 직접 구현할 코드를 줄임. Esc(`cancel`)는 막고 부모 상태로 닫아 open prop이 항상 기준. StrictMode에서 effect가 닫고 바로 다시 여는 경우의 `close` 이벤트는 플래그로 무시.
+- **스크롤 잠금은 모듈 카운터.** 모달 위에 확인 모달이 겹쳐도 마지막이 닫힐 때만 해제.
+- **Toast: 3초 표시, 최대 3개(넘치면 오래된 것부터 버림), 하단에서 6rem + safe-area 위.** 하단 탭·하단 고정 바(4.5rem) 모두 위에 뜨도록 위치를 하나로 고정해 라우트별 계산을 없앰. 열린 모달(top layer) 아래에 그려지므로 모달 안의 오류는 모달 안에 표시.
+- **PR 분리**: 변경 파일이 30개를 넘어 Calendar·ImageUploader는 다음 브랜치로 미룸(사용자 결정).
+
+## 정책 수치
 - 정책 수치(`RENTAL_PERIOD`·`ITEM_IMAGES`·`INSPECTION_IMAGES`)는 features 상수에 policies.md 키 주석을 달아 두고, shared/ui 컴포넌트는 기본값 없이 props로만 받는다.
