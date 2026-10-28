@@ -1,0 +1,63 @@
+import { createBrowserRouter } from 'react-router';
+
+import ComingSoonPage from '../pages/ComingSoonPage';
+import HomePage from '../pages/HomePage';
+import ItemDetailPage from '../pages/ItemDetailPage';
+import ItemFormPage from '../pages/ItemFormPage';
+import LoginPage from '../pages/LoginPage';
+import MyItemsPage from '../pages/MyItemsPage';
+import MyPage from '../pages/MyPage';
+import MyProfilePage from '../pages/MyProfilePage';
+import MyRentalsPage from '../pages/MyRentalsPage';
+import NotFoundPage from '../pages/NotFoundPage';
+import RegionPage from '../pages/RegionPage';
+import RentalDetailPage from '../pages/RentalDetailPage';
+import RentalReservePage from '../pages/RentalReservePage';
+import SearchPage from '../pages/SearchPage';
+import SignupPage from '../pages/SignupPage';
+import { setUnauthorizedHandler } from '../shared/api';
+import AppLayout from './layout/AppLayout';
+import { toLoginPath } from './loginPath';
+import RequireAuth from './RequireAuth';
+
+// 1순위 라우트만 등록한다(frontend/CLAUDE.md "화면 ↔ 라우트"). 2순위 탭(채팅·알림)은 "준비 중"으로 연결.
+export const router = createBrowserRouter([
+  // SCR-01
+  { path: '/login', element: <LoginPage /> },
+  { path: '/signup', element: <SignupPage /> },
+  {
+    element: <AppLayout />,
+    children: [
+      { path: '/', element: <HomePage /> }, // SCR-03
+      { path: '/search', element: <SearchPage /> }, // SCR-04
+      { path: '/regions', element: <RegionPage /> }, // SCR-02 (비회원 임시 동네 선택 가능)
+      { path: '/items/:id', element: <ItemDetailPage /> }, // SCR-05
+      { path: '/chats', element: <ComingSoonPage /> }, // SCR-09 (2순위)
+      { path: '/notifications', element: <ComingSoonPage /> }, // SCR-11 (2순위)
+      {
+        element: <RequireAuth />,
+        children: [
+          { path: '/items/new', element: <ItemFormPage /> }, // SCR-06
+          { path: '/items/:id/edit', element: <ItemFormPage /> }, // SCR-06
+          { path: '/items/:id/reserve', element: <RentalReservePage /> }, // SCR-07
+          { path: '/rentals/:id', element: <RentalDetailPage /> }, // SCR-08
+          // SCR-12
+          { path: '/me', element: <MyPage /> },
+          { path: '/me/rentals', element: <MyRentalsPage /> },
+          { path: '/me/items', element: <MyItemsPage /> },
+          { path: '/me/profile', element: <MyProfilePage /> },
+        ],
+      },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+]);
+
+// 재발급 실패 시 새로고침 없이 로그인 화면으로 보내고, 돌아올 경로를 넘긴다
+setUnauthorizedHandler(() => {
+  const { pathname, search } = router.state.location;
+  if (pathname === '/login') {
+    return;
+  }
+  router.navigate(toLoginPath(pathname + search), { replace: true });
+});
