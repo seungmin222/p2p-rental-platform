@@ -16,7 +16,6 @@ import {
   statusOf,
   toStatusMap,
 } from './calendarSelection';
-import Skeleton from './Skeleton';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -196,7 +195,11 @@ export default function Calendar({
           if (isLoading) {
             return (
               <span key={date} className="flex h-11 items-center justify-center">
-                <Skeleton className="size-8 rounded-full" />
+                {/* Skeleton의 rounded-md와 겹치지 않게 원은 직접 그린다 */}
+                <span
+                  aria-hidden="true"
+                  className="size-8 animate-pulse rounded-full bg-placeholder"
+                />
               </span>
             );
           }
