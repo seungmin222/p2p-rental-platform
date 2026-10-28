@@ -61,7 +61,7 @@ public record PolicyProperties(
 	/**
 	 * @param minDays 최초 예약 최소 일수 (rental.min-days)
 	 * @param maxDays 최초 예약 최대 일수 (rental.max-days)
-	 * @param lockWait 분산 락 대기 시간 (rental.lock.wait). 임대 시간은 두지 않는다(Redisson watchdog)
+	 * @param lockWait 분산 락 대기 시간 (rental.lock-wait). 임대 시간은 두지 않는다(Redisson watchdog)
 	 */
 	public record Rental(
 		@Positive

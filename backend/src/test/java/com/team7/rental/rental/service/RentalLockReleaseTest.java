@@ -42,7 +42,7 @@ import com.team7.rental.support.IntegrationTestSupport;
  * <p>
  * watchdog을 0.5초로 줄이고, INSERT 뒤 커밋 전에 1.5초 잠드는 트랜잭션 빈을 끼운다. A가 잠든 동안 B가 같은 기간을 예약하면
  * B는 락을 기다렸다가 A의 커밋을 보고 RENTAL_PERIOD_CONFLICT여야 한다. 임대 시간을 지정한 구현이라면 0.5초 뒤 락이 풀려 B가
- * 커밋 전의 A를 보지 못하고 중복 예약이 생긴다. 지연(1.5초)은 watchdog(0.5초)보다 충분히 길고 lock.wait(3초)보다 충분히 짧다.
+ * 커밋 전의 A를 보지 못하고 중복 예약이 생긴다. 지연(1.5초)은 watchdog(0.5초)보다 충분히 길고 rental.lock-wait(3초)보다 충분히 짧다.
  * <p>
  * 설정을 바꾸므로 스프링 컨텍스트가 따로 뜬다.
  */

@@ -18,7 +18,7 @@ REQ-016(생성·상세) → 013/014 → 012. 취소(015)는 변경 파일이 60�
 - **락은 `RentalLockStrategy.executeWithItemLock(itemId, Supplier)`**, 기본 구현 `RedissonRentalLockStrategy`. 겹침 검사·INSERT·이력은 별도 빈 `RentalReservationTxService`(READ_COMMITTED)에 둬 커밋 후 락이 풀린다. 사전 검증(기간·물품·동네·가능 기간)은 락 밖에서 해 락 점유 시간을 줄인다.
 - **점유 기간 조회를 `RentalOccupancyReader` 한 곳에 모았다.** 겹침 검사와 캘린더가 같이 쓰고, REQ-038 결제 대기 연장 기간도 여기에 합친다(주석 표시). 겹침 검사도 같은 목록 조회를 쓴다(존재 여부만 보는 별도 쿼리를 만들면 두 경로의 조건이 갈라질 수 있음).
 - **일수 계산은 `Rental.countDays`를 공개해 재사용**(양 끝 포함). 기간 형식·오늘 이후·1~30일 위반은 모두 `RENTAL_INVALID_PERIOD` 400.
-- **설정 키는 `app.policy.rental.lock-wait`**(policies.md `rental.lock.wait`). `wait`는 `Object.wait()`과 겹쳐 record 컴포넌트 이름으로 쓸 수 없어 중첩 record 대신 펼쳤다.
+- **락 대기 키를 `rental.lock-wait`로 했다**(policies.md도 `rental.lock.wait`에서 바꿈, 수치 그대로). `wait`는 `Object.wait()`과 겹쳐 record 컴포넌트 이름으로 쓸 수 없어 중첩 record(`lock.wait`) 대신 펼쳤고, 키의 기준인 policies.md를 코드와 맞췄다.
 
 ## 응답
 - **예약 생성(201)도 대여 상세 응답을 돌려준다.** 1순위는 예약 후 바로 대여 상세로 이동한다(frontend/CLAUDE.md).
@@ -28,7 +28,7 @@ REQ-016(생성·상세) → 013/014 → 012. 취소(015)는 변경 파일이 60�
 
 ## 테스트
 - **결제 플래그 분기는 Mockito 단위 테스트**(`RentalReservationTxServiceTest`). 플래그만 바꾸려고 스프링 컨텍스트를 하나 더 띄우지 않는다.
-- **락이 커밋 전에 풀리지 않는지(`RentalLockReleaseTest`)**: 이 클래스 전용 설정으로 watchdog을 0.5초로 줄이고, INSERT 뒤 커밋 전에 1.5초 잠드는 하위 클래스를 `@Primary`로 끼운다. A 예약 중 B가 같은 기간을 예약하면 B는 `RENTAL_PERIOD_CONFLICT`여야 한다(`RENTAL_LOCK_TIMEOUT`을 허용하면 잘못된 구현도 통과). 지연은 watchdog보다 충분히 길고 lock.wait(3초)보다 충분히 짧게 잡았다. 잠드는 곳이 트랜잭션 안인지 테스트에서 확인한다.
+- **락이 커밋 전에 풀리지 않는지(`RentalLockReleaseTest`)**: 이 클래스 전용 설정으로 watchdog을 0.5초로 줄이고, INSERT 뒤 커밋 전에 1.5초 잠드는 하위 클래스를 `@Primary`로 끼운다. A 예약 중 B가 같은 기간을 예약하면 B는 `RENTAL_PERIOD_CONFLICT`여야 한다(`RENTAL_LOCK_TIMEOUT`을 허용하면 잘못된 구현도 통과). 지연은 watchdog보다 충분히 길고 rental.lock-wait(3초)보다 충분히 짧게 잡았다. 잠드는 곳이 트랜잭션 안인지 테스트에서 확인한다.
 - 이 테스트가 잘못된 구현을 잡는지 확인했다: 구현에 임대 시간 0.5초를 넣으면 실패한다(확인 후 원복).
 - **2개 인스턴스 동시성 검증은 락 실험 브랜치로 미룬다.** 이번에는 한 JVM의 100 스레드만.
 - **`SecurityConfigSwaggerTest`의 `@WebMvcTest`에 빈 컨트롤러를 지정했다.** 지정하지 않으면 모든 컨트롤러를 올리는데, 처음 생긴 실제 컨트롤러(Rental)의 서비스 빈이 슬라이스에 없어 컨텍스트가 뜨지 않았다. 경로 공개 여부만 보는 테스트라 컨트롤러가 필요 없다.
