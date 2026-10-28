@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.*;
 
-import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -13,7 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import com.team7.rental.global.config.TimeConfig;
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.global.policy.PolicyProperties;
@@ -40,7 +38,6 @@ class RentalReservationTxServiceTest {
 	private final RentalOccupancyReader occupancyReader = mock(RentalOccupancyReader.class);
 	private final PolicyProperties policyProperties = new PolicyProperties(null, null, null, null,
 		new PolicyProperties.Payment(EXPIRE_MINUTES));
-	private final Clock clock = Clock.fixed(NOW.atZone(TimeConfig.ZONE_ID).toInstant(), TimeConfig.ZONE_ID);
 
 	@BeforeEach
 	void setUp() {
@@ -52,7 +49,7 @@ class RentalReservationTxServiceTest {
 	@DisplayName("결제를 켜고 결제 금액이 있으면 PENDING_PAYMENT이고 만료 시각은 now + payment.expire-minutes다")
 	void pendingPaymentWhenPaymentEnabled() {
 		// when
-		Rental rental = service(true).create(RENTER_ID, PAID_ITEM, START, END);
+		Rental rental = service(true).create(RENTER_ID, PAID_ITEM, START, END, NOW);
 
 		// then
 		assertThat(rental.getStatus()).isEqualTo(RentalStatus.PENDING_PAYMENT);
@@ -63,7 +60,7 @@ class RentalReservationTxServiceTest {
 	@DisplayName("결제를 켜도 결제 금액이 0원(무료 대여)이면 바로 RESERVED다")
 	void reservedWhenFreeEvenIfPaymentEnabled() {
 		// when
-		Rental rental = service(true).create(RENTER_ID, FREE_ITEM, START, END);
+		Rental rental = service(true).create(RENTER_ID, FREE_ITEM, START, END, NOW);
 
 		// then
 		assertThat(rental.getStatus()).isEqualTo(RentalStatus.RESERVED);
@@ -74,7 +71,7 @@ class RentalReservationTxServiceTest {
 	@DisplayName("결제를 끄면(1순위 단계) 결제 금액이 있어도 바로 RESERVED다")
 	void reservedWhenPaymentDisabled() {
 		// when
-		Rental rental = service(false).create(RENTER_ID, PAID_ITEM, START, END);
+		Rental rental = service(false).create(RENTER_ID, PAID_ITEM, START, END, NOW);
 
 		// then
 		assertThat(rental.getStatus()).isEqualTo(RentalStatus.RESERVED);
@@ -85,7 +82,7 @@ class RentalReservationTxServiceTest {
 	@DisplayName("생성 이력을 from=null, to=생성 상태, changedBy=대여자로 같은 호출 안에서 저장한다")
 	void savesCreationHistory() {
 		// when
-		service(false).create(RENTER_ID, PAID_ITEM, START, END);
+		service(false).create(RENTER_ID, PAID_ITEM, START, END, NOW);
 
 		// then
 		ArgumentCaptor<RentalStatusHistory> captor = ArgumentCaptor.forClass(RentalStatusHistory.class);
@@ -104,7 +101,7 @@ class RentalReservationTxServiceTest {
 		given(occupancyReader.isOccupied(PAID_ITEM.itemId(), START, END, NOW)).willReturn(true);
 
 		// when, then
-		assertThatThrownBy(() -> service(false).create(RENTER_ID, PAID_ITEM, START, END))
+		assertThatThrownBy(() -> service(false).create(RENTER_ID, PAID_ITEM, START, END, NOW))
 			.isInstanceOf(BusinessException.class)
 			.extracting(e -> ((BusinessException)e).getErrorCode())
 			.isEqualTo(ErrorCode.RENTAL_PERIOD_CONFLICT);
@@ -114,6 +111,6 @@ class RentalReservationTxServiceTest {
 
 	private RentalReservationTxService service(boolean paymentEnabled) {
 		return new RentalReservationTxService(rentalRepository, historyRepository, occupancyReader, policyProperties,
-			clock, paymentEnabled);
+			paymentEnabled);
 	}
 }

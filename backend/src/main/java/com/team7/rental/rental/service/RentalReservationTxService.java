@@ -1,6 +1,5 @@
 package com.team7.rental.rental.service;
 
-import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -29,30 +28,29 @@ public class RentalReservationTxService {
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
 	private final RentalOccupancyReader rentalOccupancyReader;
 	private final PolicyProperties policyProperties;
-	private final Clock clock;
 	private final boolean paymentEnabled;
 
 	public RentalReservationTxService(RentalRepository rentalRepository,
 		RentalStatusHistoryRepository rentalStatusHistoryRepository, RentalOccupancyReader rentalOccupancyReader,
-		PolicyProperties policyProperties, Clock clock,
+		PolicyProperties policyProperties,
 		@Value("${app.feature.payment-enabled}")
 		boolean paymentEnabled) {
 		this.rentalRepository = rentalRepository;
 		this.rentalStatusHistoryRepository = rentalStatusHistoryRepository;
 		this.rentalOccupancyReader = rentalOccupancyReader;
 		this.policyProperties = policyProperties;
-		this.clock = clock;
 		this.paymentEnabled = paymentEnabled;
 	}
 
 	/**
 	 * 입력 검증(기간·물품·동네·가능 기간)은 호출하는 쪽이 락 밖에서 끝낸다.
 	 *
+	 * @param now 호출하는 쪽이 검증에 쓴 현재 시각. 결제 대기 만료·이력 시각에 같이 쓴다
 	 * @throws BusinessException RENTAL_PERIOD_CONFLICT: 점유 중인 기간과 겹칠 때
 	 */
 	@Transactional(isolation = Isolation.READ_COMMITTED)
-	public Rental create(Long renterId, ItemRentalTarget item, LocalDate startDate, LocalDate endDate) {
-		LocalDateTime now = LocalDateTime.now(clock);
+	public Rental create(Long renterId, ItemRentalTarget item, LocalDate startDate, LocalDate endDate,
+		LocalDateTime now) {
 		if (rentalOccupancyReader.isOccupied(item.itemId(), startDate, endDate, now)) {
 			throw new BusinessException(ErrorCode.RENTAL_PERIOD_CONFLICT);
 		}

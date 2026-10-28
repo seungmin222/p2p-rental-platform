@@ -35,7 +35,7 @@ public class RentalController {
 	private final RentalService rentalService;
 	private final RentalQueryService rentalQueryService;
 
-	@Operation(summary = "대여 예약 요청 (REQ-013, REQ-014)", description = "1순위 단계(결제 비활성)와 무료 대여는 바로 RESERVED, 결제를 켜면 PENDING_PAYMENT(15분 선점)로 생성한다. "
+	@Operation(summary = "대여 예약 요청 (REQ-013, REQ-014)", description = "1순위 단계(결제 비활성)와 무료 대여는 바로 RESERVED, 결제를 켜면 PENDING_PAYMENT로 생성해 결제 대기 시간(policies.md payment.expire-minutes) 동안 기간을 선점한다. "
 		+ "응답은 대여 상세와 같다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, RENTAL_INVALID_PERIOD, RENTAL_OWN_ITEM, RENTAL_OUT_OF_AVAILABLE_PERIOD,
@@ -51,7 +51,7 @@ public class RentalController {
 
 	@Operation(summary = "대여 상세 조회 (REQ-016)", description = "대여자·제공자만 조회할 수 있다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
-	@ApiErrorCodes({AUTH_UNAUTHORIZED, RENTAL_NOT_PARTICIPANT, RENTAL_NOT_FOUND})
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_PARTICIPANT, RENTAL_NOT_FOUND})
 	@GetMapping("/{rentalId}")
 	public ApiResponse<RentalDetailResponse> getRental(@LoginMember
 	Long memberId, @PathVariable

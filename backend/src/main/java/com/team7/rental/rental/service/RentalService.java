@@ -2,6 +2,7 @@ package com.team7.rental.rental.service;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
 
@@ -38,9 +39,12 @@ public class RentalService {
 	 * 락 밖 검증은 락 점유 시간을 줄이려는 것이고, 최종 판정(겹침)은 락 안 트랜잭션에서 한다.
 	 */
 	public RentalDetailResponse create(Long renterId, RentalCreateRequest request) {
+		// 현재 시각은 여기서 한 번만 읽는다. 락 대기(최대 rental.lock-wait)만큼 과거가 될 수 있지만 결제 만료 시각이 그만큼 당겨질 뿐이라
+		// payment.expire-minutes 단위의 만료에는 영향이 없다
+		LocalDateTime now = LocalDateTime.now(clock);
 		LocalDate startDate = request.startDate();
 		LocalDate endDate = request.endDate();
-		validatePeriod(startDate, endDate);
+		validatePeriod(startDate, endDate, now.toLocalDate());
 		ItemRentalTarget item = itemQueryService.getRentalTarget(request.itemId(), renterId);
 		if (item.isOwnedBy(renterId)) {
 			throw new BusinessException(ErrorCode.RENTAL_OWN_ITEM);
@@ -51,13 +55,13 @@ public class RentalService {
 		validateWithinAvailablePeriod(item.itemId(), startDate, endDate);
 
 		Rental rental = rentalLockStrategy.executeWithItemLock(item.itemId(),
-			() -> rentalReservationTxService.create(renterId, item, startDate, endDate));
+			() -> rentalReservationTxService.create(renterId, item, startDate, endDate, now));
 		return rentalQueryService.getRental(rental.getId(), renterId);
 	}
 
 	// 오늘 이후 시작, 시작 ≤ 종료, 일수 rental.min-days ~ max-days
-	private void validatePeriod(LocalDate startDate, LocalDate endDate) {
-		if (startDate.isBefore(LocalDate.now(clock)) || endDate.isBefore(startDate)) {
+	private void validatePeriod(LocalDate startDate, LocalDate endDate, LocalDate today) {
+		if (startDate.isBefore(today) || endDate.isBefore(startDate)) {
 			throw new BusinessException(ErrorCode.RENTAL_INVALID_PERIOD);
 		}
 		int days = Rental.countDays(startDate, endDate);

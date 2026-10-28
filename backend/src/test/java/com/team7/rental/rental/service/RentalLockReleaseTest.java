@@ -2,7 +2,6 @@ package com.team7.rental.rental.service;
 
 import static org.assertj.core.api.Assertions.*;
 
-import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
@@ -122,11 +121,11 @@ class RentalLockReleaseTest extends IntegrationTestSupport {
 		@Primary
 		SlowRentalReservationTxService slowRentalReservationTxService(RentalRepository rentalRepository,
 			RentalStatusHistoryRepository rentalStatusHistoryRepository, RentalOccupancyReader rentalOccupancyReader,
-			PolicyProperties policyProperties, Clock clock,
+			PolicyProperties policyProperties,
 			@Value("${app.feature.payment-enabled}")
 			boolean paymentEnabled) {
 			return new SlowRentalReservationTxService(rentalRepository, rentalStatusHistoryRepository,
-				rentalOccupancyReader, policyProperties, clock, paymentEnabled);
+				rentalOccupancyReader, policyProperties, paymentEnabled);
 		}
 	}
 
@@ -138,16 +137,17 @@ class RentalLockReleaseTest extends IntegrationTestSupport {
 
 		SlowRentalReservationTxService(RentalRepository rentalRepository,
 			RentalStatusHistoryRepository rentalStatusHistoryRepository, RentalOccupancyReader rentalOccupancyReader,
-			PolicyProperties policyProperties, Clock clock, boolean paymentEnabled) {
-			super(rentalRepository, rentalStatusHistoryRepository, rentalOccupancyReader, policyProperties, clock,
+			PolicyProperties policyProperties, boolean paymentEnabled) {
+			super(rentalRepository, rentalStatusHistoryRepository, rentalOccupancyReader, policyProperties,
 				paymentEnabled);
 		}
 
 		// 상속된 @Transactional에 기대지 않고 다시 선언한다
 		@Override
 		@Transactional(isolation = Isolation.READ_COMMITTED)
-		public Rental create(Long renterId, ItemRentalTarget item, LocalDate startDate, LocalDate endDate) {
-			Rental rental = super.create(renterId, item, startDate, endDate);
+		public Rental create(Long renterId, ItemRentalTarget item, LocalDate startDate, LocalDate endDate,
+			LocalDateTime now) {
+			Rental rental = super.create(renterId, item, startDate, endDate, now);
 			sleptInTransaction.set(TransactionSynchronizationManager.isActualTransactionActive());
 			sleeping.countDown();
 			try {

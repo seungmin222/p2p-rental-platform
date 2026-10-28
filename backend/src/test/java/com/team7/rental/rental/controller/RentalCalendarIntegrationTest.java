@@ -130,6 +130,15 @@ class RentalCalendarIntegrationTest extends IntegrationTestSupport {
 		expectNotFound(item.getId() + 999, null);
 	}
 
+	@Test
+	@DisplayName("비회원 허용 경로여도 토큰이 무효하면 401 AUTH_UNAUTHORIZED다")
+	void invalidToken() throws Exception {
+		mockMvc.perform(get("/api/items/{itemId}/calendar", item.getId())
+			.header(HttpHeaders.AUTHORIZATION, "Bearer invalid.token"))
+			.andExpect(status().isUnauthorized())
+			.andExpect(jsonPath("$.error.code").value("AUTH_UNAUTHORIZED"));
+	}
+
 	private void expectNotFound(Long itemId, String authorization) throws Exception {
 		var request = get("/api/items/{itemId}/calendar", itemId);
 		if (authorization != null) {

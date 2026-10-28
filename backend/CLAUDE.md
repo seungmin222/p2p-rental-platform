@@ -112,6 +112,7 @@ rental/
 - 컨트롤러: `@Tag(name = "Rental", description = "예약·대여·반납")` — 태그명은 도메인 문서 이름과 맞춘다(Member, Item, Rental, Payment, Chat, Notification, Review, Admin).
 - 메서드: `@Operation(summary = "대여 예약 요청 (REQ-013)")` — **summary 끝에 REQ ID**를 붙여 명세와 추적되게 한다. 인증이 필요한 API는 `@SecurityRequirement(name = "bearerAuth")`.
 - 에러: 이 API가 낼 수 있는 에러 코드를 `@ApiErrorCodes({RENTAL_PERIOD_CONFLICT, RENTAL_OWN_ITEM, ...})`(공통 커스텀 어노테이션 + `OperationCustomizer`)로 선언 → Swagger 응답 예시에 code·status·message가 표시된다. 도메인 문서의 "예외" 항목과 일치해야 한다.
+  - 경로·쿼리 파라미터에 타입 변환이 있는 API(`@PathVariable Long id`, `YearMonth month` 등)는 형식 오류 400이 나므로 `COMMON_INVALID_INPUT`도 선언한다.
 - DTO(record) 필드: `@Schema(description = "대여 시작일", example = "2026-10-03")`. Enum 필드는 허용 값이 자동 노출되므로 설명만. 검증 어노테이션(`@NotNull`, `@Size`, `@Min/@Max`)은 Swagger에도 반영되니 빠뜨리지 않는다.
 - 응답 래퍼: `ApiResponse<RentalResponse>`처럼 제네릭 타입을 그대로 반환해야 Swagger에 `data` 내부 구조가 나온다. `ApiResponse<?>`, `Object`, `Map` 반환 금지.
 - multipart: `@RequestPart` + `consumes = MULTIPART_FORM_DATA_VALUE`를 명시해야 Swagger에서 파일 업로드 테스트가 된다.
