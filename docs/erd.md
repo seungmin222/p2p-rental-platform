@@ -44,25 +44,26 @@ erDiagram
 | password | VARCHAR(100) | BCrypt, 소셜 전용이면 NULL |
 | nickname | VARCHAR(10) | UK |
 | profile_image_url | VARCHAR(500) | |
-| provider | VARCHAR | `LOCAL`/`KAKAO` |
-| trust_score | DECIMAL(4,1) | 기본 50.0 (0.5 단위 가산이 있어 정수 불가) [3] |
-| role | VARCHAR | `USER`/`ADMIN` |
-| status | VARCHAR | `ACTIVE`/`SUSPENDED`/`WITHDRAWN` |
+| provider | VARCHAR(30) | `LOCAL`/`KAKAO` |
+| trust_score | DECIMAL(4,1) | 기본 50.0 (0.5 단위 가산이 있어 정수 불가). 갱신은 [3] |
+| role | VARCHAR(30) | `USER`/`ADMIN` |
+| status | VARCHAR(30) | `ACTIVE`/`SUSPENDED`/`WITHDRAWN` |
 
 **regions** — 행정동 마스터(초기 데이터 적재)
-| id PK | code(행정동 코드, UK) | name | sido | sigungu | center_lat DOUBLE | center_lng DOUBLE |
+| id PK | code VARCHAR(10) UK(행정동 코드 10자리) | name VARCHAR(30) | sido VARCHAR(20) | sigungu VARCHAR(30) | center_lat DOUBLE | center_lng DOUBLE |
 
 **member_regions**
-| id PK | member_id FK | region_id FK | is_primary BOOLEAN | verified_at DATETIME NULL | region_range VARCHAR(`NEAR/NORMAL/FAR`) |
-- UK(member_id, region_id). 회원당 최대 2행, is_primary=true는 1행.
-- 인증 유효 = `verified_at + 30일 > now`.
+| id PK | member_id FK | region_id FK | is_primary BOOLEAN | verified_at DATETIME NULL | region_range VARCHAR(30)(`NEAR/NORMAL/FAR`, 기본 NORMAL) |
+- UK(member_id, region_id). 회원당 최대 2행, is_primary=true는 1행(애플리케이션 검증).
+- 인증 유효 = `verified_at + region.verify-valid-days > now` (`policies.md`).
 
 **terms_agreements** [2] — member_id, terms_type, terms_version, agreed_at
 
 ## 물품 [1]
 
 **categories**
-| id PK | code UK | name | parent_id NULL(미사용) | sort_order | is_active |
+| id PK | code VARCHAR(30) UK | name VARCHAR(30) | parent_id NULL(미사용, FK→categories) | sort_order INT | is_active BOOLEAN(기본 true) |
+- 초기 데이터 `V3__insert_categories.sql`(`policies.md` §3).
 
 **items**
 | 컬럼 | 비고 |
@@ -72,21 +73,21 @@ erDiagram
 | region_id FK→regions | 등록 시 대표 동네 |
 | category_id FK | |
 | name VARCHAR(50), description TEXT(≤2000) | |
-| item_condition | `ItemCondition` (`condition`은 MySQL 예약어라 피함) |
+| item_condition VARCHAR(30) | `ItemCondition` (`condition`은 MySQL 예약어라 피함) |
 | price_per_day INT, deposit INT, item_price INT | item_price는 비공개 |
-| address VARCHAR, latitude DOUBLE, longitude DOUBLE | 거래 장소 |
-| status | `AVAILABLE/HIDDEN/DELETED` |
-| view_count, wish_count, chat_count INT | 비정규화 카운터 |
+| address VARCHAR(200), latitude DOUBLE, longitude DOUBLE | 거래 장소 |
+| status VARCHAR(30) | `AVAILABLE/HIDDEN/DELETED` |
+| view_count, wish_count, chat_count INT | 비정규화 카운터, 기본 0 |
 | bumped_at DATETIME | 등록 시 created_at과 동일하게 세팅 → 피드 정렬 키 |
 
 인덱스(초기안, 실험으로 개선 — 도전 과제 ④):
-- `(status, bumped_at DESC, id DESC)` 피드 커서
-- `(latitude, longitude)` 또는 Geohash 컬럼 + 인덱스 / MySQL SPATIAL(POINT SRID 4326)
-- `(owner_id, status)`, `(category_id, status)`
-- 키워드 검색: 초기 LIKE → 필요 시 FULLTEXT(ngram)
+- `idx_items_status_bumped_at_id (status, bumped_at DESC, id DESC)` 피드 커서 — 생성됨
+- `idx_items_owner_id_status (owner_id, status)`, `idx_items_category_id_status (category_id, status)` — 생성됨
+- `(latitude, longitude)` 또는 Geohash 컬럼 + 인덱스 / MySQL SPATIAL(POINT SRID 4326) — 피드 실험에서 결정, 아직 없음
+- 키워드 검색: 초기 LIKE → 필요 시 FULLTEXT(ngram) — 아직 없음
 
-**item_images** — id, item_id, url, thumbnail_url, sort_order
-**item_available_periods** — id, item_id, start_date, end_date (같은 물품 내 구간 겹침 금지 — 애플리케이션 검증)
+**item_images** — id, item_id, url VARCHAR(500), thumbnail_url VARCHAR(500), sort_order INT(0이 대표)
+**item_available_periods** — id, item_id, start_date, end_date (같은 물품 내 구간 겹침 금지 — 애플리케이션 검증). 인덱스 `idx_item_available_periods_item_id_start_date (item_id, start_date)`
 
 ## 대여 [1]
 
