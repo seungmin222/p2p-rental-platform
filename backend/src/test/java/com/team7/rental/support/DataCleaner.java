@@ -20,7 +20,7 @@ class DataCleaner {
 	 * 지우지 않는 테이블. Flyway 이력과, 버전 마이그레이션(V)으로 넣는 시드 테이블(카테고리·차감 정책 등)을
 	 * 해당 마이그레이션을 추가할 때 여기에 함께 등록한다.
 	 */
-	private static final Set<String> EXCLUDED_TABLES = Set.of("flyway_schema_history");
+	private static final Set<String> EXCLUDED_TABLES = Set.of("flyway_schema_history", "categories");
 
 	private final JdbcTemplate jdbcTemplate;
 	private final RedisConnectionFactory redisConnectionFactory;

@@ -1,5 +1,7 @@
 package com.team7.rental.global.policy;
 
+import java.math.BigDecimal;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -15,7 +17,11 @@ import jakarta.validation.constraints.Positive;
 @ConfigurationProperties("app.policy")
 public record PolicyProperties(
 	@Valid @NotNull
-	Image image) {
+	Image image,
+	@Valid @NotNull
+	Region region,
+	@Valid @NotNull
+	Trust trust) {
 
 	/**
 	 * @param originalMaxLongSide 원본 재인코딩 시 긴 변 최대 픽셀 (image.original-max-long-side)
@@ -29,5 +35,21 @@ public record PolicyProperties(
 		int thumbnailWidth,
 		@Positive
 		long maxPixels) {
+	}
+
+	/**
+	 * @param verifyValidDays 동네 인증 유효 일수 (region.verify-valid-days)
+	 */
+	public record Region(
+		@Positive
+		int verifyValidDays) {
+	}
+
+	/**
+	 * @param initialScore 가입 시 신뢰 점수 (trust.initial)
+	 */
+	public record Trust(
+		@NotNull
+		BigDecimal initialScore) {
 	}
 }

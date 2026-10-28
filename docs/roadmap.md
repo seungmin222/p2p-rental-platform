@@ -34,7 +34,8 @@
 1. 공통 기반: 프로젝트 스캐폴딩, 공통 응답·예외, Security+JWT, Flyway, docker-compose.local, 파일 저장소(`FileStorage`: 로컬 디스크/S3), CI → **B·A 공동, 가장 먼저**
 2. 회원·인증(001–003) → 동네(004) → 프로필(005)
 3. 카테고리 초기 데이터 → 물품 등록(006) → 상세(011) → 수정·삭제(007·008)
-   - **`feat/item-crud` 머지 직후, `feat/item-feed-search` 착수 전에 `feat/rental-entity`(A)**: `rentals`·`rental_status_histories` 엔티티·마이그레이션·`ACTIVE_FOR_PERIOD` 상수만 먼저 머지. `rentals`가 `items`·`members`를 FK로 참조하므로 그 뒤에, B의 피드 "대여 중" 배지(009), 기간 검색(010), 내 물품 관리(020)가 의존하므로 그 앞에 둔다
+   - **`feat/member-item-entity`(A가 B 대행)**: members·regions·member_regions·categories(시드 포함)·items·item_images·item_available_periods 엔티티·마이그레이션만 먼저 머지. 대여 작업(012–019)이 이 테이블에 의존하므로 B의 API 브랜치를 기다리지 않게 분리했다. API·서비스는 B 담당 그대로
+   - **`feat/member-item-entity` 머지 직후, `feat/item-feed-search` 착수 전에 `feat/rental-entity`(A)**: `rentals`·`rental_status_histories` 엔티티·마이그레이션·`ACTIVE_FOR_PERIOD` 상수만 먼저 머지. `rentals`가 `items`·`members`를 FK로 참조하므로 그 뒤에, B의 피드 "대여 중" 배지(009), 기간 검색(010), 내 물품 관리(020)가 의존하므로 그 앞에 둔다
 4. 피드(009)·검색(010) — 병행 가능
 5. 캘린더(012) → 예약+중복 방지(013·014) → 상태 머신(016) → 취소(015)
 6. 인계(017) → 반납·상태 확인(018)

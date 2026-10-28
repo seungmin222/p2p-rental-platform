@@ -20,6 +20,7 @@ import org.testcontainers.utility.DockerImageName;
  *   <li>컨테이너: JVM당 한 번만 띄워 모든 테스트 클래스가 같이 쓴다(싱글턴 컨테이너). 종료는 Testcontainers(Ryuk)가 한다.</li>
  *   <li>시각 고정: {@link #testClock}{@code .fixAt(...)}. 각 테스트가 끝나면 실제 시각으로 돌아온다.</li>
  *   <li>데이터 정리: 각 테스트가 끝나면 {@link DataCleaner}가 MySQL 테이블과 Redis를 비운다.</li>
+ *   <li>테스트 데이터: {@link #fixture}로 회원·인증된 대표 동네·물품+가능 기간을 만든다.</li>
  * </ul>
  *
  * 하위 클래스에서 {@code @MockitoBean}·{@code @TestPropertySource}·{@code @Import}를 추가하면 스프링 컨텍스트가 따로 만들어져
@@ -28,7 +29,7 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Import({TestClockConfig.class, DataCleaner.class})
+@Import({TestClockConfig.class, DataCleaner.class, MemberItemFixture.class})
 public abstract class IntegrationTestSupport {
 
 	// 이미지 버전은 infra/docker-compose.local.yml과 같게
@@ -56,6 +57,9 @@ public abstract class IntegrationTestSupport {
 
 	@Autowired
 	protected TestClock testClock;
+
+	@Autowired
+	protected MemberItemFixture fixture;
 
 	@Autowired
 	private DataCleaner dataCleaner;
