@@ -26,6 +26,13 @@
 - **하단 탭 64px·아이콘 22px·라벨 11px, 선택 탭은 채운 아이콘.** 시안엔 홈의 채운 모양만 있어 채팅·알림은 같은 외곽을 채우고, 검색은 채울 수 없어 선을 굵게(2.2), 나의 대여(시안의 목록 문서 아이콘)는 사각형을 채우고 줄을 흰색으로.
 - **(+) 버튼은 시안대로 알약형 "+ 물품 등록"(52px, 탭 위 16px).** 글자가 보이므로 aria-label을 두지 않음(사용자 결정).
 
+## 다음 브랜치에서 (리뷰에서 나왔으나 이번에 고치지 않음)
+- **`date.js` 날짜 범위 검증(2026-02-30 등)과 `countDaysInclusive` 음수 처리** → `chore/fe-shared-ui-input`의 Calendar와 함께. 지금은 형식(YYYY-MM-DD)만 검사하고, 종료일이 시작일보다 앞서면 0 이하를 반환.
+- **이미지 순서 변경 방식(드래그 vs 앞/뒤 버튼)** → `chore/fe-shared-ui-input` 시작 전에 사용자에게 확인.
+- **`.gitattributes`(줄바꿈 LF 고정)** → 이 PR 머지 후 별도 chore 브랜치. 그 전까지 `npm run format`은 바뀐 파일에만 돌린다(Windows `core.autocrlf=true`에서 전체 실행 시 줄바꿈만 바뀜).
+- **커밋 6568206 분할은 하지 않음.** squash 머지라 develop에는 커밋 하나로 들어가므로.
+- **`RENTAL_DAY_STATUS`·`buildMonthGrid`·`addMonths`·`formatMonth`는 이 브랜치에 둔다.** Calendar 컴포넌트가 아니라 "날짜 유틸·상태 상수" 범위로 봄.
+
 ## 화면 브랜치에서 반영 (이 브랜치에서 구현하지 않음)
 - 대여 상세 스텝바 단계 이름(시안 RentalDetail.html).
 - 가격의 "/일"을 흐린 글씨(13/500, ink-muted)로 분리 표시 — `formatDailyPrice`는 문자열 하나를 반환하므로 화면에서 금액과 단위를 나눠 그린다.

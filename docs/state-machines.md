@@ -14,6 +14,8 @@
 | `COMPLETED` | 거래 완료 | 보증금 처리 끝 |
 | `CANCELED` | 취소 | |
 
+화면 배지에는 RETURNED를 '상태 확인 대기'로 표시한다(`frontend/CLAUDE.md` RENTAL_STATUS).
+
 ```mermaid
 stateDiagram-v2
     direction LR
