@@ -198,87 +198,89 @@ export default function ImageUploader({
         onChange={handleFiles}
       />
 
-      <ul ref={listRef} className="grid grid-cols-3 gap-x-2 gap-y-1 sm:grid-cols-4">
-        <li>
-          <button
-            ref={addButtonRef}
-            type="button"
-            disabled={isFull}
-            onClick={() => inputRef.current?.click()}
-            className="flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-[10px] border border-line bg-white text-ink-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:bg-surface disabled:text-ink-disabled"
-          >
-            <CameraIcon />
-            <span className="text-xs">사진 추가</span>
-            <span className="text-xs">
-              {value.length}/{maxCount}
-            </span>
-          </button>
-        </li>
-        {value.map((image, index) => {
-          const n = index + 1;
-          const isCover = index === 0;
-          return (
-            <li key={image.id} data-image-id={image.id}>
-              <div className="relative aspect-square overflow-hidden rounded-[10px] bg-placeholder">
-                <Thumbnail image={image} alt={`${n}번째 사진`} />
-                {isCover ? (
-                  <Badge tone="ink" className="absolute bottom-1.5 left-1.5">
-                    대표
-                  </Badge>
-                ) : (
+      {/* 칸 폭은 화면이 아니라 놓인 자리(바텀시트 등) 기준. 아래 줄 버튼 3개(44px × 3)가 들어가는 폭을 지킨다 */}
+      <div className="@container">
+        <ul
+          ref={listRef}
+          className="grid grid-cols-2 gap-x-2 gap-y-1 @md:grid-cols-3 @2xl:grid-cols-4"
+        >
+          <li>
+            <button
+              ref={addButtonRef}
+              type="button"
+              disabled={isFull}
+              onClick={() => inputRef.current?.click()}
+              className="flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-[10px] border border-line bg-white text-ink-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:bg-surface disabled:text-ink-disabled"
+            >
+              <CameraIcon />
+              <span className="text-xs">사진 추가</span>
+              <span className="text-xs">
+                {value.length}/{maxCount}
+              </span>
+            </button>
+          </li>
+          {value.map((image, index) => {
+            const n = index + 1;
+            const isCover = index === 0;
+            return (
+              <li key={image.id} data-image-id={image.id}>
+                <div className="relative aspect-square overflow-hidden rounded-[10px] bg-placeholder">
+                  <Thumbnail image={image} alt={`${n}번째 사진`} />
+                  {isCover && (
+                    <Badge tone="ink" className="absolute bottom-1.5 left-1.5">
+                      대표
+                    </Badge>
+                  )}
                   <button
                     type="button"
-                    data-action="cover"
-                    aria-label={`${n}번째 사진 대표로`}
-                    onClick={() => handleCover(image.id)}
-                    className="absolute inset-x-0 bottom-0 flex h-11 items-end p-1.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+                    data-action="remove"
+                    aria-label={`${n}번째 사진 삭제`}
+                    onClick={() => handleRemove(image.id)}
+                    className="absolute top-0 right-0 flex size-11 items-center justify-center focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
                   >
-                    <span
-                      aria-hidden="true"
-                      className="rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-ink"
-                    >
-                      대표로
+                    <span className="flex size-6 items-center justify-center rounded-full bg-ink/60 text-white">
+                      <CloseIcon className="size-3.5" />
                     </span>
                   </button>
-                )}
-                <button
-                  type="button"
-                  data-action="remove"
-                  aria-label={`${n}번째 사진 삭제`}
-                  onClick={() => handleRemove(image.id)}
-                  className="absolute top-0 right-0 flex size-11 items-center justify-center focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
-                >
-                  <span className="flex size-6 items-center justify-center rounded-full bg-ink/60 text-white">
-                    <CloseIcon className="size-3.5" />
-                  </span>
-                </button>
-              </div>
-              <div className="flex justify-between">
-                <button
-                  type="button"
-                  data-action="prev"
-                  aria-label={`${n}번째 사진 앞으로`}
-                  disabled={isCover}
-                  onClick={() => handleMove(image.id, -1)}
-                  className={ARROW_BUTTON}
-                >
-                  <ChevronIcon direction="prev" />
-                </button>
-                <button
-                  type="button"
-                  data-action="next"
-                  aria-label={`${n}번째 사진 뒤로`}
-                  disabled={index === value.length - 1}
-                  onClick={() => handleMove(image.id, 1)}
-                  className={ARROW_BUTTON}
-                >
-                  <ChevronIcon direction="next" />
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                </div>
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    data-action="prev"
+                    aria-label={`${n}번째 사진 앞으로`}
+                    disabled={isCover}
+                    onClick={() => handleMove(image.id, -1)}
+                    className={ARROW_BUTTON}
+                  >
+                    <ChevronIcon direction="prev" />
+                  </button>
+                  {!isCover && (
+                    <button
+                      type="button"
+                      data-action="cover"
+                      aria-label={`${n}번째 사진 대표로`}
+                      onClick={() => handleCover(image.id)}
+                      className="flex h-11 items-center rounded-full px-2 text-xs font-semibold text-ink-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      대표로
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    data-action="next"
+                    aria-label={`${n}번째 사진 뒤로`}
+                    disabled={index === value.length - 1}
+                    onClick={() => handleMove(image.id, 1)}
+                    className={ARROW_BUTTON}
+                  >
+                    <ChevronIcon direction="next" />
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       <div aria-live="polite" className="flex flex-col gap-0.5 text-xs text-danger">
         {messages.map((message) => (
