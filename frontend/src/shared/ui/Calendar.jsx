@@ -40,6 +40,8 @@ function positionSuffix(position, value) {
       return ', 시작일';
     case 'end':
       return ', 반납일';
+    case 'middle':
+      return ', 선택 기간';
     default:
       return '';
   }
@@ -89,12 +91,16 @@ const NAV_BUTTON =
  * 대여 기간 범위 선택 캘린더(REQ-012, 시안 Booking.html). API 호출은 하지 않는다.
  *
  * - `days`는 여러 달을 합친 배열이어도 된다. 예약이 달을 넘을 수 있어(10/30~11/2) 범위 검사는 받은
- *   days 전체로 한다. 호출부(feat/fe-rental-pages)가 지나간 달의 응답을 캐시에서 합쳐 넘긴다.
- *   days에 없는 날짜는 UNAVAILABLE로 본다.
+ *   days 전체로 한다. 호출부(feat/fe-rental-pages)가 지나간 달의 응답을 캐시에서 합쳐 useMemo로 넘긴다
+ *   (렌더마다 새 배열이면 내부 Map을 매번 다시 만든다). days에 없는 날짜는 UNAVAILABLE로 본다.
+ * - `isLoading`은 처음 불러올 때(TanStack Query `isPending`)만 true로 넘긴다. 백그라운드 refetch
+ *   (`isFetching`)까지 넘기면 고르는 도중 날짜 칸이 스켈레톤으로 깜빡인다.
  * - `minDays`·`maxDays`는 정책 값을 호출부가 넘긴다(예약: RENTAL_PERIOD). 연장(REQ-038, 회당 7일)도
  *   같은 컴포넌트에 다른 값을 넘겨 쓸 수 있게 기본값을 두지 않는다. 안내 문구는 "대여" 기준이다.
  * - 월을 이동해도 value는 유지된다. 거부 사유는 아래 줄에 표시하고, 범위 거부(사이 예약 불가·최대 초과)는
  *   누른 날을 새 시작일로 onChange한다. 누른 날 자체가 예약 불가이거나 최소 미만이면 value를 바꾸지 않는다.
+ * - 거부 문구는 그 거부가 만든 value가 지금 value와 같을 때만 보인다. 부모가 value를 바꾸거나(초기화 등)
+ *   월을 옮기면 사라진다.
  *
  * @param {object} props
  * @param {string} props.month 보이는 달 "YYYY-MM"
@@ -107,7 +113,7 @@ const NAV_BUTTON =
  * @param {Record<string, {label: string}>} props.statusLabels 상태 코드 → 라벨(features의 RENTAL_DAY_STATUS)
  * @param {string} [props.minMonth] 이전 달 버튼 비활성 기준 "YYYY-MM"
  * @param {string} [props.maxMonth] 다음 달 버튼 비활성 기준 "YYYY-MM"
- * @param {boolean} [props.isLoading] 날짜 칸을 스켈레톤으로 바꾸고 선택을 막는다
+ * @param {boolean} [props.isLoading] 날짜 칸을 스켈레톤으로 바꾸고 선택을 막는다(첫 로딩만)
  * @param {import('react').ReactNode} [props.title] 헤더 왼쪽(예: "기간 선택" 제목)
  */
 export default function Calendar({
@@ -130,18 +136,32 @@ export default function Calendar({
 
   function handleSelect(date) {
     const result = selectDate(value, date, { statusByDate, minDays, maxDays });
-    setRejection(
-      result.reason ? { reason: result.reason, status: statusOf(statusByDate, date) } : null,
-    );
+    if (result.reason) {
+      // count는 같은 문구가 연달아 나와도 aria-live가 다시 읽도록 문구 요소를 새로 만드는 key
+      setRejection((prev) => ({
+        reason: result.reason,
+        status: statusOf(statusByDate, date),
+        value: result.value,
+        count: (prev?.count ?? 0) + 1,
+      }));
+    } else {
+      setRejection(null);
+    }
     if (result.value !== value) {
       onChange(result.value);
     }
   }
 
+  function handleMonthChange(offset) {
+    setRejection(null);
+    onMonthChange(addMonths(month, offset));
+  }
+
+  const activeRejection = rejection?.value === value ? rejection : null;
   let message;
   let messageClass = 'text-ink-muted';
-  if (rejection) {
-    message = rejectMessage(rejection, { minDays, maxDays });
+  if (activeRejection) {
+    message = rejectMessage(activeRejection, { minDays, maxDays });
     messageClass = 'text-danger';
   } else if (value?.endDate) {
     message = formatDateRange(value.startDate, value.endDate);
@@ -161,7 +181,7 @@ export default function Calendar({
             type="button"
             aria-label="이전 달"
             disabled={minMonth != null && month <= minMonth}
-            onClick={() => onMonthChange(addMonths(month, -1))}
+            onClick={() => handleMonthChange(-1)}
             className={NAV_BUTTON}
           >
             <ChevronIcon direction="prev" />
@@ -173,7 +193,7 @@ export default function Calendar({
             type="button"
             aria-label="다음 달"
             disabled={maxMonth != null && month >= maxMonth}
-            onClick={() => onMonthChange(addMonths(month, 1))}
+            onClick={() => handleMonthChange(1)}
             className={NAV_BUTTON}
           >
             <ChevronIcon direction="next" />
@@ -262,8 +282,9 @@ export default function Calendar({
         </li>
       </ul>
 
+      {/* 영역은 그대로 두고 안쪽 문구만 거부마다 새로 만든다(새로 생긴 live 영역은 읽히지 않을 수 있어서) */}
       <p aria-live="polite" className={`text-caption ${messageClass}`}>
-        {message}
+        <span key={activeRejection ? activeRejection.count : 'status'}>{message}</span>
       </p>
     </div>
   );
