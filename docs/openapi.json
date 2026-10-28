@@ -10,8 +10,702 @@
       "url": "/"
     }
   ],
-  "paths": {},
+  "tags": [
+    {
+      "description": "예약·대여·반납",
+      "name": "Rental"
+    }
+  ],
+  "paths": {
+    "/api/items/{itemId}/calendar": {
+      "get": {
+        "description": "비회원도 조회할 수 있다. 숨김 물품은 소유자만 조회할 수 있고 그 외에는 404다.",
+        "operationId": "getCalendar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "description": "조회할 달 (YYYY-MM). 생략하면 이번 달",
+            "example": "2026-10",
+            "in": "query",
+            "name": "month",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalCalendarResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          }
+        },
+        "summary": "대여 캘린더 조회 (REQ-012)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
+    "/api/rentals": {
+      "post": {
+        "description": "1순위 단계(결제 비활성)와 무료 대여는 바로 RESERVED, 결제를 켜면 PENDING_PAYMENT로 생성해 결제 대기 시간(policies.md payment.expire-minutes) 동안 기간을 선점한다. 응답은 대여 상세와 같다.",
+        "operationId": "createRental",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RentalCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_PERIOD": {
+                    "summary": "대여 기간이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_PERIOD",
+                        "details": [],
+                        "message": "대여 기간이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_OUT_OF_AVAILABLE_PERIOD": {
+                    "summary": "대여 가능 기간을 벗어났습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_OUT_OF_AVAILABLE_PERIOD",
+                        "details": [],
+                        "message": "대여 가능 기간을 벗어났습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_OWN_ITEM": {
+                    "summary": "본인 물품은 예약할 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_OWN_ITEM",
+                        "details": [],
+                        "message": "본인 물품은 예약할 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, RENTAL_INVALID_PERIOD, RENTAL_OUT_OF_AVAILABLE_PERIOD, RENTAL_OWN_ITEM"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "REGION_NOT_VERIFIED": {
+                    "summary": "대표 동네 인증이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "REGION_NOT_VERIFIED",
+                        "details": [],
+                        "message": "대표 동네 인증이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "REGION_NOT_VERIFIED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_LOCK_TIMEOUT": {
+                    "summary": "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_LOCK_TIMEOUT",
+                        "details": [],
+                        "message": "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_PERIOD_CONFLICT": {
+                    "summary": "이미 예약된 기간입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_PERIOD_CONFLICT",
+                        "details": [],
+                        "message": "이미 예약된 기간입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_LOCK_TIMEOUT, RENTAL_PERIOD_CONFLICT"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "대여 예약 요청 (REQ-013, REQ-014)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
+    "/api/rentals/{rentalId}": {
+      "get": {
+        "description": "대여자·제공자만 조회할 수 있다.",
+        "operationId": "getRental",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "대여 상세 조회 (REQ-016)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    }
+  },
   "components": {
+    "schemas": {
+      "ApiResponseRentalCalendarResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RentalCalendarResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseRentalDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RentalDetailResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CalendarDay": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "날짜",
+            "example": "2026-10-01"
+          },
+          "status": {
+            "type": "string",
+            "description": "예약 가능 여부",
+            "enum": [
+              "AVAILABLE",
+              "BOOKED",
+              "UNAVAILABLE"
+            ]
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorDetail"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "FieldErrorDetail": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "RentalCalendarResponse": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarDay"
+            }
+          },
+          "month": {
+            "type": "string",
+            "description": "조회한 달",
+            "example": "2026-10"
+          }
+        }
+      },
+      "RentalCounterpart": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "회원 ID",
+            "example": 2
+          },
+          "nickname": {
+            "type": "string",
+            "description": "닉네임",
+            "example": "텐트초보"
+          }
+        }
+      },
+      "RentalCreateRequest": {
+        "type": "object",
+        "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 종료일 (포함). 시작일과 같으면 1일",
+            "example": "2026-11-05"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 1
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 시작일 (포함)",
+            "example": "2026-11-03"
+          }
+        },
+        "required": [
+          "endDate",
+          "itemId",
+          "startDate"
+        ]
+      },
+      "RentalDetailResponse": {
+        "type": "object",
+        "properties": {
+          "cancelFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "취소 수수료",
+            "example": 0
+          },
+          "cancelReason": {
+            "type": "string",
+            "description": "취소 사유",
+            "enum": [
+              "SCHEDULE_CHANGE",
+              "ITEM_PROBLEM",
+              "COUNTERPART_REQUEST",
+              "OTHER"
+            ]
+          },
+          "cancelReasonText": {
+            "type": "string",
+            "description": "취소 사유 텍스트 (사유 OTHER)"
+          },
+          "cancelType": {
+            "type": "string",
+            "description": "취소 종류",
+            "enum": [
+              "RENTER",
+              "OWNER",
+              "MUTUAL",
+              "PAYMENT_EXPIRED",
+              "AMOUNT_MISMATCH",
+              "NO_HANDOVER"
+            ]
+          },
+          "canceledAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "취소 시각"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "거래 완료 시각"
+          },
+          "counterpart": {
+            "$ref": "#/components/schemas/RentalCounterpart",
+            "description": "상대 당사자 (대여자면 제공자, 제공자면 대여자)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "예약 시각"
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금 (예약 시점)",
+            "example": 50000
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 종료일 (포함)",
+            "example": "2026-11-05"
+          },
+          "handedOverAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "인계 확인 시각"
+          },
+          "item": {
+            "$ref": "#/components/schemas/RentalItem"
+          },
+          "myRole": {
+            "type": "string",
+            "description": "조회한 회원의 역할",
+            "enum": [
+              "RENTER",
+              "OWNER"
+            ]
+          },
+          "paymentExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "결제 만료 시각. 결제 대기(PENDING_PAYMENT)일 때만 값이 있다"
+          },
+          "pricePerDay": {
+            "type": "integer",
+            "format": "int32",
+            "description": "일 대여료 (예약 시점)",
+            "example": 10000
+          },
+          "rentalDays": {
+            "type": "integer",
+            "format": "int32",
+            "description": "대여 일수 (양 끝 포함)",
+            "example": 3
+          },
+          "rentalFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "대여료 \u003d 일 대여료 × 일수",
+            "example": 30000
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID",
+            "example": 1
+          },
+          "returnedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "반납 요청(또는 미반납 신고) 시각"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 시작일 (포함)",
+            "example": "2026-11-03"
+          },
+          "status": {
+            "type": "string",
+            "description": "대여 상태",
+            "enum": [
+              "PENDING_PAYMENT",
+              "RESERVED",
+              "RENTING",
+              "OVERDUE",
+              "RETURNED",
+              "COMPLETED",
+              "CANCELED"
+            ]
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "결제 금액 \u003d 대여료 + 보증금",
+            "example": 80000
+          }
+        }
+      },
+      "RentalItem": {
+        "type": "object",
+        "properties": {
+          "isDeleted": {
+            "type": "boolean",
+            "description": "삭제된 물품이면 true (화면에 \"삭제된 물품\" 표시)"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "물품 이름",
+            "example": "4인용 거실형 텐트"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "description": "대표 이미지 썸네일 URL. 이미지가 없으면 null"
+          }
+        }
+      }
+    },
     "securitySchemes": {
       "bearerAuth": {
         "bearerFormat": "JWT",

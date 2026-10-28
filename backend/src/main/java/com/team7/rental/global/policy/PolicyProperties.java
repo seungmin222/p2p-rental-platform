@@ -1,6 +1,7 @@
 package com.team7.rental.global.policy;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -21,7 +22,11 @@ public record PolicyProperties(
 	@Valid @NotNull
 	Region region,
 	@Valid @NotNull
-	Trust trust) {
+	Trust trust,
+	@Valid @NotNull
+	Rental rental,
+	@Valid @NotNull
+	Payment payment) {
 
 	/**
 	 * @param originalMaxLongSide 원본 재인코딩 시 긴 변 최대 픽셀 (image.original-max-long-side)
@@ -51,5 +56,27 @@ public record PolicyProperties(
 	public record Trust(
 		@NotNull
 		BigDecimal initialScore) {
+	}
+
+	/**
+	 * @param minDays 최초 예약 최소 일수 (rental.min-days)
+	 * @param maxDays 최초 예약 최대 일수 (rental.max-days)
+	 * @param lockWait 분산 락 대기 시간 (rental.lock-wait). 임대 시간은 두지 않는다(Redisson watchdog)
+	 */
+	public record Rental(
+		@Positive
+		int minDays,
+		@Positive
+		int maxDays,
+		@NotNull
+		Duration lockWait) {
+	}
+
+	/**
+	 * @param expireMinutes 결제 대기 만료 분 (payment.expire-minutes)
+	 */
+	public record Payment(
+		@Positive
+		int expireMinutes) {
 	}
 }

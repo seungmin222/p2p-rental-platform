@@ -184,6 +184,31 @@ class RentalTest {
 		assertThat(rental.isOccupyingPeriod(EXPIRES_AT.plusSeconds(1))).isFalse();
 	}
 
+	@Test
+	@DisplayName("대여 일수는 시작일·종료일을 모두 포함한다")
+	void countDays() {
+		assertThat(Rental.countDays(START, START)).isEqualTo(1);
+		assertThat(Rental.countDays(START, END)).isEqualTo(3);
+		assertThat(Rental.countDays(LocalDate.of(2026, 10, 30), LocalDate.of(2026, 11, 2))).isEqualTo(4);
+	}
+
+	@Test
+	@DisplayName("대여자·제공자는 당사자이고 역할과 상대가 구분된다")
+	void participantRole() {
+		// given: 제공자 2, 대여자 3
+		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+
+		// then
+		assertThat(rental.isParticipant(3L)).isTrue();
+		assertThat(rental.isParticipant(2L)).isTrue();
+		assertThat(rental.isParticipant(4L)).isFalse();
+		assertThat(rental.roleOf(3L)).isEqualTo(RentalRole.RENTER);
+		assertThat(rental.roleOf(2L)).isEqualTo(RentalRole.OWNER);
+		assertThat(rental.counterpartOf(3L)).isEqualTo(2L);
+		assertThat(rental.counterpartOf(2L)).isEqualTo(3L);
+		assertThatThrownBy(() -> rental.roleOf(4L)).isInstanceOf(IllegalArgumentException.class);
+	}
+
 	// 상태 전이 메서드는 각 REQ 브랜치에서 만든다. 그 전까지는 상태를 직접 넣는다
 	private Rental withStatus(RentalStatus status) {
 		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);

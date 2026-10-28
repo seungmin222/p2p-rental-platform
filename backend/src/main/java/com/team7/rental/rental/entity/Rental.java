@@ -21,7 +21,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 대여 건. 물품·회원은 ID로만 참조한다. 상태 전이 메서드(handover·cancel 등)는 각 REQ에서 추가한다.
+ * 대여 건. 물품·회원은 ID로만 참조한다. 상태 전이 메서드(cancel·handover 등)는 각 REQ 브랜치에서 추가한다.
  * <p>
  * 생성 팩토리는 프로그래밍 오류를 막는 불변식(기간 null·뒤집힘, 결제 대기의 만료 시각 null)만 검사하고 위반 시
  * IllegalArgumentException·NullPointerException을 던진다. 사용자 입력 검증(오늘 이후 시작, 일수 1~30, 400 응답)은
@@ -155,8 +155,8 @@ public class Rental extends BaseTimeEntity {
 		}
 	}
 
-	// 시작일·종료일을 모두 포함한다(같은 날이면 1일)
-	private static int countDays(LocalDate startDate, LocalDate endDate) {
+	/** 대여 일수. 시작일·종료일을 모두 포함한다(같은 날이면 1일). 예약 일수 검증(REQ-013)도 이 계산을 쓴다 */
+	public static int countDays(LocalDate startDate, LocalDate endDate) {
 		return Math.toIntExact(ChronoUnit.DAYS.between(startDate, endDate) + 1);
 	}
 
@@ -169,5 +169,26 @@ public class Rental extends BaseTimeEntity {
 			return false;
 		}
 		return status != RentalStatus.PENDING_PAYMENT || (paymentExpiresAt != null && paymentExpiresAt.isAfter(now));
+	}
+
+	public boolean isParticipant(Long memberId) {
+		return renterId.equals(memberId) || ownerId.equals(memberId);
+	}
+
+	/**
+	 * @throws IllegalArgumentException 당사자가 아닐 때. 호출 전에 {@link #isParticipant}로 확인한다
+	 */
+	public RentalRole roleOf(Long memberId) {
+		if (renterId.equals(memberId)) {
+			return RentalRole.RENTER;
+		}
+		if (ownerId.equals(memberId)) {
+			return RentalRole.OWNER;
+		}
+		throw new IllegalArgumentException("대여 당사자가 아닙니다: " + memberId);
+	}
+
+	public Long counterpartOf(Long memberId) {
+		return roleOf(memberId) == RentalRole.RENTER ? ownerId : renterId;
 	}
 }

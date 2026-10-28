@@ -33,7 +33,8 @@
 | `feat/member-region` | 004, 005 (엔티티는 `feat/member-item-entity`에 있음) | B |
 | `feat/item-crud` | 006–008, 011 (엔티티는 `feat/member-item-entity`에 있음) | B |
 | `feat/item-feed-search` | 009, 010, 020 | B |
-| `feat/rental-reserve` | 012–016 | A |
+| `feat/rental-reserve` | 012–014, 016(생성·상세) | A |
+| `feat/rental-cancel` | 015 (단독·양측 동의 취소, `feat/rental-reserve` 머지 후) | A |
 | `feat/rental-return` | 017–019 | A |
 | `feat/fe-auth-region` | SCR-01, 02 | FE |
 | `feat/fe-item-pages` | SCR-03, 04, 05, 06 | FE |
