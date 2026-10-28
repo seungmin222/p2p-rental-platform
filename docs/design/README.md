@@ -11,8 +11,9 @@
 | `screens/SCR-xx_*.png` | 화면별 시안: 03 홈, 05 물품 상세, 07 예약, 08 대여 상세(제공자), 10 채팅방 |
 | `mockups/Main.html` | 디자인 시스템(`design-system.png`의 원본) |
 | `mockups/Home.html`, `Detail.html`, `Booking.html`, `RentalDetail.html`, `Chat.html` | 화면별 시안 원본(390 × 844) |
-| `mockups/fonts/` | 시안이 쓰는 IBM Plex Sans KR woff2(400·500·600·700, 한글·라틴 서브셋)와 `OFL.txt` |
+
+시안 HTML의 글꼴은 앱이 서빙하는 `frontend/src/styles/fonts/`(IBM Plex Sans KR woff2 400·500·600·700, 한글·라틴 서브셋)를 상대 경로 `../../../frontend/src/styles/fonts/`로 참조한다. 저장소를 받은 그대로 HTML을 브라우저로 열면 글꼴이 적용된다. 폴더를 옮기면 경로가 깨진다.
 
 ## 글꼴 라이선스
 
-IBM Plex Sans KR — Copyright © 2017 IBM Corp. with Reserved Font Name "Plex". SIL Open Font License 1.1로 배포된다(원문: `mockups/fonts/OFL.txt`, 출처 [IBM/plex](https://github.com/IBM/plex)). 앱에서 서빙하는 사본은 `frontend/src/styles/fonts/`에 같은 `OFL.txt`와 함께 둔다.
+IBM Plex Sans KR — Copyright © 2017 IBM Corp. with Reserved Font Name "Plex". SIL Open Font License 1.1로 배포된다(원문: `frontend/src/styles/fonts/OFL.txt`, 출처 [IBM/plex](https://github.com/IBM/plex)). 글꼴 파일은 저장소에 그 한 곳에만 둔다.
