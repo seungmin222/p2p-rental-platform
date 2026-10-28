@@ -7,8 +7,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 /**
  * docs/policies.md의 정책 수치. 값은 application.yml app.policy.* 에 두고, 바꾸면 policies.md도 함께 고친다.
@@ -26,7 +28,11 @@ public record PolicyProperties(
 	@Valid @NotNull
 	Rental rental,
 	@Valid @NotNull
-	Payment payment) {
+	Payment payment,
+	@Valid @NotNull
+	Cancel cancel,
+	@Valid @NotNull
+	CancelFee cancelFee) {
 
 	/**
 	 * @param originalMaxLongSide 원본 재인코딩 시 긴 변 최대 픽셀 (image.original-max-long-side)
@@ -78,5 +84,26 @@ public record PolicyProperties(
 	public record Payment(
 		@Positive
 		int expireMinutes) {
+	}
+
+	/**
+	 * @param reasonTextMax 취소 사유 텍스트 최대 글자 수 (cancel.reason-text-max). 사유 OTHER면 필수
+	 */
+	public record Cancel(
+		@Positive
+		int reasonTextMax) {
+	}
+
+	/**
+	 * 대여자 단독 취소 수수료 (policies.md §2 취소 수수료 표)
+	 *
+	 * @param ratePercent 대여료 대비 수수료율 % (cancel-fee.rate-percent)
+	 * @param freeUntilDaysBefore 시작일 이 일수 전까지는 수수료 없음 (cancel-fee.free-until-days-before)
+	 */
+	public record CancelFee(
+		@PositiveOrZero @Max(100)
+		int ratePercent,
+		@Positive
+		int freeUntilDaysBefore) {
 	}
 }

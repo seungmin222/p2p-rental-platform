@@ -60,6 +60,13 @@ app:
     payment:
       # payment.expire-minutes: 결제 대기(PENDING_PAYMENT) 기간 선점 시간 (REQ-013, REQ-024)
       expire-minutes: 15
+    cancel:
+      # cancel.reason-text-max: 취소 사유 텍스트 최대 글자 수, 사유 OTHER면 필수 (REQ-015). rentals.cancel_reason_text VARCHAR(200)과 같게
+      reason-text-max: 200
+    cancel-fee:
+      # cancel-fee.rate-percent / free-until-days-before: 대여자 단독 취소 수수료. 시작일 3일 전까지 무료, 그 뒤 대여료의 30% (REQ-015)
+      rate-percent: 30
+      free-until-days-before: 3
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

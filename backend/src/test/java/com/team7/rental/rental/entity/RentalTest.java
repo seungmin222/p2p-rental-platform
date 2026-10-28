@@ -4,12 +4,16 @@ import static org.assertj.core.api.Assertions.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import com.team7.rental.global.error.BusinessException;
+import com.team7.rental.global.error.ErrorCode;
 
 class RentalTest {
 
@@ -209,7 +213,140 @@ class RentalTest {
 		assertThatThrownBy(() -> rental.roleOf(4L)).isInstanceOf(IllegalArgumentException.class);
 	}
 
-	// 상태 전이 메서드는 각 REQ 브랜치에서 만든다. 그 전까지는 상태를 직접 넣는다
+	@ParameterizedTest
+	@EnumSource(value = CancelType.class, names = {"RENTER", "OWNER"})
+	@DisplayName("결제 대기는 단독 취소되고 취소 시각·종류·사유·수수료가 기록된다")
+	void cancelPendingPayment(CancelType type) {
+		// given
+		Rental rental = Rental.createPendingPayment(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT, EXPIRES_AT);
+
+		// when
+		rental.cancel(3L, type, CancelReason.OTHER, "개인 사정", 0, NOW);
+
+		// then
+		assertThat(rental.getStatus()).isEqualTo(RentalStatus.CANCELED);
+		assertThat(rental.getCanceledAt()).isEqualTo(NOW);
+		assertThat(rental.getCanceledBy()).isEqualTo(3L);
+		assertThat(rental.getCancelType()).isEqualTo(type);
+		assertThat(rental.getCancelReason()).isEqualTo(CancelReason.OTHER);
+		assertThat(rental.getCancelReasonText()).isEqualTo("개인 사정");
+		assertThat(rental.getCancelFee()).isZero();
+	}
+
+	@Test
+	@DisplayName("시작일이 지난 결제 대기도 단독 취소된다(자정 직전 생성)")
+	void cancelPendingPaymentAfterStartDate() {
+		// given: 시작일 전날 23:59에 생성, 결제 만료는 시작일 00:14
+		LocalDateTime createdAt = START.minusDays(1).atTime(23, 59);
+		Rental rental = Rental.createPendingPayment(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT,
+			createdAt.plusMinutes(15));
+		LocalDateTime now = START.atTime(0, 5);
+
+		// when
+		rental.cancel(3L, CancelType.RENTER, CancelReason.SCHEDULE_CHANGE, null, 0, now);
+
+		// then
+		assertThat(rental.getStatus()).isEqualTo(RentalStatus.CANCELED);
+		assertThat(rental.getCanceledAt()).isEqualTo(now);
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = CancelType.class, names = {"RENTER", "OWNER"})
+	@DisplayName("대여 예정은 시작일 전날까지 단독 취소되고 수수료가 기록된다")
+	void cancelReservedBeforeStart(CancelType type) {
+		// given
+		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+		LocalDateTime now = START.minusDays(1).atTime(23, 59);
+
+		// when
+		rental.cancel(2L, type, CancelReason.SCHEDULE_CHANGE, null, 9_000, now);
+
+		// then
+		assertThat(rental.getStatus()).isEqualTo(RentalStatus.CANCELED);
+		assertThat(rental.getCanceledAt()).isEqualTo(now);
+		assertThat(rental.getCancelType()).isEqualTo(type);
+		assertThat(rental.getCancelReasonText()).isNull();
+		assertThat(rental.getCancelFee()).isEqualTo(9_000);
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = CancelType.class, names = {"RENTER", "OWNER"})
+	@DisplayName("대여 예정을 시작일 당일·이후에 단독 취소하면 409 RENTAL_CANCEL_NOT_ALLOWED다")
+	void cancelReservedOnOrAfterStart(CancelType type) {
+		// given
+		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+
+		// then
+		assertCancelFails(rental, type, START.atStartOfDay(), ErrorCode.RENTAL_CANCEL_NOT_ALLOWED);
+		assertCancelFails(rental, type, START.plusDays(1).atTime(10, 0), ErrorCode.RENTAL_CANCEL_NOT_ALLOWED);
+		assertThat(rental.getStatus()).isEqualTo(RentalStatus.RESERVED);
+	}
+
+	@Test
+	@DisplayName("양측 동의 취소는 대여 예정이고 시작일 당일·이후면 된다")
+	void cancelMutual() {
+		// given
+		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+		LocalDateTime now = START.atTime(10, 0);
+
+		// when
+		rental.cancel(3L, CancelType.MUTUAL, CancelReason.ITEM_PROBLEM, null, 0, now);
+
+		// then
+		assertThat(rental.getStatus()).isEqualTo(RentalStatus.CANCELED);
+		assertThat(rental.getCancelType()).isEqualTo(CancelType.MUTUAL);
+		assertThat(rental.getCanceledAt()).isEqualTo(now);
+	}
+
+	@Test
+	@DisplayName("양측 동의 취소를 시작일 전이나 결제 대기에 하면 409 RENTAL_INVALID_TRANSITION이다")
+	void cancelMutualNotAllowed() {
+		// given
+		Rental reserved = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+		Rental pending = Rental.createPendingPayment(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT, EXPIRES_AT);
+
+		// then
+		assertCancelFails(reserved, CancelType.MUTUAL, START.minusDays(1).atTime(10, 0),
+			ErrorCode.RENTAL_INVALID_TRANSITION);
+		assertCancelFails(pending, CancelType.MUTUAL, START.atTime(10, 0), ErrorCode.RENTAL_INVALID_TRANSITION);
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = RentalStatus.class, names = {"RENTING", "OVERDUE", "RETURNED", "COMPLETED", "CANCELED"})
+	@DisplayName("결제 대기·대여 예정이 아니면 어떤 취소든 409 RENTAL_INVALID_TRANSITION이다")
+	void cancelInvalidStatus(RentalStatus status) {
+		// given
+		Rental rental = withStatus(status);
+
+		// then
+		for (CancelType type : List.of(CancelType.RENTER, CancelType.OWNER, CancelType.MUTUAL)) {
+			assertCancelFails(rental, type, NOW, ErrorCode.RENTAL_INVALID_TRANSITION);
+			assertCancelFails(rental, type, START.atTime(10, 0), ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+		assertThat(rental.getStatus()).isEqualTo(status);
+		assertThat(rental.getCanceledAt()).isNull();
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = CancelType.class, names = {"PAYMENT_EXPIRED", "AMOUNT_MISMATCH", "NO_HANDOVER"})
+	@DisplayName("시스템 취소 종류는 아직 지원하지 않는다")
+	void cancelSystemTypeNotSupported(CancelType type) {
+		// given
+		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+
+		// then
+		assertThatThrownBy(() -> rental.cancel(null, type, CancelReason.OTHER, "시스템", 0, NOW))
+			.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	private void assertCancelFails(Rental rental, CancelType type, LocalDateTime now, ErrorCode errorCode) {
+		assertThatThrownBy(() -> rental.cancel(3L, type, CancelReason.SCHEDULE_CHANGE, null, 0, now))
+			.isInstanceOf(BusinessException.class)
+			.extracting(e -> ((BusinessException)e).getErrorCode())
+			.isEqualTo(errorCode);
+	}
+
+	// 대여 예정에서 갈 수 없는 상태(RENTING 등)는 해당 전이 메서드(REQ-017·018)가 생기기 전까지 직접 넣는다
 	private Rental withStatus(RentalStatus status) {
 		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
 		ReflectionTestUtils.setField(rental, "status", status);

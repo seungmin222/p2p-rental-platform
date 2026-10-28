@@ -17,6 +17,7 @@ public enum ErrorCode {
 	COMMON_INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
 	COMMON_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 대상을 찾을 수 없습니다."),
 	COMMON_METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식입니다."),
+	COMMON_CONCURRENT_UPDATE(HttpStatus.CONFLICT, "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요."),
 	COMMON_INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "일시적인 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."),
 
 	// 인증·인가
@@ -40,7 +41,9 @@ public enum ErrorCode {
 	RENTAL_OWN_ITEM(HttpStatus.BAD_REQUEST, "본인 물품은 예약할 수 없습니다."),
 	RENTAL_OUT_OF_AVAILABLE_PERIOD(HttpStatus.BAD_REQUEST, "대여 가능 기간을 벗어났습니다."),
 	RENTAL_PERIOD_CONFLICT(HttpStatus.CONFLICT, "이미 예약된 기간입니다."),
-	RENTAL_LOCK_TIMEOUT(HttpStatus.CONFLICT, "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+	RENTAL_LOCK_TIMEOUT(HttpStatus.CONFLICT, "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+	RENTAL_INVALID_TRANSITION(HttpStatus.CONFLICT, "현재 대여 상태에서는 처리할 수 없는 요청입니다."),
+	RENTAL_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "대여 시작일이 지나 단독으로 취소할 수 없습니다. 상대방에게 취소 동의를 요청해 주세요.");
 
 	private final HttpStatus status;
 	private final String message;

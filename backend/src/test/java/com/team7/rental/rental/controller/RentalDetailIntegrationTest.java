@@ -1,11 +1,14 @@
 package com.team7.rental.rental.controller;
 
+import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,8 @@ import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
+import jakarta.persistence.EntityManagerFactory;
+
 /** GET /api/rentals/{id} (REQ-016) */
 class RentalDetailIntegrationTest extends IntegrationTestSupport {
 
@@ -29,6 +34,9 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private EntityManagerFactory entityManagerFactory;
 
 	private Member owner;
 	private Member renter;
@@ -113,5 +121,21 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 		mockMvc.perform(get("/api/rentals/{id}", rental.getId()))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.error.code").value("AUTH_UNAUTHORIZED"));
+	}
+
+	@Test
+	@DisplayName("상세 조회는 쿼리 4개로 끝난다(대여·물품 요약·대표 이미지·상대 닉네임)")
+	void queryCount() throws Exception {
+		// given: 픽스처 저장이 섞이지 않게 요청 직전에 비운다
+		Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+		statistics.clear();
+
+		// when
+		mockMvc.perform(get("/api/rentals/{id}", rental.getId()).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(renter.getId())))
+			.andExpect(status().isOk());
+
+		// then
+		assertThat(statistics.getPrepareStatementCount()).isEqualTo(4);
 	}
 }

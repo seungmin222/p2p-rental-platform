@@ -10,3 +10,14 @@ app:
     local:
       root-dir: build/test-uploads
       url-prefix: /files
+
+spring:
+  jpa:
+    properties:
+      # 쿼리 수 단언용(Statistics.getPrepareStatementCount). 세션마다 찍히는 통계 로그는 아래에서 끈다
+      hibernate:
+        generate_statistics: true
+
+logging:
+  level:
+    org.hibernate.engine.internal.StatisticalLoggingSessionEventListener: WARN

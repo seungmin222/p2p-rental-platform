@@ -4,6 +4,7 @@ import static com.team7.rental.global.error.ErrorCode.*;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -15,8 +16,10 @@ import com.team7.rental.global.config.OpenApiConfig;
 import com.team7.rental.global.error.ApiErrorCodes;
 import com.team7.rental.global.response.ApiResponse;
 import com.team7.rental.global.security.LoginMember;
+import com.team7.rental.rental.dto.RentalCancelRequest;
 import com.team7.rental.rental.dto.RentalCreateRequest;
 import com.team7.rental.rental.dto.RentalDetailResponse;
+import com.team7.rental.rental.service.RentalCancelService;
 import com.team7.rental.rental.service.RentalQueryService;
 import com.team7.rental.rental.service.RentalService;
 
@@ -34,6 +37,7 @@ public class RentalController {
 
 	private final RentalService rentalService;
 	private final RentalQueryService rentalQueryService;
+	private final RentalCancelService rentalCancelService;
 
 	@Operation(summary = "대여 예약 요청 (REQ-013, REQ-014)", description = "1순위 단계(결제 비활성)와 무료 대여는 바로 RESERVED, 결제를 켜면 PENDING_PAYMENT로 생성해 결제 대기 시간(policies.md payment.expire-minutes) 동안 기간을 선점한다. "
 		+ "응답은 대여 상세와 같다.")
@@ -57,5 +61,21 @@ public class RentalController {
 	Long memberId, @PathVariable
 	Long rentalId) {
 		return ApiResponse.ok(rentalQueryService.getRental(rentalId, memberId));
+	}
+
+	@Operation(summary = "대여 단독 취소 (REQ-015)", description = "대여자·제공자가 결제 대기(PENDING_PAYMENT) 또는 시작일 전의 대여 예정(RESERVED)을 취소한다. "
+		+ "시작일이 지난 대여 예정은 409 RENTAL_CANCEL_NOT_ALLOWED이며 양측 동의 취소를 쓴다. "
+		+ "대여자가 시작일 직전에 취소하면 cancelFee가 생긴다(policies.md cancel-fee.rate-percent, cancel-fee.free-until-days-before). "
+		+ "1순위 단계는 수수료를 기록만 하고 환불하지 않는다. reason=OTHER면 reasonText 필수(cancel.reason-text-max). 응답은 대여 상세와 같다.")
+	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_PARTICIPANT, RENTAL_NOT_FOUND,
+		RENTAL_INVALID_TRANSITION, RENTAL_CANCEL_NOT_ALLOWED, COMMON_CONCURRENT_UPDATE})
+	@PatchMapping("/{rentalId}/cancel")
+	public ApiResponse<RentalDetailResponse> cancelRental(@LoginMember
+	Long memberId, @PathVariable
+	Long rentalId,
+		@Valid @RequestBody
+		RentalCancelRequest request) {
+		return ApiResponse.ok(rentalCancelService.cancel(rentalId, memberId, request));
 	}
 }
