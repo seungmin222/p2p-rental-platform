@@ -69,7 +69,7 @@ const ARROW_BUTTON =
   'flex size-11 items-center justify-center rounded-full text-ink-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:text-ink-disabled disabled:hover:bg-transparent';
 
 // 순서를 바꾸거나 지우면 누른 버튼이 사라지거나 비활성이 될 수 있어, 다음으로 포커스할 후보를 순서대로 둔다.
-const FOCUS_FALLBACK = ['next', 'prev', 'remove'];
+const FOCUS_FALLBACK = ['prev', 'cover', 'next', 'remove'];
 
 /**
  * 사진 선택·미리보기·순서 변경. 업로드 API는 호출하지 않는다(제출 시 부모가 value로 요청을 만든다).
@@ -110,10 +110,12 @@ export default function ImageUploader({
   const [messages, setMessages] = useState([]);
   const isFull = value.length >= maxCount;
 
+  // 매 렌더 뒤에 확인한다. 조작한 때의 value가 그대로면 부모가 onChange를 반영하지 않은 것이므로 버린다
+  // (남겨 두면 나중의 다른 변경 때 엉뚱하게 포커스가 옮겨짐).
   useEffect(() => {
     const target = pendingFocus.current;
     pendingFocus.current = null;
-    if (!target) {
+    if (!target || target.from === value) {
       return;
     }
     const item =
@@ -129,7 +131,7 @@ export default function ImageUploader({
       }
     }
     addButtonRef.current?.focus();
-  }, [value]);
+  });
 
   function handleFiles(event) {
     const files = Array.from(event.target.files ?? []);
@@ -141,6 +143,10 @@ export default function ImageUploader({
     const limits = { maxCount, maxFileSize, accept };
     const result = addImages(value, files, limits);
     if (result.images !== value) {
+      // 가득 차면 "사진 추가"가 비활성이 돼 포커스를 잃으므로 마지막에 추가한 사진으로 옮긴다
+      if (result.images.length >= maxCount) {
+        pendingFocus.current = { from: value, id: result.images.at(-1).id, action: 'prev' };
+      }
       onChange(result.images);
     }
     setMessages(describeRejections(result.rejected, limits));
@@ -150,19 +156,19 @@ export default function ImageUploader({
   }
 
   function handleMove(id, offset) {
-    pendingFocus.current = { id, action: offset < 0 ? 'prev' : 'next' };
+    pendingFocus.current = { from: value, id, action: offset < 0 ? 'prev' : 'next' };
     onChange(moveImage(value, id, offset));
   }
 
   function handleCover(id) {
-    pendingFocus.current = { id, action: 'next' };
+    pendingFocus.current = { from: value, id, action: 'next' };
     onChange(makeCover(value, id));
   }
 
   function handleRemove(id) {
     const index = value.findIndex((image) => image.id === id);
     const neighbor = value[index + 1] ?? value[index - 1];
-    pendingFocus.current = { id: neighbor?.id, action: 'remove' };
+    pendingFocus.current = { from: value, id: neighbor?.id, action: 'remove' };
     setMessages([]);
     onChange(removeImage(value, id));
   }
