@@ -25,6 +25,15 @@ describe('가격 포맷', () => {
   it('보증금 0원은 "보증금 없음"', () => {
     expect(formatDeposit(0)).toBe('보증금 없음');
   });
+
+  it.each([null, undefined, NaN, Infinity, '0', '12000'])(
+    '유한한 숫자가 아니면 빈 문자열(%s)',
+    (amount) => {
+      expect(formatPrice(amount)).toBe('');
+      expect(formatDailyPrice(amount)).toBe('');
+      expect(formatDeposit(amount)).toBe('');
+    },
+  );
 });
 
 describe('서버 시각 해석', () => {
@@ -42,6 +51,13 @@ describe('서버 시각 해석', () => {
       '2026-10-07T15:30:00.000Z',
     );
   });
+
+  it.each([null, undefined, '', 'abc', '2026-10-07', '2026-13-45T25:00:00', new Date('x'), 0])(
+    '해석할 수 없으면 null(%s)',
+    (value) => {
+      expect(parseServerDateTime(value)).toBeNull();
+    },
+  );
 });
 
 describe('경과 시간', () => {
@@ -68,6 +84,10 @@ describe('경과 시간', () => {
 
   it('미래 시각(시계 오차)은 "방금 전"', () => {
     expect(formatElapsed('2026-10-07T15:35:00', now)).toBe('방금 전');
+  });
+
+  it.each([null, 'abc', '2026-10-07'])('해석할 수 없는 입력은 빈 문자열(%s)', (value) => {
+    expect(formatElapsed(value, now)).toBe('');
   });
 
   it('오프셋이 있는 시각도 같은 기준으로 계산한다', () => {
