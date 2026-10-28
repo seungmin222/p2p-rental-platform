@@ -12,7 +12,7 @@ const VARIANTS = {
 // md가 시안 기본(48px). sm은 헤더처럼 좁은 곳용이며 터치 영역 44px(min-h-11)은 지킨다.
 const SIZES = {
   sm: 'min-h-11 px-4 text-sm',
-  md: 'min-h-12 px-[22px] text-[15px]',
+  md: 'min-h-12 px-[22px] text-body',
 };
 
 /** Button과 ButtonLink가 같은 모양을 쓰도록 클래스만 분리 */

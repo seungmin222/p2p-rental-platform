@@ -4,7 +4,7 @@ import NavIcon from './NavIcon';
 import { NAV_ITEMS } from './navItems';
 
 function headerLinkClassName({ isActive }) {
-  return `flex min-h-11 min-w-11 items-center justify-center px-3 text-[15px] ${
+  return `flex min-h-11 min-w-11 items-center justify-center px-3 text-body ${
     isActive ? 'font-semibold text-ink' : 'text-ink-muted'
   }`;
 }

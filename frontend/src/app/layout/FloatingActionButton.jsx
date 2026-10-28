@@ -8,7 +8,7 @@ export default function FloatingActionButton({ to, label }) {
   return (
     <Link
       to={to}
-      className="fixed right-[max(1rem,calc((100vw-64rem)/2+1rem))] bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 flex h-13 items-center gap-1.5 rounded-full bg-primary pr-5 pl-4 text-[15px] font-semibold text-white shadow-[0_6px_16px_rgba(28,28,26,0.18)] hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary xl:bottom-8"
+      className="fixed right-[max(1rem,calc((100vw-64rem)/2+1rem))] bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 flex h-13 items-center gap-1.5 rounded-full bg-primary pr-5 pl-4 text-body font-semibold text-white shadow-[0_6px_16px_rgba(28,28,26,0.18)] hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary xl:bottom-8"
     >
       <svg
         aria-hidden="true"
