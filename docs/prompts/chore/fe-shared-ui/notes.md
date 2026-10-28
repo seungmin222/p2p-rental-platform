@@ -34,6 +34,7 @@
 
 ## shared/ui
 - **Modal·BottomSheet는 네이티브 `<dialog>` + `useDialog` 훅 하나로.** 포커스 가두기·Esc·top layer를 브라우저에 맡겨 직접 구현할 코드를 줄임. Esc(`cancel`)는 막고 부모 상태로 닫아 open prop이 항상 기준. StrictMode에서 effect가 닫고 바로 다시 여는 경우의 `close` 이벤트는 플래그로 무시.
+- **배경 클릭은 `pointerdown` 대상과 `click` 대상이 둘 다 dialog 자신일 때만 닫는다.** 모달 안에서 시작한 드래그(글자 선택 등)를 배경에서 놓으면 click 대상이 공통 조상인 dialog가 되어 닫히던 문제(리뷰 반영). 반대로 배경에서 누르고 안쪽에서 떼는 경우도 click 대상이 dialog라 이 규칙대로면 닫힌다.
 - **스크롤 잠금은 모듈 카운터.** 모달 위에 확인 모달이 겹쳐도 마지막이 닫힐 때만 해제.
 - **Toast: 3초 표시, 최대 3개(넘치면 오래된 것부터 버림), 하단에서 6rem + safe-area 위.** 하단 탭(64px)·하단 고정 바(76px) 모두 위에 뜨도록(시안 반영 후에도 그대로. 홈의 "+ 물품 등록" 버튼과는 잠깐 겹칠 수 있음) 위치를 하나로 고정해 라우트별 계산을 없앰. 열린 모달(top layer) 아래에 그려지므로 모달 안의 오류는 모달 안에 표시.
 - **PR 분리**: 변경 파일이 30개를 넘어 Calendar·ImageUploader는 다음 브랜치 `chore/fe-shared-ui-input`으로 미룸(사용자 결정). 그 브랜치에서 할 일: 선택 규칙·이미지 목록 조작을 순수 함수로 분리해 테스트, 이미지 순서 변경은 모바일에서 HTML5 drag&drop이 안 되므로 "앞으로/뒤로" 버튼 + 첫 장 "대표" 표시(드래그는 `feat/fe-item-pages`에서 결정).
@@ -41,7 +42,8 @@
 
 ## 레이아웃
 - **하단 탭 숨김은 라우트 `handle.hideTabBar` + `useMatches`.** 숨김 여부를 화면 컴포넌트가 아니라 라우트 표 한 곳에서 보게 하려고. 대상: 물품 상세·등록·수정, 예약, 대여 상세.
-- **BottomActionBar가 자기 높이만큼 빈 자리를 본문 끝에 둔다.** AppLayout이 화면마다 바 유무를 알 필요가 없게.
+- **BottomActionBar는 `sticky bottom-0` + `mt-auto`, 페이지의 마지막 요소로 둔다.** 처음엔 fixed + 고정 76px 빈 자리였으나 세로 쌓기(Booking.html, 105px)처럼 높이가 달라지면 본문이 가려져 바꿈(리뷰 반영). AppLayout의 `main`을 세로 flex(`flex-1 flex-col`)로 두어 본문이 짧아도 바가 화면 아래에 붙고, hideTabBar 화면은 바가 마지막이라 `main` 아래 여백을 없앰. sticky로 충분해 ResizeObserver는 쓰지 않음. 헤드리스 Chrome(390×844)으로 긴 본문·짧은 본문·세로 쌓기에서 바 아래 끝 = 화면 아래 끝, 맨 끝까지 내렸을 때 마지막 줄이 바 위에 보이는 것을 확인. 안쪽 배치는 `className`으로 바꾼다(기본 가로 정렬). PC에서는 바 폭이 본문 최대 폭(max-w-5xl)과 같다.
+- **미리보기 `/dev/ui/action-bar`를 따로 둔다.** sticky 바는 하단 탭(fixed)에 가려지므로 hideTabBar 라우트에서 확인해야 해서.
 - **PageHeader 뒤로 가기는 `location.key === 'default'`(직접 진입)이면 홈으로 replace.** 공유 링크로 들어온 사용자가 앱 밖으로 나가지 않게.
 - **하단 탭 아이콘은 인라인 SVG.** 아이콘 5개라 라이브러리를 추가할 만큼이 아님.
 

@@ -11,6 +11,7 @@ export function useDialog({ open, onClose, dismissible }) {
   const ref = useRef(null);
   // effect가 직접 닫은 경우의 close 이벤트는 무시하려고(StrictMode에서 닫고 바로 다시 연다)
   const closingByEffectRef = useRef(false);
+  const pointerDownOnBackdropRef = useRef(false);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -56,12 +57,26 @@ export function useDialog({ open, onClose, dismissible }) {
     }
   }
 
+  function handlePointerDown(event) {
+    pointerDownOnBackdropRef.current = event.target === event.currentTarget;
+  }
+
   function handleClick(event) {
-    // dialog 자신이 클릭 대상이면 배경(::backdrop)을 누른 것. 내용은 안쪽 래퍼가 받는다.
-    if (event.target === event.currentTarget && dismissible) {
+    // dialog 자신이 대상이면 배경(::backdrop)을 누른 것(내용은 안쪽 래퍼가 받는다).
+    // 누른 곳과 뗀 곳이 모두 배경일 때만 닫는다 — 모달 안에서 시작한 드래그(글자 선택 등)를 배경에서 놓아도 닫히지 않게.
+    const isBackdropClick =
+      pointerDownOnBackdropRef.current && event.target === event.currentTarget;
+    pointerDownOnBackdropRef.current = false;
+    if (isBackdropClick && dismissible) {
       onClose();
     }
   }
 
-  return { ref, onCancel: handleCancel, onClose: handleClose, onClick: handleClick };
+  return {
+    ref,
+    onCancel: handleCancel,
+    onClose: handleClose,
+    onPointerDown: handlePointerDown,
+    onClick: handleClick,
+  };
 }

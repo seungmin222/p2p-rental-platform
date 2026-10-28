@@ -1,15 +1,13 @@
 /**
- * 화면 하단 고정 바(상세의 관심·가격·예약하기 등). 하단 탭을 숨긴 라우트(handle.hideTabBar)에서 쓴다.
- * 같은 높이의 빈 자리를 본문 끝에 두어 마지막 내용이 바에 가려지지 않게 한다.
- * 높이: 버튼 48px + 위 12px + 아래 16px = 76px(4.75rem)
+ * 화면 하단 고정 바(상세의 관심·가격·예약하기 등). 하단 탭을 숨긴 라우트(handle.hideTabBar)에서
+ * 페이지의 **마지막 요소**로 둔다. sticky라 높이가 달라도 본문을 가리지 않고, 본문이 짧으면
+ * mt-auto로 화면 아래에 붙는다(AppLayout의 main이 세로 flex).
+ * className은 안쪽 배치(기본 가로 정렬)를 바꿀 때 쓴다. 예: 안내 문구 + 버튼 세로 쌓기 "flex flex-col gap-2"
  */
-export default function BottomActionBar({ children }) {
+export default function BottomActionBar({ className = 'flex items-center gap-2.5', children }) {
   return (
-    <>
-      <div aria-hidden="true" className="h-[calc(4.75rem+env(safe-area-inset-bottom))]" />
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-auto flex max-w-5xl items-center gap-2.5 px-4 pt-3 pb-4">{children}</div>
-      </div>
-    </>
+    <div className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-line bg-white pb-[env(safe-area-inset-bottom)]">
+      <div className={`px-4 pt-3 pb-4 ${className}`}>{children}</div>
+    </div>
   );
 }

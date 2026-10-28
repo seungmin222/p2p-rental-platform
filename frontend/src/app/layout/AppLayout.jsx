@@ -25,7 +25,7 @@ export default function AppLayout() {
   const hideTabBar = matches.some((match) => match.handle?.hideTabBar);
 
   return (
-    <div className="min-h-dvh bg-white">
+    <div className="flex min-h-dvh flex-col bg-white">
       <header className="hidden border-b border-divider xl:block">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
           <NavLink to="/" className="flex min-h-11 items-center text-lg font-bold">
@@ -45,8 +45,9 @@ export default function AppLayout() {
         </div>
       </header>
 
+      {/* 세로 flex: hideTabBar 화면의 BottomActionBar(sticky, mt-auto)가 본문이 짧아도 화면 아래에 붙도록. 그 화면은 바가 마지막이라 아래 여백 없음 */}
       <main
-        className={`mx-auto w-full max-w-5xl px-4 ${hideTabBar ? 'pb-8' : 'pb-[calc(5rem+env(safe-area-inset-bottom))] xl:pb-8'}`}
+        className={`mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 ${hideTabBar ? '' : 'pb-[calc(5rem+env(safe-area-inset-bottom))] xl:pb-8'}`}
       >
         <Outlet />
       </main>

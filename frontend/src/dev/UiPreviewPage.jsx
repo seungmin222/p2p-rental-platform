@@ -1,6 +1,5 @@
 import { useState } from 'react';
 
-import BottomActionBar from '../app/layout/BottomActionBar';
 import FloatingActionButton from '../app/layout/FloatingActionButton';
 import PageHeader from '../app/layout/PageHeader';
 import { RENTAL_STATUS } from '../features/rental/constants';
@@ -32,7 +31,6 @@ function Section({ title, children }) {
 export default function UiPreviewPage() {
   const [openDialog, setOpenDialog] = useState(null);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [showBottomBar, setShowBottomBar] = useState(false);
   const [showFab, setShowFab] = useState(false);
 
   function closeDialog() {
@@ -167,9 +165,9 @@ export default function UiPreviewPage() {
       </Section>
 
       <Section title="하단 고정 바 · (+) 버튼">
-        <Button variant="secondary" onClick={() => setShowBottomBar((value) => !value)}>
-          하단 고정 바 {showBottomBar ? '끄기' : '켜기'}
-        </Button>
+        <ButtonLink to="/dev/ui/action-bar" variant="secondary">
+          하단 고정 바 미리보기
+        </ButtonLink>
         <Button variant="secondary" onClick={() => setShowFab((value) => !value)}>
           (+) 버튼 {showFab ? '끄기' : '켜기'}
         </Button>
@@ -183,7 +181,8 @@ export default function UiPreviewPage() {
         title="모달 제목"
         footer={<Button onClick={closeDialog}>확인</Button>}
       >
-        Esc·배경 클릭·닫기 버튼으로 닫힙니다. 닫힌 뒤 포커스는 연 버튼으로 돌아갑니다.
+        Esc·배경 클릭·닫기 버튼으로 닫힙니다. 닫힌 뒤 포커스는 연 버튼으로 돌아갑니다. 이 글자를
+        드래그해 배경에서 놓아도 닫히지 않아야 합니다.
         <div className="mt-3">
           <Button variant="secondary" onClick={() => setOpenDialog('sheet')}>
             바텀시트로 바꾸기
@@ -223,18 +222,6 @@ export default function UiPreviewPage() {
       </BottomSheet>
 
       {showFab && <FloatingActionButton to="/dev/ui" label="물품 등록" />}
-      {showBottomBar && (
-        <BottomActionBar>
-          <div className="min-w-0 flex-1">
-            <p className="text-[17px] font-bold">{formatDailyPrice(15000)}</p>
-            <p className="text-xs font-semibold text-accent-strong">{formatDeposit(50000)}</p>
-          </div>
-          <Button variant="outline" className="px-3.5">
-            채팅하기
-          </Button>
-          <Button>예약하기</Button>
-        </BottomActionBar>
-      )}
     </>
   );
 }

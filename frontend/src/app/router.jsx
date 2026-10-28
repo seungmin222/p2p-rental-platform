@@ -31,6 +31,12 @@ const devRoutes = import.meta.env.DEV
         lazy: () =>
           import('../dev/UiPreviewPage').then((module) => ({ Component: module.default })),
       },
+      {
+        path: '/dev/ui/action-bar',
+        handle: hideTabBar,
+        lazy: () =>
+          import('../dev/ActionBarPreviewPage').then((module) => ({ Component: module.default })),
+      },
     ]
   : [];
 
