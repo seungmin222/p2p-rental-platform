@@ -28,5 +28,10 @@ export const RENTAL_DAY_STATUS = {
 // policies.md rental.min-days / rental.max-days (최초 예약 기준)
 export const RENTAL_PERIOD = { MIN_DAYS: 1, MAX_DAYS: 30 };
 
-// policies.md inspection.images (인계·반납 사진 1~5장, 장당 10MB)
-export const INSPECTION_IMAGES = { MIN_COUNT: 1, MAX_COUNT: 5, MAX_FILE_SIZE: 10 * 1024 * 1024 };
+// policies.md inspection.images (인계·반납 사진 1~5장, jpg/png, 장당 10MB)
+export const INSPECTION_IMAGES = {
+  MIN_COUNT: 1,
+  MAX_COUNT: 5,
+  MAX_FILE_SIZE: 10 * 1024 * 1024,
+  ACCEPT: ['image/jpeg', 'image/png'],
+};

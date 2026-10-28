@@ -7,6 +7,8 @@ export { default as Calendar } from './Calendar';
 export { default as ConfirmModal } from './ConfirmModal';
 export { default as EmptyState } from './EmptyState';
 export { default as ErrorState } from './ErrorState';
+export { default as ImageUploader } from './ImageUploader';
+export { IMAGE_REJECT_REASON } from './imageList';
 export { default as Modal } from './Modal';
 export { default as Skeleton } from './Skeleton';
 export { default as Spinner } from './Spinner';
