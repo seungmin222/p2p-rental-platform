@@ -11,13 +11,15 @@
 | 입력 제한(장수·글자 수·기간) | `docs/policies.md` |
 | 화면 동작·예외 상황·에러별 안내 | `docs/domains/*.md` |
 
-- **필드명을 추측해서 쓰지 않는다.** openapi.json에서 확인하고, 없으면(미구현 API) 백엔드 담당과 응답 형태를 합의할 때까지 MSW 목에 `// TODO: 백엔드 확정 전 임시` 주석을 단다.
+- **필드명을 추측해서 쓰지 않는다.** openapi.json에서 확인하고, 없으면(미구현 API) 백엔드 담당과 응답 형태를 합의할 때까지 MSW 목에 `// TODO: 백엔드 확정 전 임시` 주석을 단다. 코드에서 미확정 응답 필드를 읽어야 하면 그 접근을 함수 하나로 격리하고 같은 주석을 단다(예: `shared/api/reissue.js`의 `extractAccessToken`).
 - openapi.json과 실제 응답이 다르면 프론트에서 맞추지 말고 백엔드에 알린다(openapi.json 재생성 누락일 가능성).
 - 사람은 백엔드 로컬 서버의 `/swagger-ui.html`에서 직접 호출해 볼 수 있다.
 
 ## 스택
-**확정**: React · Vite · JavaScript(JSX) · Tailwind CSS · **TanStack Query**(서버 상태)
-**제안**(팀 확정 시 수정): React Router · Zustand(인증·동네 등 클라이언트 상태) · axios · @stomp/stompjs · react-hook-form · dayjs · MSW(목 API) · 토스페이먼츠 결제창 SDK(API 개별 연동, 결제위젯 아님) · 카카오맵 JS SDK
+**확정**: React · Vite · JavaScript(JSX) · Tailwind CSS v4(`@tailwindcss/vite`) · **TanStack Query**(서버 상태) · React Router · Zustand(인증·동네 등 클라이언트 상태) · axios · MSW(목 API) · Vitest(단위 테스트)
+**제안**(쓰는 브랜치에서 확정): @stomp/stompjs · react-hook-form · dayjs · 토스페이먼츠 결제창 SDK(API 개별 연동, 결제위젯 아님) · 카카오맵 JS SDK
+
+- 의존성은 **실제로 쓰는 브랜치에서** 추가한다(미리 설치하지 않는다). 버전은 exact로 고정하고 `package-lock.json`을 커밋한다.
 
 ## 디렉터리
 
@@ -32,7 +34,7 @@ src/
 │       ├── components/
 │       └── constants.js    상태 라벨·탭 매핑
 ├── shared/
-│   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화
+│   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화, 토큰 재발급, authStore(AT)
 │   ├── ws/         STOMP 클라이언트 싱글톤
 │   ├── ui/         Button, BottomSheet, Modal, Toast, Badge, Calendar, ImageUploader, EmptyState
 │   ├── lib/        format(가격·경과시간), validators
@@ -62,6 +64,7 @@ src/
 | 15 | 약관·정책 | `/terms/:type` | 037 | 2 |
 | 16 | 관리자 | `/admin/*` | 057 | 3 |
 
+- 현재 순위의 라우트만 등록한다. 현재 순위보다 높은 순위 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(1순위 단계: 채팅·알림 탭).
 - 하단 탭(모바일): 홈 · 검색 · 채팅 · 알림 · 나의 대여. PC(≥1280px)는 상단 헤더 메뉴로 같은 구성.
 - 인증 필요 라우트는 `RequireAuth`로 감싸고, 비로그인 시 `/login?redirect=...`.
 - 동네 미설정 시 홈 진입 → `/regions`로 유도. 비회원 임시 동네는 localStorage.
@@ -71,14 +74,17 @@ src/
 상세에서 채팅하기 → 채팅방(상단에 대여 상태 표시, 대여 상세로 이동).
 
 ## API 연동 규칙
-- 응답은 `{ success, data, error }`. axios 응답 인터셉터에서 `data`만 꺼내고, 실패는 `ApiError(code, message, details)`로 정규화해 throw.
+- 응답은 `{ success, data, error }`. axios 응답 인터셉터에서 `data`만 꺼내고, 실패는 `ApiError(code, message, details, status)`로 정규화해 throw.
+  - 서버 응답이 아닌 실패는 프론트 전용 코드: `CLIENT_NETWORK_ERROR`(응답 없음, `status` 0) · `CLIENT_TIMEOUT` · `CLIENT_INVALID_RESPONSE`(공통 래퍼가 아닌 응답, 예: 프록시 502). 요청 취소는 ApiError로 바꾸지 않는다.
 - **분기는 `error.code`로** (예: `RENTAL_PERIOD_CONFLICT` → "이미 예약된 기간입니다" 토스트 + 캘린더 refetch). HTTP 메시지 문자열로 분기하지 않는다.
 - 폼 검증 오류(`details[]`)는 react-hook-form `setError`로 필드에 매핑.
 - Access Token은 **메모리(Zustand)에만**. localStorage 저장 금지. Refresh Token은 HttpOnly 쿠키라 JS가 만지지 않는다(`withCredentials: true`).
-- **401 처리**: 재발급 요청을 **단일 비행(single-flight)**으로 — 동시에 401이 여러 개 와도 `/api/auth/reissue`는 한 번만 호출하고 나머지는 대기 후 재시도. 원 요청은 1회만 재시도. 재발급 실패 → 상태 초기화 후 `/login`.
-- 앱 시작 시 `/api/auth/reissue`를 한 번 호출해 로그인 상태 복원.
+- **401 처리**: 재발급 요청을 **단일 비행(single-flight)**으로 — 동시에 401이 여러 개 와도 `/api/auth/reissue`는 한 번만 호출하고 나머지는 대기 후 재시도. 원 요청은 1회만 재시도. 재발급 실패 → 상태 초기화 후 `/login?redirect=<현재 경로>`.
+  - 재발급 호출은 **인터셉터를 타지 않는 별도 호출**(무한 루프 방지).
+  - `/auth/login`·`/auth/logout`·`/auth/reissue`의 401은 재발급을 시도하지 않는다.
+- 앱 시작 시 `/api/auth/reissue`를 한 번 호출해 로그인 상태 복원. 끝날 때까지 라우트 렌더를 보류하고, 실패하면 비로그인으로 진행한다(로그인 화면으로 보내지 않음).
 - 로그아웃하거나 재발급에 실패하면 저장된 AT를 지운다.
-- 공개 API(`/api/auth/**`, `POST /api/members`)에는 Authorization 헤더를 붙이지 않는다.
+- 공개 API(`/api/auth/**`, `POST /api/members`)에는 Authorization 헤더를 붙이지 않는다. 판정은 **baseURL을 뺀 상대 경로**(`/auth/**`, `POST /members`) 기준.
 - **서버에서 온 데이터는 전부 TanStack Query로 다룬다.** `useEffect + useState`로 API를 호출해 상태를 들고 있지 않는다. Zustand에는 서버 데이터를 복사해 두지 않는다(토큰·임시 동네·UI 상태만).
 - 조회는 `useQuery`/`useInfiniteQuery`, 변경은 `useMutation` → `onSuccess`에서 관련 queryKey `invalidateQueries`. 훅은 `features/*/queries.js`에 모으고 컴포넌트에서 axios를 직접 호출하지 않는다.
 - 기본 옵션(`QueryClient`): `retry: 1`(401·403·404·409는 재시도 안 함), `staleTime`은 목록 30초·상세 10초 정도로 시작. 캘린더·대여 상세처럼 상태가 바뀌는 화면은 짧게.
@@ -119,7 +125,7 @@ export const RENTAL_STATUS = {
 - 접근성: 버튼에 텍스트 또는 aria-label, 터치 영역 44px 이상.
 
 ## 로컬 연동 (백엔드와 같은 출처로)
-- `vite.config.js`의 `server.proxy`로 `/api` → `http://localhost:8080`, `/ws` → `ws://localhost:8080`(`ws: true`)를 넘긴다. 브라우저 기준으로 프론트와 API가 같은 출처라 CORS가 필요 없고, Refresh Token 쿠키(`SameSite=Lax`, `Path=/api/auth`)가 그대로 전달된다.
+- `vite.config.js`의 `server.proxy`로 `/api` → `http://localhost:8080`, `/ws` → `ws://localhost:8080`(`ws: true`), `/files` → `http://localhost:8080`(local 프로필 업로드 이미지가 `/files/...` 상대 URL)를 넘긴다. 브라우저 기준으로 프론트와 API가 같은 출처라 CORS가 필요 없고, Refresh Token 쿠키(`SameSite=Lax`, `Path=/api/auth`)가 그대로 전달된다.
 - axios `baseURL`은 `VITE_API_URL`(기본 `/api`), `withCredentials: true`. 절대 주소(`http://localhost:8080`)를 코드에 쓰지 않는다.
 - 운영은 Nginx가 정적 파일과 `/api`, `/ws`를 같은 도메인에서 서빙하므로 같은 코드가 그대로 동작한다.
 
@@ -129,10 +135,11 @@ export const RENTAL_STATUS = {
 - **위치**: `navigator.geolocation` 권한 거부 시 안내 후 동네 검색만 제공.
 
 ## 개발 방식
-- 백엔드가 컨트롤러·DTO를 먼저 머지하면 `docs/openapi.json`이 갱신된다. 그 스키마의 응답 형태 그대로 `mocks/` MSW 핸들러를 만들어 먼저 개발한다(공통 래퍼 `{ success, data, error }` 포함). `VITE_USE_MOCK=true`로 전환.
+- 백엔드가 컨트롤러·DTO를 먼저 머지하면 `docs/openapi.json`이 갱신된다. 그 스키마의 응답 형태 그대로 `mocks/` MSW 핸들러를 만들어 먼저 개발한다(공통 래퍼는 `mocks/response.js`의 `ok`·`fail` 헬퍼로). `VITE_USE_MOCK=true`로 전환.
+  - MSW는 **개발 서버 + `VITE_USE_MOCK=true`일 때만** `main.jsx`가 동적 import로 시작하고 운영 번들에는 들어가지 않게 한다. 처리하지 않는 요청은 bypass. `public/mockServiceWorker.js`는 커밋한다(msw 버전을 올리면 `npx msw init public`으로 갱신).
 - 타입 힌트가 필요하면 openapi.json에서 JSDoc 타입을 생성해 쓸 수 있다(선택, `openapi-typescript` 등). 생성 파일은 직접 수정하지 않는다.
-- 환경 변수: `frontend/.env.example`을 `frontend/.env.local`로 복사해서 사용(`.env.local`은 커밋 금지). 키를 추가하면 `.env.example`에도 추가.
-- Node 버전: `frontend/.nvmrc`에 LTS 버전을 적어 팀원과 CI가 같은 버전을 쓴다(프로젝트 생성 시 만든다).
+- 환경 변수: `frontend/.env.example`을 `frontend/.env.local`로 복사해서 사용(`.env.local`은 커밋 금지). 키를 추가하면 `.env.example`에도 추가. 현재 키: `VITE_API_URL` · `VITE_USE_MOCK` · `VITE_PAYMENT_ENABLED` · `VITE_KAKAO_MAP_KEY` · `VITE_TOSS_CLIENT_KEY`.
+- Node 버전: `frontend/.nvmrc`(현재 `24`, LTS)로 팀원과 CI가 같은 버전을 쓴다.
 - 포맷은 Prettier, 이름 규칙은 `docs/conventions.md` §5. 커밋 전 `npm run format`.
-- `npm run lint`, `npm run build`가 통과해야 PR.
+- `npm run lint`, `npm run test`, `npm run build`가 통과해야 PR (CI도 같은 순서).
 - 1순위 단계에서는 결제 화면 대신 "예약 완료 → 대여 상세"로 바로 이동 (백엔드 `payment-enabled=false`와 맞춤). 플래그 `VITE_PAYMENT_ENABLED`.

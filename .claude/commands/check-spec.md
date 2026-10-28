@@ -15,4 +15,12 @@ argument-hint: [REQ-xxx]
 7. 도메인 문서의 "테스트 포인트"가 테스트로 커버되는가
 8. 현재 단계보다 높은 순위의 기능을 미리 구현하지 않았는가
 
+프론트(`frontend/`) 변경이면 추가로 확인한다 (기준: `frontend/CLAUDE.md`):
+- 토큰을 localStorage·sessionStorage에 저장하지 않는가 (AT는 authStore 메모리만)
+- 401 재발급: single-flight, 원 요청 1회만 재시도, 재발급 호출은 인터셉터 밖, `/auth/login`·`/auth/logout`·`/auth/reissue` 401은 재발급하지 않음
+- 코드에 절대 주소(`http://localhost` 등)가 없는가
+- MSW가 운영 번들에 포함되지 않는가 (`import.meta.env.DEV` + `VITE_USE_MOCK` 분기 안의 동적 import)
+- 현재 순위보다 높은 순위 화면을 "준비 중" 자리표시 이상으로 구현하지 않았는가
+- 이름 규칙(`docs/conventions.md` §5)을 지키는가
+
 결과는 [불일치 / 누락 / 제안] 세 구분으로 파일:라인과 함께 짧게 정리한다.

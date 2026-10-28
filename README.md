@@ -48,7 +48,7 @@
 | --- | --- | --- |
 | Git | 최신 | 버전 관리 |
 | JDK | 21 | 백엔드 |
-| Node.js | LTS | 프론트엔드 |
+| Node.js | 24 LTS (`frontend/.nvmrc`) | 프론트엔드 |
 | Docker Desktop | 최신 | 로컬 MySQL·Redis·RabbitMQ |
 | GitHub CLI (`gh`) | 최신 | PR 생성 (선택) |
 | IntelliJ IDEA / VS Code | — | 백엔드 / 프론트엔드 편집 |
@@ -89,7 +89,7 @@ cd backend && ./gradlew bootRun --args='--spring.profiles.active=local'
 cd frontend && npm install && npm run dev
 ```
 
-백엔드 local 프로필은 `infra/.env`를 설정값으로 읽고, 업로드 파일은 로컬 디스크에, 메일은 Mailpit(http://localhost:8025)으로 보냅니다. AWS 키 없이 실행됩니다. 프론트는 Vite 프록시로 백엔드에 연결됩니다.
+백엔드 local 프로필은 `infra/.env`를 설정값으로 읽고, 업로드 파일은 로컬 디스크에, 메일은 Mailpit(http://localhost:8025)으로 보냅니다. AWS 키 없이 실행됩니다. 프론트는 Vite 프록시로 백엔드에 연결됩니다. 백엔드 없이 화면만 볼 때는 `frontend/.env.local`에서 `VITE_USE_MOCK=true`로 바꾸면 MSW 목 응답으로 동작합니다.
 
 DB 테이블은 백엔드가 켜질 때 Flyway가 자동으로 만듭니다. DB를 초기화하려면 `docker compose -f infra/docker-compose.local.yml down -v` 후 다시 실행하세요.
 

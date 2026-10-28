@@ -1,0 +1,5 @@
+dist
+public/mockServiceWorker.js
+package-lock.json
+# 문서는 기존 표 형식을 유지한다
+*.md

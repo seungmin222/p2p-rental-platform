@@ -8,7 +8,7 @@
 <!-- 없으면 "없음". 있으면 이유와 docs/open-issues.md 반영 여부 -->
 
 ## 체크리스트
-- [ ] 테스트 통과 (`./gradlew test` / `npm run lint && npm run build`)
+- [ ] 테스트 통과 (`./gradlew test` / `npm run lint && npm run test && npm run build`)
 - [ ] 도메인 문서의 "테스트 포인트" 커버
 - [ ] API 변경 시 `docs/openapi.json` 재생성
 - [ ] `docs/api.md` · `docs/erd.md` · `docs/roadmap.md` 갱신
