@@ -137,4 +137,13 @@ class RentalEntityIntegrationTest extends IntegrationTestSupport {
 			Rental.createReserved(Long.MAX_VALUE, owner.getId(), renter.getId(), START, END, 10_000, 0)))
 			.isInstanceOf(DataIntegrityViolationException.class);
 	}
+
+	@Test
+	@DisplayName("없는 대여를 참조하는 상태 이력은 저장되지 않는다")
+	void rentalForeignKey() {
+		// then
+		assertThatThrownBy(() -> rentalStatusHistoryRepository.save(
+			RentalStatusHistory.create(Long.MAX_VALUE, null, RentalStatus.RESERVED, null, null, NOW)))
+			.isInstanceOf(DataIntegrityViolationException.class);
+	}
 }

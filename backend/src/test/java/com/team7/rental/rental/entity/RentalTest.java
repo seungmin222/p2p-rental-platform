@@ -108,6 +108,48 @@ class RentalTest {
 		assertThat(rental.getRentalFee()).isZero();
 	}
 
+	@Test
+	@DisplayName("결제 대기 생성에 만료 시각이 없으면 NPE가 난다")
+	void createPendingPaymentWithoutExpiresAt() {
+		// then
+		assertThatThrownBy(() -> Rental.createPendingPayment(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT, null))
+			.isInstanceOf(NullPointerException.class);
+	}
+
+	@Test
+	@DisplayName("종료일이 시작일보다 앞서면 두 팩토리 모두 예외가 난다")
+	void reversedPeriod() {
+		// then
+		assertThatThrownBy(() -> Rental.createReserved(1L, 2L, 3L, END, START, PRICE_PER_DAY, DEPOSIT))
+			.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(
+			() -> Rental.createPendingPayment(1L, 2L, 3L, END, START, PRICE_PER_DAY, DEPOSIT, EXPIRES_AT))
+			.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	@DisplayName("시작일이나 종료일이 없으면 예외가 난다")
+	void nullPeriod() {
+		// then
+		assertThatThrownBy(() -> Rental.createReserved(1L, 2L, 3L, null, END, PRICE_PER_DAY, DEPOSIT))
+			.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> Rental.createReserved(1L, 2L, 3L, START, null, PRICE_PER_DAY, DEPOSIT))
+			.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(
+			() -> Rental.createPendingPayment(1L, 2L, 3L, null, END, PRICE_PER_DAY, DEPOSIT, EXPIRES_AT))
+			.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	@DisplayName("결제 대기도 시작일과 종료일이 같으면 1일치 대여료다")
+	void pendingPaymentOneDay() {
+		// when
+		Rental rental = Rental.createPendingPayment(1L, 2L, 3L, START, START, PRICE_PER_DAY, DEPOSIT, EXPIRES_AT);
+
+		// then
+		assertThat(rental.getRentalFee()).isEqualTo(PRICE_PER_DAY);
+	}
+
 	@ParameterizedTest
 	@EnumSource(value = RentalStatus.class, names = {"RESERVED", "RENTING", "OVERDUE"})
 	@DisplayName("RESERVED·RENTING·OVERDUE는 기간을 점유한다")

@@ -3,6 +3,7 @@ package com.team7.rental.rental.entity;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 
 import com.team7.rental.global.entity.BaseTimeEntity;
 
@@ -21,6 +22,10 @@ import lombok.NoArgsConstructor;
 
 /**
  * 대여 건. 물품·회원은 ID로만 참조한다. 상태 전이 메서드(handover·cancel 등)는 각 REQ에서 추가한다.
+ * <p>
+ * 생성 팩토리는 프로그래밍 오류를 막는 불변식(기간 null·뒤집힘, 결제 대기의 만료 시각 null)만 검사하고 위반 시
+ * IllegalArgumentException·NullPointerException을 던진다. 사용자 입력 검증(오늘 이후 시작, 일수 1~30, 400 응답)은
+ * REQ-013 서비스가 한다.
  */
 @Getter
 @Entity
@@ -105,19 +110,24 @@ public class Rental extends BaseTimeEntity {
 	private Long version;
 
 	/**
-	 * 결제 대기로 생성(REQ-013, 결제 금액 > 0). 기간·일수 검증은 호출하는 서비스가 한다.
+	 * 결제 대기로 생성(REQ-013, 결제 금액 > 0). 사용자 입력 검증은 호출하는 서비스가 한다.
 	 *
-	 * @param paymentExpiresAt 결제 만료 시각(서비스가 Clock + payment.expire-minutes로 계산)
+	 * @param paymentExpiresAt 결제 만료 시각(서비스가 Clock + payment.expire-minutes로 계산). null 불가
+	 * @throws IllegalArgumentException 기간이 null이거나 endDate가 startDate보다 앞설 때
 	 */
 	public static Rental createPendingPayment(Long itemId, Long ownerId, Long renterId, LocalDate startDate,
 		LocalDate endDate, int pricePerDay, int deposit, LocalDateTime paymentExpiresAt) {
 		Rental rental = create(itemId, ownerId, renterId, startDate, endDate, pricePerDay, deposit,
 			RentalStatus.PENDING_PAYMENT);
-		rental.paymentExpiresAt = paymentExpiresAt;
+		rental.paymentExpiresAt = Objects.requireNonNull(paymentExpiresAt, "paymentExpiresAt");
 		return rental;
 	}
 
-	/** 결제 없이 바로 확정(REQ-013, 1순위 단계 또는 무료 대여). 기간·일수 검증은 호출하는 서비스가 한다. */
+	/**
+	 * 결제 없이 바로 확정(REQ-013, 1순위 단계 또는 무료 대여). 사용자 입력 검증은 호출하는 서비스가 한다.
+	 *
+	 * @throws IllegalArgumentException 기간이 null이거나 endDate가 startDate보다 앞설 때
+	 */
 	public static Rental createReserved(Long itemId, Long ownerId, Long renterId, LocalDate startDate,
 		LocalDate endDate, int pricePerDay, int deposit) {
 		return create(itemId, ownerId, renterId, startDate, endDate, pricePerDay, deposit, RentalStatus.RESERVED);
@@ -125,6 +135,7 @@ public class Rental extends BaseTimeEntity {
 
 	private static Rental create(Long itemId, Long ownerId, Long renterId, LocalDate startDate, LocalDate endDate,
 		int pricePerDay, int deposit, RentalStatus status) {
+		validatePeriod(startDate, endDate);
 		Rental rental = new Rental();
 		rental.itemId = itemId;
 		rental.ownerId = ownerId;
@@ -136,6 +147,12 @@ public class Rental extends BaseTimeEntity {
 		rental.rentalFee = Math.multiplyExact(pricePerDay, countDays(startDate, endDate));
 		rental.status = status;
 		return rental;
+	}
+
+	private static void validatePeriod(LocalDate startDate, LocalDate endDate) {
+		if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
+			throw new IllegalArgumentException("대여 기간이 올바르지 않습니다: " + startDate + " ~ " + endDate);
+		}
 	}
 
 	// 시작일·종료일을 모두 포함한다(같은 날이면 1일)
