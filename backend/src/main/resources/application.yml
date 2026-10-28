@@ -51,6 +51,15 @@ app:
     trust:
       # trust.initial: 가입 시 50점 (REQ-001, REQ-054). members.trust_score DB 기본값과 같게
       initial-score: 50.0
+    rental:
+      # rental.min-days / rental.max-days: 최초 예약 일수 (REQ-013)
+      min-days: 1
+      max-days: 30
+      # rental.lock.wait: 분산 락 대기. 임대 시간은 지정하지 않는다(watchdog 자동 연장)
+      lock-wait: 3s
+    payment:
+      # payment.expire-minutes: 결제 대기(PENDING_PAYMENT) 기간 선점 시간 (REQ-013, REQ-024)
+      expire-minutes: 15
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

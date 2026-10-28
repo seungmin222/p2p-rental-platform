@@ -9,11 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.team7.rental.global.security.JwtProvider;
 import com.team7.rental.global.security.SecurityErrorResponder;
 
-@WebMvcTest(properties = {
+// 실제 컨트롤러를 올리지 않는다(서비스 빈이 이 슬라이스에 없다). 빈 컨트롤러만 대상으로 지정한다
+@WebMvcTest(controllers = SecurityConfigSwaggerTest.NoController.class, properties = {
 	"app.jwt.secret=test-jwt-secret-must-be-at-least-32-bytes-long",
 	"app.security.permit-swagger=true"})
 @Import({SecurityConfig.class, JwtProvider.class, SecurityErrorResponder.class, TimeConfig.class})
@@ -29,4 +31,7 @@ class SecurityConfigSwaggerTest {
 		mockMvc.perform(get("/v3/api-docs")).andExpect(status().isNotFound());
 		mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isNotFound());
 	}
+
+	@RestController
+	static class NoController {}
 }
