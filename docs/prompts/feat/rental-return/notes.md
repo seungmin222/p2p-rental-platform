@@ -27,6 +27,14 @@ REQ-016 1순위 전이 마무리 + 017 인계 + 018 반납 요청·상태 확인
 - **request part의 Content-Type이 없거나 text/plain이면 415 `COMMON_UNSUPPORTED_MEDIA_TYPE`.** 원래 HttpMediaTypeNotSupportedException이 500으로 나갔다. 공통 핸들러를 추가했고(JSON API에 다른 Content-Type을 보내도 같은 415), 프론트는 request part를 `application/json` Blob으로 보내야 한다. 필수 part가 없을 때(MissingServletRequestPartException)도 500이었어서 400 COMMON_INVALID_INPUT(필드 = part 이름)으로 바꿨다.
 - **글자 수 검증은 클래스 수준 `@ValidInspectionText` + 요청 타입별 검증기.** 앞뒤 공백을 지우고 비면 null(cancel과 같음), codePointCount.
 
+## 반납 요청·상태 확인 (018)
+- **체크리스트 형식은 `{ "NO_EXTERIOR_DAMAGE": true, ... }` 맵.** 모르는 키는 JSON 변환에서 막혀 기존 HttpMessageNotReadable 핸들러가 400(field `checklist`, "형식이 올바르지 않습니다.")을 낸다. 빠진 키·null 값은 검증기가 400(field `checklist`). 통합 테스트로 두 경로를 구분해 고정했다.
+- **반납 요청·상태 확인은 request part 필수**(체크리스트·판정이 필요). 없으면 400(field `request`).
+- **상태 확인 사진 규칙은 서비스에서 본다**: ABNORMAL은 inspection.images.min~max장, NORMAL은 사진을 보내면 400 `IMAGE_COUNT_INVALID`. 판정 사진도 반납 사진과 같은 정책 키를 쓴다(policies.md에 별도 키가 없음).
+- **"이미 판정됨"은 RETURN 기록의 result로 본다.** 1순위는 판정 즉시 COMPLETED라 대여 상태 가드가 먼저 막지만, REQ-049 뒤 '이상 → RETURNED 유지' 상태를 위해 기록 쪽도 검사한다(`ItemInspection.judge`가 INVALID_TRANSITION).
+- **상태 확인도 전이 직후 flush하고 이력을 저장한다.** 이력 INSERT의 FK 검사도 rentals 행에 S 락을 잡아서, 제공자 확인과 자동 확인 배치가 겹치면 인계 때와 같은 데드락이 날 수 있다. 쓰기 경로는 모두 "전이 → flush → INSERT" 순서.
+- **`return.*` 키는 `@Name("return") Return returnPolicy`로 바인딩**(Spring Boot가 예약어 이름에 안내하는 방식). yml·policies.md 키가 그대로라 문서와 어긋나지 않는다.
+
 ## 사진 업로드·정리 (item-crud가 아직 없어 이 방식을 제안, B 확인)
 - **순서: 사전 검사(읽기 트랜잭션) → 장수 검사·전부 처리 → 업로드(트랜잭션 밖) → TxService. TxService가 예외를 던지면 업로드한 키를 지우고 다시 던진다.** 처리 단계에서 실패하면 업로드한 파일이 없다. 업로드 중간 실패도 그때까지 올린 키를 지운다. 삭제 실패는 WARN 로그만(원래 예외를 가리지 않게, 남는 파일은 DB가 참조하지 않는 고아).
 - **사전 검사는 사진 처리를 줄이는 최적화일 뿐이다.** TxService 쓰기 메서드가 트랜잭션 안에서 대여를 다시 읽고 404·403·409를 전부 다시 검사한다.

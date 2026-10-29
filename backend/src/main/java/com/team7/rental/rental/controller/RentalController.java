@@ -27,6 +27,8 @@ import com.team7.rental.rental.dto.RentalCancelRequest;
 import com.team7.rental.rental.dto.RentalCreateRequest;
 import com.team7.rental.rental.dto.RentalDetailResponse;
 import com.team7.rental.rental.dto.RentalHandoverRequest;
+import com.team7.rental.rental.dto.RentalReturnConfirmRequest;
+import com.team7.rental.rental.dto.RentalReturnRequest;
 import com.team7.rental.rental.service.RentalCancelService;
 import com.team7.rental.rental.service.RentalInspectionService;
 import com.team7.rental.rental.service.RentalQueryService;
@@ -144,5 +146,53 @@ public class RentalController {
 		@RequestPart(value = "images", required = false)
 		List<MultipartFile> images) {
 		return ApiResponse.ok(rentalInspectionService.handover(rentalId, memberId, request, images));
+	}
+
+	@Operation(summary = "반납 요청 (REQ-018)", description = "대여자가 반납 사진·체크리스트·메모를 올리면 대여 중(RENTING) 또는 연체(OVERDUE)가 반납 완료(RETURNED, 상태 확인 대기)가 된다. "
+		+ "대여자가 요청 없이 물건을 돌려줬으면 제공자가 같은 API로 대리 접수한다(기록 작성자 = 제공자). 기록은 수정할 수 없다. "
+		+ "multipart: request part(Content-Type application/json, 필수) { checklist, note } + images 파일들. "
+		+ "checklist는 ReturnChecklistItem 5개 키를 모두 true/false로 보낸다(빠지면 400, 모르는 키도 400). "
+		+ "false 항목이 있으면 note 필수, 최대 글자 수 policies.md return.note-max. 사진 장수 inspection.images.min~max, 장당 inspection.images.max-file-size, jpg/png. "
+		+ "검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → "
+		+ "404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 409 RENTAL_INVALID_TRANSITION → "
+		+ "사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). "
+		+ "다른 요청이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.")
+	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+	@ApiErrorCodes({COMMON_INVALID_INPUT, COMMON_UNSUPPORTED_MEDIA_TYPE, AUTH_UNAUTHORIZED, RENTAL_NOT_FOUND,
+		RENTAL_NOT_PARTICIPANT, RENTAL_INVALID_TRANSITION, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED,
+		COMMON_CONCURRENT_UPDATE})
+	@PostMapping(value = "/{rentalId}/return-request", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ApiResponse<RentalDetailResponse> requestReturn(@LoginMember
+	Long memberId, @PathVariable
+	Long rentalId,
+		@Valid @RequestPart("request")
+		RentalReturnRequest request,
+		@RequestPart(value = "images", required = false)
+		List<MultipartFile> images) {
+		return ApiResponse.ok(rentalInspectionService.requestReturn(rentalId, memberId, request, images));
+	}
+
+	@Operation(summary = "제공자 상태 확인 (REQ-018)", description = "제공자가 반납된 물품을 정상(NORMAL) 또는 이상(ABNORMAL)으로 판정한다. 판정은 한 번만 할 수 있다. "
+		+ "1순위 단계는 보증금 처리가 없어 두 경우 모두 거래 완료(COMPLETED)가 되고 판정은 기록만 한다. "
+		+ "반납 요청 후 policies.md return.auto-confirm-days가 지나도록 판정하지 않으면 자동으로 정상 처리된다. "
+		+ "multipart: request part(Content-Type application/json, 필수) { result, resultNote } + images 파일들. "
+		+ "ABNORMAL이면 resultNote(최대 inspection.abnormal-note-max자)와 사진(inspection.images.min~max장) 필수, NORMAL이면 resultNote 선택이고 사진을 보내면 400. "
+		+ "검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → "
+		+ "404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION(반납 완료 아님·이미 판정) → "
+		+ "사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). "
+		+ "다른 요청(자동 확인 포함)이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.")
+	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+	@ApiErrorCodes({COMMON_INVALID_INPUT, COMMON_UNSUPPORTED_MEDIA_TYPE, AUTH_UNAUTHORIZED, RENTAL_NOT_FOUND,
+		RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY, RENTAL_INVALID_TRANSITION, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE,
+		IMAGE_SIZE_EXCEEDED, COMMON_CONCURRENT_UPDATE})
+	@PatchMapping(value = "/{rentalId}/return", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ApiResponse<RentalDetailResponse> confirmReturn(@LoginMember
+	Long memberId, @PathVariable
+	Long rentalId,
+		@Valid @RequestPart("request")
+		RentalReturnConfirmRequest request,
+		@RequestPart(value = "images", required = false)
+		List<MultipartFile> images) {
+		return ApiResponse.ok(rentalInspectionService.confirmReturn(rentalId, memberId, request, images));
 	}
 }

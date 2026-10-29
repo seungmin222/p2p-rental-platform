@@ -84,6 +84,12 @@ app:
       handover-memo-max: 300
       # inspection.abnormal-note-max: 상태 확인 '이상' 내용 (REQ-018). item_inspections.result_note VARCHAR(500)과 같게
       abnormal-note-max: 500
+    # PolicyProperties.returnPolicy (return은 Java 예약어라 @Name("return")으로 바인딩)
+    return:
+      # return.note-max: 반납 메모, 체크리스트에 false 항목이 있으면 필수 (REQ-018). item_inspections.note VARCHAR(300)과 같게
+      note-max: 300
+      # return.auto-confirm-days: 반납 요청 후 3일이 지나면 자동 '정상' 처리 (REQ-018)
+      auto-confirm-days: 3
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

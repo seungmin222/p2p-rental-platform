@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,11 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.rental.dto.RentalDetailResponse;
+import com.team7.rental.rental.entity.InspectionPhase;
+import com.team7.rental.rental.entity.InspectionResult;
 import com.team7.rental.rental.entity.ItemInspection;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalRole;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
+import com.team7.rental.rental.entity.ReturnChecklistItem;
 import com.team7.rental.rental.repository.ItemInspectionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
@@ -75,6 +79,99 @@ public class RentalInspectionTxService {
 		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(), memberId,
 			RentalStatusHistory.REASON_HANDOVER, now));
 		return rentalQueryService.getRental(rentalId, memberId);
+	}
+
+	/**
+	 * 반납 요청 사전 검사. 대여자 본인 또는 제공자(대리 접수).
+	 *
+	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_INVALID_TRANSITION
+	 */
+	public void validateReturnRequest(Long rentalId, Long memberId) {
+		getParticipantRental(rentalId, memberId).validateReturnRequest();
+	}
+
+	/**
+	 * 반납 요청: RENTING·OVERDUE → RETURNED + RETURN 기록 + 이력. 제공자가 부르면 대리 접수(기록 작성자·이력 changedBy = 제공자).
+	 * 연체료(overdueFee)는 건드리지 않는다(REQ-023).
+	 *
+	 * @param checklist 검증된 체크리스트(모든 항목 true/false)
+	 * @param note 정규화된 메모. 없으면 null
+	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_INVALID_TRANSITION
+	 * @throws org.springframework.orm.ObjectOptimisticLockingFailureException 다른 요청이 먼저 대여를 바꿨을 때(409)
+	 */
+	@Transactional
+	public RentalDetailResponse requestReturn(Long rentalId, Long memberId, Map<ReturnChecklistItem, Boolean> checklist,
+		String note, List<String> imageUrls) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		Rental rental = getParticipantRental(rentalId, memberId);
+		RentalStatus from = rental.getStatus();
+		rental.requestReturn(now);
+		// 버전 검사를 기록 INSERT보다 먼저 (클래스 주석)
+		rentalRepository.flush();
+		itemInspectionRepository.save(ItemInspection.returned(rentalId, memberId, imageUrls, checklist, note));
+		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(), memberId,
+			RentalStatusHistory.REASON_RETURN_REQUEST, now));
+		return rentalQueryService.getRental(rentalId, memberId);
+	}
+
+	/**
+	 * 상태 확인 사전 검사. 제공자만, RETURNED이고 RETURN 기록이 아직 판정되지 않았을 때.
+	 *
+	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY, RENTAL_INVALID_TRANSITION
+	 */
+	public void validateConfirmReturn(Long rentalId, Long memberId) {
+		Rental rental = getOwnerRental(rentalId, memberId);
+		rental.validateReturned();
+		if (getReturnInspection(rentalId).isJudged()) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+	}
+
+	/**
+	 * 제공자 상태 확인: RETURN 기록에 판정 기록 → 1순위는 NORMAL·ABNORMAL 모두 COMPLETED + 이력.
+	 * ABNORMAL은 REQ-049에서 RETURNED 유지·보증금 HELD로 바뀐다.
+	 *
+	 * @param resultNote 정규화된 판정 내용. 없으면 null
+	 * @param resultImageUrls ABNORMAL 사진. NORMAL이면 빈 목록
+	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY,
+	 *     RENTAL_INVALID_TRANSITION(RETURNED 아님 또는 이미 판정)
+	 * @throws org.springframework.orm.ObjectOptimisticLockingFailureException 다른 요청(자동 확인 배치 포함)이 먼저 바꿨을 때(409)
+	 */
+	@Transactional
+	public RentalDetailResponse confirmReturn(Long rentalId, Long memberId, InspectionResult result,
+		String resultNote, List<String> resultImageUrls) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		Rental rental = getOwnerRental(rentalId, memberId);
+		rental.validateReturned();
+		judgeAndComplete(rental, getReturnInspection(rentalId), result, resultNote, resultImageUrls, memberId, now);
+		return rentalQueryService.getRental(rentalId, memberId);
+	}
+
+	private void judgeAndComplete(Rental rental, ItemInspection inspection, InspectionResult result,
+		String resultNote, List<String> resultImageUrls, Long changedBy, LocalDateTime now) {
+		inspection.judge(result, resultNote, resultImageUrls);
+		RentalStatus from = rental.getStatus();
+		String reason;
+		if (result == InspectionResult.NORMAL) {
+			rental.confirmNormal(now);
+			reason = changedBy == null ? RentalStatusHistory.REASON_RETURN_AUTO_CONFIRM_BATCH
+				: RentalStatusHistory.REASON_RETURN_CONFIRM_NORMAL;
+		} else {
+			// 1순위: 이상도 기록만 하고 완료 (REQ-049에서 RETURNED 유지·HELD)
+			rental.markAbnormal();
+			rental.complete(now);
+			reason = RentalStatusHistory.REASON_RETURN_CONFIRM_ABNORMAL;
+		}
+		// 버전 검사를 이력 INSERT보다 먼저 (클래스 주석: 이력의 FK 검사도 rentals 행에 S 락을 잡는다)
+		rentalRepository.flush();
+		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rental.getId(), from, rental.getStatus(),
+			changedBy, reason, now));
+	}
+
+	private ItemInspection getReturnInspection(Long rentalId) {
+		// RETURNED면 반납 기록이 있다(반납 요청이 같은 트랜잭션에 저장). 없으면 데이터 오류
+		return itemInspectionRepository.findByRentalIdAndPhase(rentalId, InspectionPhase.RETURN)
+			.orElseThrow(() -> new IllegalStateException("반납 기록이 없습니다: " + rentalId));
 	}
 
 	private Rental getParticipantRental(Long rentalId, Long memberId) {

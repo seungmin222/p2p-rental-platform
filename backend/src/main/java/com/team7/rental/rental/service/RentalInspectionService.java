@@ -17,6 +17,9 @@ import com.team7.rental.global.storage.StorageKeys;
 import com.team7.rental.global.storage.StoredFile;
 import com.team7.rental.rental.dto.RentalDetailResponse;
 import com.team7.rental.rental.dto.RentalHandoverRequest;
+import com.team7.rental.rental.dto.RentalReturnConfirmRequest;
+import com.team7.rental.rental.dto.RentalReturnRequest;
+import com.team7.rental.rental.entity.InspectionResult;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,20 +52,50 @@ public class RentalInspectionService {
 	public RentalDetailResponse handover(Long rentalId, Long memberId, RentalHandoverRequest request,
 		List<MultipartFile> images) {
 		rentalInspectionTxService.validateHandover(rentalId, memberId);
-		List<ProcessedImage> processed = processImages(images, policyProperties.inspection().images().min());
+		List<ProcessedImage> processed = processImages(images);
 		String memo = request == null ? null : request.normalizedMemo();
 		return withUploaded(processed, urls -> rentalInspectionTxService.handover(rentalId, memberId, memo, urls));
 	}
 
 	/**
-	 * min ~ inspection.images.max장을 검사하고 전부 처리한다. null은 0장.
+	 * 반납 요청 (REQ-018). 대여자 본인, 또는 제공자 대리 접수.
 	 *
-	 * @param min 최소 장수(판정 '정상'은 0, 그 외 inspection.images.min)
+	 * @throws BusinessException 사전 검사·트랜잭션의 대여 오류, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED
 	 */
-	private List<ProcessedImage> processImages(List<MultipartFile> images, int min) {
+	public RentalDetailResponse requestReturn(Long rentalId, Long memberId, RentalReturnRequest request,
+		List<MultipartFile> images) {
+		rentalInspectionTxService.validateReturnRequest(rentalId, memberId);
+		List<ProcessedImage> processed = processImages(images);
+		return withUploaded(processed, urls -> rentalInspectionTxService.requestReturn(rentalId, memberId,
+			request.checklist(), request.normalizedNote(), urls));
+	}
+
+	/**
+	 * 제공자 상태 확인 (REQ-018). ABNORMAL은 사진 inspection.images.min~max장, NORMAL은 사진을 보내면 400.
+	 *
+	 * @throws BusinessException 사전 검사·트랜잭션의 대여 오류, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED
+	 */
+	public RentalDetailResponse confirmReturn(Long rentalId, Long memberId, RentalReturnConfirmRequest request,
+		List<MultipartFile> images) {
+		rentalInspectionTxService.validateConfirmReturn(rentalId, memberId);
+		List<ProcessedImage> processed;
+		if (request.result() == InspectionResult.NORMAL) {
+			if (images != null && !images.isEmpty()) {
+				throw new BusinessException(ErrorCode.IMAGE_COUNT_INVALID);
+			}
+			processed = List.of();
+		} else {
+			processed = processImages(images);
+		}
+		return withUploaded(processed, urls -> rentalInspectionTxService.confirmReturn(rentalId, memberId,
+			request.result(), request.normalizedResultNote(), urls));
+	}
+
+	/** inspection.images.min ~ max장을 검사하고 전부 처리한다. null은 0장 */
+	private List<ProcessedImage> processImages(List<MultipartFile> images) {
 		PolicyProperties.Inspection.Images policy = policyProperties.inspection().images();
 		List<MultipartFile> files = images == null ? List.of() : images;
-		if (files.size() < min || files.size() > policy.max()) {
+		if (files.size() < policy.min() || files.size() > policy.max()) {
 			throw new BusinessException(ErrorCode.IMAGE_COUNT_INVALID);
 		}
 		return files.stream().map(file -> imageProcessor.process(file, policy.maxFileSize())).toList();
