@@ -132,11 +132,16 @@ function applyRentalDetail(
   }
 }
 
-/** 보던 대여가 이미 바뀌었으면(errorMessages.isStaleStateError) 상세와 inspections를 다시 불러온다. */
+/**
+ * 보던 대여가 이미 바뀌었으면(errorMessages.isStaleStateError) 상세와 inspections를 다시 불러온다.
+ * 다른 곳에서 바뀐 상태라 빌린 내역·내 물품 목록도 낡았으므로 함께 무효화한다.
+ */
 function refetchIfStale(queryClient, rentalId, error) {
   if (isStaleStateError(error)) {
     // ['rentals', id]는 inspections 키의 앞부분이라 둘 다 무효화된다
     queryClient.invalidateQueries({ queryKey: rentalKeys.detail(rentalId) });
+    queryClient.invalidateQueries({ queryKey: rentalKeys.mine() });
+    queryClient.invalidateQueries({ queryKey: itemKeys.mine() });
   }
 }
 
