@@ -17,7 +17,7 @@ const RENTING_STATUSES = ['RENTING', 'OVERDUE'];
 /** 다가오는 예약(REQ-020): 이 상태 중 startDate ≥ 오늘 */
 const UPCOMING_STATUSES = ['RESERVED', 'PENDING_PAYMENT'];
 
-export const MY_ITEM_TABS = ['AVAILABLE', 'RENTING', 'HIDDEN'];
+export const MOCK_MY_ITEM_TABS = ['AVAILABLE', 'RENTING', 'HIDDEN'];
 
 /** PageResponse 모양으로 자른다 */
 export function toPageResponse(all, page, size = PAGE_SIZE) {
@@ -31,12 +31,19 @@ export function toPageResponse(all, page, size = PAGE_SIZE) {
   };
 }
 
-/** 쿼리의 page. 없으면 0, 0 이상의 정수가 아니면 null(400) */
+// 백엔드 page는 int(int32). 넘는 값은 타입 변환 실패로 400
+const INT32_MAX = 2_147_483_647;
+
+/** 쿼리의 page. 없으면 0, 0 이상 int32 범위의 정수가 아니면 null(400) */
 export function readPage(value) {
   if (value == null || value === '') {
     return 0;
   }
-  return /^\d+$/.test(value) ? Number(value) : null;
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+  const page = Number(value);
+  return page <= INT32_MAX ? page : null;
 }
 
 /** 빌린 내역 정렬(rental.md REQ-019): OVERDUE 먼저 → startDate DESC → id DESC */

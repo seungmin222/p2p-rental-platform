@@ -67,7 +67,7 @@ function SheetBody({ query }) {
  * 내 물품의 예약 현황(REQ-020, 기간순). 열린 동안만 렌더하고 그때 부른다. 줄마다 대여 상세(제공자 뷰)로.
  */
 export default function ItemRentalsSheet({ item, onClose }) {
-  const query = useItemRentals(item.itemId, { enabled: true });
+  const query = useItemRentals(item.itemId);
   useRefetchErrorToast([query]);
   return (
     <BottomSheet open onClose={onClose} title={`${item.name} 예약 현황`}>

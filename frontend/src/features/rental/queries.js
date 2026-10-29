@@ -97,8 +97,8 @@ function selectItemRentals(data) {
   return flattenPages(data, toItemRental);
 }
 
-/** REQ-020 물품별 예약 현황(제공자 본인만). 시트가 열린 동안만 부른다(enabled) */
-export function useItemRentals(itemId, { enabled }) {
+/** REQ-020 물품별 예약 현황(제공자 본인만). 열린 동안만 렌더하는 예약 현황 시트가 부른다 */
+export function useItemRentals(itemId) {
   return useInfiniteQuery({
     queryKey: rentalKeys.itemRentals(itemId),
     queryFn: ({ pageParam }) => fetchItemRentals(itemId, pageParam),
@@ -106,7 +106,6 @@ export function useItemRentals(itemId, { enabled }) {
     getNextPageParam,
     select: selectItemRentals,
     staleTime: SHORT_STALE_TIME,
-    enabled,
   });
 }
 

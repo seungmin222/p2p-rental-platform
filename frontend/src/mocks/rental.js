@@ -16,7 +16,7 @@ import {
   listItemRentals,
   listMyItems,
   listRentalHistory,
-  MY_ITEM_TABS,
+  MOCK_MY_ITEM_TABS,
   readPage,
   toPageResponse,
 } from './pageList';
@@ -446,7 +446,7 @@ export const rentalHandlers = [
     handle(({ request }) => {
       const { searchParams } = new URL(request.url);
       const tab = searchParams.get('tab') ?? 'AVAILABLE';
-      if (!MY_ITEM_TABS.includes(tab)) {
+      if (!MOCK_MY_ITEM_TABS.includes(tab)) {
         invalidInput('tab', '형식이 올바르지 않습니다.');
       }
       const page = requirePage(searchParams);

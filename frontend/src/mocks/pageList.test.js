@@ -72,6 +72,12 @@ describe('readPage', () => {
     expect(readPage('1.5')).toBeNull();
     expect(readPage('a')).toBeNull();
   });
+
+  it('int32 범위를 넘으면 null(400)', () => {
+    expect(readPage('2147483647')).toBe(2147483647);
+    expect(readPage('2147483648')).toBeNull();
+    expect(readPage('99999999999999999999')).toBeNull();
+  });
 });
 
 describe('내 물품', () => {
