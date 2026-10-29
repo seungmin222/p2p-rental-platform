@@ -101,7 +101,7 @@ app:
     member:
       # member.email.max: 이메일 최대 100자 (REQ-001)
       email-max: 100
-      # member.password: 8~20자, 영문·숫자·특수문자 모두 포함(구성은 DTO @Pattern) (REQ-001, REQ-005)
+      # member.password: 8~20자, 공백 없는 ASCII 출력 문자만·영문·숫자·기호 각 1개 이상(구성은 DTO @Pattern) (REQ-001, REQ-005)
       password:
         min: 8
         max: 20
