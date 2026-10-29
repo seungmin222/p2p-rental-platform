@@ -158,6 +158,20 @@ class RentalCancelIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("사유 텍스트 길이는 문자(코드 포인트) 기준이라 이모지가 섞인 200자는 허용하고 201자는 400이다")
+	void reasonTextLengthWithEmoji() throws Exception {
+		String text200 = "😀".repeat(100) + "가".repeat(100);
+
+		cancel(renter, "{\"reason\": \"OTHER\", \"reasonText\": \"" + text200 + "가\"}")
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.details[0].field").value("reasonText"));
+
+		cancel(renter, "{\"reason\": \"OTHER\", \"reasonText\": \"" + text200 + "\"}")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.cancelReasonText").value(text200));
+	}
+
+	@Test
 	@DisplayName("사유가 없으면 400, 필드는 reason이다")
 	void reasonMissing() throws Exception {
 		cancel(renter, "{}")

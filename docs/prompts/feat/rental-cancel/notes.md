@@ -11,6 +11,7 @@ REQ-015 단독 취소 + 양측 동의 취소(1순위), 016 중 취소 전이. �
 
 ## 동시성
 - **취소·동의 요청·동의 응답은 모두 `RentalRepository.findByIdForUpdate`(PESSIMISTIC_WRITE)로 대여 행을 잠그고 시작한다.** 같은 대여의 취소 경로끼리 한 줄로 선다. `@Version`은 앞으로 생길 다른 경로(인계 017 등)와의 충돌용이고, 충돌하면 `GlobalExceptionHandler`가 `ObjectOptimisticLockingFailureException` → 409 `COMMON_CONCURRENT_UPDATE`.
+- **취소 API 3개의 `@ApiErrorCodes`에는 `COMMON_CONCURRENT_UPDATE`를 넣지 않는다.** 행 락 아래에서 읽고 고치므로 `@Version` 충돌이 날 수 없다. 잠그지 않고 rental을 수정하는 경로(017 인계 등)가 생기면 그 API에 선언한다.
 - **락 대기 시간 힌트를 두지 않는다.** 락 안의 작업이 행 한두 개라 대기는 밀리초 단위다. MySQL에는 문장 단위 `FOR UPDATE WAIT n`이 없고, `jakarta.persistence.lock.timeout` 힌트를 Hibernate 7이 MySQL에서 어떻게 처리하는지 확인하지 못했다. 지금은 `innodb_lock_wait_timeout` 기본 50초를 기다리고, 넘으면 500으로 나간다. **락 실험 브랜치에서 다시 본다**(타임아웃 값·409 매핑).
 - **단독 취소는 물품 Redisson 락을 잡지 않는다.** 취소와 같은 기간 예약이 겹치면 예약은 커밋 전 상태(RESERVED)를 보고 409 `PERIOD_CONFLICT`가 된다. 중복 예약이 아니라 거절 쪽이라 허용한다. 행 락은 PK라 갭 락이 없어 새 대여 INSERT를 막지 않는다.
 

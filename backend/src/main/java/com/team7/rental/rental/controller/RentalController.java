@@ -71,7 +71,7 @@ public class RentalController {
 		+ "1순위 단계는 수수료를 기록만 하고 환불하지 않는다. reason=OTHER면 reasonText 필수(cancel.reason-text-max). 응답은 대여 상세와 같다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_PARTICIPANT, RENTAL_NOT_FOUND,
-		RENTAL_INVALID_TRANSITION, RENTAL_CANCEL_NOT_ALLOWED, COMMON_CONCURRENT_UPDATE})
+		RENTAL_INVALID_TRANSITION, RENTAL_CANCEL_NOT_ALLOWED})
 	@PatchMapping("/{rentalId}/cancel")
 	public ApiResponse<RentalDetailResponse> cancelRental(@LoginMember
 	Long memberId, @PathVariable
@@ -104,7 +104,7 @@ public class RentalController {
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_PARTICIPANT,
 		RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE, RENTAL_NOT_FOUND, RENTAL_CANCEL_AGREEMENT_NOT_FOUND,
-		RENTAL_CANCEL_AGREEMENT_CLOSED, RENTAL_INVALID_TRANSITION, COMMON_CONCURRENT_UPDATE})
+		RENTAL_CANCEL_AGREEMENT_CLOSED, RENTAL_INVALID_TRANSITION})
 	@PatchMapping("/{rentalId}/cancel-agreements/{agreementId}")
 	public ApiResponse<RentalDetailResponse> respondCancelAgreement(@LoginMember
 	Long memberId, @PathVariable

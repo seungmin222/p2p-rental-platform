@@ -25,7 +25,7 @@ public class CancelReasonValidator implements ConstraintValidator<ValidCancelRea
 			return reject(context, "사유가 기타(OTHER)이면 필수입니다.");
 		}
 		int max = policyProperties.cancel().reasonTextMax();
-		if (reasonText != null && reasonText.length() > max) {
+		if (reasonText != null && reasonText.codePointCount(0, reasonText.length()) > max) {
 			return reject(context, max + "자 이하로 입력해 주세요.");
 		}
 		return true;

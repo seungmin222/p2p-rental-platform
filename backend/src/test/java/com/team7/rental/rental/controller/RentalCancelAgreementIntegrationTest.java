@@ -297,6 +297,10 @@ class RentalCancelAgreementIntegrationTest extends IntegrationTestSupport {
 		// given
 		Long expiredId = requestAndGetId(renter);
 		testClock.fixAt(EXPIRES_AT);
+		mockMvc.perform(get("/api/rentals/{id}", rental.getId())
+			.header(HttpHeaders.AUTHORIZATION, bearerToken(owner.getId())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.activeCancelAgreement").doesNotExist());
 
 		// when, then
 		requestAgreement(owner, REQUEST_BODY)

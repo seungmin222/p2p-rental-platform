@@ -33,6 +33,7 @@ import com.team7.rental.rental.entity.RentalCancelAgreement;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.repository.RentalCancelAgreementRepository;
 import com.team7.rental.rental.repository.RentalRepository;
+import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -55,6 +56,9 @@ class RentalCancelAgreementConcurrencyTest extends IntegrationTestSupport {
 
 	@Autowired
 	private RentalCancelAgreementRepository agreementRepository;
+
+	@Autowired
+	private RentalStatusHistoryRepository historyRepository;
 
 	private Member owner;
 	private Member renter;
@@ -95,7 +99,7 @@ class RentalCancelAgreementConcurrencyTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	@DisplayName("같은 요청에 ACCEPT·REJECT가 동시에 오면 하나만 성공하고 나머지는 CLOSED, 대여 상태는 이긴 쪽과 맞는다")
+	@DisplayName("같은 요청에 ACCEPT·REJECT가 동시에 오면 하나만 성공하고 나머지는 CLOSED, 대여 상태·이력은 이긴 쪽과 맞는다")
 	void concurrentAcceptAndReject() throws InterruptedException {
 		for (Rental rental : rentals) {
 			// given
@@ -114,11 +118,14 @@ class RentalCancelAgreementConcurrencyTest extends IntegrationTestSupport {
 			CancelAgreementStatus agreementStatus = agreementRepository.findById(agreementId).orElseThrow()
 				.getStatus();
 			RentalStatus rentalStatus = rentalRepository.findById(rental.getId()).orElseThrow().getStatus();
+			long canceledHistories = canceledHistoryCountOf(rental);
 			if (agreementStatus == CancelAgreementStatus.ACCEPTED) {
 				assertThat(rentalStatus).isEqualTo(RentalStatus.CANCELED);
+				assertThat(canceledHistories).isEqualTo(1);
 			} else {
 				assertThat(agreementStatus).isEqualTo(CancelAgreementStatus.REJECTED);
 				assertThat(rentalStatus).isEqualTo(RentalStatus.RESERVED);
+				assertThat(canceledHistories).isZero();
 			}
 		}
 	}
@@ -132,6 +139,13 @@ class RentalCancelAgreementConcurrencyTest extends IntegrationTestSupport {
 		return agreementRepository.findAll().stream()
 			.filter(agreement -> agreement.getRentalId().equals(rental.getId()))
 			.toList();
+	}
+
+	private long canceledHistoryCountOf(Rental rental) {
+		return historyRepository.findAll().stream()
+			.filter(history -> history.getRentalId().equals(rental.getId()))
+			.filter(history -> history.getToStatus() == RentalStatus.CANCELED)
+			.count();
 	}
 
 	private Result runConcurrently(List<Callable<?>> tasks) throws InterruptedException {

@@ -26,7 +26,7 @@ import lombok.NoArgsConstructor;
  * 대여 건. 물품·회원은 ID로만 참조한다. 상태 전이 메서드는 각 REQ 브랜치에서 추가한다(현재 cancel만).
  * <p>
  * 생성 팩토리는 프로그래밍 오류를 막는 불변식(기간 null·뒤집힘, 결제 대기의 만료 시각 null)만 검사하고 위반 시
- * IllegalArgumentException·NullPointerException을 던진다. 사용자 입력 검증(오늘 이후 시작, 일수 1~30, 400 응답)은
+ * IllegalArgumentException·NullPointerException을 던진다. 사용자 입력 검증(오늘 이후 시작, 일수 rental.min-days ~ rental.max-days, 400 응답)은
  * REQ-013 서비스가 한다.
  */
 @Getter

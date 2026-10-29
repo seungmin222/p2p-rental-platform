@@ -519,17 +519,6 @@
             "content": {
               "application/json": {
                 "examples": {
-                  "COMMON_CONCURRENT_UPDATE": {
-                    "summary": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요.",
-                    "value": {
-                      "error": {
-                        "code": "COMMON_CONCURRENT_UPDATE",
-                        "details": [],
-                        "message": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요."
-                      },
-                      "success": false
-                    }
-                  },
                   "RENTAL_CANCEL_NOT_ALLOWED": {
                     "summary": "대여 시작일이 지나 단독으로 취소할 수 없습니다. 상대방에게 취소 동의를 요청해 주세요.",
                     "value": {
@@ -555,7 +544,7 @@
                 }
               }
             },
-            "description": "COMMON_CONCURRENT_UPDATE, RENTAL_CANCEL_NOT_ALLOWED, RENTAL_INVALID_TRANSITION"
+            "description": "RENTAL_CANCEL_NOT_ALLOWED, RENTAL_INVALID_TRANSITION"
           }
         },
         "security": [
@@ -890,17 +879,6 @@
             "content": {
               "application/json": {
                 "examples": {
-                  "COMMON_CONCURRENT_UPDATE": {
-                    "summary": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요.",
-                    "value": {
-                      "error": {
-                        "code": "COMMON_CONCURRENT_UPDATE",
-                        "details": [],
-                        "message": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요."
-                      },
-                      "success": false
-                    }
-                  },
                   "RENTAL_CANCEL_AGREEMENT_CLOSED": {
                     "summary": "이미 응답했거나 만료된 취소 동의 요청입니다.",
                     "value": {
@@ -926,7 +904,7 @@
                 }
               }
             },
-            "description": "COMMON_CONCURRENT_UPDATE, RENTAL_CANCEL_AGREEMENT_CLOSED, RENTAL_INVALID_TRANSITION"
+            "description": "RENTAL_CANCEL_AGREEMENT_CLOSED, RENTAL_INVALID_TRANSITION"
           }
         },
         "security": [
