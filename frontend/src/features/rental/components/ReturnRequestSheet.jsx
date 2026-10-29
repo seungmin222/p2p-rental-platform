@@ -31,8 +31,10 @@ function ChecklistRow({ control, itemKey, question, disabled }) {
               {question}
             </span>
             <div role="group" aria-labelledby={labelId} className="flex shrink-0 gap-1.5">
+              {/* '예'는 글자가 짧아 34px 칩이 44px보다 좁다. 가로 터치 영역을 맞추려고 최소 폭을 준다 */}
               <Chip
                 ref={field.ref}
+                className="min-w-11 justify-center"
                 selected={field.value === true}
                 disabled={disabled}
                 onClick={() => field.onChange(true)}
@@ -40,6 +42,7 @@ function ChecklistRow({ control, itemKey, question, disabled }) {
                 예
               </Chip>
               <Chip
+                className="min-w-11 justify-center"
                 selected={field.value === false}
                 disabled={disabled}
                 onClick={() => field.onChange(false)}

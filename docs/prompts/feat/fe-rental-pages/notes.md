@@ -83,6 +83,7 @@ SCR-07 대여 예약 + SCR-08 대여 상세 + 공통(`features/rental/`)·MSW �
 - **대여 상세 `RENTAL_NOT_FOUND`·`RENTAL_NOT_PARTICIPANT`·숫자가 아닌 id → "대여 정보를 볼 수 없어요" + 홈.** 숫자가 아니면 요청하지 않는다(`useRental` enabled).
 - **조회 실패: 전체 ErrorState는 데이터가 없을 때(`isInitialLoadError`)만.** 이미 보던 화면에서 재조회만 실패하면 화면·열린 모달은 그대로 두고 `useRefetchErrorToast`가 토스트 한 번(실패 시각 `errorUpdatedAt`이 바뀔 때만). 대여 상세(상세·inspections)·예약(물품·연 달 캘린더) 모두. 판단은 `shared/lib/queryState.js` 순수 함수로 테스트. 모달이 열려 있으면 토스트는 그 아래라 가려진다(모달 안 오류는 모달이 따로 보여 줌).
 - **inspections는 RENTING·OVERDUE·RETURNED·COMPLETED에서만 부른다**(인계 전·취소에는 기록이 없음).
+- **반납 체크리스트 예/아니오 칩은 `min-w-11`(44px)**: '예' 칩이 41.6px라 가로 터치 영역이 모자랐다(헤드리스 360px 측정). 공통 Chip은 바꾸지 않고 이 화면에서만.
 - **사진은 누르면 원본을 새 탭으로**(라이트박스는 만들지 않음). 대표 사진 나란히 + 나머지는 44px 줄.
 
 ## 결제 브랜치에서
