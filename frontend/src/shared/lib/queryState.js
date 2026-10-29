@@ -9,11 +9,17 @@ export function isInitialLoadError(query) {
 /**
  * 데이터가 있는데 다시 불러오기만 실패한 query들 중 가장 최근 실패 시각(errorUpdatedAt). 없으면 null.
  * 실패마다 값이 바뀌고 다시 그려도 그대로라, 이 값이 바뀔 때만 토스트를 띄우면 같은 실패로 반복되지 않는다.
+ * 무한 스크롤의 다음 페이지 실패(isFetchNextPageError)는 뺀다 — 목록 끝의 "다시 시도"가 따로 알린다.
  */
 export function getRefetchErrorKey(queries) {
   let latest = null;
   for (const query of queries) {
-    if (query?.isError && query.data !== undefined && query.errorUpdatedAt > (latest ?? 0)) {
+    if (
+      query?.isError &&
+      query.data !== undefined &&
+      !query.isFetchNextPageError &&
+      query.errorUpdatedAt > (latest ?? 0)
+    ) {
       latest = query.errorUpdatedAt;
     }
   }

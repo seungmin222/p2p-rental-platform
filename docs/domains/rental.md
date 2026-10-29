@@ -127,7 +127,7 @@ try {
 - `role`은 필수이고 `renter`만 허용(그 외·누락 400). 빌려준 쪽은 REQ-020
 - 탭 매핑은 `state-machines.md` UI 탭 표. 기본 ONGOING. 페이지 크기는 `rental-history.page`(20건) 고정이고 size 파라미터를 받지 않는다
 - 정렬(모든 탭 공통): OVERDUE 건이 목록 최상단, 그다음 startDate DESC, id DESC
-- 항목: 물품 썸네일·이름(삭제 시 이름은 그대로 두고 `isDeleted: true` → 화면이 "삭제된 물품" 표시), 제공자 닉네임, 기간, 결제 금액(대여료 + 보증금 스냅샷), 상태 배지
+- 항목: 물품 썸네일·이름(삭제 시 이름은 그대로 두고 `isDeleted: true` → 화면이 "삭제된 물품" 표시), 제공자 닉네임, 기간, 결제 금액(대여료 + 보증금 스냅샷), 상태 배지. 화면은 결제가 꺼진 1순위에서 금액 이름을 '합계'로 표시한다(결제가 없으므로)
 - 후기 미작성 COMPLETED 건(completed_at + `review.write-deadline-days` 이내)에 `canWriteReview: true`. 시각 기준이라 +7일 정각은 true, 1초 지나면 false. "미작성" 조건은 후기 테이블이 생기는 REQ-034에서 더한다
 - 결제 시간이 지난 PENDING_PAYMENT도 만료 배치(REQ-024)가 바꾸기 전까지 UPCOMING에 그대로 보인다
 - 본인 건만

@@ -70,3 +70,31 @@ export function requestReturn(rentalId, request, images) {
 export function confirmReturn(rentalId, request, images) {
   return apiClient.patch(`/rentals/${rentalId}/return`, toMultipart(request, images));
 }
+
+/**
+ * GET /api/members/me/rentals?role=renter&tab=&page= → PageResponse<RentalHistoryResponse>.
+ * size는 보내지 않는다(서버가 rental-history.page로 고정). 정렬도 서버가 한다.
+ */
+export function fetchRentalHistory({ tab, page }) {
+  return apiClient.get('/members/me/rentals', { params: { role: 'renter', tab, page } });
+}
+
+// TODO: 백엔드 확정 전 임시 — 물품별 예약 현황(REQ-020)은 openapi.json에 아직 없다. 빌린 내역과 같은 page 형식,
+// 항목 { rentalId, startDate, endDate, status, renter { memberId, nickname } }으로 가정했다. 응답 항목을 읽는 곳은
+// toItemRental 하나다. 머지되면 openapi.json으로 맞춘다.
+/** GET /api/items/{itemId}/rentals?page= (제공자 본인만) */
+export function fetchItemRentals(itemId, page) {
+  return apiClient.get(`/items/${itemId}/rentals`, { params: { page } });
+}
+
+// TODO: 백엔드 확정 전 임시 — 위 fetchItemRentals 항목의 가정한 필드
+/** 예약 현황 시트 한 줄 */
+export function toItemRental(rental) {
+  return {
+    rentalId: rental.rentalId,
+    startDate: rental.startDate,
+    endDate: rental.endDate,
+    status: rental.status,
+    renterNickname: rental.renter?.nickname ?? '',
+  };
+}

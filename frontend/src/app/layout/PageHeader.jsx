@@ -1,16 +1,17 @@
-import { useLocation, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
+
+import { canGoBackInApp } from './backNavigation';
 
 /** 뒤로 가기 + 제목 + 우측 액션. 앱에 처음 들어온 화면(이전 기록 없음)이면 홈으로 간다. */
 export default function PageHeader({ title, action }) {
   const navigate = useNavigate();
-  const location = useLocation();
 
   function handleBackClick() {
-    // 직접 URL로 들어오면 location.key가 'default'
-    if (location.key === 'default') {
-      navigate('/', { replace: true });
-    } else {
+    // 기록 위치로 판단한다(backNavigation.js). 직접 URL로 들어와 탭만 바꾼(replace) 경우도 첫 화면이다
+    if (canGoBackInApp(window.history.state)) {
       navigate(-1);
+    } else {
+      navigate('/', { replace: true });
     }
   }
 
