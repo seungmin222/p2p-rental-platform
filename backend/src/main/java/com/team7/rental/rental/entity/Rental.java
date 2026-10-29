@@ -23,7 +23,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 대여 건. 물품·회원은 ID로만 참조한다. 상태 전이 메서드는 각 REQ 브랜치에서 추가한다(현재 cancel만).
+ * 대여 건. 물품·회원은 ID로만 참조한다. 1순위 전이(취소·인계·반납·판정·완료)가 있고, 결제 승인·만료(024)·연체(023)·
+ * 미반납 신고(018 2순위)·연장(038)은 각 브랜치에서 추가한다. 전이 메서드는 상태 가드만 보고, 권한(당사자·역할)과 이력 저장은 서비스가 한다.
  * <p>
  * 생성 팩토리는 프로그래밍 오류를 막는 불변식(기간 null·뒤집힘, 결제 대기의 만료 시각 null)만 검사하고 위반 시
  * IllegalArgumentException·NullPointerException을 던진다. 사용자 입력 검증(오늘 이후 시작, 일수 rental.min-days ~ rental.max-days, 400 응답)은
@@ -244,5 +245,100 @@ public class Rental extends BaseTimeEntity {
 		this.cancelReason = reason;
 		this.cancelReasonText = reasonText;
 		this.cancelFee = cancelFee;
+	}
+
+	/**
+	 * RESERVED → RENTING (REQ-017 인계 확인).
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RESERVED 아님), RENTAL_HANDOVER_TOO_EARLY(오늘 &lt; startDate)
+	 */
+	public void handover(LocalDateTime now) {
+		validateHandover(now.toLocalDate());
+		this.status = RentalStatus.RENTING;
+		this.handedOverAt = now;
+	}
+
+	/**
+	 * 인계할 수 있는지 확인한다. 서비스가 사진을 처리하기 전에 부르고 {@link #handover}도 다시 확인한다.
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION, RENTAL_HANDOVER_TOO_EARLY
+	 */
+	public void validateHandover(LocalDate today) {
+		if (status != RentalStatus.RESERVED) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+		if (today.isBefore(startDate)) {
+			throw new BusinessException(ErrorCode.RENTAL_HANDOVER_TOO_EARLY);
+		}
+	}
+
+	/**
+	 * RENTING·OVERDUE → RETURNED (REQ-018 반납 요청, 제공자 대리 접수 포함). 연체료(overdueFee) 확정은 REQ-023에서 추가한다.
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION
+	 */
+	public void requestReturn(LocalDateTime now) {
+		validateReturnRequest();
+		this.status = RentalStatus.RETURNED;
+		this.returnedAt = now;
+	}
+
+	/**
+	 * 반납 요청할 수 있는지 확인한다. 서비스가 사진을 처리하기 전에 부르고 {@link #requestReturn}도 다시 확인한다.
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION
+	 */
+	public void validateReturnRequest() {
+		if (status != RentalStatus.RENTING && status != RentalStatus.OVERDUE) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+	}
+
+	/**
+	 * 상태 확인 '정상' (REQ-018, 제공자 또는 자동 확인 배치). 1순위는 보증금 처리 없이 바로 {@link #complete}.
+	 * REQ-025에서 보증금 반환 뒤 완료로 바뀐다.
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RETURNED 아님)
+	 */
+	public void confirmNormal(LocalDateTime now) {
+		complete(now);
+	}
+
+	/**
+	 * 상태 확인 '이상' (REQ-018). RETURNED를 유지한다. 1순위는 상태 변화가 없어 서비스가 이어서 {@link #complete}를 부른다.
+	 * REQ-049에서 보증금 HELD로 바뀐다(RETURNED → RETURNED 이력).
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RETURNED 아님)
+	 */
+	public void markAbnormal() {
+		validateReturned();
+	}
+
+	/**
+	 * RETURNED → COMPLETED (REQ-018 1순위, 이후 차감 확정·환불 재시도 REQ-025·049도 이 메서드).
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION
+	 */
+	public void complete(LocalDateTime now) {
+		validateReturned();
+		this.status = RentalStatus.COMPLETED;
+		this.completedAt = now;
+	}
+
+	/**
+	 * 상태 확인할 수 있는지 확인한다(RETURNED). 서비스가 사진을 처리하기 전에 부른다.
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION
+	 */
+	public void validateReturned() {
+		if (status != RentalStatus.RETURNED) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+	}
+
+	/** 자동 상태 확인 대상 시각이 됐는지. returnedAt + autoConfirmDays ≤ now (정확히 같은 시각이면 대상) */
+	public boolean isAutoConfirmDue(LocalDateTime now, int autoConfirmDays) {
+		return status == RentalStatus.RETURNED && returnedAt != null
+			&& !returnedAt.plusDays(autoConfirmDays).isAfter(now);
 	}
 }
