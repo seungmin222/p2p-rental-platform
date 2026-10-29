@@ -418,7 +418,7 @@ export const rentalHandlers = [
         cancelType: null,
         cancelReason: null,
         cancelReasonText: null,
-        cancelFee: null,
+        cancelFee: 0,
       };
       db.rentals.push(rental);
       return ok(toDetail(rental), { status: 201 });

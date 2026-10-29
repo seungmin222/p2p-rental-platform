@@ -85,7 +85,8 @@ function rental(rentalId, itemId, renterId, status, [from, to], extra = {}) {
     cancelType: null,
     cancelReason: null,
     cancelReasonText: null,
-    cancelFee: null,
+    // 백엔드는 int(NOT NULL DEFAULT 0)라 취소 전에도 0
+    cancelFee: 0,
     ...extra,
   };
 }

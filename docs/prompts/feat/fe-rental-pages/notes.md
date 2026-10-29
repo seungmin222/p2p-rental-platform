@@ -18,6 +18,7 @@ SCR-07 대여 예약 + SCR-08 대여 상세 + 공통(`features/rental/`)·MSW �
 - **결제 플래그**: `VITE_PAYMENT_ENABLED=false`면 예약은 바로 RESERVED, 상태 확인은 ABNORMAL이어도 COMPLETED(feat/rental-return notes의 1순위 규칙과 같음). true면 결제 금액 > 0인 예약은 PENDING_PAYMENT(15분), ABNORMAL은 RETURNED 유지.
 - **메모리 저장소라 새로고침하면 시드로 돌아간다.** 올린 사진은 `URL.createObjectURL`로 돌려준다.
 - 목은 화면 상수(features)를 가져오지 않고 정책 값을 따로 둔다(서버 흉내라 화면 상수가 틀려도 목이 같이 틀리지 않게).
+- **`cancelFee`는 취소 전에도 0**(null 아님): 백엔드 `RentalDetailResponse.cancelFee`가 `int`, `rentals.cancel_fee`가 `NOT NULL DEFAULT 0`. 목도 0으로 맞췄다. 화면은 `> 0`일 때만 보여 줘서 어느 쪽이든 동작은 같다.
 - 나 = 회원 1(동네주민). 날짜는 `todayInSeoul()` 기준 상대값(D+n).
 
 | id | 상태 | 내 역할 | 경우 |
