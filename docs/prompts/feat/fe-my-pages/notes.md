@@ -15,7 +15,7 @@ SCR-12 나의 대여 중 1순위 세 화면: `/me` 메뉴, `/me/rentals` 빌린 
 ## 임시 API (openapi.json에 없음, `// TODO: 백엔드 확정 전 임시`)
 | API | 가정한 응답 | 읽는 곳 |
 | --- | --- | --- |
-| `GET /api/members/me/items?tab=AVAILABLE\|RENTING&page=` (REQ-020) | 빌린 내역과 같은 PageResponse. 항목 `{ itemId, name, thumbnailUrl, pricePerDay, deposit, viewCount, wishCount, chatCount, upcomingRentalCount }` — item.md REQ-020 카드 + erd.md items 카운터 이름 | `features/item/api.js` `toMyItem` |
+| `GET /api/members/me/items?tab=AVAILABLE\|RENTING&page=` (REQ-020) | 빌린 내역과 같은 PageResponse. 항목 `{ itemId, name, thumbnailUrl, pricePerDay, deposit, viewCount, wishCount, chatCount, upcomingRentalCount }` — rental.md REQ-020 카드 + erd.md items 카운터 이름 | `features/item/api.js` `toMyItem` |
 | `GET /api/items/{itemId}/rentals?page=` (REQ-020) | 같은 PageResponse. 항목 `{ rentalId, startDate, endDate, status, renter { memberId, nickname } }`, 기간순. 남의 물품 403 `RENTAL_OWNER_ONLY`, 없는 물품 404 `ITEM_NOT_FOUND` | `features/rental/api.js` `toItemRental` |
 
 - 빌린 내역(`GET /api/members/me/rentals`)은 openapi.json 그대로라 TODO가 없다. size를 보내지 않고, 정렬도 다시 하지 않는다.
