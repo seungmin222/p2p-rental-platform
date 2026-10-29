@@ -20,3 +20,9 @@ export const ITEM_IMAGES = {
   MAX_FILE_SIZE: 10 * 1024 * 1024,
   ACCEPT: ['image/jpeg', 'image/png'],
 };
+
+/** REQ-020 내 물품 관리 탭(키 = API tab 값). state-machines.md "UI 탭 매핑". HIDDEN 탭은 숨기기(REQ-044, 3순위)와 함께 */
+export const MY_ITEM_TABS = {
+  AVAILABLE: { label: '대여 가능' },
+  RENTING: { label: '대여 중' },
+};

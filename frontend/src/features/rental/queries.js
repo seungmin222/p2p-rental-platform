@@ -1,4 +1,13 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+
+import { flattenPages, getNextPageParam } from '../../shared/lib/listParams';
+import { itemKeys } from '../item/queries';
 
 import {
   cancelRental,
@@ -6,11 +15,14 @@ import {
   createRental,
   fetchCalendar,
   fetchInspections,
+  fetchItemRentals,
   fetchRental,
+  fetchRentalHistory,
   handoverRental,
   requestCancelAgreement,
   requestReturn,
   respondCancelAgreement,
+  toItemRental,
 } from './api';
 import { isStaleStateError } from './errorMessages';
 import { mergeCalendarDays } from './rentalData';
@@ -23,6 +35,8 @@ export const rentalKeys = {
   detail: (rentalId) => ['rentals', rentalId],
   inspections: (rentalId) => ['rentals', rentalId, 'inspections'],
   mine: () => ['rentals', 'me'],
+  // mine()의 하위라 상태 변경 뒤 mine() 무효화가 그대로 걸린다
+  history: (tab) => ['rentals', 'me', { role: 'renter', tab }],
   calendar: (itemId) => ['items', itemId, 'calendar'],
   calendarMonth: (itemId, month) => ['items', itemId, 'calendar', month],
   itemRentals: (itemId) => ['items', itemId, 'rentals'],
@@ -68,8 +82,37 @@ export function useCalendarDays(itemId, months) {
   });
 }
 
+/** REQ-019 빌린 내역(탭별, page/hasNext). data는 지금까지 받은 페이지를 합친 RentalHistoryResponse 배열 */
+export function useRentalHistory(tab) {
+  return useInfiniteQuery({
+    queryKey: rentalKeys.history(tab),
+    queryFn: ({ pageParam }) => fetchRentalHistory({ tab, page: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam,
+    select: flattenPages,
+  });
+}
+
+function selectItemRentals(data) {
+  return flattenPages(data, toItemRental);
+}
+
+/** REQ-020 물품별 예약 현황(제공자 본인만). 시트가 열린 동안만 부른다(enabled) */
+export function useItemRentals(itemId, { enabled }) {
+  return useInfiniteQuery({
+    queryKey: rentalKeys.itemRentals(itemId),
+    queryFn: ({ pageParam }) => fetchItemRentals(itemId, pageParam),
+    initialPageParam: 0,
+    getNextPageParam,
+    select: selectItemRentals,
+    staleTime: SHORT_STALE_TIME,
+    enabled,
+  });
+}
+
 /**
  * 상태 변경 응답(RentalDetailResponse)을 캐시에 넣고 관련 목록을 무효화한다.
+ * 내 물품 목록도 무효화한다(대여 중 탭 소속·다가오는 예약 수가 바뀐다).
  * 기간 점유가 바뀌는 경우(예약·취소·동의 수락·반납 요청)는 물품 캘린더·예약 현황도, 기록이 생기는 경우는 inspections도.
  */
 function applyRentalDetail(
@@ -79,6 +122,7 @@ function applyRentalDetail(
 ) {
   queryClient.setQueryData(rentalKeys.detail(rental.rentalId), rental);
   queryClient.invalidateQueries({ queryKey: rentalKeys.mine() });
+  queryClient.invalidateQueries({ queryKey: itemKeys.mine() });
   if (hasPeriodChanged) {
     queryClient.invalidateQueries({ queryKey: rentalKeys.calendar(rental.item.itemId) });
     queryClient.invalidateQueries({ queryKey: rentalKeys.itemRentals(rental.item.itemId) });

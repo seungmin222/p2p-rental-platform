@@ -8,6 +8,7 @@ import {
   RENTAL_DAY_STATUS,
   RENTAL_PERIOD,
   RENTAL_STATUS,
+  RENTAL_TABS,
 } from '../features/rental/constants';
 import { addDays, compareDate } from '../shared/lib/date';
 import { formatDailyPrice, formatDeposit, formatElapsed } from '../shared/lib/format';
@@ -25,7 +26,9 @@ import {
   Modal,
   Skeleton,
   Spinner,
+  Tabs,
   TextField,
+  Thumbnail,
   toast,
 } from '../shared/ui';
 
@@ -79,6 +82,7 @@ export default function UiPreviewPage() {
   const [price, setPrice] = useState('15,000');
   const [memo, setMemo] = useState('');
   const [category, setCategory] = useState('전체');
+  const [tab, setTab] = useState('ONGOING');
 
   function closeDialog() {
     setOpenDialog(null);
@@ -290,6 +294,21 @@ export default function UiPreviewPage() {
             </Chip>
           ))}
         </div>
+      </Section>
+
+      <Section title="Tabs (좌우 화살표·Home·End) · Thumbnail">
+        <div className="w-full">
+          <Tabs
+            label="빌린 내역 탭"
+            items={Object.entries(RENTAL_TABS).map(([value, { label }]) => ({ value, label }))}
+            value={tab}
+            onChange={setTab}
+          >
+            <p className="py-3 text-caption text-ink-muted">선택: {tab}</p>
+          </Tabs>
+        </div>
+        <Thumbnail url={fakeServerImage(1, '#c9e2d6').url} className="size-16" />
+        <Thumbnail url={null} className="size-16" />
       </Section>
 
       <Section title="Toast">
