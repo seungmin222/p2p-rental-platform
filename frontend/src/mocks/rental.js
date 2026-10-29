@@ -19,6 +19,7 @@ import {
   listRentalHistory,
   MOCK_MY_ITEM_TABS,
   readPage,
+  readPathId,
   toPageResponse,
 } from './pageList';
 import { fail, ok } from './response';
@@ -285,6 +286,15 @@ function toItemRentalResponse(rental) {
   };
 }
 
+/** path의 itemId. Long으로 바뀌지 않으면 400 */
+function requireItemId(params) {
+  const itemId = readPathId(params.itemId);
+  if (itemId == null) {
+    invalidInput('itemId', '형식이 올바르지 않습니다.');
+  }
+  return itemId;
+}
+
 /** 쿼리의 page(없으면 0). 0 이상 정수가 아니면 400. size는 보내도 무시한다 */
 function requirePage(searchParams) {
   const page = readPage(searchParams.get('page'));
@@ -471,8 +481,9 @@ export const rentalHandlers = [
   http.get(
     '/api/items/:itemId/rentals',
     handle(({ params, request }) => {
+      const itemId = requireItemId(params);
       const page = requirePage(new URL(request.url).searchParams);
-      const item = findMockItem(params.itemId);
+      const item = findMockItem(itemId);
       if (!item || item.isDeleted) {
         reject('ITEM_NOT_FOUND');
       }
@@ -487,7 +498,7 @@ export const rentalHandlers = [
   http.get(
     '/api/items/:itemId/calendar',
     handle(({ params, request }) => {
-      const item = findMockItem(params.itemId);
+      const item = findMockItem(requireItemId(params));
       if (!item || item.isDeleted) {
         reject('ITEM_NOT_FOUND');
       }

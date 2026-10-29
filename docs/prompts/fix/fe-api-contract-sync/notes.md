@@ -36,7 +36,16 @@
 - **목 시드의 카테고리 id·이름은 백엔드 `V3__insert_categories.sql`의 넣은 순서**(1 캠핑·아웃도어, 2 공구·DIY, 3 촬영·영상 장비, 6 취미·시즌 용품). 물품 동네·거래 장소는 제공자 동네를 따른다(등록 시 대표 동네).
 - **목 물품 상세는 조회 수를 올리지 않는다**: 새로고침마다 숫자가 바뀌면 화면 확인이 어려워서. 숨김 물품 404는 시드에 숨김 물품이 없어(REQ-044 전) 넣지 않았다.
 - **목 `bumpedAt`은 오늘 기준 며칠 전 10:00**(오프셋 없는 서울 시각, 다른 목 시각과 같은 형식).
+- **예약 화면 동네명은 `owner.regionName`**: item.md REQ-011 "제공자 요약(동네명)"을 따른다. 물품 동네(`ItemDetailResponse.regionName`, 등록 시 대표 동네)와 다를 수 있다(제공자가 대표 동네를 바꾼 경우).
+- **403 시트의 "다시 시도" 버튼은 그대로 둔다**: 시트가 내 물품에서만 열려 403은 거의 나오지 않는다. 다시 시도해도 같은 403이지만 문제 될 일이 드물어 분기를 넣지 않았다.
+- **path `itemId` 형식 400 (리뷰 반영)**: 물품 상세·물품별 예약 현황·캘린더 목은 itemId가 Long으로 바뀌지 않으면(숫자 아님·소수·범위 초과) 400 `COMMON_INVALID_INPUT`(details itemId "형식이 올바르지 않습니다.")을 낸다. 백엔드가 `@PathVariable Long`(`@Positive` 없음) + `MethodArgumentTypeMismatchException` → 400이라 `0`·음수는 변환이 되어 404로 간다. 목도 같게(`pageList.js` `readPathId`, 테스트 있음). 검사 순서 400 → 404 → 403. `/api/rentals/:rentalId` 목도 같은 문제(숫자 아님 → 지금은 404)지만 이 브랜치 범위(회원·물품 계약) 밖이라 두었다.
+
+## 로직 브랜치에 알릴 것
+- **feat/item-crud (물품 상세 REQ-011)**: `images` 0번이 대표, `thumbnailUrl`은 원본과 별도 URL, 이미지가 없으면 빈 배열(null 아님). `owner.profileImageUrl`·`owner.regionName`은 nullable. `isWished`는 REQ-022 전 항상 false. 숨김 물품은 등록자 외 404. 숫자가 아닌 itemId는 400(타입 변환 실패). 목이 이 전제로 만들어져 있다.
+- **물품별 예약 현황 구현 브랜치 (REQ-020)**: 완료·취소 그룹은 시작일 내림차순, 같은 시작일은 두 그룹 모두 id 오름차순으로 목을 구현했다. openapi 설명의 "같은 시작일은 id 순"을 "id 오름차순"으로 분명히 해 주면 좋겠다.
+- **내 물품 구현 브랜치 (REQ-020)**: `MyItemResponse.status` enum에 DELETED가 있지만 description은 "AVAILABLE 또는 HIDDEN"뿐이다(삭제된 물품은 목록에 없음). enum을 좁힐지 결정 필요.
+- **공통**: `bumpedAt` 등 date-time 필드는 오프셋 없는 서울 시각(LocalDateTime)을 전제로 화면·목을 만들었다.
 
 ## 확인
-- `npm run lint`·`npm test`(17파일 202개)·`npm run build` 통과. 500kB 청크 경고는 fe-rental-pages notes의 "다음에" 그대로.
+- `npm run lint`·`npm test`·`npm run build` 통과. 500kB 청크 경고는 fe-rental-pages notes의 "다음에" 그대로.
 - 헤드리스 Chrome(CDP), `VITE_USE_MOCK=true`, 390px: 예약 화면(물품 101) 상단 썸네일·"캠핑조아 · 연수동", 내 물품 관리 대여 가능 탭(108 → 107, 다가오는 예약 1건), 물품 107 예약 현황 시트(32 대여 예정이 맨 위, 거래 완료는 10월 19일부터 과거 순). 목 직접 호출: `/api/items/101` 키가 ItemDetailResponse와 같음, 108 images `[]`, `/api/items/101/rentals` 403 ITEM_NOT_OWNER, `/api/items/106` 404 ITEM_NOT_FOUND.

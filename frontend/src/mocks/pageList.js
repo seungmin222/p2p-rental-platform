@@ -46,6 +46,19 @@ export function readPage(value) {
   return page <= INT32_MAX ? page : null;
 }
 
+// 백엔드 path id는 Long. 0·음수는 변환이 되어 조회(404)로 가고, 정수가 아니거나 범위를 넘으면 타입 변환 실패로 400
+const INT64_MIN = -(2n ** 63n);
+const INT64_MAX = 2n ** 63n - 1n;
+
+/** path의 id(itemId 등). Long으로 바뀌면 숫자, 아니면 null(400) */
+export function readPathId(value) {
+  if (!/^-?\d+$/.test(value ?? '')) {
+    return null;
+  }
+  const id = BigInt(value);
+  return id >= INT64_MIN && id <= INT64_MAX ? Number(id) : null;
+}
+
 /** 빌린 내역 정렬(rental.md REQ-019): OVERDUE 먼저 → startDate DESC → id DESC */
 export function compareRentalHistory(a, b) {
   const overdue = Number(b.status === 'OVERDUE') - Number(a.status === 'OVERDUE');

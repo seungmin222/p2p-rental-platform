@@ -6,6 +6,7 @@ import {
   listMyItems,
   listRentalHistory,
   readPage,
+  readPathId,
   toPageResponse,
 } from './pageList';
 import { createRentalSeed } from './rentalSeed';
@@ -80,6 +81,23 @@ describe('readPage', () => {
   });
 });
 
+describe('readPathId', () => {
+  it('Long으로 바뀌는 정수는 숫자(0·음수도 조회로 가서 404)', () => {
+    expect(readPathId('107')).toBe(107);
+    expect(readPathId('0')).toBe(0);
+    expect(readPathId('-1')).toBe(-1);
+    expect(readPathId('9223372036854775807')).not.toBeNull();
+  });
+
+  it('정수가 아니거나 Long 범위를 넘으면 null(400)', () => {
+    expect(readPathId('abc')).toBeNull();
+    expect(readPathId('1.5')).toBeNull();
+    expect(readPathId('')).toBeNull();
+    expect(readPathId(undefined)).toBeNull();
+    expect(readPathId('9223372036854775808')).toBeNull();
+  });
+});
+
 describe('내 물품', () => {
   const items = [{ itemId: 1 }, { itemId: 2 }, { itemId: 3 }];
   const rentals = [
@@ -147,6 +165,11 @@ describe('listItemRentals 정렬(open-issues #20)', () => {
       item(6, 'PENDING_PAYMENT', '2026-11-01'),
     ];
     expect(listItemRentals(rentals, 7).map((r) => r.rentalId)).toEqual([4, 6, 2, 3, 1, 5]);
+  });
+
+  it('RETURNED는 같은 시작일의 COMPLETED보다 앞 그룹', () => {
+    const rentals = [item(1, 'COMPLETED', '2026-10-20'), item(2, 'RETURNED', '2026-10-20')];
+    expect(listItemRentals(rentals, 7).map((r) => r.status)).toEqual(['RETURNED', 'COMPLETED']);
   });
 
   it('같은 시작일은 두 그룹 모두 id 오름차순', () => {

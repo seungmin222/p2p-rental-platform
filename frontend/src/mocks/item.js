@@ -17,6 +17,7 @@
 import { http } from 'msw';
 
 import { addDays, todayInSeoul } from '../shared/lib/date';
+import { readPathId } from './pageList';
 import { fail, ok } from './response';
 
 /** 로그인한 나 */
@@ -201,10 +202,16 @@ export function listMyMockItems() {
 }
 
 export const itemHandlers = [
-  // openapi.json ItemDetailResponse 그대로. 숨김 물품은 시드에 없어(숨기기 REQ-044 전) 없는·삭제된 물품만 404.
-  // 조회 수는 올리지 않는다(새로고침마다 바뀌면 화면 확인이 어려워서).
+  // openapi.json ItemDetailResponse 그대로. 검사 순서: itemId 형식 400 → 404. 숨김 물품은 시드에 없어
+  // (숨기기 REQ-044 전) 없는·삭제된 물품만 404. 조회 수는 올리지 않는다(새로고침마다 바뀌면 화면 확인이 어려워서).
   http.get('/api/items/:itemId', ({ params }) => {
-    const item = findMockItem(params.itemId);
+    const itemId = readPathId(params.itemId);
+    if (itemId == null) {
+      return fail(400, 'COMMON_INVALID_INPUT', '입력값이 올바르지 않습니다.', [
+        { field: 'itemId', reason: '형식이 올바르지 않습니다.' },
+      ]);
+    }
+    const item = findMockItem(itemId);
     if (!item || item.isDeleted) {
       return fail(404, 'ITEM_NOT_FOUND', '물품을 찾을 수 없습니다.');
     }
