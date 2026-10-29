@@ -50,6 +50,9 @@ SCR-12 나의 대여 중 1순위 세 화면: `/me` 메뉴, `/me/rentals` 빌린 
 - **`Thumbnail`(shared/ui)**: 목록 썸네일 + 이미지 없을 때 자리 면. 피드에서도 쓸 수 있게 shared에 뒀다.
 - **`['items', 'me']`는 `applyRentalDetail`에서 항상 무효화한다**(예약 생성 포함). 물품별 예약 현황(`['items', id, 'rentals']`)은 기존대로 기간 점유가 바뀔 때만 무효화하고, 시트는 열 때마다 마운트되며 staleTime이 5초라 상태만 바뀐 경우도 곧 다시 부른다.
 
+## 공통 레이아웃 (리뷰 반영)
+- **`PageHeader` 뒤로 가기는 기록 위치(`history.state.idx`)로 첫 화면인지 판단한다**(`app/layout/backNavigation.js` `canGoBackInApp`, 테스트 있음). 이전의 `location.key === 'default'`는 직접 URL로 들어온 뒤 탭을 바꾸면(replace) key가 새로 생겨 첫 화면이 아닌 것으로 보여, 뒤로 가기가 앱 밖(이전 사이트·빈 탭)으로 나갔다. replace는 idx를 유지하므로 탭을 몇 번 바꿔도 첫 화면은 idx 0이다. idx가 없으면 첫 화면으로 본다. 헤드리스 확인: 직접 `/me/rentals` → 완료 탭 → 뒤로 = 홈, `/me` → 빌린 내역 → 뒤로 = `/me`, 목록 → 대여 상세 → 뒤로 = 같은 탭 목록, 대여 상세·예약 화면 직접 진입 → 뒤로 = 홈.
+
 ## 화면 (시안 없음)
 - **기준**: 카드는 디자인 시스템 물품 카드(Main.html)·홈 목록(Home.html)의 줄 구분(위아래 divider, 14px 간격), 탭은 시안이 없어 하단 탭 색 규칙(선택 Ink 600 + 2px 밑줄, 비선택 Ink muted), 높이 48px. 색·글자는 토큰만.
 - **썸네일 64px**(지시대로). 내 물품도 64px로 맞췄다 — 관리 목록이라 버튼 줄이 있어 104px이면 카드가 너무 길다.
