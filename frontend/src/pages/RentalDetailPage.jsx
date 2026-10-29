@@ -15,8 +15,10 @@ import { getErrorMessage } from '../features/rental/errorMessages';
 import { useRental, useRentalInspections } from '../features/rental/queries';
 import { findInspection, formatDateTime, formatShortRange } from '../features/rental/rentalData';
 import { getRentalSteps } from '../features/rental/rentalSteps';
+import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { todayInSeoul } from '../shared/lib/date';
 import { formatPrice } from '../shared/lib/format';
+import { isInitialLoadError } from '../shared/lib/queryState';
 import { Badge, ButtonLink, ErrorState, Skeleton } from '../shared/ui';
 
 // 인계 이후 상태만 인계·반납 기록이 있다
@@ -98,8 +100,11 @@ export default function RentalDetailPage() {
   const hasRecords = rental != null && STATUSES_WITH_RECORDS.includes(rental.status);
   const inspectionsQuery = useRentalInspections(rentalId, { enabled: hasRecords });
   const today = todayInSeoul();
+  // 이미 보던 화면은 재조회가 실패해도 그대로 둔다(열린 모달·시트 유지)
+  useRefetchErrorToast([rentalQuery, inspectionsQuery]);
+  const isLoadFailed = isInitialLoadError(rentalQuery);
 
-  if (!validId || UNAVAILABLE_CODES.includes(rentalQuery.error?.code)) {
+  if (!validId || (isLoadFailed && UNAVAILABLE_CODES.includes(rentalQuery.error.code))) {
     return (
       <>
         <PageHeader title="대여 상세" />
@@ -116,7 +121,7 @@ export default function RentalDetailPage() {
     );
   }
 
-  if (rentalQuery.isError) {
+  if (isLoadFailed) {
     return (
       <>
         <PageHeader title="대여 상세" />

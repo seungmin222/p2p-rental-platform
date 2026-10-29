@@ -15,8 +15,10 @@ import {
 } from '../features/rental/constants';
 import { getErrorMessage } from '../features/rental/errorMessages';
 import { rentalKeys, useCalendarDays, useCreateRental } from '../features/rental/queries';
+import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { countDaysInclusive, monthOf, todayInSeoul } from '../shared/lib/date';
 import { formatPrice } from '../shared/lib/format';
+import { isInitialLoadError } from '../shared/lib/queryState';
 import {
   Button,
   ButtonLink,
@@ -87,6 +89,8 @@ export default function RentalReservePage() {
   const itemQuery = useItemSummary(itemId);
   const calendar = useCalendarDays(itemId, openedMonths);
   const createMutation = useCreateRental();
+  // 이미 보던 물품·캘린더는 재조회가 실패해도 그대로 둔다(고른 기간 유지)
+  useRefetchErrorToast([itemQuery, ...calendar.results]);
 
   const monthResult = calendar.results[openedMonths.indexOf(month)];
   const item = itemQuery.data;
@@ -130,8 +134,8 @@ export default function RentalReservePage() {
   const notFound =
     !Number.isInteger(itemId) ||
     blocker === 'NOT_FOUND' ||
-    itemQuery.error?.code === 'ITEM_NOT_FOUND' ||
-    monthResult?.error?.code === 'ITEM_NOT_FOUND';
+    (isInitialLoadError(itemQuery) && itemQuery.error.code === 'ITEM_NOT_FOUND') ||
+    (isInitialLoadError(monthResult) && monthResult.error.code === 'ITEM_NOT_FOUND');
 
   if (notFound) {
     return (
@@ -164,7 +168,7 @@ export default function RentalReservePage() {
     );
   }
 
-  if (itemQuery.isError) {
+  if (isInitialLoadError(itemQuery)) {
     return (
       <>
         <PageHeader title="대여 예약" />
@@ -194,7 +198,7 @@ export default function RentalReservePage() {
         )}
 
         <section>
-          {monthResult?.isError ? (
+          {isInitialLoadError(monthResult) ? (
             <ErrorState
               title="캘린더를 불러오지 못했어요"
               message={getErrorMessage(monthResult.error)}

@@ -1,3 +1,4 @@
+import { isInitialLoadError } from '../../../shared/lib/queryState';
 import { Badge, ErrorState, Skeleton } from '../../../shared/ui';
 import { INSPECTION_RESULT, RETURN_CHECKLIST_ITEM } from '../constants';
 import { getErrorMessage } from '../errorMessages';
@@ -89,7 +90,7 @@ export default function InspectionRecords({ query }) {
       </div>
     );
   }
-  if (query.isError) {
+  if (isInitialLoadError(query)) {
     return (
       <ErrorState
         title="기록을 불러오지 못했어요"
