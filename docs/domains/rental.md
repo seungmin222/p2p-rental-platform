@@ -66,7 +66,7 @@ try {
 - cancel_fee > 0이면 정산 생성(`payment.md` REQ-039)
 - PG 취소 실패 시 depositStatus=REFUND_FAILED + 재시도 배치(멱등성 키). rental은 즉시 CANCELED로 두고 기간 선점도 즉시 해제(환불 재시도는 결제 쪽에서 계속)
 - 상대에게 알림(REQ-032 이후)
-- 1순위: 상태만 CANCELED (수수료 계산은 하지만 금액 처리 없음)
+- 1순위: 상태만 CANCELED (수수료 계산은 하지만 금액 처리 없음). 화면은 결제가 꺼진 1순위에서 수수료를 표시하지 않는다(결제 없이 금액 처리가 없으므로)
 
 ### 양측 동의 취소 (시작일 이후, 인계 전)
 - 요청 `POST /api/rentals/{id}/cancel-agreements { reason, reasonText? }`: 당사자 한쪽, RESERVED(아니면 409 `RENTAL_INVALID_TRANSITION`)이고 오늘 ≥ startDate(아니면 409 `RENTAL_CANCEL_AGREEMENT_TOO_EARLY` → 단독 취소로 안내). 진행 중인 요청이 있으면 409 `RENTAL_CANCEL_AGREEMENT_IN_PROGRESS`. 성공 201. 상대에게 `CANCEL_AGREEMENT_REQUESTED` 알림

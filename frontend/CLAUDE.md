@@ -16,8 +16,8 @@
 - 사람은 백엔드 로컬 서버의 `/swagger-ui.html`에서 직접 호출해 볼 수 있다.
 
 ## 스택
-**확정**: React · Vite · JavaScript(JSX) · Tailwind CSS v4(`@tailwindcss/vite`) · **TanStack Query**(서버 상태) · React Router · Zustand(인증·동네 등 클라이언트 상태) · axios · MSW(목 API) · Vitest(단위 테스트)
-**제안**(쓰는 브랜치에서 확정): @stomp/stompjs · react-hook-form · dayjs · 토스페이먼츠 결제창 SDK(API 개별 연동, 결제위젯 아님) · 카카오맵 JS SDK
+**확정**: React · Vite · JavaScript(JSX) · Tailwind CSS v4(`@tailwindcss/vite`) · **TanStack Query**(서버 상태) · React Router · Zustand(인증·동네 등 클라이언트 상태) · axios · MSW(목 API) · Vitest(단위 테스트) · react-hook-form(폼)
+**제안**(쓰는 브랜치에서 확정): @stomp/stompjs · 토스페이먼츠 결제창 SDK(API 개별 연동, 결제위젯 아님) · 카카오맵 JS SDK. dayjs는 쓰지 않는다(날짜는 `shared/lib/date.js`)
 
 - 의존성은 **실제로 쓰는 브랜치에서** 추가한다(미리 설치하지 않는다). 버전은 exact로 고정하고 `package-lock.json`을 커밋한다.
 
@@ -79,7 +79,9 @@ src/
 - 응답은 `{ success, data, error }`. axios 응답 인터셉터에서 `data`만 꺼내고, 실패는 `ApiError(code, message, details, status)`로 정규화해 throw.
   - 서버 응답이 아닌 실패는 프론트 전용 코드: `CLIENT_NETWORK_ERROR`(응답 없음, `status` 0) · `CLIENT_TIMEOUT` · `CLIENT_INVALID_RESPONSE`(공통 래퍼가 아닌 응답, 예: 프록시 502). 요청 취소는 ApiError로 바꾸지 않는다.
 - **분기는 `error.code`로** (예: `RENTAL_PERIOD_CONFLICT` → "이미 예약된 기간입니다" 토스트 + 캘린더 refetch). HTTP 메시지 문자열로 분기하지 않는다.
-- 폼 검증 오류(`details[]`)는 react-hook-form `setError`로 필드에 매핑.
+- 폼 검증 오류(`details[]`)는 react-hook-form `setError`로 필드에 매핑(`features/rental/errorMessages.js` `applyFieldErrors`).
+- 폼은 react-hook-form. 제출할 때 검증하고 첫 오류 필드로 포커스(`shouldFocusError`). 값 구독은 `watch` 대신 `useWatch`(React Compiler가 `watch`가 있는 컴포넌트를 건너뛴다). 제출 중에는 Modal·BottomSheet `dismissible={false}`, 버튼 비활성.
+- **multipart**(사진 + JSON): `request` 파트는 `new Blob([JSON.stringify(body)], { type: 'application/json' })`(Content-Type이 없거나 text/plain이면 415 `COMMON_UNSUPPORTED_MEDIA_TYPE`), 사진은 `images` 파트를 장마다 반복 append. ImageUploader value에서 `file`만 꺼낸다(`features/rental/api.js` `toMultipart`).
 - Access Token은 **메모리(Zustand)에만**. localStorage 저장 금지. Refresh Token은 HttpOnly 쿠키라 JS가 만지지 않는다(`withCredentials: true`).
 - **401 처리**: 재발급 요청을 **단일 비행(single-flight)**으로 — 동시에 401이 여러 개 와도 `/api/auth/reissue`는 한 번만 호출하고 나머지는 대기 후 재시도. 원 요청은 1회만 재시도. 재발급 실패 → 상태 초기화 후 `/login?redirect=<현재 경로>`.
   - 재발급 호출은 **인터셉터를 타지 않는 별도 호출**(무한 루프 방지).
@@ -113,7 +115,15 @@ export const RENTAL_STATUS = {
   CANCELED:        { label: '취소',     tone: 'gray' },
 };
 ```
-대여 상세(SCR-08)는 스텝바(예약 → 결제 → 인계 → 반납 → 상태 확인 → 완료)와 **현재 상태 × 내 역할(대여자/제공자)**에 따라 보이는 액션 버튼을 정의한 표 하나로 렌더링한다. 버튼 노출 조건을 컴포넌트 곳곳에 흩뿌리지 않는다. (서버가 최종 검증하므로 UI는 보조)
+대여 상세(SCR-08)는 스텝바 5단계(결제 · 대여 예정 · 대여 중 · 반납 완료 · 거래 완료, 결제가 꺼져 있으면 첫 단계는 "예약". OVERDUE는 "대여 중"을 danger로, CANCELED는 스텝바 대신 취소 정보 카드)와 **현재 상태 × 내 역할(대여자/제공자)**에 따라 보이는 액션 버튼을 정의한 표 하나로 렌더링한다. 버튼 노출 조건을 컴포넌트 곳곳에 흩뿌리지 않는다. (서버가 최종 검증하므로 UI는 보조)
+
+### 대여 화면 규칙 (SCR-07·08)
+- 버튼 표는 `features/rental/rentalActions.js` `getRentalActions(rental, returnInspection, today)`, 스텝바는 `rentalSteps.js` `getRentalSteps(status)` 순수 함수(테스트 있음). today는 호출부가 `todayInSeoul()`로 넘긴다. RETURNED는 inspections를 불러오기 전(`returnInspection === undefined`)에는 버튼을 그리지 않는다.
+- 오류 문구는 `features/rental/errorMessages.js` 한 곳(code → 문구). `RENTAL_INVALID_TRANSITION`·`COMMON_CONCURRENT_UPDATE`·`RENTAL_CANCEL_AGREEMENT_CLOSED`는 "상태가 바뀌었어요. 다시 불러왔어요" + 상세·inspections 무효화(`queries.js`가 뮤테이션 onError에서 처리).
+- 상태 변경 응답이 RentalDetailResponse면 `['rentals', id]`에 `setQueryData`, `['rentals', 'me']` 무효화. 기간 점유가 바뀌면(예약·취소·동의 수락·반납 요청(대리 접수 포함)) 물품 캘린더·예약 현황도, 기록이 생기면(인계·반납·상태 확인) inspections도 무효화. 동의 요청(`CancelAgreementResponse`)은 상세를 다시 불러온다.
+- 모달·시트는 열린 동안만 렌더해 폼이 매번 새로 시작한다. 모달 안의 오류는 모달 안에.
+- 결제 금액·수수료·보증금 보관 안내는 `VITE_PAYMENT_ENABLED`가 true일 때만 보인다(1순위엔 받지 않음). 연체료·손상 등급·차감·AI 비교는 2순위라 표시하지 않는다.
+- 정책 수치는 `features/rental/constants.js`(`RENTAL_TEXT_MAX`·`CANCEL_FEE`·`RETURN_AUTO_CONFIRM_DAYS`·`PAYMENT_EXPIRE_MINUTES`·`CANCEL_AGREEMENT_EXPIRE_HOURS`).
 
 ## UI 규칙
 - 모바일 우선(360px~). 데스크톱은 중앙 정렬 최대 폭 컨테이너.
