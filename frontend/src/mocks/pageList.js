@@ -67,12 +67,16 @@ export function isRentingItem(rentals, itemId) {
   );
 }
 
-/** 다가오는 예약 건수: RESERVED·PENDING_PAYMENT 중 startDate ≥ today */
-export function countUpcomingRentals(rentals, itemId, today) {
+/**
+ * 다가오는 예약 건수: RESERVED·PENDING_PAYMENT 중 startDate ≥ today. 결제 시간이 지난 PENDING_PAYMENT는
+ * 세지 않는다(캘린더 점유와 같은 기준, rental.md REQ-012). now는 서버 시각 문자열(오프셋 없는 서울 시각).
+ */
+export function countUpcomingRentals(rentals, itemId, today, now) {
   return rentals.filter(
     (rental) =>
       rental.itemId === itemId &&
       UPCOMING_STATUSES.includes(rental.status) &&
+      (rental.status !== 'PENDING_PAYMENT' || rental.paymentExpiresAt > now) &&
       compareDate(rental.startDate, today) >= 0,
   ).length;
 }

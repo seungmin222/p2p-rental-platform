@@ -86,7 +86,10 @@ describe('내 물품', () => {
     rental(1, 'OVERDUE', '2026-10-01', { itemId: 1 }),
     rental(2, 'RETURNED', '2026-10-01', { itemId: 2 }),
     rental(3, 'RESERVED', '2026-10-29', { itemId: 2 }),
-    rental(4, 'PENDING_PAYMENT', '2026-11-02', { itemId: 2 }),
+    rental(4, 'PENDING_PAYMENT', '2026-11-02', {
+      itemId: 2,
+      paymentExpiresAt: '2026-10-29T12:10:00',
+    }),
     rental(5, 'RESERVED', '2026-10-28', { itemId: 2 }),
     rental(6, 'CANCELED', '2026-11-03', { itemId: 2 }),
   ];
@@ -98,7 +101,17 @@ describe('내 물품', () => {
   });
 
   it('다가오는 예약은 RESERVED·PENDING_PAYMENT 중 시작일이 오늘 이후', () => {
-    expect(countUpcomingRentals(rentals, 2, '2026-10-29')).toBe(2);
+    expect(countUpcomingRentals(rentals, 2, '2026-10-29', '2026-10-29T12:00:00')).toBe(2);
+  });
+
+  it('결제 시간이 지난 PENDING_PAYMENT는 세지 않는다(정각에 만료)', () => {
+    const pending = (paymentExpiresAt) => [
+      rental(1, 'PENDING_PAYMENT', '2026-11-02', { itemId: 9, paymentExpiresAt }),
+    ];
+    const now = '2026-10-29T12:00:00';
+    expect(countUpcomingRentals(pending('2026-10-29T12:10:00'), 9, '2026-10-29', now)).toBe(1);
+    expect(countUpcomingRentals(pending('2026-10-29T12:00:00'), 9, '2026-10-29', now)).toBe(0);
+    expect(countUpcomingRentals(pending('2026-10-29T11:50:00'), 9, '2026-10-29', now)).toBe(0);
   });
 
   it('예약 현황은 시작일 오름차순', () => {

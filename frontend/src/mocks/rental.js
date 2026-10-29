@@ -253,7 +253,7 @@ function toHistoryItem(rental) {
 }
 
 // TODO: 백엔드 확정 전 임시 — 내 물품 목록 항목(features/item/api.js toMyItem과 같은 가정)
-function toMyItemResponse(item, today) {
+function toMyItemResponse(item, today, now) {
   return {
     itemId: item.itemId,
     name: item.name,
@@ -263,7 +263,7 @@ function toMyItemResponse(item, today) {
     viewCount: item.counts.viewCount,
     wishCount: item.counts.wishCount,
     chatCount: item.counts.chatCount,
-    upcomingRentalCount: countUpcomingRentals(db.rentals, item.itemId, today),
+    upcomingRentalCount: countUpcomingRentals(db.rentals, item.itemId, today, now),
   };
 }
 
@@ -451,8 +451,9 @@ export const rentalHandlers = [
       }
       const page = requirePage(searchParams);
       const today = todayInSeoul();
+      const now = nowServer();
       const items = listMyItems(listMyMockItems(), db.rentals, tab).map((item) =>
-        toMyItemResponse(item, today),
+        toMyItemResponse(item, today, now),
       );
       return ok(toPageResponse(items, page));
     }),
