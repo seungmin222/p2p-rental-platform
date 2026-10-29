@@ -1,6 +1,9 @@
 package com.team7.rental.item.service;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 다른 도메인(rental 등)이 물품 정보를 읽는 창구. 엔티티 대신 item/dto의 record를 반환한다.
- * 지금은 대여 예약·캘린더·상세(REQ-012·013·016)에 필요한 메서드만 있다.
+ * 지금은 대여 예약·캘린더·상세·빌린 내역(REQ-012·013·016·019)에 필요한 메서드만 있다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -70,6 +73,28 @@ public class ItemQueryService {
 			.map(ItemImage::getThumbnailUrl)
 			.orElse(null);
 		return new ItemSummary(item.getId(), item.getName(), thumbnailUrl, item.getStatus() == ItemStatus.DELETED);
+	}
+
+	/**
+	 * {@link #getSummary}의 일괄 조회판(목록 화면용). 규칙이 같아 삭제된 물품도 담는다. 쿼리는 물품 수와 상관없이 2개(물품·대표 이미지)다.
+	 * 대표 이미지가 sort_order로 동률이면 id가 작은 것을 쓴다.
+	 *
+	 * @return 물품 ID → 요약. 없는 ID는 담지 않는다(없는 경우의 처리는 호출하는 쪽이 정한다)
+	 */
+	public Map<Long, ItemSummary> getSummaries(Collection<Long> itemIds) {
+		if (itemIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, String> thumbnailUrls = new HashMap<>();
+		for (ItemImage image : itemImageRepository.findMainImages(itemIds)) {
+			thumbnailUrls.putIfAbsent(image.getItemId(), image.getThumbnailUrl());
+		}
+		Map<Long, ItemSummary> summaries = new HashMap<>();
+		for (Item item : itemRepository.findAllById(itemIds)) {
+			summaries.put(item.getId(), new ItemSummary(item.getId(), item.getName(), thumbnailUrls.get(item.getId()),
+				item.getStatus() == ItemStatus.DELETED));
+		}
+		return summaries;
 	}
 
 	private Item getVisibleItem(Long itemId, Long requesterId) {
