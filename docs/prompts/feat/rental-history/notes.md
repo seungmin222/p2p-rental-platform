@@ -6,7 +6,7 @@ REQ-019 빌린 내역. `feat/rental-return`에서 분리했다(그쪽 notes "019
 - **size 파라미터를 받지 않고 `rental-history.page`(20) 고정.** architecture.md 페이지네이션은 "size 기본 20"이지만, 빌린 내역은 화면 하나(SCR-12)만 쓰고 크기를 바꿀 이유가 없어 상한 검사를 따로 두지 않으려고 받지 않는다.
 - **`role`은 필수이고 `renter`만 허용**(`@Pattern`). 경로는 api.md 그대로 두고 제공자 쪽은 REQ-020이 따로 맡는다.
 - **파라미터는 `@ParameterObject @Valid @ModelAttribute` record, 기본값(tab ONGOING, page 0)은 compact constructor에서 채운다.** 잘못된 tab("ALL", "ongoing")은 타입 변환 실패가 BindException으로 와서 400 `COMMON_INVALID_INPUT`(field tab)이 된다(통합 테스트로 고정).
-- **잘못된 tab의 `reason`에 스프링 변환 메시지(내부 클래스 이름 포함)가 그대로 나간다.** GlobalExceptionHandler.handleBind가 typeMismatch FieldError의 기본 메시지를 쓰기 때문이다. 공통 코드라 이 브랜치에서 고치지 않고 PR에서 확인받는다.
+- **바인딩 실패(타입 변환) 메시지를 이 PR에서 고쳤다: `handleBind`는 `FieldError.isBindingFailure()`면 reason을 "형식이 올바르지 않습니다."(handleTypeMismatch와 같음)로 바꾸고, 검증 메시지(@Pattern 등)는 그대로 둔다.** 잘못된 tab의 reason에 스프링 변환 메시지(내부 클래스 이름 포함)가 그대로 나가고 있었다. 이 경로(@ModelAttribute의 타입 변환 실패)는 이 API가 처음 드러냈다(기존 API는 @RequestParam·@PathVariable이라 handleTypeMismatch를 탔다). 공통 코드라 PR에서 B에게 확인받는다.
 
 ## 쿼리
 - **QueryDSL은 이번에 처음 도입한다**: `QuerydslConfig`의 `JPAQueryFactory(EntityManager)` 빈 하나. OpenFeign 7.x 문서에 Spring 등록 예시가 없어 7.7 jar의 생성자(`com.querydsl.jpa.impl.JPAQueryFactory(EntityManager)`)를 확인했다.

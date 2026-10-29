@@ -19,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -221,6 +222,17 @@ class RentalHistoryIntegrationTest extends IntegrationTestSupport {
 			.andExpect(jsonPath("$.error.code").value("COMMON_INVALID_INPUT"))
 			.andExpect(jsonPath("$.error.details[0].field").value(field))
 			.andExpect(jsonPath("$.error.details.length()").value(1));
+	}
+
+	@ParameterizedTest(name = "tab={0}")
+	@ValueSource(strings = {"ALL", "ongoing"})
+	@DisplayName("잘못된 tab 값의 reason은 형식 오류 문구이고 내부 클래스 이름을 노출하지 않는다")
+	void invalidTabReason(String tab) throws Exception {
+		mockMvc.perform(get(URL).queryParam("role", "renter").queryParam("tab", tab)
+			.header(HttpHeaders.AUTHORIZATION, bearerToken(renter.getId())))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.details[0].field").value("tab"))
+			.andExpect(jsonPath("$.error.details[0].reason").value("형식이 올바르지 않습니다."));
 	}
 
 	@Test
