@@ -3,13 +3,14 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 
 import { BottomSheet, Button, Chip, TextField, toast } from '../../../shared/ui';
 import { RENTAL_TEXT_MAX, RETURN_CHECKLIST_ITEM } from '../constants';
-import { applyFieldErrors, getErrorMessage } from '../errorMessages';
 import { useRequestReturn } from '../queries';
 import { toChecklist } from '../rentalData';
+import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
 import { FormError, InspectionImageField } from './formParts';
 
 const CHECKLIST_KEYS = Object.keys(RETURN_CHECKLIST_ITEM);
-const FIRST_CHECKLIST_FIELD = `checklist.${CHECKLIST_KEYS[0]}`;
+// 서버는 checklist 전체를 한 필드로 알려 주므로 첫 항목에 붙인다
+const FIELD_MAP = { checklist: `checklist.${CHECKLIST_KEYS[0]}`, note: 'note' };
 
 function hasNo(values) {
   return CHECKLIST_KEYS.some((key) => values.checklist[key] === false);
@@ -67,6 +68,7 @@ export default function ReturnRequestSheet({ rental, onClose }) {
     register,
     handleSubmit,
     setError,
+    setFocus,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -76,6 +78,7 @@ export default function ReturnRequestSheet({ rental, onClose }) {
     },
     shouldFocusError: true,
   });
+  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, FIELD_MAP);
   const checklist = useWatch({ control, name: 'checklist' });
   const noteRequired = hasNo({ checklist });
 
@@ -92,15 +95,7 @@ export default function ReturnRequestSheet({ rental, onClose }) {
           onClose();
           toast.show({ message: isOwner ? '반납을 대신 접수했어요' : '반납을 요청했어요' });
         },
-        onError: (error) => {
-          const mapped = applyFieldErrors(error, setError, {
-            checklist: FIRST_CHECKLIST_FIELD,
-            note: 'note',
-          });
-          if (!mapped) {
-            setError('root.server', { message: getErrorMessage(error) });
-          }
-        },
+        onError: handleError,
       },
     );
   }

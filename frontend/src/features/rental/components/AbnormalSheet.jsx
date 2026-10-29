@@ -3,9 +3,11 @@ import { useForm } from 'react-hook-form';
 
 import { BottomSheet, Button, TextField, toast } from '../../../shared/ui';
 import { PAYMENT_ENABLED, RENTAL_TEXT_MAX } from '../constants';
-import { applyFieldErrors, getErrorMessage } from '../errorMessages';
 import { useConfirmReturn } from '../queries';
+import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
 import { FormError, InspectionImageField } from './formParts';
+
+const FIELD_MAP = { resultNote: 'resultNote' };
 
 /** 상태 확인 '이상 있음'(제공자, REQ-018). 내용 필수 + 사진 1장 이상. 손상 등급·차감은 2순위(REQ-049). */
 export default function AbnormalSheet({ rental, onClose }) {
@@ -16,8 +18,10 @@ export default function AbnormalSheet({ rental, onClose }) {
     register,
     handleSubmit,
     setError,
+    setFocus,
     formState: { errors },
   } = useForm({ defaultValues: { images: [], resultNote: '' }, shouldFocusError: true });
+  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, FIELD_MAP);
 
   function onSubmit(values) {
     mutation.mutate(
@@ -30,11 +34,7 @@ export default function AbnormalSheet({ rental, onClose }) {
           onClose();
           toast.show({ message: '이상 내용을 기록했어요' });
         },
-        onError: (error) => {
-          if (!applyFieldErrors(error, setError, { resultNote: 'resultNote' })) {
-            setError('root.server', { message: getErrorMessage(error) });
-          }
-        },
+        onError: handleError,
       },
     );
   }

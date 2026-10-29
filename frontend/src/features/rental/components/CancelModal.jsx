@@ -10,10 +10,13 @@ import {
   PAYMENT_ENABLED,
   RENTAL_TEXT_MAX,
 } from '../constants';
-import { applyFieldErrors, getErrorMessage } from '../errorMessages';
 import { useCancelRental, useRequestCancelAgreement } from '../queries';
 import { estimateCancelFee } from '../rentalData';
+import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
 import { FormError } from './formParts';
+
+// 서버 details[].field → 폼 필드
+const FIELD_MAP = { reason: 'reason', reasonText: 'reasonText' };
 
 const MODES = {
   // 단독 취소(시작일 전)
@@ -42,8 +45,10 @@ export default function CancelModal({ mode, rental, today, onClose }) {
     register,
     handleSubmit,
     setError,
+    setFocus,
     formState: { errors },
   } = useForm({ defaultValues: { reason: null, reasonText: '' }, shouldFocusError: true });
+  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, FIELD_MAP);
 
   const reason = useWatch({ control, name: 'reason' });
   const fee = mode === 'cancel' && PAYMENT_ENABLED ? estimateCancelFee(rental, today) : 0;
@@ -62,11 +67,7 @@ export default function CancelModal({ mode, rental, today, onClose }) {
           toast.show({ message: `취소 수수료 ${formatPrice(result.cancelFee)}이 부과됐어요` });
         }
       },
-      onError: (error) => {
-        if (!applyFieldErrors(error, setError, { reason: 'reason', reasonText: 'reasonText' })) {
-          setError('root.server', { message: getErrorMessage(error) });
-        }
-      },
+      onError: handleError,
     });
   }
 

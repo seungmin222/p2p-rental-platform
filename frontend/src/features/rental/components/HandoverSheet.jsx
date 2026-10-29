@@ -3,9 +3,11 @@ import { useForm } from 'react-hook-form';
 
 import { BottomSheet, Button, TextField, toast } from '../../../shared/ui';
 import { RENTAL_TEXT_MAX } from '../constants';
-import { applyFieldErrors, getErrorMessage } from '../errorMessages';
 import { useHandover } from '../queries';
+import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
 import { FormError, InspectionImageField } from './formParts';
+
+const FIELD_MAP = { memo: 'memo' };
 
 /** 인계 확인(제공자, REQ-017). 사진 1장 이상 필수, 메모 선택. 인계 후 사진은 고칠 수 없다. */
 export default function HandoverSheet({ rental, onClose }) {
@@ -16,8 +18,10 @@ export default function HandoverSheet({ rental, onClose }) {
     register,
     handleSubmit,
     setError,
+    setFocus,
     formState: { errors },
   } = useForm({ defaultValues: { images: [], memo: '' }, shouldFocusError: true });
+  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, FIELD_MAP);
 
   function onSubmit(values) {
     const memo = values.memo.trim();
@@ -28,11 +32,7 @@ export default function HandoverSheet({ rental, onClose }) {
           onClose();
           toast.show({ message: '인계를 확인했어요' });
         },
-        onError: (error) => {
-          if (!applyFieldErrors(error, setError, { memo: 'memo' })) {
-            setError('root.server', { message: getErrorMessage(error) });
-          }
-        },
+        onError: handleError,
       },
     );
   }

@@ -55,19 +55,19 @@ export function isStaleStateError(error) {
 /**
  * COMMON_INVALID_INPUT의 details[]를 react-hook-form setError로 필드에 붙인다.
  * fieldMap은 서버 field → 폼 필드 이름(예: { reasonText: 'reasonText', checklist: 'checklist.NO_EXTERIOR_DAMAGE' }).
- * 하나라도 붙였으면 true(호출부는 그때 모달 아래쪽 오류 문구를 생략할 수 있다).
+ * 붙인 첫 필드 이름을 돌려주고, 하나도 못 붙였으면 null. 포커스는 옮기지 않는다(useSubmitErrorHandler가 제출 중 비활성이 풀린 뒤 옮김).
  */
 export function applyFieldErrors(error, setError, fieldMap) {
   if (error?.code !== 'COMMON_INVALID_INPUT') {
-    return false;
+    return null;
   }
-  let applied = false;
+  let firstField = null;
   for (const { field, reason } of error.details ?? []) {
     const name = fieldMap[field];
     if (name) {
-      setError(name, { type: 'server', message: reason }, { shouldFocus: !applied });
-      applied = true;
+      setError(name, { type: 'server', message: reason });
+      firstField ??= name;
     }
   }
-  return applied;
+  return firstField;
 }

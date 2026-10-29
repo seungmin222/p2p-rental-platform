@@ -72,7 +72,8 @@ SCR-07 대여 예약 + SCR-08 대여 상세 + 공통(`features/rental/`)·MSW �
 
 ## 화면
 - **모달·시트는 열린 동안만 렌더**(`ActionDialog`) — 열 때마다 폼이 새로 시작해 reset을 따로 하지 않는다. useDialog cleanup이 포커스를 돌려준다.
-- **모달 안의 오류는 모달 안에**(stale 포함). 필드 오류는 `applyFieldErrors`, 나머지는 `root.server`.
+- **모달 안의 오류는 모달 안에**(stale 포함). 네 폼 모두 `useSubmitErrorHandler`를 onError로 쓴다: details[]는 `applyFieldErrors`로 바로 setError, 나머지는 `root.server`.
+- **서버 필드 오류 포커스는 effect로**(`mutateAsync` + 다음 tick 대신): 제출 중엔 필드가 disabled라 setError의 shouldFocus가 먹지 않는다. 첫 필드 이름을 state에 두고 `isPending`이 false로 다시 그려진 뒤 effect에서 `setFocus`. React가 언제 커밋할지 tick을 추측하지 않아도 돼서. 헤드리스에서 worker.use로 400 details를 돌려 네 폼(reasonText·memo·체크리스트 첫 '예'·resultNote) 포커스 확인.
 - **사진 필드는 `InspectionImageField`(Controller) — 감싼 div에 ref + tabIndex -1** 이라 사진 누락도 `shouldFocusError`로 포커스가 간다. 제출 중에는 fieldset disabled.
 - **`watch` 대신 `useWatch`**: react-hooks v7의 React Compiler 검사가 `watch`를 쓰는 컴포넌트에 경고(incompatible-library)를 내서.
 - **기타 사유·반납 메모 검증은 다른 필드 값(values)으로 조건을 다시 본다.** 입력란이 사라져도 값·규칙이 남을 수 있어서.
