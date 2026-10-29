@@ -36,6 +36,10 @@ describe('getRefetchErrorKey', () => {
     expect(getRefetchErrorKey([query])).toBe(getRefetchErrorKey([{ ...query }]));
   });
 
+  it('무한 스크롤 다음 페이지 실패는 뺀다(목록 끝 "다시 시도"가 알림)', () => {
+    expect(getRefetchErrorKey([{ ...refetchFailed(200), isFetchNextPageError: true }])).toBeNull();
+  });
+
   it('다시 실패하면 값이 바뀐다', () => {
     expect(getRefetchErrorKey([refetchFailed(400)])).not.toBe(
       getRefetchErrorKey([refetchFailed(200)]),
