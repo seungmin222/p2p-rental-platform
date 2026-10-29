@@ -29,6 +29,7 @@
 | `chore/setup-storage-shedlock` | `chore/setup-backend` 잔여분: 파일 저장소(`FileStorage`·`ImageProcessor`) + ShedLock 설정 | A |
 | `feat/member-item-entity` | members·regions·member_regions·categories·items·item_images·item_available_periods 엔티티·마이그레이션만 | A(B 대행) |
 | `feat/rental-entity` | rentals·rental_status_histories 엔티티·마이그레이션만 (`items`·`members` FK 때문에 `feat/member-item-entity` 머지 직후, B의 `feat/item-feed-search` 착수 전에 머지) | A |
+| `chore/member-item-api-contract` | 001–011·020 API 계약만: 컨트롤러·요청·응답 DTO·Swagger·ErrorCode·서비스 껍데기(`UnsupportedOperationException`). 프론트가 openapi.json으로 목을 만들 수 있게 먼저 머지. 로직은 아래 4개 브랜치가 채운다 | A(B와 합의) |
 | `feat/member-auth` | 001–003 (엔티티는 `feat/member-item-entity`에 있음) | B |
 | `feat/member-region` | 004, 005 (엔티티는 `feat/member-item-entity`에 있음) | B |
 | `feat/item-crud` | 006–008, 011 (엔티티는 `feat/member-item-entity`에 있음) | B |

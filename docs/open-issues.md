@@ -21,6 +21,15 @@
 | 13 | ✅ | 취소 | 시작일 이후 양측 동의 취소 흐름 | 한쪽 요청 → 상대 동의 시 취소, 요청은 48시간 후 만료. `rental_cancel_agreements` |
 | 14 | ⬜ | STOMP | 목적지 접두사 확정 | (제안) api.md 표기대로 `/pub`, `/sub`, `/user/queue/*` |
 | 15 | ⬜ | 후기 | 칭찬 항목을 대여자용/제공자용으로 나눌지 | (제안) 공통 목록으로 시작 |
+| 16 | ✅ | API | itemPrice는 "소유자 수정 화면 응답만 예외"인데 그 화면을 채울 조회 API가 없음 | `GET /api/members/me/items/{itemId}`(소유자 전용, Item 태그, REQ-007). itemPrice·가능 기간·이미지 id 포함. 남의 물품 403 `ITEM_NOT_OWNER`, 없음·삭제 404 `ITEM_NOT_FOUND`. 물품 수정 응답도 같은 형태 |
+| 17 | ✅ | API | 409 충돌 목록(`ITEM_PERIOD_CONFLICT` 충돌 기간, `ITEM_HAS_ACTIVE_RENTAL` 해당 건)을 실을 자리. 대여 쪽 선례 없음 | 공통 `ErrorResponse`를 바꾸지 않고 `error.details`에 한 건씩 `{ field, reason }`: field는 `availablePeriods`/`rentals`, reason은 화면에 그대로 보일 문구(예: `2026-11-03 ~ 2026-11-05`). 프론트는 reason을 나열만 한다 |
+| 18 | ✅ | API | item.md의 이미지 오류 `FILE_INVALID`와 이미 있는 `IMAGE_*` 코드 | `IMAGE_COUNT_INVALID`·`IMAGE_INVALID_TYPE`·`IMAGE_SIZE_EXCEEDED`를 물품·프로필에도 쓴다. item.md 수정 |
+| 19 | ✅ | API | 물품 수정의 이미지 변경 표현("유지할 기존 id + 새 파일 + 순서") | request part의 `imageOrder` 목록 하나: 각 칸 `{imageId}` 또는 `{newImageIndex}`(images 파트 0부터 순번) 중 정확히 하나, 순서 = sortOrder, 빠진 기존 이미지 삭제, null이면 변경 없음(이때 파일을 보내면 400). 최종 장수는 서비스가 `IMAGE_COUNT_INVALID`로 검사 |
+| 20 | ✅ | API | 물품별 예약 현황(REQ-020) 응답 형태·"기간순" 정렬, 내 물품·예약 현황 페이지 크기 | 둘 다 `page` + `PageResponse`, size는 받지 않고 `my-items.page`·`item-rentals.page`(20) 고정. 예약 현황 정렬: 다가오는·진행 중 건(PENDING_PAYMENT~RETURNED) 시작일 오름차순 먼저, 완료·취소 건 시작일 내림차순 뒤에(지난 건이 쌓여도 다가오는 예약이 첫 페이지에 보이게). CANCELED 포함. 검색도 `search.page` 고정으로 size를 받지 않는다 |
+| 21 | ✅ | API | 피드(인증 X)·검색의 "기본 대표 동네"는 로그인 정보가 있어야 앎 | regionId 생략 시 로그인 회원의 대표 동네, 비회원·대표 동네 없음이면 400 `COMMON_INVALID_INPUT`(details regionId). 피드 인증을 `옵션`으로 바꿈(api.md) |
+| 22 | ✅ | 회원 | 같은 동네를 두 번 추가하는 경우의 에러 코드가 없음 | 409 `REGION_ALREADY_ADDED` "이미 추가한 동네입니다." |
+| 23 | ⬜ | ERD | 권장 보증금 API(`GET /api/items/deposit-guide`, api.md 1순위)가 쓰는 `damage_policies`가 erd.md에서 결제 [2] | (제안) `damage_policies`를 [1]로 올려 `feat/item-crud`에서 테이블·시드를 만들거나, 권장 비율만 1순위 설정값으로 두고 2순위에 테이블로 옮김. `feat/item-crud` 착수 시 결정 |
+| 24 | ⬜ | 인증 | 비밀번호 변경(REQ-005)은 "현재 요청의 family를 뺀 나머지"를 지우는데, RT 쿠키는 Path=`/api/auth`라 `/api/members/me/password`로 오지 않고 AT claim에도 familyId가 없음 | (제안) Access Token claim에 familyId를 추가(API 변경 없음). `feat/member-auth` 착수 시 결정 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

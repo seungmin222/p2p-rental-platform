@@ -14,9 +14,1154 @@
     {
       "description": "예약·대여·반납",
       "name": "Rental"
+    },
+    {
+      "description": "물품·피드·검색·카테고리",
+      "name": "Item"
+    },
+    {
+      "description": "회원·인증·동네",
+      "name": "Member"
     }
   ],
   "paths": {
+    "/api/auth/login": {
+      "post": {
+        "description": "미구현: 응답 형태만 확정. 성공 시 바디에 Access Token, Set-Cookie로 Refresh Token. Refresh Token은 응답 바디에 없고 HttpOnly 쿠키 refreshToken(Path\u003d/api/auth, SameSite\u003dLax, local 외 Secure, 만료 policies.md auth.refresh-token-ttl)로만 주고받는다. 브라우저가 자동으로 보내므로 프론트는 쿠키를 다루지 않는다(같은 출처 + withCredentials). 로그인할 때마다 새 토큰 묶음(family)이 생겨 기기마다 따로 유지된다. 이메일·비밀번호 중 무엇이 틀렸는지 구분하지 않고, 탈퇴 회원도 같은 401 AUTH_INVALID_CREDENTIALS다.",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAuthTokenResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_INVALID_CREDENTIALS": {
+                    "summary": "이메일 또는 비밀번호가 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_INVALID_CREDENTIALS",
+                        "details": [],
+                        "message": "이메일 또는 비밀번호가 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_INVALID_CREDENTIALS"
+          }
+        },
+        "summary": "로그인 (REQ-002)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "미구현: 응답 형태만 확정. Refresh Token 쿠키의 family만 무효화하고 쿠키를 만료시킨다(Set-Cookie Max-Age\u003d0). 다른 기기는 로그인 상태가 유지된다. 쿠키가 없거나 이미 무효여도 성공(data null)이고, Access Token은 필요 없다.",
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "로그아웃 (REQ-002)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/auth/reissue": {
+      "post": {
+        "description": "미구현: 응답 형태만 확정. Refresh Token 쿠키로 Access Token과 Refresh Token을 모두 새로 발급한다(Rotation, Set-Cookie로 교체). Refresh Token은 응답 바디에 없고 HttpOnly 쿠키 refreshToken(Path\u003d/api/auth, SameSite\u003dLax, local 외 Secure, 만료 policies.md auth.refresh-token-ttl)로만 주고받는다. 브라우저가 자동으로 보내므로 프론트는 쿠키를 다루지 않는다(같은 출처 + withCredentials). 401 AUTH_REFRESH_TOKEN_INVALID: 쿠키 없음, 서명 오류·만료, 로그아웃·강제 무효화된 family, 이미 교체된 RT 재사용(탈취로 보고 그 family만 무효화, 다른 기기는 유지). 401이면 프론트는 로그인 화면으로 간다.",
+        "operationId": "reissue",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAuthTokenResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_REFRESH_TOKEN_INVALID": {
+                    "summary": "로그인이 만료되었습니다. 다시 로그인해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_REFRESH_TOKEN_INVALID",
+                        "details": [],
+                        "message": "로그인이 만료되었습니다. 다시 로그인해 주세요."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_REFRESH_TOKEN_INVALID"
+          }
+        },
+        "summary": "토큰 재발급 (REQ-003)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 활성 카테고리만 sortOrder 순.",
+        "operationId": "getCategories",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCategoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "카테고리 목록 (REQ-006)",
+        "tags": [
+          "Item"
+        ]
+      }
+    },
+    "/api/items": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. regionId를 생략하면 로그인 회원의 대표 동네를 쓰고, 비회원이거나 대표 동네가 없으면 400 COMMON_INVALID_INPUT(details regionId). range는 받지만 동네 범위 설정(REQ-042) 전에는 NORMAL로 처리한다(거리 policies.md region.range). 물품 거래 장소 좌표가 기준 동네 중심에서 범위 안인 AVAILABLE 물품만(HIDDEN·DELETED 제외). 페이지 크기는 policies.md search.page로 고정(size를 받지 않음). 시작일·종료일은 둘 다 보내거나 둘 다 생략하고, 시작일 \u003e 종료일이면 400.",
+        "operationId": "searchItems",
+        "parameters": [
+          {
+            "description": "기준 행정동 ID. 생략하면 로그인 회원의 대표 동네(비회원·대표 동네 없음이면 400)",
+            "example": 1234,
+            "in": "query",
+            "name": "regionId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "기준 행정동 ID. 생략하면 로그인 회원의 대표 동네(비회원·대표 동네 없음이면 400)",
+              "example": 1234
+            }
+          },
+          {
+            "description": "동네 범위(거리는 policies.md region.range). 동네 범위 설정(REQ-042) 전에는 무엇을 보내도 NORMAL로 처리한다",
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "동네 범위(거리는 policies.md region.range). 동네 범위 설정(REQ-042) 전에는 무엇을 보내도 NORMAL로 처리한다",
+              "enum": [
+                "NEAR",
+                "NORMAL",
+                "FAR"
+              ]
+            }
+          },
+          {
+            "description": "검색어 (이름·설명)",
+            "example": "텐트",
+            "in": "query",
+            "name": "keyword",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "검색어 (이름·설명)",
+              "example": "텐트"
+            }
+          },
+          {
+            "description": "카테고리 ID",
+            "example": 1,
+            "in": "query",
+            "name": "categoryId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "카테고리 ID",
+              "example": 1
+            }
+          },
+          {
+            "description": "일 대여료 최소(원)",
+            "example": 0,
+            "in": "query",
+            "name": "minPrice",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "description": "일 대여료 최소(원)",
+              "example": 0,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "일 대여료 최대(원)",
+            "example": 20000,
+            "in": "query",
+            "name": "maxPrice",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "description": "일 대여료 최대(원)",
+              "example": 20000,
+              "minimum": 0
+            }
+          },
+          {
+            "description": "대여 희망 시작일. 보내면 그 기간 전체가 가능 기간 하나에 들어가고 예약과 겹치지 않는 물품만",
+            "example": "2026-11-03",
+            "in": "query",
+            "name": "startDate",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "대여 희망 시작일. 보내면 그 기간 전체가 가능 기간 하나에 들어가고 예약과 겹치지 않는 물품만",
+              "example": "2026-11-03"
+            }
+          },
+          {
+            "description": "대여 희망 종료일 (포함)",
+            "example": "2026-11-05",
+            "in": "query",
+            "name": "endDate",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "대여 희망 종료일 (포함)",
+              "example": "2026-11-05"
+            }
+          },
+          {
+            "description": "대여 가능한 물품만. 기간을 보냈으면 그 기간 기준, 없으면 오늘 이후 가능 기간이 남아 있고 오늘이 예약되지 않은 물품 (open-issues #6)",
+            "in": "query",
+            "name": "availableOnly",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "대여 가능한 물품만. 기간을 보냈으면 그 기간 기준, 없으면 오늘 이후 가능 기간이 남아 있고 오늘이 예약되지 않은 물품 (open-issues #6)"
+            }
+          },
+          {
+            "description": "정렬. 생략하면 ACCURACY(이름 일치 \u003e 설명 일치 \u003e 최신순)",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ACCURACY",
+              "description": "정렬. 생략하면 ACCURACY(이름 일치 \u003e 설명 일치 \u003e 최신순)",
+              "enum": [
+                "ACCURACY",
+                "LATEST",
+                "PRICE_ASC"
+              ]
+            }
+          },
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseItemSummaryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          }
+        },
+        "summary": "물품 검색 (REQ-010)",
+        "tags": [
+          "Item"
+        ]
+      },
+      "post": {
+        "description": "미구현: 응답 형태만 확정. 대표 동네가 인증된(유효기간 내) 회원만 등록할 수 있다(403 REGION_NOT_VERIFIED). 물품 동네 \u003d 대표 동네, status \u003d AVAILABLE. multipart: request part(Content-Type application/json, 필수) ItemCreateRequest + images 파일들(순서 \u003d sortOrder, 0번이 대표). 사진 장수·형식·용량 policies.md item.images. 비활성·없는 카테고리는 400 COMMON_INVALID_INPUT(details categoryId). 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 403 REGION_NOT_VERIFIED → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED).",
+        "operationId": "createItem",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/ItemCreateRequest"
+                  }
+                },
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseItemCreateResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_COUNT_INVALID": {
+                    "summary": "이미지 장수가 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_COUNT_INVALID",
+                        "details": [],
+                        "message": "이미지 장수가 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_INVALID_TYPE": {
+                    "summary": "jpg 또는 png 이미지만 업로드할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_INVALID_TYPE",
+                        "details": [],
+                        "message": "jpg 또는 png 이미지만 업로드할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_SIZE_EXCEEDED": {
+                    "summary": "이미지 용량이 너무 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_SIZE_EXCEEDED",
+                        "details": [],
+                        "message": "이미지 용량이 너무 큽니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "REGION_NOT_VERIFIED": {
+                    "summary": "대표 동네 인증이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "REGION_NOT_VERIFIED",
+                        "details": [],
+                        "message": "대표 동네 인증이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "REGION_NOT_VERIFIED"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "지원하지 않는 요청 형식입니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_UNSUPPORTED_MEDIA_TYPE",
+                        "details": [],
+                        "message": "지원하지 않는 요청 형식입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_UNSUPPORTED_MEDIA_TYPE"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "물품 등록 (REQ-006)",
+        "tags": [
+          "Item"
+        ]
+      }
+    },
+    "/api/items/deposit-guide": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 물품 가격 × 카테고리별 권장 비율(policies.md §4). 안내만 하고, 범위를 벗어난 보증금도 등록할 수 있다. 없는 카테고리는 400 COMMON_INVALID_INPUT(details categoryId).",
+        "operationId": "getDepositGuide",
+        "parameters": [
+          {
+            "description": "카테고리 ID",
+            "example": 1,
+            "in": "query",
+            "name": "categoryId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "카테고리 ID",
+              "example": 1
+            }
+          },
+          {
+            "description": "물품 가격(원). 0 ~ policies.md item.item-price.max",
+            "example": 200000,
+            "in": "query",
+            "name": "itemPrice",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "description": "물품 가격(원). 0 ~ policies.md item.item-price.max",
+              "example": 200000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseItemDepositGuideResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "권장 보증금 범위 (REQ-006)",
+        "tags": [
+          "Item"
+        ]
+      }
+    },
+    "/api/items/feed": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. regionId를 생략하면 로그인 회원의 대표 동네를 쓰고, 비회원이거나 대표 동네가 없으면 400 COMMON_INVALID_INPUT(details regionId). range는 받지만 동네 범위 설정(REQ-042) 전에는 NORMAL로 처리한다(거리 policies.md region.range). 물품 거래 장소 좌표가 기준 동네 중심에서 범위 안인 AVAILABLE 물품만(HIDDEN·DELETED 제외). 정렬 bumpedAt 내림차순, id 내림차순. 커서 기반이고 한 번에 policies.md feed.page건. 결과가 없으면 빈 목록. 로그인하지 않아도 되며, 토큰을 보내면 대표 동네 기본값에 쓴다.",
+        "operationId": "getFeed",
+        "parameters": [
+          {
+            "description": "기준 행정동 ID. 생략하면 로그인 회원의 대표 동네(비회원·대표 동네 없음이면 400)",
+            "example": 1234,
+            "in": "query",
+            "name": "regionId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "기준 행정동 ID. 생략하면 로그인 회원의 대표 동네(비회원·대표 동네 없음이면 400)",
+              "example": 1234
+            }
+          },
+          {
+            "description": "동네 범위(거리는 policies.md region.range). 동네 범위 설정(REQ-042) 전에는 무엇을 보내도 NORMAL로 처리한다",
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "동네 범위(거리는 policies.md region.range). 동네 범위 설정(REQ-042) 전에는 무엇을 보내도 NORMAL로 처리한다",
+              "enum": [
+                "NEAR",
+                "NORMAL",
+                "FAR"
+              ]
+            }
+          },
+          {
+            "description": "카테고리 ID. 생략하면 전체",
+            "example": 1,
+            "in": "query",
+            "name": "categoryId",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "description": "카테고리 ID. 생략하면 전체",
+              "example": 1
+            }
+          },
+          {
+            "description": "이전 응답의 nextCursor. 첫 페이지는 생략",
+            "example": "MjAyNi0xMC0yOVQxMDowMDowMHwxMjM",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "이전 응답의 nextCursor. 첫 페이지는 생략",
+              "example": "MjAyNi0xMC0yOVQxMDowMDowMHwxMjM"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCursorResponseItemSummaryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          }
+        },
+        "summary": "동네 피드 (REQ-009)",
+        "tags": [
+          "Item"
+        ]
+      }
+    },
+    "/api/items/{itemId}": {
+      "delete": {
+        "description": "미구현: 응답 형태만 확정. 등록자만. 소프트 삭제(status \u003d DELETED)라 과거 대여·채팅에는 \"삭제된 물품\"으로 남는다. PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED 대여가 있으면 409 ITEM_HAS_ACTIVE_RENTAL이고 error.details에 해당 건을 한 건씩 담는다: [{ field: \"rentals\", reason: \"2026-11-03 ~ 2026-11-05 대여 예정 (rentalId 12)\" }]. data는 null.",
+        "operationId": "deleteItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_OWNER": {
+                    "summary": "물품 등록자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_OWNER",
+                        "details": [],
+                        "message": "물품 등록자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_OWNER"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_HAS_ACTIVE_RENTAL": {
+                    "summary": "진행 중인 대여가 있어 삭제할 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_HAS_ACTIVE_RENTAL",
+                        "details": [],
+                        "message": "진행 중인 대여가 있어 삭제할 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_HAS_ACTIVE_RENTAL"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "물품 삭제 (REQ-008)",
+        "tags": [
+          "Item"
+        ]
+      },
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). 조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 관심 기능(REQ-022) 전에는 항상 false.",
+        "operationId": "getItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseItemDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          }
+        },
+        "summary": "물품 상세 (REQ-011)",
+        "tags": [
+          "Item"
+        ]
+      },
+      "patch": {
+        "description": "미구현: 응답 형태만 확정. 등록자만(403 ITEM_NOT_OWNER). 보낸 항목만 바꾼다. multipart: request part(Content-Type application/json, 필수) ItemUpdateRequest + images 파일들(새 이미지만). 이미지: imageOrder가 새 이미지 목록 전체다. 각 칸은 {imageId}(유지할 기존 이미지) 또는 {newImageIndex}(images 파트의 0부터 순번) 중 하나, 목록 순서 \u003d sortOrder, 목록에 없는 기존 이미지는 삭제. imageOrder가 null이면 이미지를 바꾸지 않으며 이때 images를 보내면 400 COMMON_INVALID_INPUT. imageOrder가 가리키지 않는 파일이 있거나 없는 newImageIndex·남의 imageId도 400 COMMON_INVALID_INPUT(details imageOrder). 최종 장수 policies.md item.images(어기면 IMAGE_COUNT_INVALID). 대여 가능 기간은 보낸 목록으로 교체하며, 대여 예정·진행 중 예약(PENDING_PAYMENT 만료 전·RESERVED·RENTING·OVERDUE)이 차지한 날짜를 빼면 409 ITEM_PERIOD_CONFLICT이고 error.details에 충돌 기간을 한 건씩 담는다: [{ field: \"availablePeriods\", reason: \"2026-11-03 ~ 2026-11-05\" }]. 기간 검사는 예약과 같은 물품 락 안에서 하므로 락을 못 잡으면 409 RENTAL_LOCK_TIMEOUT. 가격·보증금 변경은 이후 신규 예약부터 적용된다. 검사 순서: request part 검증 400 → 404 ITEM_NOT_FOUND → 403 ITEM_NOT_OWNER → 이미지 400 → 409. 응답은 수정 화면 조회와 같다.",
+        "operationId": "updateItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/ItemUpdateRequest"
+                  }
+                },
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseItemEditResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_COUNT_INVALID": {
+                    "summary": "이미지 장수가 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_COUNT_INVALID",
+                        "details": [],
+                        "message": "이미지 장수가 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_INVALID_TYPE": {
+                    "summary": "jpg 또는 png 이미지만 업로드할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_INVALID_TYPE",
+                        "details": [],
+                        "message": "jpg 또는 png 이미지만 업로드할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_SIZE_EXCEEDED": {
+                    "summary": "이미지 용량이 너무 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_SIZE_EXCEEDED",
+                        "details": [],
+                        "message": "이미지 용량이 너무 큽니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_OWNER": {
+                    "summary": "물품 등록자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_OWNER",
+                        "details": [],
+                        "message": "물품 등록자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_OWNER"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_PERIOD_CONFLICT": {
+                    "summary": "예약이 있는 날짜는 대여 가능 기간에서 뺄 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_PERIOD_CONFLICT",
+                        "details": [],
+                        "message": "예약이 있는 날짜는 대여 가능 기간에서 뺄 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_LOCK_TIMEOUT": {
+                    "summary": "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_LOCK_TIMEOUT",
+                        "details": [],
+                        "message": "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_PERIOD_CONFLICT, RENTAL_LOCK_TIMEOUT"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "지원하지 않는 요청 형식입니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_UNSUPPORTED_MEDIA_TYPE",
+                        "details": [],
+                        "message": "지원하지 않는 요청 형식입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_UNSUPPORTED_MEDIA_TYPE"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "물품 수정 (REQ-007)",
+        "tags": [
+          "Item"
+        ]
+      }
+    },
     "/api/items/{itemId}/calendar": {
       "get": {
         "description": "비회원도 조회할 수 있다. 숨김 물품은 소유자만 조회할 수 있고 그 외에는 404다.",
@@ -97,6 +1242,1206 @@
         "summary": "대여 캘린더 조회 (REQ-012)",
         "tags": [
           "Rental"
+        ]
+      }
+    },
+    "/api/items/{itemId}/rentals": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 제공자 전용. 해당 물품의 대여 건 전부(CANCELED 포함). 정렬: 다가오는·진행 중 건(PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED)을 시작일 오름차순으로 먼저, 완료·취소 건(COMPLETED·CANCELED)을 시작일 내림차순으로 뒤에(같은 시작일은 id 순). 페이지 크기는 policies.md item-rentals.page로 고정(size를 받지 않음). 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 RENTAL_OWNER_ONLY.",
+        "operationId": "getItemRentals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseItemRentalResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_OWNER_ONLY": {
+                    "summary": "물품 제공자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_OWNER_ONLY",
+                        "details": [],
+                        "message": "물품 제공자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_OWNER_ONLY"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "물품별 예약 현황 (REQ-020)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
+    "/api/members": {
+      "post": {
+        "description": "미구현: 응답 형태만 확정. 글자 수 규칙은 policies.md member.email.max·member.password·member.nickname, 비밀번호는 영문·숫자·특수문자를 모두 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 가입 후 로그인 화면으로 이동한다.",
+        "operationId": "signup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberSignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberSignupResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MEMBER_EMAIL_DUPLICATED": {
+                    "summary": "이미 가입된 이메일입니다.",
+                    "value": {
+                      "error": {
+                        "code": "MEMBER_EMAIL_DUPLICATED",
+                        "details": [],
+                        "message": "이미 가입된 이메일입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "MEMBER_NICKNAME_DUPLICATED": {
+                    "summary": "이미 사용 중인 닉네임입니다.",
+                    "value": {
+                      "error": {
+                        "code": "MEMBER_NICKNAME_DUPLICATED",
+                        "details": [],
+                        "message": "이미 사용 중인 닉네임입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "MEMBER_EMAIL_DUPLICATED, MEMBER_NICKNAME_DUPLICATED"
+          }
+        },
+        "summary": "회원가입 (REQ-001)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/me": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 대표 동네 요약(인증 여부·만료 시각)을 포함한다.",
+        "operationId": "getMe",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "내 정보 조회 (REQ-005)",
+        "tags": [
+          "Member"
+        ]
+      },
+      "patch": {
+        "description": "미구현: 응답 형태만 확정. 보낸 항목만 바꾼다. multipart: request part(Content-Type application/json, 생략 가능) { nickname } + profileImage 파일(생략 가능). 이미지는 jpg/png, 용량 policies.md profile.image. 닉네임 글자 수 member.nickname. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415) → 409 MEMBER_NICKNAME_DUPLICATED → 이미지 400(IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 응답은 내 정보와 같다.",
+        "operationId": "updateProfile",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileImage": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/MemberProfileUpdateRequest"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_INVALID_TYPE": {
+                    "summary": "jpg 또는 png 이미지만 업로드할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_INVALID_TYPE",
+                        "details": [],
+                        "message": "jpg 또는 png 이미지만 업로드할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_SIZE_EXCEEDED": {
+                    "summary": "이미지 용량이 너무 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_SIZE_EXCEEDED",
+                        "details": [],
+                        "message": "이미지 용량이 너무 큽니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MEMBER_NICKNAME_DUPLICATED": {
+                    "summary": "이미 사용 중인 닉네임입니다.",
+                    "value": {
+                      "error": {
+                        "code": "MEMBER_NICKNAME_DUPLICATED",
+                        "details": [],
+                        "message": "이미 사용 중인 닉네임입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "MEMBER_NICKNAME_DUPLICATED"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "지원하지 않는 요청 형식입니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_UNSUPPORTED_MEDIA_TYPE",
+                        "details": [],
+                        "message": "지원하지 않는 요청 형식입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_UNSUPPORTED_MEDIA_TYPE"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "프로필 수정 (REQ-005)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/me/items": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 탭: RENTING \u003d RENTING·OVERDUE 대여가 있는 물품, AVAILABLE \u003d 그 외 공개 물품, HIDDEN \u003d 숨김 물품(숨기기 REQ-044 전에는 항상 빈 목록). 삭제된 물품은 없다. 정렬은 최근 등록(itemId 내림차순). 페이지 크기는 policies.md my-items.page로 고정(size를 받지 않음).",
+        "operationId": "getMyItems",
+        "parameters": [
+          {
+            "description": "탭. 생략하면 AVAILABLE. HIDDEN은 숨기기(REQ-044) 전에는 항상 빈 목록",
+            "in": "query",
+            "name": "tab",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "AVAILABLE",
+              "description": "탭. 생략하면 AVAILABLE. HIDDEN은 숨기기(REQ-044) 전에는 항상 빈 목록",
+              "enum": [
+                "AVAILABLE",
+                "RENTING",
+                "HIDDEN"
+              ]
+            }
+          },
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseMyItemResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "내 물품 관리 (REQ-020)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
+    "/api/members/me/items/{itemId}": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 등록자 전용. 물품 가격(itemPrice)·대여 가능 기간·이미지 ID를 포함해 수정 폼을 채운다. 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 ITEM_NOT_OWNER.",
+        "operationId": "getMyItemForEdit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseItemEditResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_OWNER": {
+                    "summary": "물품 등록자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_OWNER",
+                        "details": [],
+                        "message": "물품 등록자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_OWNER"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "물품 수정 화면 조회 (REQ-007)",
+        "tags": [
+          "Item"
+        ]
+      }
+    },
+    "/api/members/me/password": {
+      "patch": {
+        "description": "미구현: 응답 형태만 확정. 현재 비밀번호가 틀리면 400 MEMBER_PASSWORD_MISMATCH. 새 비밀번호 규칙은 가입과 같다. 변경하면 현재 기기를 뺀 다른 기기는 로그아웃된다.",
+        "operationId": "changePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberPasswordChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "MEMBER_PASSWORD_MISMATCH": {
+                    "summary": "현재 비밀번호가 일치하지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "MEMBER_PASSWORD_MISMATCH",
+                        "details": [],
+                        "message": "현재 비밀번호가 일치하지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, MEMBER_PASSWORD_MISMATCH"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "비밀번호 변경 (REQ-005)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/me/regions": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 대표 동네 먼저. 최대 개수는 policies.md region.max-per-member.",
+        "operationId": "getMyRegions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMemberRegionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "내 동네 목록 (REQ-004)",
+        "tags": [
+          "Member"
+        ]
+      },
+      "post": {
+        "description": "미구현: 응답 형태만 확정. 인증 전 상태로 추가된다(인증은 verify). 첫 동네면 자동으로 대표 동네. 개수가 policies.md region.max-per-member를 넘으면 409 REGION_LIMIT_EXCEEDED, 이미 추가한 동네면 409 REGION_ALREADY_ADDED, 없는 행정동이면 404 COMMON_NOT_FOUND.",
+        "operationId": "addRegion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberRegionAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberRegionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_NOT_FOUND": {
+                    "summary": "요청한 대상을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_NOT_FOUND",
+                        "details": [],
+                        "message": "요청한 대상을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "REGION_ALREADY_ADDED": {
+                    "summary": "이미 추가한 동네입니다.",
+                    "value": {
+                      "error": {
+                        "code": "REGION_ALREADY_ADDED",
+                        "details": [],
+                        "message": "이미 추가한 동네입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "REGION_LIMIT_EXCEEDED": {
+                    "summary": "더 이상 동네를 추가할 수 없습니다. 기존 동네를 삭제하세요.",
+                    "value": {
+                      "error": {
+                        "code": "REGION_LIMIT_EXCEEDED",
+                        "details": [],
+                        "message": "더 이상 동네를 추가할 수 없습니다. 기존 동네를 삭제하세요."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "REGION_ALREADY_ADDED, REGION_LIMIT_EXCEEDED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "동네 추가 (REQ-004)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/me/regions/{memberRegionId}": {
+      "delete": {
+        "description": "미구현: 응답 형태만 확정. 대표 동네를 지우면 남은 동네가 대표가 된다. data는 null.",
+        "operationId": "deleteRegion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberRegionId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_NOT_FOUND": {
+                    "summary": "요청한 대상을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_NOT_FOUND",
+                        "details": [],
+                        "message": "요청한 대상을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "동네 삭제 (REQ-004)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/me/regions/{memberRegionId}/primary": {
+      "patch": {
+        "description": "미구현: 응답 형태만 확정. 두 동네의 isPrimary가 함께 바뀌므로 바뀐 뒤의 내 동네 목록 전체를 돌려준다(대표 동네 먼저).",
+        "operationId": "changePrimaryRegion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberRegionId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMemberRegionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_NOT_FOUND": {
+                    "summary": "요청한 대상을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_NOT_FOUND",
+                        "details": [],
+                        "message": "요청한 대상을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "대표 동네 설정 (REQ-004)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/me/regions/{memberRegionId}/verify": {
+      "patch": {
+        "description": "미구현: 응답 형태만 확정. 브라우저 현재 좌표의 행정동이 이 동네와 같으면 인증된다(verifiedAt \u003d 지금, 유효기간 policies.md region.verify-valid-days). 좌표는 저장하지 않는다. 다르면 400 REGION_VERIFY_MISMATCH. 위치 권한이 없으면 프론트가 이 API를 부르지 않고 미인증 상태로 둔다.",
+        "operationId": "verifyRegion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberRegionId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegionCoordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberRegionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "REGION_VERIFY_MISMATCH": {
+                    "summary": "현재 위치가 선택한 동네와 다릅니다.",
+                    "value": {
+                      "error": {
+                        "code": "REGION_VERIFY_MISMATCH",
+                        "details": [],
+                        "message": "현재 위치가 선택한 동네와 다릅니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, REGION_VERIFY_MISMATCH"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_NOT_FOUND": {
+                    "summary": "요청한 대상을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_NOT_FOUND",
+                        "details": [],
+                        "message": "요청한 대상을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "동네 인증 (REQ-004)",
+        "tags": [
+          "Member"
         ]
       }
     },
@@ -210,6 +2555,155 @@
         "summary": "빌린 내역 조회 (REQ-019)",
         "tags": [
           "Rental"
+        ]
+      }
+    },
+    "/api/regions": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 행정동 이름에 keyword가 들어간 행정동. 결과가 없으면 빈 배열.",
+        "operationId": "searchRegions",
+        "parameters": [
+          {
+            "description": "검색어 (행정동 이름 일부)",
+            "example": "송도",
+            "in": "query",
+            "name": "keyword",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListRegionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          }
+        },
+        "summary": "동네 검색 (REQ-004)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/regions/by-coord": {
+      "get": {
+        "description": "미구현: 응답 형태만 확정. 브라우저 현재 위치를 행정동으로 바꾼다(서버가 카카오 로컬 API 호출). 좌표는 저장하지 않는다. 해당 행정동이 없으면 404 COMMON_NOT_FOUND.",
+        "operationId": "getRegionByCoord",
+        "parameters": [
+          {
+            "description": "위도",
+            "example": 37.3925,
+            "in": "query",
+            "name": "lat",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "description": "위도",
+              "example": 37.3925,
+              "maximum": 90.0,
+              "minimum": -90.0
+            }
+          },
+          {
+            "description": "경도",
+            "example": 126.639,
+            "in": "query",
+            "name": "lng",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "description": "경도",
+              "example": 126.639,
+              "maximum": 180.0,
+              "minimum": -180.0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRegionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_NOT_FOUND": {
+                    "summary": "요청한 대상을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_NOT_FOUND",
+                        "details": [],
+                        "message": "요청한 대상을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_NOT_FOUND"
+          }
+        },
+        "summary": "좌표로 행정동 찾기 (REQ-004)",
+        "tags": [
+          "Member"
         ]
       }
     },
@@ -1894,11 +4388,146 @@
           }
         }
       },
+      "ApiResponseAuthTokenResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AuthTokenResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseCancelAgreementResponse": {
         "type": "object",
         "properties": {
           "data": {
             "$ref": "#/components/schemas/CancelAgreementResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseCursorResponseItemSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CursorResponseItemSummaryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseItemCreateResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ItemCreateResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseItemDepositGuideResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ItemDepositGuideResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseItemDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ItemDetailResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseItemEditResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ItemEditResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseListCategoryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryResponse"
+            }
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseListMemberRegionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberRegionResponse"
+            }
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseListRegionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegionResponse"
+            }
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -1925,11 +4554,109 @@
           }
         }
       },
+      "ApiResponseMemberRegionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemberRegionResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseMemberResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemberResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseMemberSignupResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemberSignupResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponsePageResponseItemRentalResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponseItemRentalResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponsePageResponseItemSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponseItemSummaryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponsePageResponseMyItemResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponseMyItemResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponsePageResponseRentalHistoryResponse": {
         "type": "object",
         "properties": {
           "data": {
             "$ref": "#/components/schemas/PageResponseRentalHistoryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseRegionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RegionResponse"
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -1964,6 +4691,49 @@
           },
           "success": {
             "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AuthLoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "이메일",
+            "example": "user@example.com",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "description": "비밀번호",
+            "example": "rental123!",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "AuthTokenResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "Access Token (JWT). Authorization: Bearer 헤더에 넣는다. 만료는 policies.md auth.access-token-ttl",
+            "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature"
           }
         }
       },
@@ -2053,6 +4823,65 @@
           }
         }
       },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "카테고리 ID",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "이름",
+            "example": "캠핑·아웃도어"
+          }
+        }
+      },
+      "CategoryResponse": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "카테고리 ID",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "이름",
+            "example": "캠핑·아웃도어"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "description": "표시 순서 (작을수록 앞)",
+            "example": 1
+          }
+        }
+      },
+      "CursorResponseItemSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 항목이 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이번에 가져온 항목",
+            "items": {
+              "$ref": "#/components/schemas/ItemSummaryResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "description": "다음 요청의 cursor. 다음이 없으면 null",
+            "example": "MjAyNi0xMC0yOVQxMDowMDowMHwxMjM"
+          }
+        }
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -2078,6 +4907,974 @@
           },
           "reason": {
             "type": "string"
+          }
+        }
+      },
+      "ImageOrder": {
+        "type": "object",
+        "properties": {
+          "imageId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "유지할 기존 이미지 ID",
+            "example": 12
+          },
+          "newImageIndex": {
+            "type": "integer",
+            "format": "int32",
+            "description": "새 이미지: images 파일 파트에서의 순번 (0부터)",
+            "example": 0,
+            "minimum": 0
+          }
+        }
+      },
+      "ItemCreateRequest": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "거래 장소 주소 (카카오맵에서 선택)",
+            "example": "인천 연수구 송도동 24-5",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "availablePeriods": {
+            "type": "array",
+            "description": "대여 가능 기간. 1개 이상, 시작일 ≥ 오늘, 시작일 ≤ 종료일, 구간끼리 겹침 불가",
+            "items": {
+              "$ref": "#/components/schemas/ItemPeriodRequest"
+            },
+            "minItems": 1
+          },
+          "categoryId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "카테고리 ID (활성 카테고리)",
+            "example": 1
+          },
+          "condition": {
+            "type": "string",
+            "description": "상태 등급",
+            "enum": [
+              "LIKE_NEW",
+              "LIGHTLY_USED",
+              "USED"
+            ]
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금(원). 0원 또는 policies.md item.deposit 범위",
+            "example": 50000
+          },
+          "description": {
+            "type": "string",
+            "description": "설명. 최대 글자 수는 policies.md item.description.max",
+            "example": "한 번 사용했어요. 팩·스트링 모두 있습니다.",
+            "minLength": 1
+          },
+          "itemPrice": {
+            "type": "integer",
+            "format": "int32",
+            "description": "물품 가격(원). 권장 보증금 계산용이며 대여자에게 공개하지 않는다. 0 ~ policies.md item.item-price.max",
+            "example": 200000
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "description": "거래 장소 위도",
+            "example": 37.3925,
+            "maximum": 90.0,
+            "minimum": -90.0
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "description": "거래 장소 경도",
+            "example": 126.639,
+            "maximum": 180.0,
+            "minimum": -180.0
+          },
+          "name": {
+            "type": "string",
+            "description": "물품 이름. 최대 글자 수는 policies.md item.name.max",
+            "example": "4인용 거실형 텐트",
+            "minLength": 1
+          },
+          "pricePerDay": {
+            "type": "integer",
+            "format": "int32",
+            "description": "일 대여료(원). 0원(무료) 또는 policies.md item.price-per-day 범위",
+            "example": 15000
+          }
+        },
+        "required": [
+          "address",
+          "availablePeriods",
+          "categoryId",
+          "condition",
+          "deposit",
+          "description",
+          "itemPrice",
+          "latitude",
+          "longitude",
+          "name",
+          "pricePerDay"
+        ]
+      },
+      "ItemCreateResponse": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "등록한 물품 ID",
+            "example": 101
+          }
+        }
+      },
+      "ItemDepositGuideResponse": {
+        "type": "object",
+        "properties": {
+          "maxDeposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "권장 최대 보증금(원)",
+            "example": 100000
+          },
+          "minDeposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "권장 최소 보증금(원)",
+            "example": 60000
+          }
+        }
+      },
+      "ItemDetailResponse": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "거래 장소 주소",
+            "example": "인천 연수구 송도동 24-5"
+          },
+          "bumpedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "등록 또는 끌어올리기 시각",
+            "example": "2026-10-29T10:00:00"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category",
+            "description": "카테고리"
+          },
+          "chatCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "채팅 수",
+            "example": 3
+          },
+          "condition": {
+            "type": "string",
+            "description": "상태 등급",
+            "enum": [
+              "LIKE_NEW",
+              "LIGHTLY_USED",
+              "USED"
+            ]
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금(원)",
+            "example": 50000
+          },
+          "description": {
+            "type": "string",
+            "description": "설명",
+            "example": "한 번 사용했어요. 팩·스트링 모두 있습니다."
+          },
+          "images": {
+            "type": "array",
+            "description": "이미지 (0번이 대표)",
+            "items": {
+              "$ref": "#/components/schemas/ItemImageResponse"
+            }
+          },
+          "isOwner": {
+            "type": "boolean",
+            "description": "조회한 회원이 제공자면 true → 예약 대신 수정·관리 버튼. 비회원은 false"
+          },
+          "isWished": {
+            "type": "boolean",
+            "description": "조회한 회원이 관심 추가했으면 true. 관심 기능(REQ-022) 전에는 항상 false"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 101
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "description": "거래 장소 위도",
+            "example": 37.3925
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "description": "거래 장소 경도",
+            "example": 126.639
+          },
+          "name": {
+            "type": "string",
+            "description": "물품 이름",
+            "example": "4인용 거실형 텐트"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Owner",
+            "description": "제공자 요약"
+          },
+          "pricePerDay": {
+            "type": "integer",
+            "format": "int32",
+            "description": "일 대여료(원). 0이면 무료",
+            "example": 15000
+          },
+          "regionName": {
+            "type": "string",
+            "description": "물품 동네(등록 시 대표 동네) 이름",
+            "example": "송도1동"
+          },
+          "status": {
+            "type": "string",
+            "description": "물품 상태. HIDDEN은 소유자에게만 보인다",
+            "enum": [
+              "AVAILABLE",
+              "HIDDEN",
+              "DELETED"
+            ]
+          },
+          "viewCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "조회 수",
+            "example": 42
+          },
+          "wishCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "관심 수",
+            "example": 5
+          }
+        }
+      },
+      "ItemEditResponse": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "거래 장소 주소",
+            "example": "인천 연수구 송도동 24-5"
+          },
+          "availablePeriods": {
+            "type": "array",
+            "description": "대여 가능 기간 (시작일 순)",
+            "items": {
+              "$ref": "#/components/schemas/Period"
+            }
+          },
+          "categoryId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "카테고리 ID",
+            "example": 1
+          },
+          "condition": {
+            "type": "string",
+            "description": "상태 등급",
+            "enum": [
+              "LIKE_NEW",
+              "LIGHTLY_USED",
+              "USED"
+            ]
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금(원)",
+            "example": 50000
+          },
+          "description": {
+            "type": "string",
+            "description": "설명",
+            "example": "한 번 사용했어요. 팩·스트링 모두 있습니다."
+          },
+          "images": {
+            "type": "array",
+            "description": "이미지 (0번이 대표). 수정 시 imageOrder의 imageId로 쓴다",
+            "items": {
+              "$ref": "#/components/schemas/ItemImageResponse"
+            }
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 101
+          },
+          "itemPrice": {
+            "type": "integer",
+            "format": "int32",
+            "description": "물품 가격(원). 소유자에게만 보인다",
+            "example": 200000
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "description": "거래 장소 위도",
+            "example": 37.3925
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "description": "거래 장소 경도",
+            "example": 126.639
+          },
+          "name": {
+            "type": "string",
+            "description": "물품 이름",
+            "example": "4인용 거실형 텐트"
+          },
+          "pricePerDay": {
+            "type": "integer",
+            "format": "int32",
+            "description": "일 대여료(원)",
+            "example": 15000
+          },
+          "status": {
+            "type": "string",
+            "description": "물품 상태",
+            "enum": [
+              "AVAILABLE",
+              "HIDDEN",
+              "DELETED"
+            ]
+          }
+        }
+      },
+      "ItemImageResponse": {
+        "type": "object",
+        "properties": {
+          "imageId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "이미지 ID (수정 시 imageOrder의 imageId)",
+            "example": 12
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "description": "썸네일 URL (가로 policies.md thumbnail.width)",
+            "example": "/files/items/101/thumb_a1b2c3.jpg"
+          },
+          "url": {
+            "type": "string",
+            "description": "원본 URL",
+            "example": "/files/items/101/a1b2c3.jpg"
+          }
+        }
+      },
+      "ItemPeriodRequest": {
+        "type": "object",
+        "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "종료일 (포함)",
+            "example": "2026-11-30"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "시작일 (포함)",
+            "example": "2026-11-01"
+          }
+        },
+        "required": [
+          "endDate",
+          "startDate"
+        ]
+      },
+      "ItemRentalResponse": {
+        "type": "object",
+        "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 종료일 (포함)",
+            "example": "2026-11-05"
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID",
+            "example": 32
+          },
+          "renter": {
+            "$ref": "#/components/schemas/Renter",
+            "description": "대여자"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 시작일 (포함)",
+            "example": "2026-11-03"
+          },
+          "status": {
+            "type": "string",
+            "description": "대여 상태",
+            "enum": [
+              "PENDING_PAYMENT",
+              "RESERVED",
+              "RENTING",
+              "OVERDUE",
+              "RETURNED",
+              "COMPLETED",
+              "CANCELED"
+            ]
+          }
+        }
+      },
+      "ItemSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "bumpedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "정렬·경과 시간 기준 시각 (등록 또는 끌어올리기)",
+            "example": "2026-10-29T10:00:00"
+          },
+          "chatCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "채팅 수",
+            "example": 3
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금(원)",
+            "example": 50000
+          },
+          "isRenting": {
+            "type": "boolean",
+            "description": "지금 대여 중(RENTING·OVERDUE 대여 있음)이면 true → \"대여 중\" 배지"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 101
+          },
+          "name": {
+            "type": "string",
+            "description": "물품 이름",
+            "example": "4인용 거실형 텐트"
+          },
+          "pricePerDay": {
+            "type": "integer",
+            "format": "int32",
+            "description": "일 대여료(원). 0이면 무료",
+            "example": 15000
+          },
+          "regionName": {
+            "type": "string",
+            "description": "물품 동네(등록 시 대표 동네) 이름",
+            "example": "송도1동"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "description": "대표 이미지 썸네일 URL. 이미지가 없으면 null",
+            "example": "/files/items/101/thumb_a1b2c3.jpg"
+          },
+          "wishCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "관심 수",
+            "example": 5
+          }
+        }
+      },
+      "ItemUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "거래 장소 주소",
+            "example": "인천 연수구 송도동 24-5",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "availablePeriods": {
+            "type": "array",
+            "description": "대여 가능 기간 전체(보낸 목록으로 교체). 보내면 1개 이상, 시작일 ≤ 종료일, 구간끼리 겹침 불가",
+            "items": {
+              "$ref": "#/components/schemas/ItemPeriodRequest"
+            }
+          },
+          "categoryId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "카테고리 ID (활성 카테고리)",
+            "example": 1
+          },
+          "condition": {
+            "type": "string",
+            "description": "상태 등급",
+            "enum": [
+              "LIKE_NEW",
+              "LIGHTLY_USED",
+              "USED"
+            ]
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금(원). 0원 또는 policies.md item.deposit 범위. 이후 신규 예약부터 적용",
+            "example": 50000
+          },
+          "description": {
+            "type": "string",
+            "description": "설명. 최대 글자 수는 policies.md item.description.max",
+            "example": "한 번 사용했어요. 팩·스트링 모두 있습니다."
+          },
+          "imageOrder": {
+            "type": "array",
+            "description": "이미지 순서 전체. 보내면 이 목록이 곧 새 이미지 목록이다(순서 \u003d sortOrder, 0번이 대표). 목록에 없는 기존 이미지는 삭제된다. null이면 이미지를 바꾸지 않는다",
+            "items": {
+              "$ref": "#/components/schemas/ImageOrder"
+            }
+          },
+          "itemPrice": {
+            "type": "integer",
+            "format": "int32",
+            "description": "물품 가격(원). 0 ~ policies.md item.item-price.max",
+            "example": 200000
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "description": "거래 장소 위도. 주소를 바꾸면 위도·경도도 함께 보낸다",
+            "example": 37.3925,
+            "maximum": 90.0,
+            "minimum": -90.0
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "description": "거래 장소 경도. 주소를 바꾸면 위도·경도도 함께 보낸다",
+            "example": 126.639,
+            "maximum": 180.0,
+            "minimum": -180.0
+          },
+          "name": {
+            "type": "string",
+            "description": "물품 이름. 최대 글자 수는 policies.md item.name.max",
+            "example": "4인용 거실형 텐트"
+          },
+          "pricePerDay": {
+            "type": "integer",
+            "format": "int32",
+            "description": "일 대여료(원). 0원(무료) 또는 policies.md item.price-per-day 범위. 이후 신규 예약부터 적용",
+            "example": 15000
+          }
+        }
+      },
+      "MemberPasswordChangeRequest": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "description": "현재 비밀번호",
+            "example": "rental123!",
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "description": "새 비밀번호. 글자 수는 policies.md member.password, 영문·숫자·특수문자 모두 포함",
+            "example": "newpass456@",
+            "minLength": 1,
+            "pattern": "^(?\u003d.*[A-Za-z])(?\u003d.*\\d)(?\u003d.*[^A-Za-z\\d\\s]).*$"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "MemberProfileUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "nickname": {
+            "type": "string",
+            "description": "새 닉네임 (선택). 글자 수는 policies.md member.nickname",
+            "example": "새닉네임"
+          }
+        }
+      },
+      "MemberRegionAddRequest": {
+        "type": "object",
+        "properties": {
+          "regionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "행정동 ID (동네 검색·좌표 변환 결과의 regionId)",
+            "example": 1234
+          }
+        },
+        "required": [
+          "regionId"
+        ]
+      },
+      "MemberRegionResponse": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "description": "시·도 시·군·구 행정동 전체 이름",
+            "example": "인천광역시 연수구 송도1동"
+          },
+          "isPrimary": {
+            "type": "boolean",
+            "description": "대표 동네면 true (피드·검색 기준, 물품 등록·예약 인증 기준)"
+          },
+          "isVerified": {
+            "type": "boolean",
+            "description": "인증이 유효하면 true (인증한 적 없거나 만료면 false)"
+          },
+          "memberRegionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "내 동네 ID (경로의 {id})",
+            "example": 3
+          },
+          "regionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "행정동 ID",
+            "example": 1234
+          },
+          "regionName": {
+            "type": "string",
+            "description": "행정동 이름",
+            "example": "송도1동"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "마지막 인증 시각. 인증한 적 없으면 null",
+            "example": "2026-10-20T09:30:00"
+          },
+          "verifyExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "인증 만료 시각 \u003d verifiedAt + policies.md region.verify-valid-days. 인증한 적 없으면 null",
+            "example": "2026-11-19T09:30:00"
+          }
+        }
+      },
+      "MemberResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "가입 시각",
+            "example": "2026-10-01T12:00:00"
+          },
+          "email": {
+            "type": "string",
+            "description": "이메일",
+            "example": "user@example.com"
+          },
+          "memberId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "회원 ID",
+            "example": 1
+          },
+          "nickname": {
+            "type": "string",
+            "description": "닉네임",
+            "example": "동네주민"
+          },
+          "primaryRegion": {
+            "$ref": "#/components/schemas/PrimaryRegion",
+            "description": "대표 동네. 동네를 아직 추가하지 않았으면 null"
+          },
+          "profileImageUrl": {
+            "type": "string",
+            "description": "프로필 이미지 URL. 없으면 null",
+            "example": "/files/profiles/1/a1b2c3.jpg"
+          },
+          "role": {
+            "type": "string",
+            "description": "권한",
+            "enum": [
+              "USER",
+              "ADMIN"
+            ]
+          }
+        }
+      },
+      "MemberSignupRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "이메일. 최대 글자 수는 policies.md member.email.max",
+            "example": "user@example.com",
+            "minLength": 1
+          },
+          "nickname": {
+            "type": "string",
+            "description": "닉네임. 글자 수는 policies.md member.nickname",
+            "example": "동네주민",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "description": "비밀번호. 글자 수는 policies.md member.password, 영문·숫자·특수문자 모두 포함",
+            "example": "rental123!",
+            "minLength": 1,
+            "pattern": "^(?\u003d.*[A-Za-z])(?\u003d.*\\d)(?\u003d.*[^A-Za-z\\d\\s]).*$"
+          }
+        },
+        "required": [
+          "email",
+          "nickname",
+          "password"
+        ]
+      },
+      "MemberSignupResponse": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "가입한 회원 ID",
+            "example": 1
+          }
+        }
+      },
+      "MyItemResponse": {
+        "type": "object",
+        "properties": {
+          "bumpedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "등록 또는 끌어올리기 시각",
+            "example": "2026-10-29T10:00:00"
+          },
+          "chatCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "채팅 수",
+            "example": 3
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금(원)",
+            "example": 10000
+          },
+          "isRenting": {
+            "type": "boolean",
+            "description": "지금 대여 중(RENTING·OVERDUE 대여 있음)이면 true"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 107
+          },
+          "name": {
+            "type": "string",
+            "description": "물품 이름",
+            "example": "보드게임 세트"
+          },
+          "pricePerDay": {
+            "type": "integer",
+            "format": "int32",
+            "description": "일 대여료(원)",
+            "example": 3000
+          },
+          "regionName": {
+            "type": "string",
+            "description": "물품 동네 이름",
+            "example": "송도1동"
+          },
+          "status": {
+            "type": "string",
+            "description": "물품 상태 (AVAILABLE 또는 HIDDEN)",
+            "enum": [
+              "AVAILABLE",
+              "HIDDEN",
+              "DELETED"
+            ]
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "description": "대표 이미지 썸네일 URL. 이미지가 없으면 null",
+            "example": "/files/items/107/thumb_a1b2c3.jpg"
+          },
+          "upcomingRentalCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "다가오는 예약 건수: RESERVED·PENDING_PAYMENT(결제 만료 전) 중 시작일 ≥ 오늘",
+            "example": 1
+          },
+          "viewCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "조회 수",
+            "example": 42
+          },
+          "wishCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "관심 수",
+            "example": 5
+          }
+        }
+      },
+      "Owner": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "제공자 회원 ID",
+            "example": 2
+          },
+          "nickname": {
+            "type": "string",
+            "description": "닉네임",
+            "example": "캠핑조아"
+          },
+          "profileImageUrl": {
+            "type": "string",
+            "description": "프로필 이미지 URL. 없으면 null",
+            "example": "/files/profiles/2/d4e5f6.jpg"
+          },
+          "regionName": {
+            "type": "string",
+            "description": "제공자의 대표 동네 이름. 없으면 null",
+            "example": "송도1동"
+          }
+        }
+      },
+      "PageResponseItemRentalResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/ItemRentalResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
+          }
+        }
+      },
+      "PageResponseItemSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/ItemSummaryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
+          }
+        }
+      },
+      "PageResponseMyItemResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/MyItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
           }
         }
       },
@@ -2112,6 +5909,107 @@
             "format": "int64",
             "description": "전체 항목 수",
             "example": 21
+          }
+        }
+      },
+      "Period": {
+        "type": "object",
+        "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "종료일 (포함)",
+            "example": "2026-11-30"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "시작일 (포함)",
+            "example": "2026-11-01"
+          }
+        }
+      },
+      "PrimaryRegion": {
+        "type": "object",
+        "properties": {
+          "isVerified": {
+            "type": "boolean",
+            "description": "인증이 유효하면 true (인증한 적 없거나 만료면 false)"
+          },
+          "memberRegionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "내 동네 ID (/api/members/me/regions/{id}의 id)",
+            "example": 3
+          },
+          "regionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "행정동 ID",
+            "example": 1234
+          },
+          "regionName": {
+            "type": "string",
+            "description": "행정동 이름",
+            "example": "송도1동"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "마지막 인증 시각. 인증한 적 없으면 null",
+            "example": "2026-10-20T09:30:00"
+          },
+          "verifyExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "인증 만료 시각 \u003d verifiedAt + region.verify-valid-days. 인증한 적 없으면 null",
+            "example": "2026-11-19T09:30:00"
+          }
+        }
+      },
+      "RegionCoordRequest": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "description": "위도",
+            "example": 37.3925,
+            "maximum": 90.0,
+            "minimum": -90.0
+          },
+          "lng": {
+            "type": "number",
+            "format": "double",
+            "description": "경도",
+            "example": 126.639,
+            "maximum": 180.0,
+            "minimum": -180.0
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ]
+      },
+      "RegionResponse": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "description": "시·도 시·군·구 행정동 전체 이름",
+            "example": "인천광역시 연수구 송도1동"
+          },
+          "name": {
+            "type": "string",
+            "description": "행정동 이름",
+            "example": "송도1동"
+          },
+          "regionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "행정동 ID",
+            "example": 1234
           }
         }
       },
@@ -2550,6 +6448,22 @@
         "required": [
           "checklist"
         ]
+      },
+      "Renter": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여자 회원 ID",
+            "example": 3
+          },
+          "nickname": {
+            "type": "string",
+            "description": "닉네임",
+            "example": "텐트초보"
+          }
+        }
       }
     },
     "securitySchemes": {
