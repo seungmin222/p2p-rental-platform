@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * 대여 상세 (REQ-016, SCR-08). 스텝바와 상태 × 역할별 버튼을 그릴 만큼만 담는다.
- * 인계·반납 기록, 결제, 연체료는 해당 REQ에서 추가한다.
+ * 인계·반납 기록은 GET /api/rentals/{id}/inspections로 따로 본다. 결제, 연체료는 해당 REQ에서 추가한다.
  */
 public record RentalDetailResponse(
 	@Schema(description = "대여 ID", example = "1")
@@ -83,7 +83,7 @@ public record RentalDetailResponse(
 	@Schema(description = "예약 시각")
 	LocalDateTime createdAt,
 
-	@Schema(description = "진행 중인 양측 동의 취소 요청(REQUESTED이고 만료 전). 없으면 null")
+	@Schema(description = "진행 중인 양측 동의 취소 요청(REQUESTED이고 만료 전). 대여 예정(RESERVED)일 때만 채우고, 그 외 상태나 요청이 없으면 null")
 	ActiveCancelAgreement activeCancelAgreement) {
 
 	/**

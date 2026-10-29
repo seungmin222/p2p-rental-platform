@@ -42,6 +42,13 @@ REQ-016 1순위 전이 마무리 + 017 인계 + 018 반납 요청·상태 확인
 - **배치 판정은 result=NORMAL, 판정 내용·사진 없음, 이력 changedBy=null·reason `RETURN_AUTO_CONFIRM_BATCH`.** item_inspections에 판정자 컬럼이 없어 "판정자 없음"은 이력에만 남는다.
 - **테스트는 `job.confirmDue(now)`를 직접 부른다.** ShedLock이 PROXY_METHOD라 `run()`을 30초 안에 두 번 부르면 두 번째가 조용히 건너뛰어져 멱등성 테스트가 의미 없어진다. `run()`은 Clock 연결만 한 번 확인한다.
 
+## 조회
+- **`GET /inspections`는 `List<RentalInspectionResponse>`(HANDOVER → RETURN, id 순).** 인계가 반납보다 항상 먼저 저장된다(반납은 RENTING부터). 작성자는 역할(writerRole)로 준다. resultImageUrls는 없으면 빈 목록, ai_result·lostReported는 넣지 않는다(040·2순위).
+- **상세의 `activeCancelAgreement`는 대여가 RESERVED일 때만 채운다.** 동의 요청은 대여를 수정하지 않아 인계 뒤에도 REQUESTED 행이 남을 수 있고(만료 배치가 정리), 데이터는 바꾸지 않는다. 조회는 상태와 상관없이 해 쿼리 수 5개를 유지한다(cancel notes의 결정).
+
+## 019 (feat/rental-history로 분리)
+- **canWriteReview = COMPLETED이고 now ≤ completed_at + review.write-deadline-days(시각 기준: +7일 정각 true, +7일+1초 false).** trust.md "completed_at + 7일 이내"에 맞췄다. 후기 테이블이 없어 "미작성" 조건은 feat/review(034)에서 추가하고, 034의 후기 작성 가드도 같은 판정을 쓴다.
+
 ## 사진 업로드·정리 (item-crud가 아직 없어 이 방식을 제안, B 확인)
 - **순서: 사전 검사(읽기 트랜잭션) → 장수 검사·전부 처리 → 업로드(트랜잭션 밖) → TxService. TxService가 예외를 던지면 업로드한 키를 지우고 다시 던진다.** 처리 단계에서 실패하면 업로드한 파일이 없다. 업로드 중간 실패도 그때까지 올린 키를 지운다. 삭제 실패는 WARN 로그만(원래 예외를 가리지 않게, 남는 파일은 DB가 참조하지 않는 고아).
 - **사전 검사는 사진 처리를 줄이는 최적화일 뿐이다.** TxService 쓰기 메서드가 트랜잭션 안에서 대여를 다시 읽고 404·403·409를 전부 다시 검사한다.

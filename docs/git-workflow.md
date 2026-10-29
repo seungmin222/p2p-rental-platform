@@ -35,7 +35,8 @@
 | `feat/item-feed-search` | 009, 010, 020 | B |
 | `feat/rental-reserve` | 012–014, 016(생성·상세) | A |
 | `feat/rental-cancel` | 015 (단독·양측 동의 취소, `feat/rental-reserve` 머지 후) | A |
-| `feat/rental-return` | 017–019 | A |
+| `feat/rental-return` | 016(1순위 전이 완성), 017, 018 | A |
+| `feat/rental-history` | 019 (`feat/rental-return`에서 분리, 머지 후 착수) | A |
 | `feat/fe-auth-region` | SCR-01, 02 | FE |
 | `feat/fe-item-pages` | SCR-03, 04, 05, 06 | FE |
 | `feat/fe-rental-pages` | SCR-07, 08, 12 | FE |

@@ -27,6 +27,7 @@ import com.team7.rental.rental.dto.RentalCancelRequest;
 import com.team7.rental.rental.dto.RentalCreateRequest;
 import com.team7.rental.rental.dto.RentalDetailResponse;
 import com.team7.rental.rental.dto.RentalHandoverRequest;
+import com.team7.rental.rental.dto.RentalInspectionResponse;
 import com.team7.rental.rental.dto.RentalReturnConfirmRequest;
 import com.team7.rental.rental.dto.RentalReturnRequest;
 import com.team7.rental.rental.service.RentalCancelService;
@@ -73,6 +74,17 @@ public class RentalController {
 	Long memberId, @PathVariable
 	Long rentalId) {
 		return ApiResponse.ok(rentalQueryService.getRental(rentalId, memberId));
+	}
+
+	@Operation(summary = "인계·반납 기록 조회 (REQ-017, REQ-018)", description = "대여자·제공자만 조회할 수 있다. 인계(HANDOVER) → 반납(RETURN) 순이고, 아직 없는 단계는 빠진다. "
+		+ "반납 기록에는 체크리스트와 제공자 판정(result·resultNote·resultImageUrls)이 있다. 수정 API는 없다.")
+	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_PARTICIPANT, RENTAL_NOT_FOUND})
+	@GetMapping("/{rentalId}/inspections")
+	public ApiResponse<List<RentalInspectionResponse>> getInspections(@LoginMember
+	Long memberId, @PathVariable
+	Long rentalId) {
+		return ApiResponse.ok(rentalQueryService.getInspections(rentalId, memberId));
 	}
 
 	@Operation(summary = "대여 단독 취소 (REQ-015)", description = "대여자·제공자가 결제 대기(PENDING_PAYMENT) 또는 시작일 전의 대여 예정(RESERVED)을 취소한다. "
