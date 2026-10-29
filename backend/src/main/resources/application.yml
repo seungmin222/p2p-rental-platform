@@ -92,6 +92,12 @@ app:
       note-max: 300
       # return.auto-confirm-days: 반납 요청 후 3일이 지나면 자동 '정상' 처리 (REQ-018)
       auto-confirm-days: 3
+    review:
+      # review.write-deadline-days: 거래 완료(completed_at) 후 후기 작성 기한 (REQ-034, 빌린 내역 canWriteReview REQ-019)
+      write-deadline-days: 7
+    rental-history:
+      # rental-history.page: 빌린 내역 페이지 크기. size 파라미터를 받지 않는다 (REQ-019)
+      page: 20
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

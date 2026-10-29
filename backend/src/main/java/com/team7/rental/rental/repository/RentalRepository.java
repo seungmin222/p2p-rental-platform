@@ -16,7 +16,7 @@ import com.team7.rental.rental.entity.RentalStatus;
 
 import jakarta.persistence.LockModeType;
 
-public interface RentalRepository extends JpaRepository<Rental, Long> {
+public interface RentalRepository extends JpaRepository<Rental, Long>, RentalSearchRepository {
 
 	/**
 	 * 행 락(SELECT ... FOR UPDATE)으로 읽는다. 취소·동의 요청·동의 응답이 같은 대여에서 한 줄로 서게 한다(REQ-015).

@@ -525,6 +525,43 @@ class RentalTest {
 		assertThat(rental.isAutoConfirmDue(NOW.plusDays(10), 3)).isFalse();
 	}
 
+	@Test
+	@DisplayName("후기 작성 기간: COMPLETED이고 completedAt + 기한 정각까지 true, 1초 지나면 false")
+	void canWriteReviewBoundary() {
+		assertThat(Rental.canWriteReview(RentalStatus.COMPLETED, NOW, NOW, 7)).isTrue();
+		assertThat(Rental.canWriteReview(RentalStatus.COMPLETED, NOW, NOW.plusDays(7), 7)).isTrue();
+		assertThat(Rental.canWriteReview(RentalStatus.COMPLETED, NOW, NOW.plusDays(7).plusSeconds(1), 7)).isFalse();
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = RentalStatus.class, names = "COMPLETED", mode = EnumSource.Mode.EXCLUDE)
+	@DisplayName("COMPLETED가 아니면 completedAt이 있어도 후기 작성 기간이 아니다")
+	void canWriteReviewOnlyCompleted(RentalStatus status) {
+		assertThat(Rental.canWriteReview(status, NOW, NOW, 7)).isFalse();
+	}
+
+	@Test
+	@DisplayName("COMPLETED인데 completedAt이 없는 깨진 행은 후기 작성 기간이 아니다")
+	void canWriteReviewWithoutCompletedAt() {
+		assertThat(Rental.canWriteReview(RentalStatus.COMPLETED, null, NOW, 7)).isFalse();
+	}
+
+	@Test
+	@DisplayName("엔티티 메서드는 자기 상태·completedAt으로 같은 판정을 한다")
+	void canWriteReviewInstance() {
+		// given: 인계 → 반납 요청 → 정상 확인(완료) 경로로 COMPLETED
+		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+		rental.handover(START.atTime(10, 0));
+		rental.requestReturn(END.atTime(18, 0));
+		LocalDateTime completedAt = END.atTime(20, 0);
+		rental.confirmNormal(completedAt);
+
+		// then
+		assertThat(rental.canWriteReview(completedAt.plusDays(7), 7)).isTrue();
+		assertThat(rental.canWriteReview(completedAt.plusDays(7).plusSeconds(1), 7)).isFalse();
+		assertThat(withStatus(RentalStatus.RENTING).canWriteReview(NOW, 7)).isFalse();
+	}
+
 	private void assertTransitionFails(ThrowingCallable transition, ErrorCode errorCode) {
 		assertThatThrownBy(transition)
 			.isInstanceOf(BusinessException.class)
