@@ -92,7 +92,7 @@
 - 작업을 시작했는데 마지막 `develop` 반영 후 하루 이상 지났을 때: "develop에 새 변경이 있어 먼저 반영하겠습니다"
 - 브랜치가 3일 이상 열려 있거나 변경 파일이 30개를 넘을 때: "PR로 나눠 올리는 게 좋겠습니다"
 - 작업 묶음의 REQ가 다 끝났을 때: "이제 PR을 올릴 때입니다" + 체크리스트 확인
-- Flyway 마이그레이션을 추가할 때: develop의 최신 번호 확인 결과를 알리고 번호 선점을 팀에 공유하라고 안내
+- Flyway 마이그레이션을 추가할 때: `docs/erd.md` "마이그레이션 번호" 표를 develop과 원격 작업 브랜치(`git fetch origin` 후 각 `origin/*`의 erd.md) 양쪽에서 확인한 결과를 알린다. 고른 번호는 **브랜치 첫 커밋에서 표에 행(상태 "작업 중")으로 넣고 바로 push**해 선점한다. 머지 직전 커밋에서 상태를 "머지"로 바꾼다
 
 ## 5. 커밋 메시지
 
@@ -114,7 +114,7 @@ scope: member | item | rental | payment | chat | notification | review | ai | ad
 - **승인(Approve) 없이 작성자가 직접 머지한다.** GitHub은 자기 PR을 승인할 수 없으므로 보호 규칙에서 승인 요구를 끈다. PR 자체는 반드시 거친다(변경 기록·체크리스트·blame 추적용).
 - **예외 — 다른 사람에게 영향이 가는 PR은 머지 전에 확인 요청**: API 경로·응답 형태 변경(→ 프론트 담당), 공통 코드(`global/`, `ErrorCode`, Security 설정) 변경(→ 다른 백엔드), Flyway 마이그레이션 추가(→ 다른 백엔드). Reviewers에 지정하고 팀 채팅에 링크를 공유한 뒤, 반나절 안에 이견이 없으면 머지한다.
 - 머지 방식: **Squash and merge**. 머지 후 원격 브랜치는 자동 삭제(설정), 팀 채팅에 "○○ 머지했어요" 한 줄 공유.
-- PR 올리기 전 체크리스트: 테스트 통과, `docs/openapi.json` 재생성(API 변경 시), `docs/api.md`·`erd.md`·`roadmap.md` 갱신, Flyway 번호 확인, 비밀값 미포함.
+- PR 올리기 전 체크리스트: 테스트 통과, `docs/openapi.json` 재생성(API 변경 시), `docs/api.md`·`erd.md`·`roadmap.md` 갱신, Flyway 번호 확인(erd.md 번호 표 상태를 "머지"로), 비밀값 미포함.
 
 ## 7. GitHub 초기 설정 (팀장 1회)
 

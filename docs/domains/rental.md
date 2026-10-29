@@ -88,7 +88,7 @@ try {
 - 상태 변경 후 알림·AI 큐 적재 등 부수효과는 **트랜잭션 커밋 후** (`@TransactionalEventListener(AFTER_COMMIT)`)
 
 ## REQ-017 물품 인계 확인 [1]
-`PATCH /api/rentals/{id}/handover` (multipart: images 1~5장, memo ≤300자) — 사진 저장과 상태 전이를 한 요청으로 처리. 사진 형식·장수·용량은 policies.md `inspection.images`
+`PATCH /api/rentals/{id}/handover` (multipart: images 1~5장, memo ≤300자) — 사진 저장과 상태 전이를 한 요청으로 처리. 사진 형식·장수·용량은 policies.md `inspection.images.*`
 - 제공자만(403), RESERVED만(409), 오늘 ≥ startDate(409 `RENTAL_HANDOVER_TOO_EARLY`), 사진 없음 400
 - item_inspections(phase=HANDOVER) 저장 — **이후 수정 불가**
 - → RENTING, `handed_over_at=now`, 대여자 알림
@@ -98,7 +98,7 @@ try {
 ## REQ-018 반납 요청 및 상태 확인 [1]
 
 ### 대여자 반납 요청 `POST /api/rentals/{id}/return-request`
-- 입력: images 1~5장(형식·장수·용량은 policies.md `inspection.images`), checklist(5개 항목 각 true/false — `ReturnChecklistItem`), note(어떤 항목이 false면 필수, 300자)
+- 입력: images 1~5장(형식·장수·용량은 policies.md `inspection.images.*`), checklist(5개 항목 각 true/false — `ReturnChecklistItem`), note(어떤 항목이 false면 필수, 300자)
 - 가드: RENTING 또는 OVERDUE, 대여자 본인. 체크리스트 없이 사진만 → 400
 - item_inspections(phase=RETURN) 저장(수정 불가), `returned_at=now` → RETURNED, 제공자 알림
 - 2순위: AI 비교 작업 큐 적재(REQ-040)
