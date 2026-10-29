@@ -30,6 +30,13 @@
 // | 29 | RETURNED | D-8~D-4 | 제공자 대리 접수(writerRole OWNER), 판정 전 |
 // | 30 | COMPLETED | D-30~D-28 | 이상 판정(1순위라 완료) |
 // | 31 | CANCELED | D+2~D+3 | 양측 동의 취소(MUTUAL) |
+// | 32 | RESERVED | D+5~D+6 | 물품 107 다가오는 예약(내 물품 대여 가능 탭) |
+//
+// 목록용(빌린 내역 무한 스크롤·예약 현황 시트 더 불러오기). 상세 화면 경우는 위 표와 같고 새 경우는 없다
+// | id | 상태 | 기간 | 쓰임 |
+// | --- | --- | --- | --- |
+// | 41~65 | COMPLETED(4건마다 CANCELED) | D-30부터 4일 간격으로 과거, 각 3일 | 대여자 쪽, 물품 101·105·102 순환 → 빌린 내역 완료 탭 27건(2페이지) |
+// | 71~92 | COMPLETED | D-10부터 4일 간격으로 과거, 각 2일 | 제공자 쪽 물품 107(대여자 텐트초보·이웃 번갈아) → 예약 현황 23건(2페이지) |
 //
 // 그 밖
 // | id | 경우 |
@@ -143,6 +150,36 @@ function agreement(agreementId, rentalId, requesterId, extra = {}) {
   };
 }
 
+/** 목록용 지난 대여(위 표 41~65, 71~92) */
+function pastRentals() {
+  const PAST_ITEMS = [101, 105, 102];
+  const renterSide = Array.from({ length: 25 }, (_, i) => {
+    const from = -30 - i * 4;
+    const period = [from, from + 2];
+    if (i % 4 === 3) {
+      return rental(41 + i, PAST_ITEMS[i % 3], MOCK_ME, 'CANCELED', period, {
+        canceledAt: at(from - 2, '12:00'),
+        cancelType: 'RENTER',
+        cancelReason: 'SCHEDULE_CHANGE',
+      });
+    }
+    return rental(41 + i, PAST_ITEMS[i % 3], MOCK_ME, 'COMPLETED', period, {
+      handedOverAt: at(from, '18:00'),
+      returnedAt: at(from + 2, '19:00'),
+      completedAt: at(from + 3, '09:00'),
+    });
+  });
+  const ownerSide = Array.from({ length: 22 }, (_, i) => {
+    const from = -10 - i * 4;
+    return rental(71 + i, 107, i % 2 === 0 ? 3 : 4, 'COMPLETED', [from, from + 1], {
+      handedOverAt: at(from, '18:00'),
+      returnedAt: at(from + 1, '19:00'),
+      completedAt: at(from + 2, '09:00'),
+    });
+  });
+  return [...renterSide, ...ownerSide];
+}
+
 /** 새로 만든 시드. 목 저장소는 이 값을 고쳐 가며 쓴다. */
 export function createRentalSeed() {
   const RENTER = 3; // 제공자 쪽 시드의 대여자 텐트초보
@@ -201,6 +238,8 @@ export function createRentalSeed() {
       cancelReason: 'ITEM_PROBLEM',
       cancelFee: 0,
     }),
+    rental(32, 107, RENTER, 'RESERVED', [5, 6]),
+    ...pastRentals(),
     // 남의 대여
     rental(900, 101, OTHER, 'RESERVED', [8, 10]),
     rental(901, 101, OTHER, 'PENDING_PAYMENT', [12, 13], { paymentExpiresAt: minutesFromNow(-5) }),

@@ -8,6 +8,10 @@
 // | 104 | 빔 프로젝터 | 나(1) | 제공자 시드 |
 // | 105 | 캠핑 랜턴 | 캠핑조아(2) | 대여자 시드 |
 // | 106 | 접이식 자전거 | 이웃(4) | 삭제된 물품(isDeleted) 표시용 |
+// | 107 | 보드게임 세트 | 나(1) | 내 물품 대여 가능 탭, 예약 현황 23건(시트 안 더 불러오기), 다가오는 예약 1건 |
+// | 108 | 아이스박스 45L | 나(1) | 내 물품 대여 가능 탭, 이미지 없음·대여 없음·카운터 0 |
+//
+// 내 물품(103·104·107·108)의 조회·관심·채팅 수(viewCount·wishCount·chatCount)는 내 물품 관리 목(rental.js)이 쓴다.
 import { http } from 'msw';
 
 import { addDays, todayInSeoul } from '../shared/lib/date';
@@ -60,6 +64,7 @@ const ITEMS = [
     deposit: 10000,
     availablePeriods: [[0, 60]],
     color: '#FBF1E2',
+    counts: { viewCount: 42, wishCount: 5, chatCount: 3 },
   },
   {
     itemId: 104,
@@ -69,6 +74,7 @@ const ITEMS = [
     deposit: 100000,
     availablePeriods: [[0, 60]],
     color: '#F6F5F1',
+    counts: { viewCount: 128, wishCount: 17, chatCount: 9 },
   },
   {
     itemId: 105,
@@ -89,6 +95,25 @@ const ITEMS = [
     isDeleted: true,
     color: '#EDEBE5',
   },
+  {
+    itemId: 107,
+    name: '보드게임 세트',
+    ownerId: 1,
+    pricePerDay: 2000,
+    deposit: 0,
+    availablePeriods: [[0, 60]],
+    color: '#E6EDF8',
+    counts: { viewCount: 230, wishCount: 21, chatCount: 14 },
+  },
+  {
+    itemId: 108,
+    name: '아이스박스 45L',
+    ownerId: 1,
+    pricePerDay: 5000,
+    deposit: 20000,
+    availablePeriods: [[0, 60]],
+    hasNoImage: true,
+  },
 ];
 
 /** 예약하면 항상 기간 충돌인 물품 */
@@ -103,12 +128,20 @@ export function findMockItem(itemId) {
   return {
     ...item,
     isDeleted: item.isDeleted ?? false,
-    thumbnailUrl: placeholderImage(item.name, item.color),
+    thumbnailUrl: item.hasNoImage ? null : placeholderImage(item.name, item.color),
+    counts: item.counts ?? { viewCount: 0, wishCount: 0, chatCount: 0 },
     availablePeriods: item.availablePeriods.map(([from, to]) => ({
       startDate: addDays(today, from),
       endDate: addDays(today, to),
     })),
   };
+}
+
+/** 삭제되지 않은 내 물품 */
+export function listMyMockItems() {
+  return ITEMS.filter((item) => item.ownerId === MOCK_ME && !item.isDeleted).map((item) =>
+    findMockItem(item.itemId),
+  );
 }
 
 export const itemHandlers = [
@@ -123,7 +156,7 @@ export const itemHandlers = [
     return ok({
       itemId: item.itemId,
       name: item.name,
-      images: [{ imageId: item.itemId * 10, url: item.thumbnailUrl }],
+      images: item.thumbnailUrl ? [{ imageId: item.itemId * 10, url: item.thumbnailUrl }] : [],
       pricePerDay: item.pricePerDay,
       deposit: item.deposit,
       owner: { memberId: item.ownerId, nickname: owner.nickname, regionName: owner.regionName },

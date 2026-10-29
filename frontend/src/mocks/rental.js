@@ -9,7 +9,17 @@ import {
   monthOf,
   todayInSeoul,
 } from '../shared/lib/date';
-import { CONFLICT_ITEM_ID, findMockItem, MOCK_ME, MOCK_MEMBERS } from './item';
+import { CONFLICT_ITEM_ID, findMockItem, listMyMockItems, MOCK_ME, MOCK_MEMBERS } from './item';
+import {
+  countUpcomingRentals,
+  HISTORY_TAB_STATUSES,
+  listItemRentals,
+  listMyItems,
+  listRentalHistory,
+  MY_ITEM_TABS,
+  readPage,
+  toPageResponse,
+} from './pageList';
 import { fail, ok } from './response';
 import { createRentalSeed, minutesFromNow, toServerDateTime } from './rentalSeed';
 
@@ -29,6 +39,7 @@ const POLICY = {
   IMAGES_MAX: 5,
   CANCEL_FEE_FREE_UNTIL_DAYS_BEFORE: 3,
   CANCEL_FEE_RATE_PERCENT: 30,
+  REVIEW_WRITE_DEADLINE_DAYS: 7,
 };
 
 // openapi.json 응답 예시의 메시지
@@ -209,6 +220,73 @@ function toDetail(rental) {
   };
 }
 
+/** 거래 완료 후 review.write-deadline-days 이내(정각 포함). 후기 테이블이 없어 "미작성" 조건은 없다(REQ-019) */
+function canWriteReview(rental) {
+  if (rental.status !== 'COMPLETED' || !rental.completedAt) {
+    return false;
+  }
+  const deadline =
+    new Date(`${rental.completedAt}+09:00`).getTime() +
+    POLICY.REVIEW_WRITE_DEADLINE_DAYS * 24 * 60 * 60 * 1000;
+  return Date.now() <= deadline;
+}
+
+/** RentalHistoryResponse. totalAmount는 상세와 같은 값(대여료 + 보증금) */
+function toHistoryItem(rental) {
+  const item = findMockItem(rental.itemId);
+  const rentalDays = countDaysInclusive(rental.startDate, rental.endDate);
+  return {
+    rentalId: rental.rentalId,
+    item: {
+      itemId: item.itemId,
+      name: item.name,
+      thumbnailUrl: item.thumbnailUrl,
+      isDeleted: item.isDeleted,
+    },
+    owner: { memberId: rental.ownerId, nickname: MOCK_MEMBERS[rental.ownerId].nickname },
+    startDate: rental.startDate,
+    endDate: rental.endDate,
+    status: rental.status,
+    totalAmount: rental.pricePerDay * rentalDays + rental.deposit,
+    canWriteReview: canWriteReview(rental),
+  };
+}
+
+// TODO: 백엔드 확정 전 임시 — 내 물품 목록 항목(features/item/api.js toMyItem과 같은 가정)
+function toMyItemResponse(item, today) {
+  return {
+    itemId: item.itemId,
+    name: item.name,
+    thumbnailUrl: item.thumbnailUrl,
+    pricePerDay: item.pricePerDay,
+    deposit: item.deposit,
+    viewCount: item.counts.viewCount,
+    wishCount: item.counts.wishCount,
+    chatCount: item.counts.chatCount,
+    upcomingRentalCount: countUpcomingRentals(db.rentals, item.itemId, today),
+  };
+}
+
+// TODO: 백엔드 확정 전 임시 — 물품별 예약 현황 항목(features/rental/api.js toItemRental과 같은 가정)
+function toItemRentalResponse(rental) {
+  return {
+    rentalId: rental.rentalId,
+    startDate: rental.startDate,
+    endDate: rental.endDate,
+    status: rental.status,
+    renter: { memberId: rental.renterId, nickname: MOCK_MEMBERS[rental.renterId].nickname },
+  };
+}
+
+/** 쿼리의 page(없으면 0). 0 이상 정수가 아니면 400. size는 보내도 무시한다 */
+function requirePage(searchParams) {
+  const page = readPage(searchParams.get('page'));
+  if (page == null) {
+    invalidInput('page', '형식이 올바르지 않습니다.');
+  }
+  return page;
+}
+
 /** RentalInspectionResponse(저장소의 rentalId는 응답에 없다) */
 function toInspectionResponse(inspection) {
   return {
@@ -340,6 +418,64 @@ function calendarDays(item, month) {
 }
 
 export const rentalHandlers = [
+  // REQ-019 빌린 내역(openapi.json 그대로). 내가 대여자인 건만, 탭·정렬·20건 고정
+  http.get(
+    '/api/members/me/rentals',
+    handle(({ request }) => {
+      const { searchParams } = new URL(request.url);
+      const role = searchParams.get('role');
+      if (!role) {
+        invalidInput('role', '필수 값입니다.');
+      }
+      if (role !== 'renter') {
+        invalidInput('role', '형식이 올바르지 않습니다.');
+      }
+      const tab = searchParams.get('tab') ?? 'ONGOING';
+      if (!Object.hasOwn(HISTORY_TAB_STATUSES, tab)) {
+        invalidInput('tab', '형식이 올바르지 않습니다.');
+      }
+      const page = requirePage(searchParams);
+      const rentals = listRentalHistory(db.rentals, MOCK_ME, tab).map(toHistoryItem);
+      return ok(toPageResponse(rentals, page));
+    }),
+  ),
+
+  // TODO: 백엔드 확정 전 임시 — REQ-020 내 물품 목록은 openapi.json에 아직 없다. 빌린 내역과 같은 page 형식으로 가정
+  http.get(
+    '/api/members/me/items',
+    handle(({ request }) => {
+      const { searchParams } = new URL(request.url);
+      const tab = searchParams.get('tab') ?? 'AVAILABLE';
+      if (!MY_ITEM_TABS.includes(tab)) {
+        invalidInput('tab', '형식이 올바르지 않습니다.');
+      }
+      const page = requirePage(searchParams);
+      const today = todayInSeoul();
+      const items = listMyItems(listMyMockItems(), db.rentals, tab).map((item) =>
+        toMyItemResponse(item, today),
+      );
+      return ok(toPageResponse(items, page));
+    }),
+  ),
+
+  // TODO: 백엔드 확정 전 임시 — REQ-020 물품별 예약 현황은 openapi.json에 아직 없다. 남의 물품 403 코드는
+  // RENTAL_OWNER_ONLY로 가정(백엔드 확정 시 맞춘다). 검사 순서: 입력 400 → 404 → 403
+  http.get(
+    '/api/items/:itemId/rentals',
+    handle(({ params, request }) => {
+      const page = requirePage(new URL(request.url).searchParams);
+      const item = findMockItem(params.itemId);
+      if (!item || item.isDeleted) {
+        reject('ITEM_NOT_FOUND');
+      }
+      if (item.ownerId !== MOCK_ME) {
+        reject('RENTAL_OWNER_ONLY');
+      }
+      const rentals = listItemRentals(db.rentals, item.itemId).map(toItemRentalResponse);
+      return ok(toPageResponse(rentals, page));
+    }),
+  ),
+
   http.get(
     '/api/items/:itemId/calendar',
     handle(({ params, request }) => {
