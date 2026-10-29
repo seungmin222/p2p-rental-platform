@@ -50,6 +50,9 @@ export const RENTAL_TEXT_MAX = {
 // policies.md return.auto-confirm-days (반납 요청 후 3일 → 자동 '정상')
 export const RETURN_AUTO_CONFIRM_DAYS = 3;
 
+// policies.md cancel-agreement.expire-hours (상대가 응답하지 않으면 양측 동의 취소 요청 만료)
+export const CANCEL_AGREEMENT_EXPIRE_HOURS = 48;
+
 // policies.md payment.expire-minutes (예약 후 15분 안에 결제하지 않으면 자동 취소)
 export const PAYMENT_EXPIRE_MINUTES = 15;
 

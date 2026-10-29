@@ -33,6 +33,8 @@ export function useRental(rentalId) {
     queryKey: rentalKeys.detail(rentalId),
     queryFn: () => fetchRental(rentalId),
     staleTime: SHORT_STALE_TIME,
+    // 경로의 id가 숫자가 아니면 부르지 않는다(화면이 바로 "볼 수 없어요")
+    enabled: rentalId != null,
   });
 }
 
