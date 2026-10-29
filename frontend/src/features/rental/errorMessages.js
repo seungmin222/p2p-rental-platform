@@ -1,5 +1,6 @@
 // 대여 화면의 오류 문구는 이 파일 한 곳에서 code로 고른다(HTTP 메시지 문자열로 분기하지 않는다).
-// 키는 docs/openapi.json 대여 API 응답 예시에 있는 코드 전부.
+// 키는 docs/openapi.json에서 대여 화면이 부르는 API(대여 API, 물품 상세, 물품별 예약 현황) 응답 예시의 코드 전부.
+// RENTAL_OWNER_ONLY는 대여 API, ITEM_NOT_OWNER는 물품별 예약 현황의 제공자 전용 403.
 
 const STALE_MESSAGE = '상태가 바뀌었어요. 다시 불러왔어요';
 
@@ -9,6 +10,7 @@ const MESSAGES = {
   COMMON_UNSUPPORTED_MEDIA_TYPE: '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요',
   AUTH_UNAUTHORIZED: '로그인이 필요해요',
   ITEM_NOT_FOUND: '물품을 찾을 수 없어요',
+  ITEM_NOT_OWNER: '내 물품만 볼 수 있어요',
   REGION_NOT_VERIFIED: '동네 인증을 하면 예약할 수 있어요',
   IMAGE_COUNT_INVALID: '사진 장수를 확인해 주세요',
   IMAGE_INVALID_TYPE: 'JPG, PNG 사진만 올릴 수 있어요',
