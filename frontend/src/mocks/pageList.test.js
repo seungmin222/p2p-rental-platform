@@ -114,7 +114,55 @@ describe('내 물품', () => {
     expect(countUpcomingRentals(pending('2026-10-29T11:50:00'), 9, '2026-10-29', now)).toBe(0);
   });
 
-  it('예약 현황은 시작일 오름차순', () => {
+  it('예약 현황은 그 물품의 대여 건 전부(CANCELED 포함)', () => {
     expect(listItemRentals(rentals, 2).map((r) => r.rentalId)).toEqual([2, 5, 3, 4, 6]);
+  });
+});
+
+describe('listItemRentals 정렬(open-issues #20)', () => {
+  const item = (rentalId, status, startDate) => rental(rentalId, status, startDate, { itemId: 7 });
+
+  it('다가오는·진행 중 건이 먼저, 완료·취소 건이 뒤에', () => {
+    const rentals = [
+      item(1, 'COMPLETED', '2026-11-20'),
+      item(2, 'RESERVED', '2026-11-01'),
+      item(3, 'CANCELED', '2026-11-25'),
+      item(4, 'PENDING_PAYMENT', '2026-11-30'),
+      item(5, 'RENTING', '2026-10-27'),
+      item(6, 'OVERDUE', '2026-10-20'),
+      item(7, 'RETURNED', '2026-10-25'),
+    ];
+    const statuses = listItemRentals(rentals, 7).map((r) => r.status);
+    expect(statuses.slice(0, 5)).not.toContain('COMPLETED');
+    expect(statuses.slice(5).sort()).toEqual(['CANCELED', 'COMPLETED']);
+  });
+
+  it('앞 그룹은 시작일 오름차순, 뒤 그룹은 시작일 내림차순', () => {
+    const rentals = [
+      item(1, 'COMPLETED', '2026-10-01'),
+      item(2, 'RESERVED', '2026-11-05'),
+      item(3, 'CANCELED', '2026-10-15'),
+      item(4, 'RENTING', '2026-10-28'),
+      item(5, 'COMPLETED', '2026-09-20'),
+      item(6, 'PENDING_PAYMENT', '2026-11-01'),
+    ];
+    expect(listItemRentals(rentals, 7).map((r) => r.rentalId)).toEqual([4, 6, 2, 3, 1, 5]);
+  });
+
+  it('같은 시작일은 두 그룹 모두 id 오름차순', () => {
+    const rentals = [
+      item(9, 'RESERVED', '2026-11-01'),
+      item(3, 'PENDING_PAYMENT', '2026-11-01'),
+      item(8, 'CANCELED', '2026-10-01'),
+      item(2, 'COMPLETED', '2026-10-01'),
+    ];
+    expect(listItemRentals(rentals, 7).map((r) => r.rentalId)).toEqual([3, 9, 2, 8]);
+  });
+
+  it('시드 물품 107: 다가오는 예약 32가 맨 위, 지난 건은 최근 것부터', () => {
+    const ids = listItemRentals(createRentalSeed().rentals, 107).map((r) => r.rentalId);
+    expect(ids[0]).toBe(32);
+    expect(ids.slice(1, 4)).toEqual([71, 72, 73]);
+    expect(ids).toHaveLength(23);
   });
 });
