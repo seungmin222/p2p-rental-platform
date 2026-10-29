@@ -16,17 +16,24 @@ SCR-12 나의 대여 중 1순위 세 화면: `/me` 메뉴, `/me/rentals` 빌린 
 | API | 가정한 응답 | 읽는 곳 |
 | --- | --- | --- |
 | `GET /api/members/me/items?tab=AVAILABLE\|RENTING&page=` (REQ-020) | 빌린 내역과 같은 PageResponse. 항목 `{ itemId, name, thumbnailUrl, pricePerDay, deposit, viewCount, wishCount, chatCount, upcomingRentalCount }` — rental.md REQ-020 카드 + erd.md items 카운터 이름 | `features/item/api.js` `toMyItem` |
-| `GET /api/items/{itemId}/rentals?page=` (REQ-020) | 같은 PageResponse. 항목 `{ rentalId, startDate, endDate, status, renter { memberId, nickname } }`, 기간순. 남의 물품 403 `RENTAL_OWNER_ONLY`, 없는 물품 404 `ITEM_NOT_FOUND` | `features/rental/api.js` `toItemRental` |
+| `GET /api/items/{itemId}/rentals?page=` (REQ-020) | 같은 PageResponse. 항목 `{ rentalId, startDate, endDate, status, renter { memberId, nickname } }`, 시작일 오름차순(CANCELED 포함). 남의 물품 403 `RENTAL_OWNER_ONLY`, 없는·삭제된 물품 404 `ITEM_NOT_FOUND` | `features/rental/api.js` `toItemRental` |
 
 - 빌린 내역(`GET /api/members/me/rentals`)은 openapi.json 그대로라 TODO가 없다. size를 보내지 않고, 정렬도 다시 하지 않는다.
 - **내 물품 목 정렬은 최근 등록(itemId 큰) 순으로 가정했다.** REQ-020에 정렬이 없다.
 - **내 물품·예약 현황의 페이지 크기는 20으로 가정했다**(빌린 내역 `rental-history.page`와 같게). 화면은 hasNext만 보므로 값이 달라도 동작은 같다.
 
 ## 백엔드에 확인할 것
-- 위 임시 API 두 개의 경로·page 형식·항목 필드 이름.
-- **물품별 예약 현황 "기간순"의 방향**: 목은 startDate 오름차순(오래된 것부터)이다. 지난 대여가 20건 넘게 쌓인 물품(시드 107)은 다가오는 예약이 둘째 페이지에 가서 시트를 끝까지 내려야 보인다. 다가오는 예약을 먼저 보여 줄지(예: 진행·예정 먼저, 또는 내림차순) 정해야 한다. 정해지면 목(`mocks/pageList.js` `listItemRentals`)만 바꾸면 된다.
-- 남의 물품 예약 현황의 403 코드(목은 `RENTAL_OWNER_ONLY`로 가정).
-- `upcomingRentalCount`가 결제 시간이 지난 PENDING_PAYMENT도 세는지. 목은 REQ-020 문장 그대로(상태·시작일만) 센다.
+- **`GET /api/members/me/items`** (임시)
+  - page 파라미터(0부터)와 응답이 빌린 내역과 같은 PageResponse(`items·page·size·totalElements·hasNext`)인지.
+  - 항목 필드 이름 `itemId, name, thumbnailUrl, pricePerDay, deposit, viewCount, wishCount, chatCount, upcomingRentalCount`.
+  - 정렬: 목은 최근 등록(itemId 큰) 순으로 가정. 페이지 크기: 20으로 가정(화면은 hasNext만 봄). tab 생략 시 기본값: 목은 AVAILABLE로 가정(화면은 항상 보냄).
+  - `upcomingRentalCount`는 결제 시간이 지난 PENDING_PAYMENT를 세지 않는다고 가정(캘린더 점유와 같은 기준). 만료 배치(REQ-024)가 CANCELED로 바꾸기 전 짧은 틈에만 차이가 난다.
+- **`GET /api/items/{itemId}/rentals`** (임시)
+  - page 파라미터와 같은 PageResponse, 항목 `rentalId, startDate, endDate, status, renter { memberId, nickname }`.
+  - **정렬 제안**: REQ-020 "기간순"을 목은 startDate 오름차순으로 구현했는데, 지난 대여가 20건 넘게 쌓인 물품(시드 107)은 다가오는 예약이 둘째 페이지로 밀려 시트를 끝까지 내려야 보인다. 다가오는·진행 중 예약을 오름차순으로 먼저, 지난 건(완료·취소)은 내림차순으로 뒤에 두기를 제안. 정해지면 목은 `mocks/pageList.js` `listItemRentals`만 바꾸면 된다.
+  - **CANCELED 포함 여부**: 목은 포함한다("해당 물품 대여 건").
+- **에러 코드**: 남의 물품 예약 현황 403(목은 `RENTAL_OWNER_ONLY`로 가정), 없는·삭제된 물품 404 `ITEM_NOT_FOUND`.
+- **api.md 표기**: 두 API가 page 방식으로 정해지면 api.md 표의 경로에 `page=`를 넣어야 한다(지금은 `/api/members/me/items?tab=`, `/api/items/{itemId}/rentals`). 백엔드 API PR에서 함께 고친다.
 
 ## 목 (`mocks/`)
 - **목록 계산은 `mocks/pageList.js` 순수 함수**(탭 표·정렬·자르기·다가오는 예약 수)로 빼서 node에서 테스트한다. 핸들러는 대여 목과 **같은 메모리 저장소(db)**에서 만들어, 대여 상세에서 상태를 바꾸고 돌아오면 목록 탭이 바뀐다.
@@ -46,6 +53,8 @@ SCR-12 나의 대여 중 1순위 세 화면: `/me` 메뉴, `/me/rentals` 빌린 
 - **`shared/lib/listParams.js`에 `getNextPageParam`·`flattenPages`·`normalizeTab`을 모았다**(파일 수를 줄이려고 한 파일). 미확정 응답은 `flattenPages(data, toMyItem)`처럼 항목 함수를 끼워 `select`에서 바꾼다. select 함수는 모듈 함수라 참조가 고정이다.
 - **`Tabs`는 탭 줄과 패널(children)을 함께 그린다.** id 연결(aria-controls·aria-labelledby)을 컴포넌트 안에서 `useId`로 끝내려고. 탭 줄 sticky 같은 배치는 `listClassName`으로 화면이 정한다. 화살표·Home·End는 이동하면서 바로 선택(선택한 탭만 Tab 순서).
 - **`InfiniteListFooter`(shared/ui)**: sentinel + 불러오는 중 스피너 + 실패 시 "다시 시도". `useInfiniteScroll`은 상태가 바뀔 때마다 observer를 새로 만들어, 다음 페이지를 받은 뒤에도 끝이 보이면 이어서 부르고, 다음 페이지 실패(`isFetchNextPageError`)면 멈춘다(자동 재시도 반복 방지).
+- **가져오는 중(`isFetching`)에는 observer를 만들지 않는다**(리뷰 반영, 처음엔 `isFetchingNextPage`). 대여 상세에서 상태를 바꾸고 돌아오면 무효화 재조회가 도는데, 이때 끝이 보이면 `fetchNextPage`가 재조회를 취소하고 이전 페이지에 새 페이지를 이어 붙였다. 재현(목 PAGE_SIZE를 임시로 2, 짧은 화면에서 두 페이지만 불러온 뒤): 대여 예정 탭 → 시드 2 취소 → 뒤로 → 2가 "대여 예정"으로 남고 4가 빠짐. 고친 뒤 2가 빠지고 4·6이 이어서 보임. 지시는 PAGE_SIZE 5였지만 대여 예정 6건이 두 페이지로 끝나 hasNext가 false가 되어 재현되지 않아 2로 했다.
+- **stale 오류(`isStaleStateError`) 뒤에도 `['rentals', 'me']`·`['items', 'me']`를 무효화한다**(리뷰 반영). 다른 곳에서 바뀐 상태라 목록도 낡았기 때문.
 - **다음 페이지 실패는 재조회 실패 토스트에서 뺐다**(`queryState.getRefetchErrorKey`가 `isFetchNextPageError`를 건너뜀). 헤드리스 확인에서 "다시 시도"와 "최신 정보를 불러오지 못했어요" 토스트가 함께 떠서. 무효화 뒤 다시 불러오기가 실패하는 경우는 그대로 토스트.
 - **`Thumbnail`(shared/ui)**: 목록 썸네일 + 이미지 없을 때 자리 면. 피드에서도 쓸 수 있게 shared에 뒀다.
 - **`['items', 'me']`는 `applyRentalDetail`에서 항상 무효화한다**(예약 생성 포함). 물품별 예약 현황(`['items', id, 'rentals']`)은 기존대로 기간 점유가 바뀔 때만 무효화하고, 시트는 열 때마다 마운트되며 staleTime이 5초라 상태만 바뀐 경우도 곧 다시 부른다.
