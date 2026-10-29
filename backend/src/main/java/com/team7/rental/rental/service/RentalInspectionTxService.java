@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
+import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.rental.dto.RentalDetailResponse;
 import com.team7.rental.rental.entity.InspectionPhase;
 import com.team7.rental.rental.entity.InspectionResult;
@@ -46,6 +47,7 @@ public class RentalInspectionTxService {
 	private final ItemInspectionRepository itemInspectionRepository;
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
 	private final RentalQueryService rentalQueryService;
+	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
 	/**
@@ -147,6 +149,33 @@ public class RentalInspectionTxService {
 		return rentalQueryService.getRental(rentalId, memberId);
 	}
 
+	/** 자동 상태 확인 배치 대상 id (반납 요청 후 return.auto-confirm-days 경과, 판정 전, 미반납 신고 아님) */
+	public List<Long> findAutoConfirmTargetIds(LocalDateTime now) {
+		return rentalRepository.findAutoConfirmTargetIds(
+			now.minusDays(policyProperties.returnPolicy().autoConfirmDays()));
+	}
+
+	/**
+	 * 자동 상태 확인 한 건: 판정 NORMAL(판정자 없음) → COMPLETED, 이력 changedBy = null. 대상 조회 뒤 상태가 바뀌었을 수 있어 조건을 다시 본다.
+	 *
+	 * @return 처리했으면 true, 이미 대상이 아니면 false
+	 * @throws org.springframework.orm.ObjectOptimisticLockingFailureException 제공자 확인 등이 동시에 바꿨을 때
+	 */
+	@Transactional
+	public boolean autoConfirm(Long rentalId, LocalDateTime now) {
+		Rental rental = rentalRepository.findById(rentalId).orElse(null);
+		if (rental == null || !rental.isAutoConfirmDue(now, policyProperties.returnPolicy().autoConfirmDays())) {
+			return false;
+		}
+		ItemInspection inspection = getReturnInspection(rentalId);
+		if (inspection.isJudged() || inspection.isLostReported()) {
+			return false;
+		}
+		judgeAndComplete(rental, inspection, InspectionResult.NORMAL, null, List.of(), null, now);
+		return true;
+	}
+
+	/** @param changedBy 판정한 제공자. 자동 확인 배치면 null */
 	private void judgeAndComplete(Rental rental, ItemInspection inspection, InspectionResult result,
 		String resultNote, List<String> resultImageUrls, Long changedBy, LocalDateTime now) {
 		inspection.judge(result, resultNote, resultImageUrls);

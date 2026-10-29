@@ -28,6 +28,23 @@ public interface RentalRepository extends JpaRepository<Rental, Long> {
 	Long id);
 
 	/**
+	 * 자동 상태 확인(REQ-018) 대상 id: RETURNED이고 returnedAt ≤ threshold(= now - return.auto-confirm-days),
+	 * 반납 기록이 판정 전이고 미반납 신고가 아닌 것. id 순.
+	 */
+	@Query("""
+		select r.id from Rental r, ItemInspection i
+		where i.rentalId = r.id
+			and i.phase = com.team7.rental.rental.entity.InspectionPhase.RETURN
+			and r.status = com.team7.rental.rental.entity.RentalStatus.RETURNED
+			and r.returnedAt <= :threshold
+			and i.result is null
+			and i.lostReported = false
+		order by r.id
+		""")
+	List<Long> findAutoConfirmTargetIds(@Param("threshold")
+	LocalDateTime threshold);
+
+	/**
 	 * [from, to]와 겹치는(양 끝 포함) 기간 점유 대여. 상태는 {@link RentalStatus#ACTIVE_FOR_PERIOD}를 넘기고,
 	 * PENDING_PAYMENT는 paymentExpiresAt > now인 것만 점유한다({@link Rental#isOccupyingPeriod}와 같은 조건).
 	 * 직접 부르지 말고 RentalOccupancyReader를 쓴다.

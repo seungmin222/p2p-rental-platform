@@ -35,6 +35,13 @@ REQ-016 1순위 전이 마무리 + 017 인계 + 018 반납 요청·상태 확인
 - **상태 확인도 전이 직후 flush하고 이력을 저장한다.** 이력 INSERT의 FK 검사도 rentals 행에 S 락을 잡아서, 제공자 확인과 자동 확인 배치가 겹치면 인계 때와 같은 데드락이 날 수 있다. 쓰기 경로는 모두 "전이 → flush → INSERT" 순서.
 - **`return.*` 키는 `@Name("return") Return returnPolicy`로 바인딩**(Spring Boot가 예약어 이름에 안내하는 방식). yml·policies.md 키가 그대로라 문서와 어긋나지 않는다.
 
+## 자동 상태 확인 배치 (018)
+- **`batch/ReturnAutoConfirmJob`, cron `app.batch.return-auto-confirm-cron`(매시 정각, test `"-"`), ShedLock `rental.return-auto-confirm` lockAtMostFor 30m·lockAtLeastFor 30s.** 건별 트랜잭션이라 한 회차가 길어질 수 있어 cancel 만료(5m)보다 넉넉히 잡았다.
+- **대상 조회(JPQL join: RETURNED, returned_at ≤ now − return.auto-confirm-days, result null, lost_reported false) → 건마다 `RentalInspectionTxService.autoConfirm` 트랜잭션.** 전이·이력이 필요해 벌크 UPDATE를 쓰지 않는다. 트랜잭션 안에서 조건을 다시 보고(`Rental.isAutoConfirmDue` + 기록 판정 여부) 아니면 false라 멱등이다.
+- **낙관적 락 충돌은 INFO 후 건너뛰고(제공자 확인이 이긴 것), 그 밖의 예외는 ERROR 후 다음 건.** 실패한 건은 다음 회차에 다시 대상이 된다.
+- **배치 판정은 result=NORMAL, 판정 내용·사진 없음, 이력 changedBy=null·reason `RETURN_AUTO_CONFIRM_BATCH`.** item_inspections에 판정자 컬럼이 없어 "판정자 없음"은 이력에만 남는다.
+- **테스트는 `job.confirmDue(now)`를 직접 부른다.** ShedLock이 PROXY_METHOD라 `run()`을 30초 안에 두 번 부르면 두 번째가 조용히 건너뛰어져 멱등성 테스트가 의미 없어진다. `run()`은 Clock 연결만 한 번 확인한다.
+
 ## 사진 업로드·정리 (item-crud가 아직 없어 이 방식을 제안, B 확인)
 - **순서: 사전 검사(읽기 트랜잭션) → 장수 검사·전부 처리 → 업로드(트랜잭션 밖) → TxService. TxService가 예외를 던지면 업로드한 키를 지우고 다시 던진다.** 처리 단계에서 실패하면 업로드한 파일이 없다. 업로드 중간 실패도 그때까지 올린 키를 지운다. 삭제 실패는 WARN 로그만(원래 예외를 가리지 않게, 남는 파일은 DB가 참조하지 않는 고아).
 - **사전 검사는 사진 처리를 줄이는 최적화일 뿐이다.** TxService 쓰기 메서드가 트랜잭션 안에서 대여를 다시 읽고 404·403·409를 전부 다시 검사한다.
