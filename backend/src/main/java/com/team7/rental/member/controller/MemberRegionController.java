@@ -52,10 +52,9 @@ public class MemberRegionController {
 
 	@Operation(summary = "동네 추가 (REQ-004)", description = "미구현: 응답 형태만 확정. 인증 전 상태로 추가된다(인증은 verify). 첫 동네면 자동으로 대표 동네. "
 		+ "개수가 policies.md region.max-per-member를 넘으면 409 REGION_LIMIT_EXCEEDED, 이미 추가한 동네면 409 REGION_ALREADY_ADDED, "
-		+ "없는 행정동이면 404 COMMON_NOT_FOUND.")
+		+ "요청 바디의 regionId가 없는 행정동이면 400 COMMON_INVALID_INPUT(details regionId). 404는 경로 id가 없을 때만 쓴다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
-	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, COMMON_NOT_FOUND, REGION_LIMIT_EXCEEDED,
-		REGION_ALREADY_ADDED})
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, REGION_LIMIT_EXCEEDED, REGION_ALREADY_ADDED})
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	public ApiResponse<MemberRegionResponse> addRegion(@LoginMember

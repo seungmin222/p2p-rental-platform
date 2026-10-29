@@ -46,6 +46,35 @@ class MemberApiContractIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("비밀번호 8자·20자는 허용 경계라 details에 password가 없다")
+	void signupPasswordLengthAllowed() throws Exception {
+		// given: 닉네임만 1자로 틀리게 해서 서비스(미구현)까지 가지 않고 400으로 끝나게 한다
+		for (String password : new String[] {"abc123!@", "abcdefghij123456789!"}) {
+			String body = """
+				{"email": "user@example.com", "password": "%s", "nickname": "a"}
+				""".formatted(password);
+
+			mockMvc.perform(post("/api/members").contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.details[*].field", contains("nickname")));
+		}
+	}
+
+	@Test
+	@DisplayName("비밀번호에 한글이나 공백이 있으면 영문·숫자·기호를 모두 포함해도 400이다")
+	void signupPasswordCharacters() throws Exception {
+		for (String password : new String[] {"비밀번호abc123!", "abc 123!xyz"}) {
+			String body = """
+				{"email": "user@example.com", "password": "%s", "nickname": "동네주민"}
+				""".formatted(password);
+
+			mockMvc.perform(post("/api/members").contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.details[*].field", contains("password")));
+		}
+	}
+
+	@Test
 	@DisplayName("로그인 요청에 비밀번호가 없으면 400이다")
 	void loginValidation() throws Exception {
 		mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)

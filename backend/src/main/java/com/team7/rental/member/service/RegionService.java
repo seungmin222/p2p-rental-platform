@@ -3,6 +3,7 @@ package com.team7.rental.member.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.member.dto.RegionCoordRequest;
@@ -28,6 +29,8 @@ public class RegionService {
 	 *
 	 * @throws com.team7.rental.global.error.BusinessException COMMON_NOT_FOUND 해당 행정동이 없을 때
 	 */
+	// 외부 호출(카카오 로컬 좌표 변환) 후 별도 트랜잭션에서 조회한다. 클래스의 readOnly 트랜잭션이 걸리지 않게 NOT_SUPPORTED
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public RegionResponse getByCoord(RegionCoordRequest coord) {
 		throw new UnsupportedOperationException("미구현: feat/member-region");
 	}

@@ -42,7 +42,7 @@ public class MemberController {
 	private final MemberQueryService memberQueryService;
 
 	@Operation(summary = "회원가입 (REQ-001)", description = "미구현: 응답 형태만 확정. 글자 수 규칙은 policies.md member.email.max·member.password·member.nickname, "
-		+ "비밀번호는 영문·숫자·특수문자를 모두 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 가입 후 로그인 화면으로 이동한다.")
+		+ "비밀번호는 공백 없는 ASCII 출력 문자만, 영문·숫자·기호를 각각 1개 이상 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 가입 후 로그인 화면으로 이동한다.")
 	@ApiErrorCodes({COMMON_INVALID_INPUT, MEMBER_EMAIL_DUPLICATED, MEMBER_NICKNAME_DUPLICATED})
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)

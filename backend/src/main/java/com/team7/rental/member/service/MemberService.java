@@ -1,6 +1,7 @@
 package com.team7.rental.member.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,7 +30,8 @@ public class MemberService {
 	 * @param request 생략 가능(닉네임 변경 없음)
 	 * @param profileImage 생략 가능(이미지 변경 없음). jpg/png, policies.md profile.image
 	 */
-	@Transactional
+	// 외부 호출(이미지 업로드) 후 별도 트랜잭션에서 저장한다. 클래스의 readOnly 트랜잭션이 걸리지 않게 NOT_SUPPORTED
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public MemberResponse updateProfile(Long memberId, MemberProfileUpdateRequest request,
 		MultipartFile profileImage) {
 		throw new UnsupportedOperationException("미구현: feat/member-region");

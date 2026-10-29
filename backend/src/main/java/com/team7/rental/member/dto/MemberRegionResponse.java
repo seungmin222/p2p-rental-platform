@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /** 내 동네 (REQ-004). 인증 좌표는 저장하지 않으므로 응답에도 없다 */
 public record MemberRegionResponse(
-	@Schema(description = "내 동네 ID (경로의 {id})", example = "3")
+	@Schema(description = "내 동네 ID (경로의 {memberRegionId})", example = "3")
 	Long memberRegionId,
 
 	@Schema(description = "행정동 ID", example = "1234")

@@ -10,6 +10,6 @@ public record MemberPasswordChangeRequest(
 	@Schema(description = "현재 비밀번호", example = "rental123!") @NotBlank
 	String currentPassword,
 
-	@Schema(description = "새 비밀번호. 글자 수는 policies.md member.password, 영문·숫자·특수문자 모두 포함", example = "newpass456@") @NotBlank @Pattern(regexp = MemberTexts.PASSWORD_PATTERN, message = MemberTexts.PASSWORD_PATTERN_MESSAGE)
+	@Schema(description = "새 비밀번호. 글자 수는 policies.md member.password, 공백 없는 ASCII 출력 문자, 영문·숫자·기호 각 1개 이상", example = "newpass456@") @NotBlank @Pattern(regexp = MemberTexts.PASSWORD_PATTERN, message = MemberTexts.PASSWORD_PATTERN_MESSAGE)
 	String newPassword) {
 }

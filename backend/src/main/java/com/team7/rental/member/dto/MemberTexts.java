@@ -7,9 +7,12 @@ import jakarta.validation.ConstraintValidatorContext;
 /** {@link ValidMemberText} 검증기 공용 */
 final class MemberTexts {
 
-	/** 비밀번호 구성: 영문·숫자·특수문자(영문·숫자·공백이 아닌 문자)를 모두 포함 (policies.md member.password) */
-	static final String PASSWORD_PATTERN = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s]).*$";
-	static final String PASSWORD_PATTERN_MESSAGE = "영문, 숫자, 특수문자를 모두 포함해 주세요.";
+	/**
+	 * 비밀번호 구성 (policies.md member.password): 공백 없는 ASCII 출력 문자(! ~ ~)만 쓰고, 영문·숫자·ASCII 기호를 각각 1개 이상.
+	 * 기호 = !-/ :-@ [-` {-~ 구간
+	 */
+	static final String PASSWORD_PATTERN = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!-/:-@\\[-`{-~])[!-~]*$";
+	static final String PASSWORD_PATTERN_MESSAGE = "공백·한글 없이 영문, 숫자, 기호를 각각 1개 이상 포함해 주세요.";
 
 	private MemberTexts() {}
 
