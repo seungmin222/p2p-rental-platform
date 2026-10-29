@@ -13,7 +13,7 @@ import {
 import { useCancelRental, useRequestCancelAgreement } from '../queries';
 import { estimateCancelFee } from '../rentalData';
 import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
-import { FormError } from './formParts';
+import { FormError } from './FormParts';
 
 // 서버 details[].field → 폼 필드
 const FIELD_MAP = { reason: 'reason', reasonText: 'reasonText' };

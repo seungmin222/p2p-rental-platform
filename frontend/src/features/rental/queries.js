@@ -75,15 +75,15 @@ export function useCalendarDays(itemId, months) {
 function applyRentalDetail(
   queryClient,
   rental,
-  { periodChanged = false, inspectionsChanged = false },
+  { hasPeriodChanged = false, hasInspectionsChanged = false },
 ) {
   queryClient.setQueryData(rentalKeys.detail(rental.rentalId), rental);
   queryClient.invalidateQueries({ queryKey: rentalKeys.mine() });
-  if (periodChanged) {
+  if (hasPeriodChanged) {
     queryClient.invalidateQueries({ queryKey: rentalKeys.calendar(rental.item.itemId) });
     queryClient.invalidateQueries({ queryKey: rentalKeys.itemRentals(rental.item.itemId) });
   }
-  if (inspectionsChanged) {
+  if (hasInspectionsChanged) {
     queryClient.invalidateQueries({ queryKey: rentalKeys.inspections(rental.rentalId) });
   }
 }
@@ -110,14 +110,14 @@ export function useCreateRental() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createRental,
-    onSuccess: (rental) => applyRentalDetail(queryClient, rental, { periodChanged: true }),
+    onSuccess: (rental) => applyRentalDetail(queryClient, rental, { hasPeriodChanged: true }),
   });
 }
 
 /** variables: { reason, reasonText? } */
 export function useCancelRental(rentalId) {
   return useRentalMutation(rentalId, (body) => cancelRental(rentalId, body), {
-    periodChanged: true,
+    hasPeriodChanged: true,
   });
 }
 
@@ -137,7 +137,7 @@ export function useRespondCancelAgreement(rentalId) {
   return useMutation({
     mutationFn: ({ agreementId, action }) => respondCancelAgreement(rentalId, agreementId, action),
     onSuccess: (rental, { action }) =>
-      applyRentalDetail(queryClient, rental, { periodChanged: action === 'ACCEPT' }),
+      applyRentalDetail(queryClient, rental, { hasPeriodChanged: action === 'ACCEPT' }),
     onError: (error) => refetchIfStale(queryClient, rentalId, error),
   });
 }
@@ -147,7 +147,7 @@ export function useHandover(rentalId) {
   return useRentalMutation(
     rentalId,
     ({ request, images }) => handoverRental(rentalId, request, images),
-    { inspectionsChanged: true },
+    { hasInspectionsChanged: true },
   );
 }
 
@@ -156,7 +156,7 @@ export function useRequestReturn(rentalId) {
   return useRentalMutation(
     rentalId,
     ({ request, images }) => requestReturn(rentalId, request, images),
-    { periodChanged: true, inspectionsChanged: true },
+    { hasPeriodChanged: true, hasInspectionsChanged: true },
   );
 }
 
@@ -165,6 +165,6 @@ export function useConfirmReturn(rentalId) {
   return useRentalMutation(
     rentalId,
     ({ request, images }) => confirmReturn(rentalId, request, images),
-    { inspectionsChanged: true },
+    { hasInspectionsChanged: true },
   );
 }

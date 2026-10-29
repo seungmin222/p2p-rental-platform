@@ -259,12 +259,12 @@ function cancel(rental, { cancelType, reason, reasonText, cancelFee }) {
 }
 
 /** multipart: request 파트는 application/json이어야 한다(아니면 415) */
-async function readMultipart(request, { requestRequired }) {
+async function readMultipart(request, { isRequestRequired }) {
   const form = await request.formData();
   const part = form.get('request');
   const images = form.getAll('images');
   if (!part) {
-    if (requestRequired) {
+    if (isRequestRequired) {
       invalidInput('request', '필수 항목입니다.');
     }
     return { body: {}, images };
@@ -326,16 +326,16 @@ function calendarDays(item, month) {
   return buildMonthGrid(month)
     .filter(Boolean)
     .map((date) => {
-      const inPeriod = item.availablePeriods.some(
+      const isInPeriod = item.availablePeriods.some(
         (p) => compareDate(p.startDate, date) <= 0 && compareDate(date, p.endDate) <= 0,
       );
-      if (compareDate(date, today) < 0 || !inPeriod) {
+      if (compareDate(date, today) < 0 || !isInPeriod) {
         return { date, status: 'UNAVAILABLE' };
       }
-      const booked = occupying.some(
+      const isBooked = occupying.some(
         (r) => compareDate(r.startDate, date) <= 0 && compareDate(date, r.endDate) <= 0,
       );
-      return { date, status: booked ? 'BOOKED' : 'AVAILABLE' };
+      return { date, status: isBooked ? 'BOOKED' : 'AVAILABLE' };
     });
 }
 
@@ -380,37 +380,37 @@ export const rentalHandlers = [
       if (item.ownerId === MOCK_ME) {
         reject('RENTAL_OWN_ITEM');
       }
-      const inPeriod = item.availablePeriods.some(
+      const isInPeriod = item.availablePeriods.some(
         (p) => compareDate(p.startDate, startDate) <= 0 && compareDate(endDate, p.endDate) <= 0,
       );
-      if (!inPeriod) {
+      if (!isInPeriod) {
         reject('RENTAL_OUT_OF_AVAILABLE_PERIOD');
       }
-      const overlaps = db.rentals.some(
+      const hasOverlap = db.rentals.some(
         (r) =>
           r.itemId === item.itemId &&
           occupiesPeriod(r) &&
           compareDate(r.startDate, endDate) <= 0 &&
           compareDate(r.endDate, startDate) >= 0,
       );
-      if (item.itemId === CONFLICT_ITEM_ID || overlaps) {
+      if (item.itemId === CONFLICT_ITEM_ID || hasOverlap) {
         reject('RENTAL_PERIOD_CONFLICT');
       }
       const total = item.pricePerDay * countDaysInclusive(startDate, endDate) + item.deposit;
-      const pending = PAYMENT_ENABLED && total > 0;
+      const isPending = PAYMENT_ENABLED && total > 0;
       const rental = {
         rentalId:
           Math.max(...db.rentals.filter((r) => r.rentalId < 900).map((r) => r.rentalId)) + 1,
         itemId: item.itemId,
         renterId: MOCK_ME,
         ownerId: item.ownerId,
-        status: pending ? 'PENDING_PAYMENT' : 'RESERVED',
+        status: isPending ? 'PENDING_PAYMENT' : 'RESERVED',
         startDate,
         endDate,
         pricePerDay: item.pricePerDay,
         deposit: item.deposit,
         createdAt: nowServer(),
-        paymentExpiresAt: pending ? minutesFromNow(POLICY.PAYMENT_EXPIRE_MINUTES) : null,
+        paymentExpiresAt: isPending ? minutesFromNow(POLICY.PAYMENT_EXPIRE_MINUTES) : null,
         handedOverAt: null,
         returnedAt: null,
         completedAt: null,
@@ -545,7 +545,7 @@ export const rentalHandlers = [
   http.patch(
     '/api/rentals/:rentalId/handover',
     handle(async ({ params, request }) => {
-      const { body, images } = await readMultipart(request, { requestRequired: false });
+      const { body, images } = await readMultipart(request, { isRequestRequired: false });
       const memo = trimToNull(body.memo);
       validateLength('memo', memo, POLICY.HANDOVER_MEMO_MAX);
       const rental = findParticipantRental(params.rentalId);
@@ -576,7 +576,7 @@ export const rentalHandlers = [
   http.post(
     '/api/rentals/:rentalId/return-request',
     handle(async ({ params, request }) => {
-      const { body, images } = await readMultipart(request, { requestRequired: true });
+      const { body, images } = await readMultipart(request, { isRequestRequired: true });
       const checklist = body.checklist;
       const keys = [
         'NO_EXTERIOR_DAMAGE',
@@ -622,7 +622,7 @@ export const rentalHandlers = [
   http.patch(
     '/api/rentals/:rentalId/return',
     handle(async ({ params, request }) => {
-      const { body, images } = await readMultipart(request, { requestRequired: true });
+      const { body, images } = await readMultipart(request, { isRequestRequired: true });
       const { result } = body;
       if (result !== 'NORMAL' && result !== 'ABNORMAL') {
         invalidInput('result', '형식이 올바르지 않습니다.');

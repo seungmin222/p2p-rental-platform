@@ -9,7 +9,7 @@ import { useConfirmReturn, useRespondCancelAgreement } from '../queries';
 import { getRentalActions, RENTAL_ACTION as A } from '../rentalActions';
 import AbnormalSheet from './AbnormalSheet';
 import CancelModal from './CancelModal';
-import { FormError } from './formParts';
+import { FormError } from './FormParts';
 import HandoverSheet from './HandoverSheet';
 import ReturnRequestSheet from './ReturnRequestSheet';
 
@@ -44,7 +44,7 @@ function PaymentCountdown({ expiresAt }) {
 /** 양측 동의 취소 요청에 동의·거절 */
 function RespondModal({ rental, action, onClose }) {
   const mutation = useRespondCancelAgreement(rental.rentalId);
-  const accept = action === 'ACCEPT';
+  const isAccept = action === 'ACCEPT';
 
   function handleConfirm() {
     mutation.mutate(
@@ -53,7 +53,7 @@ function RespondModal({ rental, action, onClose }) {
         onSuccess: () => {
           onClose();
           toast.show({
-            message: accept ? '취소에 동의했어요. 예약이 취소됐어요' : '취소 요청을 거절했어요',
+            message: isAccept ? '취소에 동의했어요. 예약이 취소됐어요' : '취소 요청을 거절했어요',
           });
         },
       },
@@ -65,15 +65,15 @@ function RespondModal({ rental, action, onClose }) {
       open
       onClose={onClose}
       onConfirm={handleConfirm}
-      title={accept ? '취소 요청에 동의할까요?' : '취소 요청을 거절할까요?'}
-      confirmLabel={accept ? '동의' : '거절'}
+      title={isAccept ? '취소 요청에 동의할까요?' : '취소 요청을 거절할까요?'}
+      confirmLabel={isAccept ? '동의' : '거절'}
       cancelLabel="닫기"
-      danger={accept}
+      danger={isAccept}
       isLoading={mutation.isPending}
     >
       <div className="flex flex-col gap-2">
         <p>
-          {accept
+          {isAccept
             ? `동의하면 예약이 취소돼요.${PAYMENT_ENABLED ? ' 결제 금액은 전액 환불돼요.' : ''}`
             : '거절하면 예약은 그대로 유지돼요.'}
         </p>

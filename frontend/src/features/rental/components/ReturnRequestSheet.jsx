@@ -6,7 +6,7 @@ import { RENTAL_TEXT_MAX, RETURN_CHECKLIST_ITEM } from '../constants';
 import { useRequestReturn } from '../queries';
 import { toChecklist } from '../rentalData';
 import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
-import { FormError, InspectionImageField } from './formParts';
+import { FormError, InspectionImageField } from './FormParts';
 
 const CHECKLIST_KEYS = Object.keys(RETURN_CHECKLIST_ITEM);
 // 서버는 checklist 전체를 한 필드로 알려 주므로 첫 항목에 붙인다
@@ -80,7 +80,7 @@ export default function ReturnRequestSheet({ rental, onClose }) {
   });
   const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, FIELD_MAP);
   const checklist = useWatch({ control, name: 'checklist' });
-  const noteRequired = hasNo({ checklist });
+  const isNoteRequired = hasNo({ checklist });
 
   function onSubmit(values) {
     const note = values.note.trim();
@@ -141,8 +141,8 @@ export default function ReturnRequestSheet({ rental, onClose }) {
         </fieldset>
         <TextField
           label="메모"
-          required={noteRequired}
-          hint={noteRequired ? "'아니오' 항목이 있으면 메모를 적어 주세요" : undefined}
+          required={isNoteRequired}
+          hint={isNoteRequired ? "'아니오' 항목이 있으면 메모를 적어 주세요" : undefined}
           multiline
           rows={3}
           maxLength={RENTAL_TEXT_MAX.RETURN_NOTE}

@@ -28,7 +28,7 @@ function action(type, label, variant, disabledReason = null) {
  * @param {object} rental RentalDetailResponse
  * @param {object | null | undefined} returnInspection RETURN 기록. undefined = 아직 못 불러옴, null = 없음
  * @param {string} today "YYYY-MM-DD" (호출부가 todayInSeoul()로 넘긴다)
- * @param {{paymentEnabled?: boolean}} [options]
+ * @param {{isPaymentEnabled?: boolean}} [options]
  * @returns {{actions: {type: string, label: string, variant: string, disabledReason: string | null}[],
  *   notice: {text?: string, tone: 'default' | 'danger', paymentExpiresAt?: string} | null}}
  *   disabledReason이 있으면 비활성 버튼 + 그 사유를 보여 준다. notice.paymentExpiresAt이면 남은 결제 시간을 센다.
@@ -37,7 +37,7 @@ export function getRentalActions(
   rental,
   returnInspection,
   today,
-  { paymentEnabled = PAYMENT_ENABLED } = {},
+  { isPaymentEnabled = PAYMENT_ENABLED } = {},
 ) {
   const isOwner = rental.myRole === 'OWNER';
 
@@ -46,10 +46,10 @@ export function getRentalActions(
       return {
         actions: [
           action(A.CANCEL, '예약 취소', 'secondary'),
-          ...(paymentEnabled ? [action(A.PAY, '결제하기', 'primary')] : []),
+          ...(isPaymentEnabled ? [action(A.PAY, '결제하기', 'primary')] : []),
         ],
         // 결제가 꺼져 있으면 결제할 수 없으므로 남은 시간도 세지 않는다
-        notice: paymentEnabled
+        notice: isPaymentEnabled
           ? { tone: 'default', paymentExpiresAt: rental.paymentExpiresAt }
           : null,
       };

@@ -57,11 +57,11 @@ function Checklist({ checklist }) {
   return (
     <ul className="flex flex-col text-caption">
       {Object.entries(RETURN_CHECKLIST_ITEM).map(([key, { question }]) => {
-        const yes = checklist[key] === true;
+        const isYes = checklist[key] === true;
         return (
           <li key={key} className="flex justify-between gap-3 py-0.5">
             <span>{question}</span>
-            {yes ? <span>예</span> : <b className="text-danger">아니오</b>}
+            {isYes ? <span>예</span> : <b className="text-danger">아니오</b>}
           </li>
         );
       })}

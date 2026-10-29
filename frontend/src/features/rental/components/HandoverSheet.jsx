@@ -5,7 +5,7 @@ import { BottomSheet, Button, TextField, toast } from '../../../shared/ui';
 import { RENTAL_TEXT_MAX } from '../constants';
 import { useHandover } from '../queries';
 import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
-import { FormError, InspectionImageField } from './formParts';
+import { FormError, InspectionImageField } from './FormParts';
 
 const FIELD_MAP = { memo: 'memo' };
 

@@ -13,17 +13,17 @@ const CURRENT_STEP = {
 
 /**
  * @param {string} status RentalStatus
- * @param {{paymentEnabled?: boolean}} [options]
- * @returns {{label: string, state: 'done' | 'current' | 'upcoming', danger: boolean}[] | null}
- *   CANCELED(또는 모르는 상태)면 null. COMPLETED는 다섯 단계 모두 done. OVERDUE는 "대여 중"이 danger.
+ * @param {{isPaymentEnabled?: boolean}} [options]
+ * @returns {{label: string, state: 'done' | 'current' | 'upcoming', isDanger: boolean}[] | null}
+ *   CANCELED(또는 모르는 상태)면 null. COMPLETED는 다섯 단계 모두 done. OVERDUE는 "대여 중"이 isDanger.
  */
-export function getRentalSteps(status, { paymentEnabled = PAYMENT_ENABLED } = {}) {
+export function getRentalSteps(status, { isPaymentEnabled = PAYMENT_ENABLED } = {}) {
   const current = CURRENT_STEP[status];
   if (current == null) {
     return null;
   }
   const labels = [
-    paymentEnabled ? '결제' : '예약',
+    isPaymentEnabled ? '결제' : '예약',
     '대여 예정',
     '대여 중',
     '반납 완료',
@@ -36,6 +36,6 @@ export function getRentalSteps(status, { paymentEnabled = PAYMENT_ENABLED } = {}
     } else if (index === current) {
       state = 'current';
     }
-    return { label, state, danger: status === 'OVERDUE' && index === current };
+    return { label, state, isDanger: status === 'OVERDUE' && index === current };
   });
 }

@@ -131,13 +131,13 @@ export default function RentalReservePage() {
     );
   }
 
-  const notFound =
+  const isNotFound =
     !Number.isInteger(itemId) ||
     blocker === 'NOT_FOUND' ||
     (isInitialLoadError(itemQuery) && itemQuery.error.code === 'ITEM_NOT_FOUND') ||
     (isInitialLoadError(monthResult) && monthResult.error.code === 'ITEM_NOT_FOUND');
 
-  if (notFound) {
+  if (isNotFound) {
     return (
       <>
         <PageHeader title="대여 예약" />

@@ -36,14 +36,16 @@ describe('getRentalActions', () => {
 
     it.each(ROLES)('%s: 결제 꺼짐이면 예약 취소만, 남은 결제 시간 안내 없음', (myRole) => {
       const result = getRentalActions(pending(myRole), undefined, TODAY, {
-        paymentEnabled: false,
+        isPaymentEnabled: false,
       });
       expect(types(result)).toEqual([A.CANCEL]);
       expect(result.notice).toBeNull();
     });
 
     it.each(ROLES)('%s: 결제 켜짐이면 결제하기 + 남은 결제 시간 안내', (myRole) => {
-      const result = getRentalActions(pending(myRole), undefined, TODAY, { paymentEnabled: true });
+      const result = getRentalActions(pending(myRole), undefined, TODAY, {
+        isPaymentEnabled: true,
+      });
       expect(types(result)).toEqual([A.CANCEL, A.PAY]);
       expect(result.notice).toEqual({ tone: 'default', paymentExpiresAt: '2026-10-29T10:15:00' });
     });

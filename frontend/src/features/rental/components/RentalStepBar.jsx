@@ -9,17 +9,17 @@ function labelClassName(step) {
   if (step.state !== 'current') {
     return '';
   }
-  return step.danger ? 'font-bold text-danger' : 'font-bold text-primary';
+  return step.isDanger ? 'font-bold text-danger' : 'font-bold text-primary';
 }
 
-/** steps는 getRentalSteps 결과. OVERDUE의 현재 단계(danger)는 Danger 색. 점·선은 장식이고 단계는 목록으로 읽힌다. */
+/** steps는 getRentalSteps 결과. OVERDUE의 현재 단계(isDanger)는 Danger 색. 점·선은 장식이고 단계는 목록으로 읽힌다. */
 export default function RentalStepBar({ steps }) {
   return (
     <div className="flex flex-col gap-1.5">
       <div aria-hidden="true" className="flex items-center">
         {steps.map((step, index) => {
           const next = steps[index + 1];
-          const dot = step.danger ? 'border-[3px] border-danger bg-white' : DOT[step.state];
+          const dot = step.isDanger ? 'border-[3px] border-danger bg-white' : DOT[step.state];
           return (
             <span key={step.label} className="contents">
               <span className={`size-3 shrink-0 rounded-full ${dot}`} />

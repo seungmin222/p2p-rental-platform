@@ -94,8 +94,8 @@ function DetailSkeleton() {
 export default function RentalDetailPage() {
   const { id } = useParams();
   const rentalId = Number(id);
-  const validId = Number.isInteger(rentalId) && rentalId > 0;
-  const rentalQuery = useRental(validId ? rentalId : null);
+  const isValidId = Number.isInteger(rentalId) && rentalId > 0;
+  const rentalQuery = useRental(isValidId ? rentalId : null);
   const rental = rentalQuery.data;
   const hasRecords = rental != null && STATUSES_WITH_RECORDS.includes(rental.status);
   const inspectionsQuery = useRentalInspections(rentalId, { enabled: hasRecords });
@@ -104,7 +104,7 @@ export default function RentalDetailPage() {
   useRefetchErrorToast([rentalQuery, inspectionsQuery]);
   const isLoadFailed = isInitialLoadError(rentalQuery);
 
-  if (!validId || (isLoadFailed && UNAVAILABLE_CODES.includes(rentalQuery.error.code))) {
+  if (!isValidId || (isLoadFailed && UNAVAILABLE_CODES.includes(rentalQuery.error.code))) {
     return (
       <>
         <PageHeader title="대여 상세" />

@@ -5,7 +5,7 @@ import { BottomSheet, Button, TextField, toast } from '../../../shared/ui';
 import { PAYMENT_ENABLED, RENTAL_TEXT_MAX } from '../constants';
 import { useConfirmReturn } from '../queries';
 import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
-import { FormError, InspectionImageField } from './formParts';
+import { FormError, InspectionImageField } from './FormParts';
 
 const FIELD_MAP = { resultNote: 'resultNote' };
 
