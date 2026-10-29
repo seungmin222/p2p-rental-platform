@@ -45,7 +45,11 @@ public record PolicyProperties(
 	@Valid @NotNull
 	Review review,
 	@Valid @NotNull
-	RentalHistory rentalHistory) {
+	RentalHistory rentalHistory,
+	@Valid @NotNull
+	Member member,
+	@Valid @NotNull
+	Item item) {
 
 	/**
 	 * @param originalMaxLongSide 원본 재인코딩 시 긴 변 최대 픽셀 (image.original-max-long-side)
@@ -186,5 +190,68 @@ public record PolicyProperties(
 	public record RentalHistory(
 		@Positive
 		int page) {
+	}
+
+	/**
+	 * 회원 입력 규칙 (REQ-001·005). 비밀번호 구성(영문·숫자·특수문자 모두 포함)은 수치가 아니라 DTO의 @Pattern에 둔다.
+	 *
+	 * @param emailMax 이메일 최대 글자 수 (member.email.max)
+	 * @param password 비밀번호 글자 수 (member.password)
+	 * @param nickname 닉네임 글자 수 (member.nickname)
+	 */
+	public record Member(
+		@Positive
+		int emailMax,
+		@Valid @NotNull
+		Length password,
+		@Valid @NotNull
+		Length nickname) {
+	}
+
+	/**
+	 * 물품 등록·수정 입력 규칙 (REQ-006·007)
+	 *
+	 * @param nameMax 물품 이름 최대 글자 수 (item.name.max)
+	 * @param descriptionMax 설명 최대 글자 수 (item.description.max)
+	 * @param pricePerDay 일 대여료. 0원(무료) 또는 min~max (item.price-per-day)
+	 * @param deposit 보증금. 0원 또는 min~max (item.deposit)
+	 * @param itemPriceMax 물품 가격 상한, 0원부터 (item.item-price.max)
+	 */
+	public record Item(
+		@Positive
+		int nameMax,
+		@Positive
+		int descriptionMax,
+		@Valid @NotNull
+		Amount pricePerDay,
+		@Valid @NotNull
+		Amount deposit,
+		@Positive
+		int itemPriceMax) {
+
+		/**
+		 * 0원 또는 [min, max] 원. 1~(min-1)원을 막는 이유는 policies.md §1 물품 표 아래 참고
+		 *
+		 * @param min 0원이 아닐 때 최소 금액
+		 * @param max 최대 금액
+		 */
+		public record Amount(
+			@Positive
+			int min,
+			@Positive
+			int max) {
+
+			public boolean isAllowed(int amount) {
+				return amount == 0 || (amount >= min && amount <= max);
+			}
+		}
+	}
+
+	/** 글자 수 범위 [min, max] (코드 포인트 기준) */
+	public record Length(
+		@Positive
+		int min,
+		@Positive
+		int max) {
 	}
 }

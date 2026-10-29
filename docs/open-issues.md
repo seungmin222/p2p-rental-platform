@@ -21,6 +21,19 @@
 | 13 | ✅ | 취소 | 시작일 이후 양측 동의 취소 흐름 | 한쪽 요청 → 상대 동의 시 취소, 요청은 48시간 후 만료. `rental_cancel_agreements` |
 | 14 | ⬜ | STOMP | 목적지 접두사 확정 | (제안) api.md 표기대로 `/pub`, `/sub`, `/user/queue/*` |
 | 15 | ⬜ | 후기 | 칭찬 항목을 대여자용/제공자용으로 나눌지 | (제안) 공통 목록으로 시작 |
+| 16 | ✅ | API | itemPrice는 "소유자 수정 화면 응답만 예외"인데 그 화면을 채울 조회 API가 없음 | `GET /api/members/me/items/{itemId}`(소유자 전용, Item 태그, REQ-007). itemPrice·가능 기간·이미지 id 포함. 남의 물품 403 `ITEM_NOT_OWNER`, 없음·삭제 404 `ITEM_NOT_FOUND`. 물품 수정 응답도 같은 형태 |
+| 17 | ✅ | API | 409 충돌 목록(`ITEM_PERIOD_CONFLICT` 충돌 기간, `ITEM_HAS_ACTIVE_RENTAL` 해당 건)을 실을 자리. 대여 쪽 선례 없음 | 공통 `ErrorResponse`를 바꾸지 않고 `error.details`에 한 건씩 `{ field, reason }`: field는 `availablePeriods`/`rentals`, reason은 화면에 그대로 보일 문구(예: `2026-11-03 ~ 2026-11-05`). 프론트는 reason을 나열만 한다 |
+| 18 | ✅ | API | item.md의 이미지 오류 `FILE_INVALID`와 이미 있는 `IMAGE_*` 코드 | `IMAGE_COUNT_INVALID`·`IMAGE_INVALID_TYPE`·`IMAGE_SIZE_EXCEEDED`를 물품·프로필에도 쓴다. item.md 수정 |
+| 19 | ✅ | API | 물품 수정의 이미지 변경 표현("유지할 기존 id + 새 파일 + 순서") | request part의 `imageOrder` 목록 하나: 각 칸 `{imageId}` 또는 `{newImageIndex}`(images 파트 0부터 순번) 중 정확히 하나, 순서 = sortOrder, 빠진 기존 이미지 삭제, null이면 변경 없음(이때 파일을 보내면 400). 최종 장수는 서비스가 `IMAGE_COUNT_INVALID`로 검사 |
+| 20 | ✅ | API | 물품별 예약 현황(REQ-020) 응답 형태·"기간순" 정렬, 내 물품·예약 현황 페이지 크기 | 둘 다 `page` + `PageResponse`, size는 받지 않고 `my-items.page`·`item-rentals.page`(20) 고정. 예약 현황 정렬: 다가오는·진행 중 건(PENDING_PAYMENT~RETURNED) 시작일 오름차순 먼저, 완료·취소 건 시작일 내림차순 뒤에(지난 건이 쌓여도 다가오는 예약이 첫 페이지에 보이게). CANCELED 포함. 검색도 `search.page` 고정으로 size를 받지 않는다 |
+| 21 | ✅ | API | 피드(인증 X)·검색의 "기본 대표 동네"는 로그인 정보가 있어야 앎 | regionId 생략 시 로그인 회원의 대표 동네, 비회원·대표 동네 없음이면 400 `COMMON_INVALID_INPUT`(details regionId). 피드 인증을 `옵션`으로 바꿈(api.md) |
+| 22 | ✅ | 회원 | 같은 동네를 두 번 추가하는 경우의 에러 코드가 없음 | 409 `REGION_ALREADY_ADDED` "이미 추가한 동네입니다." |
+| 23 | ✅ | ERD | 권장 보증금 API(`GET /api/items/deposit-guide`, api.md 1순위)가 쓰는 `damage_policies`가 erd.md에서 결제 [2] | `damage_policies` 테이블·시드를 1순위로 당긴다(erd.md [1]). 생성·시드는 `feat/item-crud` |
+| 24 | ✅ | 인증 | 비밀번호 변경(REQ-005)은 "현재 요청의 family를 뺀 나머지"를 지우는데, RT 쿠키는 Path=`/api/auth`라 `/api/members/me/password`로 오지 않고 AT claim에도 familyId가 없음 | Access Token claim에 `familyId`를 추가한다(API 변경 없음, member.md REQ-002). 구현은 `feat/member-auth` |
+| 25 | ✅ | API | 물품별 예약 현황의 "남의 물품" 403 코드(프론트 가정은 `RENTAL_OWNER_ONLY`) | 물품 소유자가 아니면 `ITEM_NOT_OWNER`로 통일. `RENTAL_OWNER_ONLY`는 대여 건의 제공자 검사(인계·상태 확인)에 그대로 쓴다 |
+| 26 | ✅ | 회원 | 비밀번호 "특수문자"의 범위·공백·한글 허용 여부 | 공백 없는 ASCII 출력 문자(`!`~`~`)만 허용, 영문·숫자·ASCII 기호(영문·숫자가 아닌 ASCII 출력 문자)를 각각 1개 이상. policies.md `member.password` |
+| 27 | ✅ | 물품 | 물품 삭제 검사(진행 중 대여)와 동시 예약의 경합 | 삭제도 `lock:item:{itemId}` 안에서 검사·삭제. 락 대기 실패는 409 `RENTAL_LOCK_TIMEOUT`(backend/CLAUDE.md 락 대상에 추가) |
+| 28 | ✅ | 검색 | minPrice > maxPrice, keyword 길이 | minPrice > maxPrice면 400 `COMMON_INVALID_INPUT`(details minPrice). keyword 길이는 제한하지 않는다 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

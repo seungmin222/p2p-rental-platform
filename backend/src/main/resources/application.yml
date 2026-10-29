@@ -98,6 +98,31 @@ app:
     rental-history:
       # rental-history.page: 빌린 내역 페이지 크기. size 파라미터를 받지 않는다 (REQ-019)
       page: 20
+    member:
+      # member.email.max: 이메일 최대 100자 (REQ-001)
+      email-max: 100
+      # member.password: 8~20자, 공백 없는 ASCII 출력 문자만·영문·숫자·기호 각 1개 이상(구성은 DTO @Pattern) (REQ-001, REQ-005)
+      password:
+        min: 8
+        max: 20
+      # member.nickname: 2~10자 (REQ-001, REQ-005)
+      nickname:
+        min: 2
+        max: 10
+    item:
+      # item.name.max / item.description.max: 50자 / 2,000자 (REQ-006)
+      name-max: 50
+      description-max: 2000
+      # item.price-per-day: 0원(무료) 또는 1,000원 ~ 1,000,000원 (REQ-006)
+      price-per-day:
+        min: 1000
+        max: 1000000
+      # item.deposit: 0원 또는 1,000원 ~ 3,000,000원 (REQ-006)
+      deposit:
+        min: 1000
+        max: 3000000
+      # item.item-price.max: 0 ~ 10,000,000원, 대여자에게 비공개 (REQ-006)
+      item-price-max: 10000000
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

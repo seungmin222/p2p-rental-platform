@@ -162,7 +162,7 @@ erDiagram
 
 **deduction_proposals** — id, rental_id, proposed_by, grade, amount, reason, evidence_urls JSON, status(`DeductionProposalStatus`), responded_at, created_at. 인덱스 `(status, created_at)`(72시간 자동 수락 배치). **협의 이력 전용**이며, 확정되면 그 값이 payments에 한 번 복사된다.
 
-**damage_policies** — id, category_id, grade, deduction_type, fixed_amount, cap_rate, recommended_deposit_min_rate, recommended_deposit_max_rate (초기값: `policies.md` §4)
+**damage_policies** [1] — (1순위로 당김, 권장 보증금 REQ-006이 쓴다. 테이블·시드는 `feat/item-crud`, open-issues #23) id, category_id, grade, deduction_type, fixed_amount, cap_rate, recommended_deposit_min_rate, recommended_deposit_max_rate (초기값: `policies.md` §4)
 
 **settlements** — id, rental_id UK, owner_id, source(`COMPLETED`/`CANCEL_FEE`), gross_amount(대여료+연장료+연체료 또는 취소 수수료), fee_amount, deduction_amount, payout_amount, scheduled_date, status
 
@@ -205,7 +205,7 @@ erDiagram
 | --- | --- | --- |
 | `rt:{memberId}:{familyId}` | 기기(로그인)별 현재 유효한 Refresh Token jti | 14일 |
 | `rt-families:{memberId}` | 회원의 family 목록 Set (전체 기기 로그아웃용) | 14일 |
-| `lock:item:{itemId}` | 예약·연장·기간 수정 분산 락 | 임대 시간 미지정(watchdog 자동 연장) |
+| `lock:item:{itemId}` | 예약·연장·기간 수정·물품 삭제 분산 락 | 임대 시간 미지정(watchdog 자동 연장) |
 | `view:{itemId}:{memberId or ip}` | 조회수 중복 방지 | 24시간 |
 | `viewcount:{itemId}` | 조회수 증분(주기적 DB 반영) | — |
 | `search:popular` | 인기 검색어 Sorted Set | — |

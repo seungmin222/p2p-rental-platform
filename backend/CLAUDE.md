@@ -131,7 +131,7 @@ rental/
 - 서비스 클래스 기본 `@Transactional(readOnly = true)`, 쓰기 메서드에만 `@Transactional`.
 - **외부 API 호출을 트랜잭션 안에 넣지 않는다** (PG, Claude, 카카오, S3 업로드). 필요하면 트랜잭션을 나눈다.
 - 분산 락 + 트랜잭션: **락 획득 → 트랜잭션 시작 → 커밋 → 락 해제** 순서. 같은 클래스 내부 호출은 프록시가 안 걸리니 트랜잭션 메서드는 별도 빈에.
-- 예약 생성, 연장, 대여 가능 기간 수정은 모두 `lock:item:{itemId}`를 사용.
+- 예약 생성, 연장, 대여 가능 기간 수정, 물품 삭제는 모두 `lock:item:{itemId}`를 사용.
 - 카운터(wishCount, chatCount)는 `UPDATE ... SET x = x + 1` 벌크 쿼리로 원자적 갱신.
 
 ## 배치

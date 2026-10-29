@@ -23,24 +23,25 @@
 - status=AVAILABLE, bumpedAt=now
 - **권장 보증금**: 카테고리+물품가격 입력 시 `GET /api/items/deposit-guide`로 범위 안내(`itemPrice × minRate ~ maxRate`, `policies.md` §4). 범위 밖이어도 등록 허용
 - itemPrice 용도: 권장 보증금 계산, D 등급 판단. 상세·목록 응답 DTO에 **절대 포함하지 않는다**(소유자용 수정 화면 응답만 예외)
-- 예외: 누락·형식 400, 파일 형식·용량 400 `FILE_INVALID`
+- 예외: 누락·형식 400, 비활성·없는 카테고리 400 `COMMON_INVALID_INPUT`(details categoryId), 사진 400 `IMAGE_COUNT_INVALID`·`IMAGE_INVALID_TYPE`·`IMAGE_SIZE_EXCEEDED`(대여 사진과 같은 코드, open-issues #18)
 - 3순위 연결: REQ-066 금지어 필터, REQ-067 AI 등록 보조, REQ-068 AI 금지 품목 판별이 이 흐름에 붙는다
 
 ## REQ-007 물품 수정 [1]
 `PATCH /api/items/{itemId}` — 변경 항목만
 - 소유자 검증(403 `ITEM_NOT_OWNER`)
-- **대여 가능 기간 수정**: ACTIVE_FOR_PERIOD 대여가 차지한 날짜를 가능 기간에서 빼면 409 `ITEM_PERIOD_CONFLICT` + 충돌 기간 목록. 예약 생성과 **같은 락**(`lock:item:{id}`) 안에서 검사·저장
+- 수정 화면은 `GET /api/members/me/items/{itemId}`(소유자 전용, itemPrice·가능 기간·이미지 id 포함)로 채운다(open-issues #16)
+- **대여 가능 기간 수정**: ACTIVE_FOR_PERIOD 대여가 차지한 날짜를 가능 기간에서 빼면 409 `ITEM_PERIOD_CONFLICT` + 충돌 기간 목록(`error.details`에 한 건씩, open-issues #17). 예약 생성과 **같은 락**(`lock:item:{id}`) 안에서 검사·저장
 - 가격·보증금 변경은 이후 신규 예약부터 적용(대여 건에 스냅샷 저장되어 있음)
-- 이미지 변경: 유지할 기존 이미지 id 목록 + 새 파일 + 순서
+- 이미지 변경: 유지할 기존 이미지 id 목록 + 새 파일 + 순서 → `imageOrder` 하나로 표현(각 칸 `imageId` 또는 `newImageIndex`, 목록 순서 = sortOrder, 빠진 기존 이미지는 삭제, null이면 변경 없음)
 
 ## REQ-008 물품 삭제 [1]
 `DELETE /api/items/{itemId}` — 소프트 삭제(status=DELETED)
-- PENDING_PAYMENT/RESERVED/RENTING/OVERDUE/RETURNED 대여가 있으면 409 `ITEM_HAS_ACTIVE_RENTAL` + 해당 건
+- PENDING_PAYMENT/RESERVED/RENTING/OVERDUE/RETURNED 대여가 있으면 409 `ITEM_HAS_ACTIVE_RENTAL` + 해당 건(`error.details`에 한 건씩). 검사·삭제는 예약과 같은 락(`lock:item:{id}`) 안에서(open-issues #27)
 - 삭제 물품: 피드·검색 제외, 과거 대여 내역·채팅에서는 "삭제된 물품" 표시
 
 ## REQ-009 동네 물품 피드 [1]
 `GET /api/items/feed?regionId=&range=&categoryId=&cursor=`
-- 기준: 지정 regionId(기본 대표 동네)의 중심 좌표에서 범위(NEAR 1.5/NORMAL 3/FAR 6km) 내 **거래 장소 좌표**를 가진 AVAILABLE 물품
+- 기준: 지정 regionId(생략하면 로그인 회원의 대표 동네, 비회원·대표 동네 없음이면 400)의 중심 좌표에서 범위(NEAR 1.5/NORMAL 3/FAR 6km) 내 **거래 장소 좌표**를 가진 AVAILABLE 물품
 - 정렬: bumpedAt DESC, id DESC. 커서 = `(bumpedAt, id)` 인코딩. 20건
 - 카드: 대표 썸네일, 이름, 동네명, 경과 시간(bumpedAt), pricePerDay, deposit, wishCount·chatCount, "대여 중" 배지(현재 RENTING/OVERDUE 대여 존재)
 - 제외: HIDDEN·DELETED, 차단 사용자 물품(REQ-056 이후)
@@ -56,7 +57,7 @@
 - **대여 희망 기간 입력 시**: 그 기간 전체가 어떤 available_period 하나에 포함되고, ACTIVE_FOR_PERIOD 대여와 겹치지 않는 물품만
 - availableOnly: 오늘 기준 대여 가능한 물품 (정의 확정 필요 → open-issues #6)
 - DELETED 제외(HIDDEN도 제외)
-- startDate > endDate → 400
+- startDate > endDate → 400, minPrice > maxPrice → 400(details minPrice). keyword 길이는 제한하지 않는다(open-issues #28)
 - 로그인 회원 검색어 → 최근·인기 검색어 저장(REQ-046 구현 시)
 - "정확도순": 초기에는 이름 일치 > 설명 일치 > 최신순 같은 단순 규칙으로 시작
 

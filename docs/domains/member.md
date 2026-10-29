@@ -16,21 +16,21 @@
 - **로그인할 때마다 새 토큰 묶음(family)을 만든다.** 기기(브라우저)마다 family가 따로라 여러 기기에서 동시에 써도 서로 영향이 없다. Redis 키 `rt:{memberId}:{familyId}` = 현재 유효한 RT의 jti, TTL = RT 만료
 - 로그아웃: 현재 family 키만 삭제, 쿠키 만료
 - 예외: 계정 불일치 401 `AUTH_INVALID_CREDENTIALS` (이메일/비번 중 무엇이 틀렸는지 구분 금지), 탈퇴 회원 401 동일 코드
-- JWT claim: Access Token은 `sub=memberId`, `role`, `typ=ACCESS`. Refresh Token은 `sub=memberId`, `familyId`, `jti`, `typ=REFRESH`(`typ`로 AT·RT를 바꿔 쓰지 못하게 검증). 닉네임 등 변경 가능한 값은 넣지 않는다.
+- JWT claim: Access Token은 `sub=memberId`, `role`, `familyId`, `typ=ACCESS`(familyId는 비밀번호 변경 시 현재 기기 family를 남기려고, open-issues #24). Refresh Token은 `sub=memberId`, `familyId`, `jti`, `typ=REFRESH`(`typ`로 AT·RT를 바꿔 쓰지 못하게 검증). 닉네임 등 변경 가능한 값은 넣지 않는다.
 
 ## REQ-003 토큰 재발급 [1]
 `POST /api/auth/reissue`
 - RT(서명 검증) → claim의 `memberId`, `familyId`, `jti`로 Redis `rt:{memberId}:{familyId}` 조회 → 저장된 jti와 일치하면 AT·RT 모두 새로 발급하고 같은 family 키의 jti를 교체 (Rotation)
 - **재사용 감지**: 서명은 유효한데 jti가 저장값과 다르면(이미 교체된 RT) 탈취로 간주 → **그 family만** 삭제 후 401. 다른 기기의 family는 유지
 - family 키가 없으면(로그아웃·만료·강제 무효화) 401
-- 만료·불일치 401 → 프론트는 로그인 화면으로
+- 만료·불일치·재사용·family 없음은 모두 401 `AUTH_REFRESH_TOKEN_INVALID` → 프론트는 로그인 화면으로
 - 프론트: 401 수신 시 재발급 후 원 요청 **1회만** 재시도 (동시 401 여러 개면 재발급은 한 번만 — frontend/CLAUDE.md 참고)
 - 전체 기기 로그아웃이 필요할 때(비밀번호 변경·재설정, 탈퇴, 이용 정지)는 `rt:{memberId}:*` 키를 모두 삭제한다(회원별 family 목록을 Set `rt-families:{memberId}`로 관리해 `KEYS` 명령 없이 지운다)
 
 ## REQ-004 동네 설정 및 인증 [1]
 - 동네 검색: `GET /api/regions?keyword=` (행정동 마스터 LIKE)
 - 현재 위치: 브라우저 Geolocation → `GET /api/regions/by-coord` (서버가 카카오 로컬 API 좌표→행정구역 변환을 호출하고, 응답 중 `region_type = "H"`(행정동) 항목의 코드로 regions를 찾는다)
-- 추가: `POST /api/members/me/regions` (최대 2개, 3번째 시도 → 409 `REGION_LIMIT_EXCEEDED` "기존 동네를 삭제하세요")
+- 추가: `POST /api/members/me/regions` (최대 개수 `policies.md` `region.max-per-member`, 넘으면 409 `REGION_LIMIT_EXCEEDED` "기존 동네를 삭제하세요", 이미 추가한 동네 409 `REGION_ALREADY_ADDED`)
 - 인증: `PATCH /api/members/me/regions/{id}/verify` body `{lat, lng}` → 서버가 좌표의 행정동 == 해당 region이면 `verified_at=now`. **좌표는 저장하지 않는다.**
 - 유효기간 30일. 대표 동네 1개가 피드·검색 기준.
 - **물품 등록·예약은 대표 동네가 인증(유효기간 내)된 경우에만** → 아니면 403 `REGION_NOT_VERIFIED`
