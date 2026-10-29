@@ -13,11 +13,13 @@ import { CONFLICT_ITEM_ID, findMockItem, listMyMockItems, MOCK_ME, MOCK_MEMBERS 
 import {
   countUpcomingRentals,
   HISTORY_TAB_STATUSES,
+  isRentingItem,
   listItemRentals,
   listMyItems,
   listRentalHistory,
   MOCK_MY_ITEM_TABS,
   readPage,
+  readPathId,
   toPageResponse,
 } from './pageList';
 import { fail, ok } from './response';
@@ -47,6 +49,7 @@ const MESSAGES = {
   COMMON_INVALID_INPUT: '입력값이 올바르지 않습니다.',
   COMMON_UNSUPPORTED_MEDIA_TYPE: '지원하지 않는 요청 형식입니다.',
   ITEM_NOT_FOUND: '물품을 찾을 수 없습니다.',
+  ITEM_NOT_OWNER: '물품 등록자만 처리할 수 있습니다.',
   IMAGE_COUNT_INVALID: '이미지 장수가 올바르지 않습니다.',
   RENTAL_INVALID_PERIOD: '대여 기간이 올바르지 않습니다.',
   RENTAL_OUT_OF_AVAILABLE_PERIOD: '대여 가능 기간을 벗어났습니다.',
@@ -74,6 +77,7 @@ const STATUS_BY_CODE = {
   RENTAL_OWN_ITEM: 400,
   RENTAL_NOT_PARTICIPANT: 403,
   RENTAL_OWNER_ONLY: 403,
+  ITEM_NOT_OWNER: 403,
   RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE: 403,
   ITEM_NOT_FOUND: 404,
   RENTAL_NOT_FOUND: 404,
@@ -252,7 +256,7 @@ function toHistoryItem(rental) {
   };
 }
 
-// TODO: 백엔드 확정 전 임시 — 내 물품 목록 항목(features/item/api.js toMyItem과 같은 가정)
+/** MyItemResponse. 숨김 물품은 시드에 없어(숨기기 REQ-044 전) status는 항상 AVAILABLE */
 function toMyItemResponse(item, today, now) {
   return {
     itemId: item.itemId,
@@ -260,6 +264,10 @@ function toMyItemResponse(item, today, now) {
     thumbnailUrl: item.thumbnailUrl,
     pricePerDay: item.pricePerDay,
     deposit: item.deposit,
+    regionName: item.regionName,
+    status: 'AVAILABLE',
+    isRenting: isRentingItem(db.rentals, item.itemId),
+    bumpedAt: item.bumpedAt,
     viewCount: item.counts.viewCount,
     wishCount: item.counts.wishCount,
     chatCount: item.counts.chatCount,
@@ -267,7 +275,7 @@ function toMyItemResponse(item, today, now) {
   };
 }
 
-// TODO: 백엔드 확정 전 임시 — 물품별 예약 현황 항목(features/rental/api.js toItemRental과 같은 가정)
+/** ItemRentalResponse */
 function toItemRentalResponse(rental) {
   return {
     rentalId: rental.rentalId,
@@ -276,6 +284,15 @@ function toItemRentalResponse(rental) {
     status: rental.status,
     renter: { memberId: rental.renterId, nickname: MOCK_MEMBERS[rental.renterId].nickname },
   };
+}
+
+/** path의 itemId. Long으로 바뀌지 않으면 400 */
+function requireItemId(params) {
+  const itemId = readPathId(params.itemId);
+  if (itemId == null) {
+    invalidInput('itemId', '형식이 올바르지 않습니다.');
+  }
+  return itemId;
 }
 
 /** 쿼리의 page(없으면 0). 0 이상 정수가 아니면 400. size는 보내도 무시한다 */
@@ -440,7 +457,7 @@ export const rentalHandlers = [
     }),
   ),
 
-  // TODO: 백엔드 확정 전 임시 — REQ-020 내 물품 목록은 openapi.json에 아직 없다. 빌린 내역과 같은 page 형식으로 가정
+  // REQ-020 내 물품 관리(openapi.json 그대로). tab 생략은 AVAILABLE, HIDDEN은 빈 목록, 최근 등록 순, 20건 고정
   http.get(
     '/api/members/me/items',
     handle(({ request }) => {
@@ -459,18 +476,19 @@ export const rentalHandlers = [
     }),
   ),
 
-  // TODO: 백엔드 확정 전 임시 — REQ-020 물품별 예약 현황은 openapi.json에 아직 없다. 남의 물품 403 코드는
-  // RENTAL_OWNER_ONLY로 가정(백엔드 확정 시 맞춘다). 검사 순서: 입력 400 → 404 → 403
+  // REQ-020 물품별 예약 현황(openapi.json 그대로). 정렬은 open-issues #20(pageList.js), 20건 고정.
+  // 검사 순서: 입력 400 → 404 → 403
   http.get(
     '/api/items/:itemId/rentals',
     handle(({ params, request }) => {
+      const itemId = requireItemId(params);
       const page = requirePage(new URL(request.url).searchParams);
-      const item = findMockItem(params.itemId);
+      const item = findMockItem(itemId);
       if (!item || item.isDeleted) {
         reject('ITEM_NOT_FOUND');
       }
       if (item.ownerId !== MOCK_ME) {
-        reject('RENTAL_OWNER_ONLY');
+        reject('ITEM_NOT_OWNER');
       }
       const rentals = listItemRentals(db.rentals, item.itemId).map(toItemRentalResponse);
       return ok(toPageResponse(rentals, page));
@@ -480,7 +498,7 @@ export const rentalHandlers = [
   http.get(
     '/api/items/:itemId/calendar',
     handle(({ params, request }) => {
-      const item = findMockItem(params.itemId);
+      const item = findMockItem(requireItemId(params));
       if (!item || item.isDeleted) {
         reject('ITEM_NOT_FOUND');
       }

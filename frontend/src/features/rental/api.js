@@ -79,16 +79,15 @@ export function fetchRentalHistory({ tab, page }) {
   return apiClient.get('/members/me/rentals', { params: { role: 'renter', tab, page } });
 }
 
-// TODO: 백엔드 확정 전 임시 — 물품별 예약 현황(REQ-020)은 openapi.json에 아직 없다. 빌린 내역과 같은 page 형식,
-// 항목 { rentalId, startDate, endDate, status, renter { memberId, nickname } }으로 가정했다. 응답 항목을 읽는 곳은
-// toItemRental 하나다. 머지되면 openapi.json으로 맞춘다.
-/** GET /api/items/{itemId}/rentals?page= (제공자 본인만) */
+/**
+ * GET /api/items/{itemId}/rentals?page= → PageResponse<ItemRentalResponse> (제공자 본인만, 남의 물품 403 ITEM_NOT_OWNER).
+ * size는 보내지 않는다(서버가 item-rentals.page로 고정). 정렬도 서버가 한다.
+ */
 export function fetchItemRentals(itemId, page) {
   return apiClient.get(`/items/${itemId}/rentals`, { params: { page } });
 }
 
-// TODO: 백엔드 확정 전 임시 — 위 fetchItemRentals 항목의 가정한 필드
-/** 예약 현황 시트 한 줄 */
+/** 예약 현황 시트 한 줄(openapi.json ItemRentalResponse 기준) */
 export function toItemRental(rental) {
   return {
     rentalId: rental.rentalId,

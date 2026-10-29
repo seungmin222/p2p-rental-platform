@@ -1,9 +1,42 @@
 import { describe, expect, it } from 'vitest';
 
-import { toMyItem } from './api';
+import { toItemSummary, toMyItem } from './api';
+
+describe('toItemSummary', () => {
+  const detail = {
+    itemId: 101,
+    name: '4인용 거실형 텐트',
+    images: [
+      { imageId: 1, url: '/files/1.jpg', thumbnailUrl: '/files/1_thumb.jpg' },
+      { imageId: 2, url: '/files/2.jpg', thumbnailUrl: '/files/2_thumb.jpg' },
+    ],
+    pricePerDay: 15000,
+    deposit: 50000,
+    owner: { memberId: 2, nickname: '캠핑조아', profileImageUrl: null, regionName: '연수동' },
+    regionName: '송도동',
+    isOwner: false,
+  };
+
+  it('대표 이미지(0번)의 썸네일과 제공자 정보를 꺼낸다', () => {
+    expect(toItemSummary(detail)).toEqual({
+      itemId: 101,
+      name: '4인용 거실형 텐트',
+      thumbnailUrl: '/files/1_thumb.jpg',
+      pricePerDay: 15000,
+      deposit: 50000,
+      ownerNickname: '캠핑조아',
+      regionName: '연수동',
+      isOwner: false,
+    });
+  });
+
+  it('이미지가 없으면 썸네일 null', () => {
+    expect(toItemSummary({ ...detail, images: [] })).toMatchObject({ thumbnailUrl: null });
+  });
+});
 
 describe('toMyItem', () => {
-  it('가정한 응답 필드를 카드 모양으로 옮긴다', () => {
+  it('MyItemResponse에서 카드가 쓰는 필드만 옮긴다', () => {
     const item = {
       itemId: 103,
       name: '캠핑 의자 2개',
@@ -14,7 +47,10 @@ describe('toMyItem', () => {
       wishCount: 3,
       chatCount: 2,
       upcomingRentalCount: 1,
-      extra: 'ignored',
+      isRenting: false,
+      regionName: '송도동',
+      status: 'AVAILABLE',
+      bumpedAt: '2026-10-20T10:00:00',
     };
     expect(toMyItem(item)).toEqual({
       itemId: 103,

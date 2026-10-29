@@ -2,7 +2,7 @@
 // 목은 화면 상수(features)를 가져오지 않는 규칙이라 탭 표를 여기 따로 둔다(state-machines.md "UI 탭 매핑").
 import { compareDate } from '../shared/lib/date';
 
-// policies.md rental-history.page (요청의 size는 받지 않는다). 내 물품·예약 현황도 같은 크기로 가정
+// policies.md rental-history.page·my-items.page·item-rentals.page (모두 20, 요청의 size는 받지 않는다)
 export const PAGE_SIZE = 20;
 
 /** 빌린 내역 탭 → 상태 */
@@ -44,6 +44,19 @@ export function readPage(value) {
   }
   const page = Number(value);
   return page <= INT32_MAX ? page : null;
+}
+
+// 백엔드 path id는 Long. 0·음수는 변환이 되어 조회(404)로 가고, 정수가 아니거나 범위를 넘으면 타입 변환 실패로 400
+const INT64_MIN = -(2n ** 63n);
+const INT64_MAX = 2n ** 63n - 1n;
+
+/** path의 id(itemId 등). Long으로 바뀌면 숫자, 아니면 null(400) */
+export function readPathId(value) {
+  if (!/^-?\d+$/.test(value ?? '')) {
+    return null;
+  }
+  const id = BigInt(value);
+  return id >= INT64_MIN && id <= INT64_MAX ? Number(id) : null;
 }
 
 /** 빌린 내역 정렬(rental.md REQ-019): OVERDUE 먼저 → startDate DESC → id DESC */
@@ -92,9 +105,26 @@ export function listMyItems(items, rentals, tab) {
     .sort((a, b) => b.itemId - a.itemId);
 }
 
-/** 물품별 예약 현황(REQ-020 "기간순"): startDate ASC → id ASC */
+/** 예약 현황에서 뒤로 보내는 지난 건 */
+const PAST_STATUSES = ['COMPLETED', 'CANCELED'];
+
+/**
+ * 물품별 예약 현황 정렬(open-issues #20): 다가오는·진행 중 건(PENDING_PAYMENT~RETURNED) startDate ASC 먼저,
+ * 지난 건(COMPLETED·CANCELED) startDate DESC 뒤에. 같은 시작일은 id ASC
+ */
+function compareItemRental(a, b) {
+  const aPast = PAST_STATUSES.includes(a.status);
+  const bPast = PAST_STATUSES.includes(b.status);
+  if (aPast !== bPast) {
+    return aPast ? 1 : -1;
+  }
+  const byDate = aPast
+    ? compareDate(b.startDate, a.startDate)
+    : compareDate(a.startDate, b.startDate);
+  return byDate || a.rentalId - b.rentalId;
+}
+
+/** 물품별 예약 현황(REQ-020). CANCELED 포함 */
 export function listItemRentals(rentals, itemId) {
-  return rentals
-    .filter((rental) => rental.itemId === itemId)
-    .sort((a, b) => compareDate(a.startDate, b.startDate) || a.rentalId - b.rentalId);
+  return rentals.filter((rental) => rental.itemId === itemId).sort(compareItemRental);
 }

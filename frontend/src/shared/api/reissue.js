@@ -8,7 +8,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api';
 /** 인터셉터를 달지 않은 별도 인스턴스. 재발급 401이 다시 재발급을 부르는 루프를 막는다. */
 const reissueClient = axios.create({ baseURL: API_BASE_URL, withCredentials: true });
 
-// TODO: 백엔드 확정 전 임시 — feat/member-auth의 재발급 응답 DTO가 머지되면 필드명을 openapi.json으로 확인해 맞춘다.
+// 응답 본문을 읽는 곳은 이 함수 하나다(openapi.json AuthTokenResponse { accessToken }).
 function extractAccessToken(body) {
   return body?.data?.accessToken;
 }

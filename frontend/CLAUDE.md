@@ -11,7 +11,7 @@
 | 입력 제한(장수·글자 수·기간) | `docs/policies.md` |
 | 화면 동작·예외 상황·에러별 안내 | `docs/domains/*.md` |
 
-- **필드명을 추측해서 쓰지 않는다.** openapi.json에서 확인하고, 없으면(미구현 API) 백엔드 담당과 응답 형태를 합의할 때까지 MSW 목에 `// TODO: 백엔드 확정 전 임시` 주석을 단다. 코드에서 미확정 응답 필드를 읽어야 하면 그 접근을 함수 하나로 격리하고 같은 주석을 단다(예: `shared/api/reissue.js`의 `extractAccessToken`).
+- **필드명을 추측해서 쓰지 않는다.** openapi.json에서 확인하고, 없으면(미구현 API) 백엔드 담당과 응답 형태를 합의할 때까지 MSW 목에 `// TODO: 백엔드 확정 전 임시` 주석을 단다. 코드에서 미확정 응답 필드를 읽어야 하면 그 접근을 함수 하나로 격리하고 같은 주석을 단다. 확정되면 그 함수만 openapi.json에 맞추고 TODO를 지운다(격리는 유지. 예: `shared/api/reissue.js`의 `extractAccessToken`, `features/item/api.js`의 `toItemSummary`).
 - openapi.json과 실제 응답이 다르면 프론트에서 맞추지 말고 백엔드에 알린다(openapi.json 재생성 누락일 가능성).
 - 사람은 백엔드 로컬 서버의 `/swagger-ui.html`에서 직접 호출해 볼 수 있다.
 
