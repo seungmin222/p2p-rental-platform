@@ -7,10 +7,11 @@ import Spinner from './Spinner';
  * 끝에 닿으면 다음 페이지를 부르고(useInfiniteScroll), 불러오는 중엔 스피너, 실패하면 목록은 그대로 두고 "다시 시도".
  */
 export default function InfiniteListFooter({ query }) {
-  const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = query;
+  const { hasNextPage, isFetching, isFetchingNextPage, isFetchNextPageError, fetchNextPage } =
+    query;
   const sentinelRef = useInfiniteScroll({
     hasNextPage,
-    isFetchingNextPage,
+    isFetching,
     isFetchNextPageError,
     fetchNextPage,
   });
