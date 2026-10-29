@@ -74,6 +74,16 @@ app:
     cancel-agreement:
       # cancel-agreement.expire-hours: 양측 동의 취소 요청이 상대 무응답으로 만료되는 시간 (REQ-015)
       expire-hours: 48
+    inspection:
+      images:
+        # inspection.images.min / max / max-file-size: 인계·반납·판정 사진 1~5장, 장당 10MB (REQ-017, REQ-018)
+        min: 1
+        max: 5
+        max-file-size: 10MB
+      # inspection.handover-memo-max: 인계 메모 (REQ-017). item_inspections.note VARCHAR(300)과 같게
+      handover-memo-max: 300
+      # inspection.abnormal-note-max: 상태 확인 '이상' 내용 (REQ-018). item_inspections.result_note VARCHAR(500)과 같게
+      abnormal-note-max: 500
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

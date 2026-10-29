@@ -3,8 +3,14 @@ package com.team7.rental.global.storage;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-/** 저장 키 생성·검증. 키가 저장 경로 밖으로 나가지 못하게(../ 등) 허용 문자를 제한한다. */
-final class StorageKeys {
+/**
+ * 저장 키 생성·검증. 키가 저장 경로 밖으로 나가지 못하게(../ 등) 허용 문자를 제한한다.
+ * 용도별 디렉터리(FileStorage.upload의 directory) 상수는 여기에 모은다. 생성·검증 메서드는 저장소 구현만 쓴다.
+ */
+public final class StorageKeys {
+
+	/** 인계·반납·판정 사진 (REQ-017·018) */
+	public static final String INSPECTIONS = "inspections";
 
 	private static final Pattern DIRECTORY = Pattern.compile("[a-z0-9-]+(/[a-z0-9-]+)*");
 	private static final Pattern EXTENSION = Pattern.compile("[a-z0-9]{1,5}");

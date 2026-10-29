@@ -14,12 +14,12 @@ import java.util.zip.CRC32;
 import javax.imageio.ImageIO;
 
 /** 이미지 테스트 픽스처. 바이너리 파일을 커밋하지 않고 코드로 만든다. */
-final class TestImages {
+public final class TestImages {
 
 	private TestImages() {}
 
 	/** 왼쪽 절반 빨강, 오른쪽 절반 파랑인 JPEG (EXIF 없음) */
-	static byte[] jpeg(int width, int height) {
+	public static byte[] jpeg(int width, int height) {
 		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		Graphics2D g = image.createGraphics();
 		g.setColor(Color.RED);

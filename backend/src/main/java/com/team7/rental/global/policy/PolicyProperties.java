@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.util.unit.DataSize;
 import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.Valid;
@@ -34,7 +35,9 @@ public record PolicyProperties(
 	@Valid @NotNull
 	CancelFee cancelFee,
 	@Valid @NotNull
-	CancelAgreement cancelAgreement) {
+	CancelAgreement cancelAgreement,
+	@Valid @NotNull
+	Inspection inspection) {
 
 	/**
 	 * @param originalMaxLongSide 원본 재인코딩 시 긴 변 최대 픽셀 (image.original-max-long-side)
@@ -115,5 +118,36 @@ public record PolicyProperties(
 	public record CancelAgreement(
 		@Positive
 		int expireHours) {
+	}
+
+	/**
+	 * 인계·반납 기록 (REQ-017·018)
+	 *
+	 * @param handoverMemoMax 인계 메모 최대 글자 수 (inspection.handover-memo-max)
+	 * @param abnormalNoteMax 상태 확인 '이상' 내용 최대 글자 수 (inspection.abnormal-note-max)
+	 */
+	public record Inspection(
+		@Valid @NotNull
+		Images images,
+		@Positive
+		int handoverMemoMax,
+		@Positive
+		int abnormalNoteMax) {
+
+		/**
+		 * 인계·반납·판정 사진 (inspection.images.*)
+		 *
+		 * @param min 최소 장수 (inspection.images.min). 판정 '이상' 사진도 이 범위
+		 * @param max 최대 장수 (inspection.images.max)
+		 * @param maxFileSize 장당 최대 용량 (inspection.images.max-file-size)
+		 */
+		public record Images(
+			@Positive
+			int min,
+			@Positive
+			int max,
+			@NotNull
+			DataSize maxFileSize) {
+		}
 	}
 }
