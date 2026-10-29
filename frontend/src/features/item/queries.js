@@ -13,5 +13,7 @@ export function useItemSummary(itemId) {
     queryFn: () => fetchItem(itemId),
     select: toItemSummary,
     staleTime: 10_000,
+    // 경로의 id가 숫자가 아니면 부르지 않는다(화면이 바로 "찾을 수 없어요")
+    enabled: Number.isInteger(itemId),
   });
 }

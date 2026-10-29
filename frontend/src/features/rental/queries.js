@@ -62,6 +62,7 @@ export function useCalendarDays(itemId, months) {
       queryKey: rentalKeys.calendarMonth(itemId, month),
       queryFn: () => fetchCalendar(itemId, month),
       staleTime: SHORT_STALE_TIME,
+      enabled: Number.isInteger(itemId),
     })),
     combine: combineCalendar,
   });
