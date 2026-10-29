@@ -57,10 +57,10 @@ try {
 ## REQ-015 예약 취소 [1]
 
 ### 단독 취소 `PATCH /api/rentals/{id}/cancel { reason: CancelReason, reasonText? }`
-- 당사자(대여자·제공자)만 → 아니면 403
-- 가능: PENDING_PAYMENT, 또는 RESERVED **이고 오늘 < startDate**
+- 당사자(대여자·제공자)만 → 아니면 403 `RENTAL_NOT_PARTICIPANT`. 없는 대여 404 `RENTAL_NOT_FOUND`
+- 가능: PENDING_PAYMENT, 또는 RESERVED **이고 오늘 < startDate**. 그 외 상태는 409 `RENTAL_INVALID_TRANSITION`
 - 오늘 ≥ startDate인 RESERVED(인계 안 됨): 단독 취소 409 `RENTAL_CANCEL_NOT_ALLOWED` → 양측 동의 취소로 안내
-- reason=OTHER면 reasonText 필수(200자)
+- reason=OTHER면 reasonText 필수(200자) → 아니면 400 `COMMON_INVALID_INPUT`
 - `canceled_at`, `cancel_type`(RENTER / OWNER), 사유를 rental과 이력에 기록 (REQ-062 페널티 산정용)
 - **환불액**: `policies.md` §2 취소 수수료 표. 대여자 단독 취소가 시작일 2일 전~전날이면 대여료의 30%를 `cancel_fee`로 남기고 나머지와 보증금을 PG 부분 취소. 그 외는 전액 취소
 - cancel_fee > 0이면 정산 생성(`payment.md` REQ-039)
@@ -69,8 +69,8 @@ try {
 - 1순위: 상태만 CANCELED (수수료 계산은 하지만 금액 처리 없음)
 
 ### 양측 동의 취소 (시작일 이후, 인계 전)
-- 요청 `POST /api/rentals/{id}/cancel-agreements { reason, reasonText? }`: 당사자 한쪽, RESERVED이고 오늘 ≥ startDate. 진행 중인 요청이 있으면 409. 상대에게 `CANCEL_AGREEMENT_REQUESTED` 알림
-- 응답 `PATCH /api/rentals/{id}/cancel-agreements/{agreementId} { action: ACCEPT | REJECT }`: 요청하지 않은 쪽만. ACCEPT → rental CANCELED(cancelType=`MUTUAL`), 전액 환불. REJECT → 요청 종료, 양측 `CANCEL_AGREEMENT_RESULT` 알림
+- 요청 `POST /api/rentals/{id}/cancel-agreements { reason, reasonText? }`: 당사자 한쪽, RESERVED(아니면 409 `RENTAL_INVALID_TRANSITION`)이고 오늘 ≥ startDate(아니면 409 `RENTAL_CANCEL_AGREEMENT_TOO_EARLY` → 단독 취소로 안내). 진행 중인 요청이 있으면 409 `RENTAL_CANCEL_AGREEMENT_IN_PROGRESS`. 성공 201. 상대에게 `CANCEL_AGREEMENT_REQUESTED` 알림
+- 응답 `PATCH /api/rentals/{id}/cancel-agreements/{agreementId} { action: ACCEPT | REJECT }`: 요청하지 않은 쪽만(요청자 본인은 403 `RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE`). 그 대여의 요청이 아니면 404 `RENTAL_CANCEL_AGREEMENT_NOT_FOUND`, 이미 응답했거나 만료된 요청은 409 `RENTAL_CANCEL_AGREEMENT_CLOSED`. ACCEPT → rental CANCELED(cancelType=`MUTUAL`), 전액 환불. REJECT → 요청 종료, 양측 `CANCEL_AGREEMENT_RESULT` 알림
 - 48시간 무응답 → EXPIRED (배치 10분)
 - 저장: `rental_cancel_agreements` (erd.md)
 

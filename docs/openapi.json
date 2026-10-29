@@ -398,10 +398,577 @@
           "Rental"
         ]
       }
+    },
+    "/api/rentals/{rentalId}/cancel": {
+      "patch": {
+        "description": "대여자·제공자가 결제 대기(PENDING_PAYMENT) 또는 시작일 전의 대여 예정(RESERVED)을 취소한다. 시작일이 지난 대여 예정은 409 RENTAL_CANCEL_NOT_ALLOWED이며 양측 동의 취소를 쓴다. 대여자가 시작일 직전에 취소하면 cancelFee가 생긴다(policies.md cancel-fee.rate-percent, cancel-fee.free-until-days-before). 1순위 단계는 수수료를 기록만 하고 환불하지 않는다. reason\u003dOTHER면 reasonText 필수(cancel.reason-text-max). 응답은 대여 상세와 같다.",
+        "operationId": "cancelRental",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RentalCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_CANCEL_NOT_ALLOWED": {
+                    "summary": "대여 시작일이 지나 단독으로 취소할 수 없습니다. 상대방에게 취소 동의를 요청해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_CANCEL_NOT_ALLOWED",
+                        "details": [],
+                        "message": "대여 시작일이 지나 단독으로 취소할 수 없습니다. 상대방에게 취소 동의를 요청해 주세요."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_CANCEL_NOT_ALLOWED, RENTAL_INVALID_TRANSITION"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "대여 단독 취소 (REQ-015)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
+    "/api/rentals/{rentalId}/cancel-agreements": {
+      "post": {
+        "description": "시작일이 지나고 인계 전인 대여 예정(RESERVED)을 취소하려면 상대 동의가 필요하다. 당사자 한쪽이 요청하고, 상대가 응답하지 않으면 만료된다(policies.md cancel-agreement.expire-hours). 진행 중인 요청이 있으면 409, 거절·만료된 뒤에는 다시 요청할 수 있다. 시작일 전이면 단독 취소를 쓴다. reason\u003dOTHER면 reasonText 필수(cancel.reason-text-max).",
+        "operationId": "requestCancelAgreement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RentalCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCancelAgreementResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_CANCEL_AGREEMENT_IN_PROGRESS": {
+                    "summary": "이미 진행 중인 취소 동의 요청이 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_CANCEL_AGREEMENT_IN_PROGRESS",
+                        "details": [],
+                        "message": "이미 진행 중인 취소 동의 요청이 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_CANCEL_AGREEMENT_TOO_EARLY": {
+                    "summary": "대여 시작일 전에는 단독으로 취소할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_CANCEL_AGREEMENT_TOO_EARLY",
+                        "details": [],
+                        "message": "대여 시작일 전에는 단독으로 취소할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_CANCEL_AGREEMENT_IN_PROGRESS, RENTAL_CANCEL_AGREEMENT_TOO_EARLY, RENTAL_INVALID_TRANSITION"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "양측 동의 취소 요청 (REQ-015)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
+    "/api/rentals/{rentalId}/cancel-agreements/{agreementId}": {
+      "patch": {
+        "description": "요청하지 않은 당사자가 수락하거나 거절한다. ACCEPT면 대여가 CANCELED(cancelType\u003dMUTUAL, 수수료 없음, 사유는 요청의 사유)가 되고, REJECT면 요청만 종료된다. 이미 응답했거나 만료된 요청은 409. 응답은 대여 상세와 같다.",
+        "operationId": "respondCancelAgreement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agreementId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelAgreementRespondRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE": {
+                    "summary": "본인이 보낸 취소 동의 요청에는 응답할 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE",
+                        "details": [],
+                        "message": "본인이 보낸 취소 동의 요청에는 응답할 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE, RENTAL_NOT_PARTICIPANT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_CANCEL_AGREEMENT_NOT_FOUND": {
+                    "summary": "취소 동의 요청을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_CANCEL_AGREEMENT_NOT_FOUND",
+                        "details": [],
+                        "message": "취소 동의 요청을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_CANCEL_AGREEMENT_NOT_FOUND, RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_CANCEL_AGREEMENT_CLOSED": {
+                    "summary": "이미 응답했거나 만료된 취소 동의 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_CANCEL_AGREEMENT_CLOSED",
+                        "details": [],
+                        "message": "이미 응답했거나 만료된 취소 동의 요청입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_CANCEL_AGREEMENT_CLOSED, RENTAL_INVALID_TRANSITION"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "양측 동의 취소 응답 (REQ-015)",
+        "tags": [
+          "Rental"
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "ActiveCancelAgreement": {
+        "type": "object",
+        "properties": {
+          "agreementId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "동의 취소 요청 ID (응답 API 경로에 쓴다)",
+            "example": 1
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "상대가 응답하지 않으면 만료되는 시각 (policies.md cancel-agreement.expire-hours)"
+          },
+          "reason": {
+            "type": "string",
+            "description": "취소 사유",
+            "enum": [
+              "SCHEDULE_CHANGE",
+              "ITEM_PROBLEM",
+              "COUNTERPART_REQUEST",
+              "OTHER"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "description": "취소 사유 텍스트 (사유 OTHER)"
+          },
+          "requestedByMe": {
+            "type": "boolean",
+            "description": "조회한 회원이 요청자면 true (요청자는 응답할 수 없다)"
+          }
+        }
+      },
+      "ApiResponseCancelAgreementResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CancelAgreementResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseRentalCalendarResponse": {
         "type": "object",
         "properties": {
@@ -450,6 +1017,72 @@
           }
         }
       },
+      "CancelAgreementRespondRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "ACCEPT면 대여가 취소(MUTUAL)되고, REJECT면 요청만 종료된다",
+            "enum": [
+              "ACCEPT",
+              "REJECT"
+            ]
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "CancelAgreementResponse": {
+        "type": "object",
+        "properties": {
+          "agreementId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "동의 취소 요청 ID",
+            "example": 1
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "상대가 응답하지 않으면 만료되는 시각 (policies.md cancel-agreement.expire-hours)"
+          },
+          "reason": {
+            "type": "string",
+            "description": "취소 사유",
+            "enum": [
+              "SCHEDULE_CHANGE",
+              "ITEM_PROBLEM",
+              "COUNTERPART_REQUEST",
+              "OTHER"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "description": "취소 사유 텍스트 (사유 OTHER)"
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID",
+            "example": 1
+          },
+          "requestedByMe": {
+            "type": "boolean",
+            "description": "조회한 회원이 요청자면 true"
+          },
+          "status": {
+            "type": "string",
+            "description": "요청 상태",
+            "enum": [
+              "REQUESTED",
+              "ACCEPTED",
+              "REJECTED",
+              "EXPIRED"
+            ]
+          }
+        }
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -493,6 +1126,29 @@
             "example": "2026-10"
           }
         }
+      },
+      "RentalCancelRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "취소 사유",
+            "enum": [
+              "SCHEDULE_CHANGE",
+              "ITEM_PROBLEM",
+              "COUNTERPART_REQUEST",
+              "OTHER"
+            ]
+          },
+          "reasonText": {
+            "type": "string",
+            "description": "사유 텍스트. reason\u003dOTHER면 필수, 최대 글자 수는 policies.md cancel.reason-text-max",
+            "example": "개인 사정으로 일정이 바뀌었어요"
+          }
+        },
+        "required": [
+          "reason"
+        ]
       },
       "RentalCounterpart": {
         "type": "object",
@@ -541,6 +1197,10 @@
       "RentalDetailResponse": {
         "type": "object",
         "properties": {
+          "activeCancelAgreement": {
+            "$ref": "#/components/schemas/ActiveCancelAgreement",
+            "description": "진행 중인 양측 동의 취소 요청(REQUESTED이고 만료 전). 없으면 null"
+          },
           "cancelFee": {
             "type": "integer",
             "format": "int32",

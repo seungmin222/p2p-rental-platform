@@ -107,7 +107,7 @@ erDiagram
 | returned_at DATETIME(6) NULL | 반납 요청(또는 미반납 신고) 시각 — 3일 자동 확인·연체료 기준 |
 | completed_at DATETIME(6) NULL | 거래 완료 시각 — 후기 7일 기한·정산 예정일 기준 |
 | canceled_at DATETIME(6) NULL | 취소 시각 |
-| cancel_type VARCHAR(30), cancel_reason VARCHAR(30), cancel_reason_text VARCHAR(200), canceled_by FK→members NULL | `CancelType`, `CancelReason`. 텍스트 200자는 `cancel.reason-text.max`. 시스템 취소면 canceled_by NULL |
+| cancel_type VARCHAR(30), cancel_reason VARCHAR(30), cancel_reason_text VARCHAR(200), canceled_by FK→members NULL | `CancelType`, `CancelReason`. 텍스트 200자는 `cancel.reason-text-max`. 시스템 취소면 canceled_by NULL |
 | cancel_fee INT | 기본 0. 취소 수수료 (`policies.md` §2) |
 | overdue_fee INT | 기본 0. 반납 시점에 확정 |
 | extension_count INT | 기본 0 |
@@ -119,7 +119,7 @@ erDiagram
 **rental_dates** [1, 실험용] — item_id, rented_date DATE, rental_id FK, **UK(item_id, rented_date)**. 예약·연장 확정 시 날짜마다 1행 INSERT, 취소·결제 만료·연장 취소 시 삭제. 실험 결과로 채택이 정해지기 전에는 기본 경로에서 쓰지 않는다.
 
 **rental_status_histories** — id, rental_id FK, from_status VARCHAR(30) NULL(생성 이력), to_status VARCHAR(30), changed_by FK→members NULL(시스템), reason VARCHAR(255) NULL(배치명 또는 사유), changed_at DATETIME(6). 인덱스 `idx_rental_status_histories_rental_id_changed_at (rental_id, changed_at)` — 생성됨(`V4`)
-**rental_cancel_agreements** [1] — id, rental_id FK, requested_by, reason, reason_text, status(`CancelAgreementStatus`), expires_at, responded_at, created_at. 인덱스 `(rental_id, status)`, `(status, expires_at)`(만료 배치). 한 대여에 REQUESTED는 1건만(애플리케이션 검증).
+**rental_cancel_agreements** [1] — id, rental_id FK, requested_by FK→members, reason VARCHAR(30)(`CancelReason`), reason_text VARCHAR(200) NULL, status VARCHAR(30)(`CancelAgreementStatus`), expires_at DATETIME(6), responded_at DATETIME(6) NULL(만료면 NULL), created_at, updated_at. 인덱스 `(rental_id, status)`, `(status, expires_at)`(만료 배치) — 생성됨(`V5`). 한 대여에 진행 중(REQUESTED이고 expires_at > now)인 요청은 1건만(대여 행 락 안에서 애플리케이션 검증). `@Version` 없음(만료는 벌크 UPDATE).
 **rental_extensions** [2] — id, rental_id, prev_end_date, new_end_date, additional_fee, status(`ExtensionStatus`), expires_at(결제 대기 만료), payment_id NULL. 인덱스 `(status, expires_at)`. PENDING_PAYMENT이고 만료 전인 행의 기간은 예약 겹침 검사 대상.
 
 **item_inspections**

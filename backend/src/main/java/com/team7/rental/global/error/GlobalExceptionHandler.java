@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationTrustResolver;
 import org.springframework.security.authentication.AuthenticationTrustResolverImpl;
@@ -48,6 +49,13 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e) {
 		log.info("BusinessException: {}", e.getErrorCode().getCode());
 		return toResponse(e.getErrorCode(), List.of());
+	}
+
+	/** 낙관적 락(@Version) 충돌. 같은 행을 다른 요청이 먼저 바꿨다 */
+	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+	public ResponseEntity<ApiResponse<Void>> handleOptimisticLock(ObjectOptimisticLockingFailureException e) {
+		log.info("Optimistic lock conflict: {}", e.getPersistentClassName());
+		return toResponse(ErrorCode.COMMON_CONCURRENT_UPDATE, List.of());
 	}
 
 	/** 컨트롤러 안의 인증 예외(메서드 보안 등). 처리하지 않으면 아래 Exception 핸들러에 걸려 500이 된다. */

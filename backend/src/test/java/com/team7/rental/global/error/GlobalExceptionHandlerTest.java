@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,6 +62,18 @@ class GlobalExceptionHandlerTest {
 			.andExpect(jsonPath("$.data").value(nullValue()))
 			.andExpect(jsonPath("$.error.code").value(errorCode.getCode()))
 			.andExpect(jsonPath("$.error.message").value(errorCode.getMessage()))
+			.andExpect(jsonPath("$.error.details").isEmpty());
+	}
+
+	@Test
+	@DisplayName("낙관적 락 충돌은 409 COMMON_CONCURRENT_UPDATE로 응답한다")
+	void optimisticLock() throws Exception {
+		// when, then
+		mockMvc.perform(get("/test/optimistic-lock"))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("COMMON_CONCURRENT_UPDATE"))
+			.andExpect(jsonPath("$.error.message").value(ErrorCode.COMMON_CONCURRENT_UPDATE.getMessage()))
 			.andExpect(jsonPath("$.error.details").isEmpty());
 	}
 
@@ -190,6 +203,11 @@ class GlobalExceptionHandlerTest {
 		@GetMapping("/test/business")
 		ApiResponse<Void> business() {
 			throw new BusinessException(ErrorCode.AUTH_FORBIDDEN);
+		}
+
+		@GetMapping("/test/optimistic-lock")
+		ApiResponse<Void> optimisticLock() {
+			throw new ObjectOptimisticLockingFailureException(Object.class, 1L);
 		}
 
 		@PostMapping("/test/body")

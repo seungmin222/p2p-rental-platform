@@ -7,6 +7,7 @@ import com.team7.rental.item.dto.ItemSummary;
 import com.team7.rental.rental.entity.CancelReason;
 import com.team7.rental.rental.entity.CancelType;
 import com.team7.rental.rental.entity.Rental;
+import com.team7.rental.rental.entity.RentalCancelAgreement;
 import com.team7.rental.rental.entity.RentalRole;
 import com.team7.rental.rental.entity.RentalStatus;
 
@@ -14,7 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * 대여 상세 (REQ-016, SCR-08). 스텝바와 상태 × 역할별 버튼을 그릴 만큼만 담는다.
- * 인계·반납 기록, 결제, 연체료, 진행 중인 동의 취소는 해당 REQ에서 추가한다.
+ * 인계·반납 기록, 결제, 연체료는 해당 REQ에서 추가한다.
  */
 public record RentalDetailResponse(
 	@Schema(description = "대여 ID", example = "1")
@@ -80,10 +81,16 @@ public record RentalDetailResponse(
 	int cancelFee,
 
 	@Schema(description = "예약 시각")
-	LocalDateTime createdAt) {
+	LocalDateTime createdAt,
 
+	@Schema(description = "진행 중인 양측 동의 취소 요청(REQUESTED이고 만료 전). 없으면 null")
+	ActiveCancelAgreement activeCancelAgreement) {
+
+	/**
+	 * @param activeCancelAgreement 진행 중인 동의 취소 요청. 없으면 null
+	 */
 	public static RentalDetailResponse of(Rental rental, RentalRole myRole, ItemSummary item, Long counterpartId,
-		String counterpartNickname) {
+		String counterpartNickname, RentalCancelAgreement activeCancelAgreement, Long memberId) {
 		return new RentalDetailResponse(
 			rental.getId(),
 			rental.getStatus(),
@@ -106,7 +113,8 @@ public record RentalDetailResponse(
 			rental.getCancelReason(),
 			rental.getCancelReasonText(),
 			rental.getCancelFee(),
-			rental.getCreatedAt());
+			rental.getCreatedAt(),
+			activeCancelAgreement == null ? null : ActiveCancelAgreement.of(activeCancelAgreement, memberId));
 	}
 
 	public record RentalItem(
@@ -121,6 +129,28 @@ public record RentalDetailResponse(
 
 		@Schema(description = "삭제된 물품이면 true (화면에 \"삭제된 물품\" 표시)")
 		boolean isDeleted) {
+	}
+
+	public record ActiveCancelAgreement(
+		@Schema(description = "동의 취소 요청 ID (응답 API 경로에 쓴다)", example = "1")
+		Long agreementId,
+
+		@Schema(description = "조회한 회원이 요청자면 true (요청자는 응답할 수 없다)")
+		boolean requestedByMe,
+
+		@Schema(description = "취소 사유")
+		CancelReason reason,
+
+		@Schema(description = "취소 사유 텍스트 (사유 OTHER)")
+		String reasonText,
+
+		@Schema(description = "상대가 응답하지 않으면 만료되는 시각 (policies.md cancel-agreement.expire-hours)")
+		LocalDateTime expiresAt) {
+
+		static ActiveCancelAgreement of(RentalCancelAgreement agreement, Long memberId) {
+			return new ActiveCancelAgreement(agreement.getId(), agreement.isRequestedBy(memberId),
+				agreement.getReason(), agreement.getReasonText(), agreement.getExpiresAt());
+		}
 	}
 
 	public record RentalCounterpart(

@@ -51,6 +51,11 @@ public class RentalStatusHistory extends BaseTimeEntity {
 	@Column(nullable = false)
 	private LocalDateTime changedAt;
 
+	/** 취소 이력의 reason. "SCHEDULE_CHANGE", 텍스트가 있으면 "OTHER: {텍스트}" (코드 + 200자라 255에 들어간다) */
+	public static String cancelReasonOf(CancelReason reason, String reasonText) {
+		return reasonText == null ? reason.name() : reason.name() + ": " + reasonText;
+	}
+
 	/**
 	 * @param fromStatus 생성 이력이면 null
 	 * @param changedBy 시스템이면 null, 이때 reason에 배치명

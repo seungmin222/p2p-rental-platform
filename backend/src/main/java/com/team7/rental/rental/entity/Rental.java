@@ -6,6 +6,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 import com.team7.rental.global.entity.BaseTimeEntity;
+import com.team7.rental.global.error.BusinessException;
+import com.team7.rental.global.error.ErrorCode;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,10 +23,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 대여 건. 물품·회원은 ID로만 참조한다. 상태 전이 메서드(cancel·handover 등)는 각 REQ 브랜치에서 추가한다.
+ * 대여 건. 물품·회원은 ID로만 참조한다. 상태 전이 메서드는 각 REQ 브랜치에서 추가한다(현재 cancel만).
  * <p>
  * 생성 팩토리는 프로그래밍 오류를 막는 불변식(기간 null·뒤집힘, 결제 대기의 만료 시각 null)만 검사하고 위반 시
- * IllegalArgumentException·NullPointerException을 던진다. 사용자 입력 검증(오늘 이후 시작, 일수 1~30, 400 응답)은
+ * IllegalArgumentException·NullPointerException을 던진다. 사용자 입력 검증(오늘 이후 시작, 일수 rental.min-days ~ rental.max-days, 400 응답)은
  * REQ-013 서비스가 한다.
  */
 @Getter
@@ -190,5 +192,57 @@ public class Rental extends BaseTimeEntity {
 
 	public Long counterpartOf(Long memberId) {
 		return roleOf(memberId) == RentalRole.RENTER ? ownerId : renterId;
+	}
+
+	/**
+	 * 취소할 수 있는지 확인한다(REQ-015, state-machines.md §1). 서비스가 수수료 계산 전에 부르고 {@link #cancel}도 다시 확인한다.
+	 * <ul>
+	 *   <li>RENTER·OWNER(단독 취소): PENDING_PAYMENT는 시점 제한 없음(자정 직전 생성으로 시작일이 지난 결제 대기도 있다).
+	 *   RESERVED는 오늘 &lt; startDate만, 오늘 ≥ startDate면 RENTAL_CANCEL_NOT_ALLOWED(양측 동의 취소로 안내)</li>
+	 *   <li>MUTUAL(양측 동의 취소): RESERVED이고 오늘 ≥ startDate</li>
+	 * </ul>
+	 * 그 외는 RENTAL_INVALID_TRANSITION.
+	 *
+	 * @throws IllegalArgumentException 시스템 취소 종류(PAYMENT_EXPIRED 등). 해당 REQ에서 추가한다
+	 */
+	public void validateCancelable(CancelType type, LocalDate today) {
+		switch (type) {
+			case RENTER, OWNER -> {
+				if (status == RentalStatus.PENDING_PAYMENT) {
+					return;
+				}
+				if (status != RentalStatus.RESERVED) {
+					throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+				}
+				if (!today.isBefore(startDate)) {
+					throw new BusinessException(ErrorCode.RENTAL_CANCEL_NOT_ALLOWED);
+				}
+			}
+			case MUTUAL -> {
+				if (status != RentalStatus.RESERVED || today.isBefore(startDate)) {
+					throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+				}
+			}
+			default -> throw new IllegalArgumentException("지원하지 않는 취소 종류입니다: " + type);
+		}
+	}
+
+	/**
+	 * → CANCELED (REQ-015). 이력은 changedBy가 canceledBy와 다를 수 있어(MUTUAL은 수락자) 서비스가 저장한다.
+	 *
+	 * @param canceledBy 단독 취소면 취소한 당사자, MUTUAL이면 동의 요청자
+	 * @param cancelFee CancelFeeCalculator가 계산한 수수료. 1순위는 기록만 한다
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION, RENTAL_CANCEL_NOT_ALLOWED ({@link #validateCancelable})
+	 */
+	public void cancel(Long canceledBy, CancelType type, CancelReason reason, String reasonText, int cancelFee,
+		LocalDateTime now) {
+		validateCancelable(type, now.toLocalDate());
+		this.status = RentalStatus.CANCELED;
+		this.canceledAt = now;
+		this.canceledBy = canceledBy;
+		this.cancelType = type;
+		this.cancelReason = reason;
+		this.cancelReasonText = reasonText;
+		this.cancelFee = cancelFee;
 	}
 }

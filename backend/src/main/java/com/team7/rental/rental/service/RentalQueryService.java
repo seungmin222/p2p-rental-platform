@@ -20,6 +20,8 @@ import com.team7.rental.rental.dto.CalendarDayStatus;
 import com.team7.rental.rental.dto.RentalCalendarResponse;
 import com.team7.rental.rental.dto.RentalDetailResponse;
 import com.team7.rental.rental.entity.Rental;
+import com.team7.rental.rental.entity.RentalCancelAgreement;
+import com.team7.rental.rental.repository.RentalCancelAgreementRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.service.RentalOccupancyReader.OccupiedPeriod;
 
@@ -31,13 +33,15 @@ import lombok.RequiredArgsConstructor;
 public class RentalQueryService {
 
 	private final RentalRepository rentalRepository;
+	private final RentalCancelAgreementRepository rentalCancelAgreementRepository;
 	private final RentalOccupancyReader rentalOccupancyReader;
 	private final ItemQueryService itemQueryService;
 	private final MemberQueryService memberQueryService;
 	private final Clock clock;
 
 	/**
-	 * 대여 상세(REQ-016, SCR-08). 당사자만 본다.
+	 * 대여 상세(REQ-016, SCR-08). 당사자만 본다. 취소 쓰기(REQ-015)도 같은 트랜잭션 안에서 이 메서드로 응답을 만든다.
+	 * 진행 중인 동의 취소 조회가 변경 전 행을 보지 않는 것은 JPQL 실행 전 자동 flush 덕분이다.
 	 *
 	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT
 	 */
@@ -49,8 +53,11 @@ public class RentalQueryService {
 		}
 		ItemSummary item = itemQueryService.getSummary(rental.getItemId());
 		Long counterpartId = rental.counterpartOf(memberId);
+		RentalCancelAgreement activeCancelAgreement = rentalCancelAgreementRepository
+			.findOpen(rentalId, LocalDateTime.now(clock))
+			.orElse(null);
 		return RentalDetailResponse.of(rental, rental.roleOf(memberId), item, counterpartId,
-			memberQueryService.getNickname(counterpartId));
+			memberQueryService.getNickname(counterpartId), activeCancelAgreement, memberId);
 	}
 
 	/**

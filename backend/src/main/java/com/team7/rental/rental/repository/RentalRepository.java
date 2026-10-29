@@ -4,15 +4,28 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
 
+import jakarta.persistence.LockModeType;
+
 public interface RentalRepository extends JpaRepository<Rental, Long> {
+
+	/**
+	 * 행 락(SELECT ... FOR UPDATE)으로 읽는다. 취소·동의 요청·동의 응답이 같은 대여에서 한 줄로 서게 한다(REQ-015).
+	 * 락 대기 시간 힌트는 두지 않는다(MySQL innodb_lock_wait_timeout 기본값). 이유는 docs/prompts/feat/rental-cancel/notes.md
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select r from Rental r where r.id = :id")
+	Optional<Rental> findByIdForUpdate(@Param("id")
+	Long id);
 
 	/**
 	 * [from, to]와 겹치는(양 끝 포함) 기간 점유 대여. 상태는 {@link RentalStatus#ACTIVE_FOR_PERIOD}를 넘기고,
