@@ -47,7 +47,7 @@ SCR-07 대여 예약 + SCR-08 대여 상세 + 공통(`features/rental/`)·MSW �
 | 106 | 삭제된 물품(isDeleted) 표시 |
 
 ## 공통
-- **버튼 표 `getRentalActions`는 `{ actions: [{ type, label, variant, disabledReason }], notice }`를 돌려준다.** 비활성 사유는 버튼 아래 한 줄(aria-describedby). notice는 연체 안내·대여자 상태 확인 대기 안내·결제 카운트다운(`paymentExpiresAt`). 결제 플래그는 네 번째 인자 `{ paymentEnabled }`(기본 env)로 받아 테스트에서 바꾼다.
+- **버튼 표 `getRentalActions`는 `{ actions: [{ type, label, variant, disabledReason }], notice }`를 돌려준다.** 비활성 사유는 버튼 아래 한 줄(aria-describedby). notice는 연체 안내·대여자 상태 확인 대기 안내·결제 카운트다운(`paymentExpiresAt`, 결제가 켜졌을 때만 — 꺼져 있으면 PENDING_PAYMENT여도 notice 없음). 결제 플래그는 네 번째 인자 `{ paymentEnabled }`(기본 env)로 받아 테스트에서 바꾼다.
 - **RESERVED·시작일 이후에 상대가 요청하면 제공자 바는 "거절 · 동의 · 인계 확인" 3개.** 인계는 동의 요청과 무관하게 서버가 허용하므로 숨기지 않는다. 360px에서 한 줄에 들어간다(헤드리스 확인).
 - **"취소 요청 중"은 비활성 버튼 + "M월 D일 HH:mm까지 상대의 응답을 기다려요".** 진행 중 요청 카드(본문)에도 사유·만료 시각.
 - **연체 안내는 하단 바 notice로 한 번만**(본문에 중복하지 않음). 바가 sticky라 항상 보인다.

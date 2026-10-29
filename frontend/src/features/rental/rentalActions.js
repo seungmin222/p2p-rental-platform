@@ -48,7 +48,10 @@ export function getRentalActions(
           action(A.CANCEL, '예약 취소', 'secondary'),
           ...(paymentEnabled ? [action(A.PAY, '결제하기', 'primary')] : []),
         ],
-        notice: { tone: 'default', paymentExpiresAt: rental.paymentExpiresAt },
+        // 결제가 꺼져 있으면 결제할 수 없으므로 남은 시간도 세지 않는다
+        notice: paymentEnabled
+          ? { tone: 'default', paymentExpiresAt: rental.paymentExpiresAt }
+          : null,
       };
 
     case 'RESERVED': {
