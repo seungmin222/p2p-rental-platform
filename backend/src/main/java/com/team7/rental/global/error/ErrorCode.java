@@ -24,6 +24,9 @@ public enum ErrorCode {
 	// 인증·인가
 	AUTH_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
 	AUTH_FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
+	AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
+	/** 재발급 실패: RT 없음·서명 오류·만료, family 키 없음(로그아웃·강제 무효화), 이미 교체된 RT 재사용 (REQ-003) */
+	AUTH_REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "로그인이 만료되었습니다. 다시 로그인해 주세요."),
 
 	// 이미지 업로드 (global/storage)
 	IMAGE_INVALID_TYPE(HttpStatus.BAD_REQUEST, "jpg 또는 png 이미지만 업로드할 수 있습니다."),
@@ -31,10 +34,21 @@ public enum ErrorCode {
 	IMAGE_COUNT_INVALID(HttpStatus.BAD_REQUEST, "이미지 장수가 올바르지 않습니다."),
 
 	// 회원·동네
+	MEMBER_EMAIL_DUPLICATED(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."),
+	MEMBER_NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
+	MEMBER_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "현재 비밀번호가 일치하지 않습니다."),
 	REGION_NOT_VERIFIED(HttpStatus.FORBIDDEN, "대표 동네 인증이 필요합니다."),
+	REGION_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "더 이상 동네를 추가할 수 없습니다. 기존 동네를 삭제하세요."),
+	REGION_ALREADY_ADDED(HttpStatus.CONFLICT, "이미 추가한 동네입니다."),
+	REGION_VERIFY_MISMATCH(HttpStatus.BAD_REQUEST, "현재 위치가 선택한 동네와 다릅니다."),
 
 	// 물품
 	ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "물품을 찾을 수 없습니다."),
+	ITEM_NOT_OWNER(HttpStatus.FORBIDDEN, "물품 등록자만 처리할 수 있습니다."),
+	/** details에 충돌 기간을 한 건씩 담는다: { field: "availablePeriods", reason: "2026-11-03 ~ 2026-11-05" } (REQ-007) */
+	ITEM_PERIOD_CONFLICT(HttpStatus.CONFLICT, "예약이 있는 날짜는 대여 가능 기간에서 뺄 수 없습니다."),
+	/** details에 해당 대여 건을 한 건씩 담는다: { field: "rentals", reason: "..." } (REQ-008) */
+	ITEM_HAS_ACTIVE_RENTAL(HttpStatus.CONFLICT, "진행 중인 대여가 있어 삭제할 수 없습니다."),
 
 	// 대여
 	RENTAL_NOT_FOUND(HttpStatus.NOT_FOUND, "대여 내역을 찾을 수 없습니다."),

@@ -12,7 +12,7 @@
 | `member.nickname` | 2~10자 | 001, 005 |
 | `auth.access-token-ttl` | 30분 | 002 |
 | `auth.refresh-token-ttl` | 14일 | 002, 003 |
-| `auth.refresh-cookie` | HttpOnly, SameSite=Lax, Path=`/api/auth`, Secure(local 제외) | 002, 003 |
+| `auth.refresh-cookie` | 이름 `refreshToken`, HttpOnly, SameSite=Lax, Path=`/api/auth`, Secure(local 제외) | 002, 003 |
 | `password-reset.token-ttl` / `rate-limit` | 30분 / 같은 이메일 5분에 1회 | 036 |
 | `region.verify-valid-days` | 30일 | 004 |
 | `region.max-per-member` | 2개 | 004 |
@@ -72,7 +72,7 @@
 | --- | --- | --- |
 | `chat.message.max` | 1,000자 | 027 |
 | `chat.history.page` | 50건 | 028 |
-| `feed.page` / `search.page` / `notification.page` / `rental-history.page` | 20건 (`rental-history.page`는 요청에서 size를 받지 않는 고정값) | 009, 010, 032, 019 |
+| `feed.page` / `search.page` / `notification.page` / `rental-history.page` / `my-items.page` / `item-rentals.page` | 20건 (`search.page`·`rental-history.page`·`my-items.page`·`item-rentals.page`는 요청에서 size를 받지 않는 고정값) | 009, 010, 032, 019, 020 |
 | `review.write-deadline-days` | 거래 완료 후 7일 (completed_at + 7일 정각까지 포함) | 034, 019 |
 | `review.content.max` | 300자 | 034 |
 | `trust.initial` / 범위 | 50점 / 0~100, 0.5 단위 | 054 |
