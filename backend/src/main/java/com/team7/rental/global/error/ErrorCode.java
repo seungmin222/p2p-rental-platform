@@ -17,6 +17,7 @@ public enum ErrorCode {
 	COMMON_INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 올바르지 않습니다."),
 	COMMON_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 대상을 찾을 수 없습니다."),
 	COMMON_METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식입니다."),
+	COMMON_UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 요청 형식입니다."),
 	COMMON_CONCURRENT_UPDATE(HttpStatus.CONFLICT, "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요."),
 	COMMON_INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "일시적인 서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."),
 
@@ -27,6 +28,7 @@ public enum ErrorCode {
 	// 이미지 업로드 (global/storage)
 	IMAGE_INVALID_TYPE(HttpStatus.BAD_REQUEST, "jpg 또는 png 이미지만 업로드할 수 있습니다."),
 	IMAGE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "이미지 용량이 너무 큽니다."),
+	IMAGE_COUNT_INVALID(HttpStatus.BAD_REQUEST, "이미지 장수가 올바르지 않습니다."),
 
 	// 회원·동네
 	REGION_NOT_VERIFIED(HttpStatus.FORBIDDEN, "대표 동네 인증이 필요합니다."),
@@ -37,6 +39,7 @@ public enum ErrorCode {
 	// 대여
 	RENTAL_NOT_FOUND(HttpStatus.NOT_FOUND, "대여 내역을 찾을 수 없습니다."),
 	RENTAL_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "대여 당사자만 이용할 수 있습니다."),
+	RENTAL_OWNER_ONLY(HttpStatus.FORBIDDEN, "물품 제공자만 처리할 수 있습니다."),
 	RENTAL_INVALID_PERIOD(HttpStatus.BAD_REQUEST, "대여 기간이 올바르지 않습니다."),
 	RENTAL_OWN_ITEM(HttpStatus.BAD_REQUEST, "본인 물품은 예약할 수 없습니다."),
 	RENTAL_OUT_OF_AVAILABLE_PERIOD(HttpStatus.BAD_REQUEST, "대여 가능 기간을 벗어났습니다."),
@@ -48,7 +51,8 @@ public enum ErrorCode {
 	RENTAL_CANCEL_AGREEMENT_IN_PROGRESS(HttpStatus.CONFLICT, "이미 진행 중인 취소 동의 요청이 있습니다."),
 	RENTAL_CANCEL_AGREEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "취소 동의 요청을 찾을 수 없습니다."),
 	RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE(HttpStatus.FORBIDDEN, "본인이 보낸 취소 동의 요청에는 응답할 수 없습니다."),
-	RENTAL_CANCEL_AGREEMENT_CLOSED(HttpStatus.CONFLICT, "이미 응답했거나 만료된 취소 동의 요청입니다.");
+	RENTAL_CANCEL_AGREEMENT_CLOSED(HttpStatus.CONFLICT, "이미 응답했거나 만료된 취소 동의 요청입니다."),
+	RENTAL_HANDOVER_TOO_EARLY(HttpStatus.CONFLICT, "대여 시작일부터 인계를 확인할 수 있습니다.");
 
 	private final HttpStatus status;
 	private final String message;

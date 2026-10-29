@@ -61,7 +61,7 @@ rental/
 - 포맷: **네이버 핵데이 Java 컨벤션**(탭 4, 120자). 손으로 맞추지 말고 커밋 전 `./gradlew spotlessApply`. 이름 규칙(클래스·DTO·메서드 동사·테스트)은 `docs/conventions.md` §2, DB 이름·제약·인덱스는 §4.
 - 컨트롤러는 얇게: 검증(`@Valid`) → 서비스 호출 → `ApiResponse.ok(...)`. 비즈니스 로직 금지.
 - DTO는 `record`. 엔티티를 응답으로 직접 반환하지 않는다.
-- 엔티티: `@Setter` 금지. 상태 변경은 의미 있는 메서드(`rental.handover(memberId)`)로. 생성은 정적 팩토리 또는 `@Builder(access = PRIVATE)` + 팩토리.
+- 엔티티: `@Setter` 금지. 상태 변경은 의미 있는 메서드(`rental.handover(now)`)로. 생성은 정적 팩토리 또는 `@Builder(access = PRIVATE)` + 팩토리.
 - `@Enumerated(EnumType.STRING)` 필수. Enum 코드는 `docs/state-machines.md`와 정확히 일치.
 - 연관관계: 기본 `LAZY`. 조회 성능 문제는 fetch join / DTO projection으로 해결. 양방향은 꼭 필요할 때만.
 - 정책 수치는 하드코딩 금지 → `PolicyProperties` 주입.
@@ -142,7 +142,7 @@ rental/
 ## DB 마이그레이션
 - Flyway `src/main/resources/db/migration/V{n}__{설명}.sql`. 이미 머지된 마이그레이션 파일은 **수정하지 않는다** — 새 버전 추가.
 - 시드: 카테고리, damage_policies는 **버전 마이그레이션(`V`)으로 한 번만** 넣는다. 반복 마이그레이션(`R__`)은 파일이 바뀔 때마다 다시 실행돼 관리자가 고친 값을 덮어쓰므로 쓰지 않는다. 행정동 마스터는 데이터가 커서 별도 CSV + 적재 마이그레이션(`V`)으로 넣는다(출처는 `policies.md` §2 동네 데이터).
-- 번호 충돌 방지: 마이그레이션을 추가하기 전에 develop의 최신 번호를 확인하고 팀에 번호를 공유한다(`docs/git-workflow.md` §4).
+- 번호 충돌 방지: 번호는 `docs/erd.md` "마이그레이션 번호" 표로 관리한다. develop의 표와 원격 작업 브랜치의 표를 둘 다 보고 가장 큰 번호 + 1을 고른 뒤, **브랜치 첫 커밋에서 표에 행(상태 "작업 중")을 넣고 바로 push**한다. PR을 만들 때 상태를 "머지"로 바꾼다(develop에 들어간 행은 곧 머지된 것이다)(`docs/git-workflow.md` §4).
 - `ddl-auto`는 `validate`(local 포함). 엔티티와 스키마가 다르면 기동 실패하도록.
 - 테이블·컬럼명은 `docs/erd.md` 기준. 바꾸면 erd.md도 수정. 새 이름은 `docs/conventions.md` §4(접미사, `uk_`/`idx_`/`fk_` 이름, 예약어 금지)를 따른다.
 
@@ -150,7 +150,7 @@ rental/
 | 상황 | 할 일 |
 | --- | --- |
 | 이미 있음 (develop에 머지됨) | 그대로 사용. 다른 도메인 엔티티면 그 도메인의 Service를 통해 접근 |
-| 없음, `erd.md`에 정의됨, **내 담당 도메인** | 엔티티 + 새 Flyway 파일 생성. 번호는 develop 최신 + 1, 사용자에게 "V{n} 사용, 팀에 공유하세요" 알림 |
+| 없음, `erd.md`에 정의됨, **내 담당 도메인** | 엔티티 + 새 Flyway 파일 생성. 번호는 위 "번호 충돌 방지"대로 erd.md 표에서 정하고 첫 커밋에 표 행을 넣어 push |
 | 있음, 컬럼 추가 필요 | 새 마이그레이션(`V{n}__add_{컬럼}_to_{테이블}.sql`). 머지된 파일 수정 금지. `erd.md` 갱신 |
 | `erd.md`에 없는 테이블·컬럼 | **만들기 전에 멈추고** 이유와 설계안을 제시해 확인받은 뒤, `erd.md`에 먼저 추가하고 구현 |
 | 없음, **다른 사람 담당 도메인** (예: rental 작업 중 `items` 미머지) | 내 브랜치에서 그 엔티티를 만들지 않는다. 사용자에게 알리고 선택지 제시: ① 담당자 브랜치 머지를 기다림 ② 담당자와 합의해 엔티티·마이그레이션만 먼저 작은 PR로 머지 ③ 테스트에서만 필요한 최소 데이터로 진행 |

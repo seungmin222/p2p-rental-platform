@@ -25,6 +25,17 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RentalStatusHistory extends BaseTimeEntity {
 
+	/** 인계 확인 (REQ-017) */
+	public static final String REASON_HANDOVER = "HANDOVER";
+	/** 반납 요청·대리 접수 (REQ-018). 대리 접수는 changedBy가 제공자 */
+	public static final String REASON_RETURN_REQUEST = "RETURN_REQUEST";
+	/** 상태 확인 '정상' (REQ-018) */
+	public static final String REASON_RETURN_CONFIRM_NORMAL = "RETURN_CONFIRM_NORMAL";
+	/** 상태 확인 '이상'. 1순위는 기록만 하고 COMPLETED (REQ-018) */
+	public static final String REASON_RETURN_CONFIRM_ABNORMAL = "RETURN_CONFIRM_ABNORMAL";
+	/** 자동 상태 확인 배치 (REQ-018). changedBy = null */
+	public static final String REASON_RETURN_AUTO_CONFIRM_BATCH = "RETURN_AUTO_CONFIRM_BATCH";
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;

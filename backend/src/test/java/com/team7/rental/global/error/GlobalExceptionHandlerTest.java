@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -17,8 +18,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.team7.rental.global.response.ApiResponse;
 
@@ -187,8 +190,35 @@ class GlobalExceptionHandlerTest {
 			.andExpect(jsonPath("$.error.code").value("IMAGE_SIZE_EXCEEDED"));
 	}
 
+	@Test
+	@DisplayName("multipart에 필수 part가 없으면 500이 아니라 400 COMMON_INVALID_INPUT(part 이름)이다")
+	void missingRequestPart() throws Exception {
+		// when, then
+		mockMvc.perform(multipart("/test/multipart")
+			.file(new MockMultipartFile("other", "a.txt", MediaType.TEXT_PLAIN_VALUE, new byte[] {1})))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("COMMON_INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.details[0].field").value("file"))
+			.andExpect(jsonPath("$.error.details[0].reason").value("필수 값입니다."));
+	}
+
+	@Test
+	@DisplayName("본문 Content-Type을 지원하지 않으면 500이 아니라 415 COMMON_UNSUPPORTED_MEDIA_TYPE이다")
+	void unsupportedMediaType() throws Exception {
+		// when, then
+		mockMvc.perform(post("/test/body").contentType(MediaType.TEXT_PLAIN).content("name"))
+			.andExpect(status().isUnsupportedMediaType())
+			.andExpect(jsonPath("$.error.code").value("COMMON_UNSUPPORTED_MEDIA_TYPE"));
+	}
+
 	@RestController
 	static class TestController {
+
+		@PostMapping("/test/multipart")
+		ApiResponse<Void> multipartUpload(@RequestPart("file")
+		MultipartFile file) {
+			return ApiResponse.ok();
+		}
 
 		@PostMapping("/test/upload")
 		ApiResponse<Void> upload() {

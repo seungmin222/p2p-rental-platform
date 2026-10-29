@@ -18,6 +18,7 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterErrors;
 import org.springframework.validation.method.ParameterValidationResult;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -120,6 +122,19 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(MaxUploadSizeExceededException.class)
 	public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException e) {
 		return toResponse(ErrorCode.IMAGE_SIZE_EXCEEDED, List.of());
+	}
+
+	/** multipart 요청에 필수 part(@RequestPart)가 없음 */
+	@ExceptionHandler(MissingServletRequestPartException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMissingPart(MissingServletRequestPartException e) {
+		return toResponse(ErrorCode.COMMON_INVALID_INPUT,
+			List.of(new FieldErrorDetail(e.getRequestPartName(), REQUIRED)));
+	}
+
+	/** 본문·part의 Content-Type을 읽을 수 없음. multipart의 JSON part를 Content-Type 없이(또는 text/plain으로) 보낸 경우 포함 */
+	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
+		return toResponse(ErrorCode.COMMON_UNSUPPORTED_MEDIA_TYPE, List.of());
 	}
 
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)

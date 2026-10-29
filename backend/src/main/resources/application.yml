@@ -42,6 +42,8 @@ app:
     # 배치 주기 (docs/policies.md 배치 주기). test 프로필은 "-"로 끈다
     # 양측 동의 취소 요청 만료: 10분 (REQ-015)
     cancel-agreement-expire-cron: "0 */10 * * * *"
+    # 자동 상태 확인(반납 요청 후 return.auto-confirm-days): 1시간 (REQ-018)
+    return-auto-confirm-cron: "0 0 * * * *"
   policy:
     # docs/policies.md 수치. 바꾸면 policies.md도 함께 수정 (PolicyProperties)
     image:
@@ -74,6 +76,22 @@ app:
     cancel-agreement:
       # cancel-agreement.expire-hours: 양측 동의 취소 요청이 상대 무응답으로 만료되는 시간 (REQ-015)
       expire-hours: 48
+    inspection:
+      images:
+        # inspection.images.min / max / max-file-size: 인계·반납·판정 사진 1~5장, 장당 10MB (REQ-017, REQ-018)
+        min: 1
+        max: 5
+        max-file-size: 10MB
+      # inspection.handover-memo-max: 인계 메모 (REQ-017). item_inspections.note VARCHAR(300)과 같게
+      handover-memo-max: 300
+      # inspection.abnormal-note-max: 상태 확인 '이상' 내용 (REQ-018). item_inspections.result_note VARCHAR(500)과 같게
+      abnormal-note-max: 500
+    # PolicyProperties.returnPolicy (return은 Java 예약어라 @Name("return")으로 바인딩)
+    return:
+      # return.note-max: 반납 메모, 체크리스트에 false 항목이 있으면 필수 (REQ-018). item_inspections.note VARCHAR(300)과 같게
+      note-max: 300
+      # return.auto-confirm-days: 반납 요청 후 3일이 지나면 자동 '정상' 처리 (REQ-018)
+      auto-confirm-days: 3
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

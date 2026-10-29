@@ -1,5 +1,20 @@
 # 데이터 모델
 
+## 마이그레이션 번호
+
+Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치는 **첫 커밋에서 이 표에 행을 넣고 바로 push**해 번호를 선점하고, PR을 만들 때 상태를 "머지"로 바꾼다(develop에 들어간 행은 곧 머지된 것이다). 번호를 고를 때는 develop의 이 표와 원격 작업 브랜치의 이 표를 둘 다 보고 가장 큰 번호 + 1을 쓴다(`docs/git-workflow.md` §4).
+
+| 번호 | 파일 | 브랜치 | 상태 |
+| --- | --- | --- | --- |
+| V1 | `V1__create_member_tables.sql` | `feat/member-item-entity` (#8) | 머지 |
+| V2 | `V2__create_item_tables.sql` | `feat/member-item-entity` (#8) | 머지 |
+| V3 | `V3__insert_categories.sql` | `feat/member-item-entity` (#8) | 머지 |
+| V4 | `V4__create_rental_tables.sql` | `feat/rental-entity` (#9) | 머지 |
+| V5 | `V5__create_rental_cancel_agreements.sql` | `feat/rental-cancel` (#12) | 머지 |
+| V6 | `V6__create_item_inspections.sql` | `feat/rental-return` | 머지 |
+
+## 규칙
+
 - 이름·제약·인덱스 규칙은 `docs/conventions.md` §4. 요약: 테이블 snake_case 복수형, 컬럼 snake_case(JPA 필드 camelCase 자동 변환), MySQL 예약어 금지. 모든 테이블에 `created_at`, `updated_at` (BaseTimeEntity).
 - 금액 `INT`(원). 날짜 `DATE`, 시각 `DATETIME(6)`.
 - 상태 컬럼은 `VARCHAR` + 영문 Enum 코드 (`state-machines.md`).
@@ -123,8 +138,8 @@ erDiagram
 **rental_extensions** [2] — id, rental_id, prev_end_date, new_end_date, additional_fee, status(`ExtensionStatus`), expires_at(결제 대기 만료), payment_id NULL. 인덱스 `(status, expires_at)`. PENDING_PAYMENT이고 만료 전인 행의 기간은 예약 겹침 검사 대상.
 
 **item_inspections**
-| id | rental_id | phase(`HANDOVER/RETURN`) | image_urls JSON | checklist JSON(RETURN만) | note | lost_reported BOOLEAN(미반납 신고, 사진 없음) | result(`NORMAL/ABNORMAL`, 제공자 판정) | result_note | result_image_urls JSON | ai_result JSON [2] | written_by | created_at |
-- UK(rental_id, phase). 제출 후 수정 불가(업데이트 API 없음, 판정 필드만 1회 기록).
+| id | rental_id | phase(`HANDOVER/RETURN`) | image_urls JSON | checklist JSON(RETURN만) | note | lost_reported BOOLEAN(미반납 신고, 사진 없음) | result(`NORMAL/ABNORMAL`, 제공자 판정) | result_note | result_image_urls JSON | ai_result JSON [2] (040에서 추가) | written_by | created_at |
+- V6에서 생성(ai_result 제외). UK `uk_item_inspections_rental_id_phase`(rental_id, phase). 제출 후 수정 불가(업데이트 API 없음, 판정 필드만 1회 기록). 사진은 저장소 URL 배열(item_images와 같음). note는 인계 메모·반납 메모 300자, result_note 500자.
 
 ## 결제 [2]
 

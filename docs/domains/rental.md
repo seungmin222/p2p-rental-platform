@@ -80,7 +80,8 @@ try {
 
 ## REQ-016 대여 상태 관리 [1]
 `state-machines.md` §1 전이 표가 명세 그 자체. 구현 규칙:
-- `Rental` 엔티티 메서드로만 전이: `confirmPayment()`, `expire()`, `cancel(by, type, reason)`, `handover(by)`, `markOverdue()`, `requestReturn(by)`, `reportLost(by)`, `confirmNormal(by)`, `markAbnormal(by)`, `complete()`, `extend(newEnd)`
+- `Rental` 엔티티 메서드로만 전이: `cancel(canceledBy, type, reason, reasonText, cancelFee, now)`, `handover(now)`, `requestReturn(now)`, `confirmNormal(now)`, `markAbnormal()`, `complete(now)`. 2순위 브랜치에서 추가: `confirmPayment()`, `expire()`, `markOverdue()`, `reportLost(now)`, `extend(newEnd)`
+- 전이 메서드는 상태 가드만 보고 행위자를 받지 않는다. 누가 했는지는 서비스가 같은 트랜잭션에 저장하는 이력의 `changedBy`로 남긴다(대리 접수·양측 동의처럼 행위자를 엔티티가 알 수 없는 경우가 있다)
 - 각 메서드는 현재 상태를 검사하고 위반 시 `BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION)`(409). 전이 전용 예외 클래스를 만들지 않는다
 - 전이 시각을 컬럼에 기록: `handed_over_at`, `returned_at`, `completed_at`, `canceled_at`
 - 전이마다 `RentalStatusHistory` 생성 (도메인 이벤트 → 리스너에서 저장해도 됨)
@@ -88,8 +89,9 @@ try {
 - 상태 변경 후 알림·AI 큐 적재 등 부수효과는 **트랜잭션 커밋 후** (`@TransactionalEventListener(AFTER_COMMIT)`)
 
 ## REQ-017 물품 인계 확인 [1]
-`PATCH /api/rentals/{id}/handover` (multipart: images 1~5장, memo ≤300자) — 사진 저장과 상태 전이를 한 요청으로 처리. 사진 형식·장수·용량은 policies.md `inspection.images`
-- 제공자만(403), RESERVED만(409), 오늘 ≥ startDate(409 `RENTAL_HANDOVER_TOO_EARLY`), 사진 없음 400
+`PATCH /api/rentals/{id}/handover` (multipart: images 1~5장, memo ≤300자) — 사진 저장과 상태 전이를 한 요청으로 처리. 사진 형식·장수·용량은 policies.md `inspection.images.*`
+- 제공자만(대여자 403 `RENTAL_OWNER_ONLY`, 제3자 403 `RENTAL_NOT_PARTICIPANT`), RESERVED만(409 `RENTAL_INVALID_TRANSITION`), 오늘 ≥ startDate(409 `RENTAL_HANDOVER_TOO_EARLY`), 사진 장수 위반 400 `IMAGE_COUNT_INVALID`
+- multipart의 request part는 `application/json`(아니면 415 `COMMON_UNSUPPORTED_MEDIA_TYPE`). 동시에 다른 요청이 대여를 바꿨으면 409 `COMMON_CONCURRENT_UPDATE`(인계·반납 요청·상태 확인 공통)
 - item_inspections(phase=HANDOVER) 저장 — **이후 수정 불가**
 - → RENTING, `handed_over_at=now`, 대여자 알림
 - 대여자는 대여 상세에서 인계 사진 확인, 이의는 채팅으로
@@ -98,8 +100,8 @@ try {
 ## REQ-018 반납 요청 및 상태 확인 [1]
 
 ### 대여자 반납 요청 `POST /api/rentals/{id}/return-request`
-- 입력: images 1~5장(형식·장수·용량은 policies.md `inspection.images`), checklist(5개 항목 각 true/false — `ReturnChecklistItem`), note(어떤 항목이 false면 필수, 300자)
-- 가드: RENTING 또는 OVERDUE, 대여자 본인. 체크리스트 없이 사진만 → 400
+- 입력: images 1~5장(형식·장수·용량은 policies.md `inspection.images.*`), checklist(5개 항목 각 true/false — `ReturnChecklistItem`), note(어떤 항목이 false면 필수, 300자)
+- 가드: RENTING 또는 OVERDUE(아니면 409 `RENTAL_INVALID_TRANSITION`), 대여자 본인 또는 제공자 대리 접수(제3자 403 `RENTAL_NOT_PARTICIPANT`). 체크리스트 없이 사진만·항목 누락·모르는 키 → 400 `COMMON_INVALID_INPUT`, 사진 장수 위반 → 400 `IMAGE_COUNT_INVALID`
 - item_inspections(phase=RETURN) 저장(수정 불가), `returned_at=now` → RETURNED, 제공자 알림
 - 2순위: AI 비교 작업 큐 적재(REQ-040)
 - **대리 접수**: 대여자가 요청 없이 물품을 돌려준 경우 제공자가 같은 API로 등록 가능(사진·체크리스트를 제공자가 작성, writtenBy=제공자)
@@ -112,7 +114,8 @@ try {
 - 연체료 계산 기준일은 신고일
 
 ### 제공자 상태 확인 `PATCH /api/rentals/{id}/return`
-- 입력: result(`NORMAL`/`ABNORMAL`), ABNORMAL이면 내용(500자)·사진 필수
+- 입력: result(`NORMAL`/`ABNORMAL`), ABNORMAL이면 내용(500자)·사진 필수. NORMAL에 사진을 보내면 400 `IMAGE_COUNT_INVALID`
+- 가드: 제공자만(대여자 403 `RENTAL_OWNER_ONLY`), RETURNED이고 반납 기록이 판정 전일 때만(아니면 409 `RENTAL_INVALID_TRANSITION`)
 - 화면에 인계 사진 / 반납 사진 / 체크리스트(false 항목 강조) / AI 결과 / 연체료를 나란히 (조회는 `GET /inspections`)
 - NORMAL → 보증금 처리(REQ-025: 연체료 차감 후 남은 금액 반환) 완료 후 COMPLETED(`completed_at=now`) → 정산 생성(REQ-039)
 - ABNORMAL → RETURNED 유지, depositStatus=HELD, 정산 보류 → `payment.md` REQ-049 흐름

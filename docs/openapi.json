@@ -917,6 +917,832 @@
           "Rental"
         ]
       }
+    },
+    "/api/rentals/{rentalId}/handover": {
+      "patch": {
+        "description": "제공자가 인계 사진과 메모를 올리면 대여 예정(RESERVED)이 대여 중(RENTING)이 된다. 대여 시작일 당일부터 할 수 있고, 기록은 수정할 수 없다. multipart: request part(Content-Type application/json, 생략 가능) { memo } + images 파일들. 사진 장수 policies.md inspection.images.min~max, 장당 inspection.images.max-file-size, jpg/png. 메모 최대 글자 수 inspection.handover-memo-max. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION → 409 RENTAL_HANDOVER_TOO_EARLY → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 다른 요청이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.",
+        "operationId": "handover",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/RentalHandoverRequest"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_COUNT_INVALID": {
+                    "summary": "이미지 장수가 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_COUNT_INVALID",
+                        "details": [],
+                        "message": "이미지 장수가 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_INVALID_TYPE": {
+                    "summary": "jpg 또는 png 이미지만 업로드할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_INVALID_TYPE",
+                        "details": [],
+                        "message": "jpg 또는 png 이미지만 업로드할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_SIZE_EXCEEDED": {
+                    "summary": "이미지 용량이 너무 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_SIZE_EXCEEDED",
+                        "details": [],
+                        "message": "이미지 용량이 너무 큽니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_OWNER_ONLY": {
+                    "summary": "물품 제공자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_OWNER_ONLY",
+                        "details": [],
+                        "message": "물품 제공자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_CONCURRENT_UPDATE": {
+                    "summary": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_CONCURRENT_UPDATE",
+                        "details": [],
+                        "message": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_HANDOVER_TOO_EARLY": {
+                    "summary": "대여 시작일부터 인계를 확인할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_HANDOVER_TOO_EARLY",
+                        "details": [],
+                        "message": "대여 시작일부터 인계를 확인할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_CONCURRENT_UPDATE, RENTAL_HANDOVER_TOO_EARLY, RENTAL_INVALID_TRANSITION"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "지원하지 않는 요청 형식입니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_UNSUPPORTED_MEDIA_TYPE",
+                        "details": [],
+                        "message": "지원하지 않는 요청 형식입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_UNSUPPORTED_MEDIA_TYPE"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "인계 확인 (REQ-017)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
+    "/api/rentals/{rentalId}/inspections": {
+      "get": {
+        "description": "대여자·제공자만 조회할 수 있다. 인계(HANDOVER) → 반납(RETURN) 순이고, 아직 없는 단계는 빠진다. 반납 기록에는 체크리스트와 제공자 판정(result·resultNote·resultImageUrls)이 있다. 수정 API는 없다.",
+        "operationId": "getInspections",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListRentalInspectionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "인계·반납 기록 조회 (REQ-017, REQ-018)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
+    "/api/rentals/{rentalId}/return": {
+      "patch": {
+        "description": "제공자가 반납된 물품을 정상(NORMAL) 또는 이상(ABNORMAL)으로 판정한다. 판정은 한 번만 할 수 있다. 1순위 단계는 보증금 처리가 없어 두 경우 모두 거래 완료(COMPLETED)가 되고 판정은 기록만 한다. 반납 요청 후 policies.md return.auto-confirm-days가 지나도록 판정하지 않으면 자동으로 정상 처리된다. multipart: request part(Content-Type application/json, 필수) { result, resultNote } + images 파일들. ABNORMAL이면 resultNote(최대 inspection.abnormal-note-max자)와 사진(inspection.images.min~max장) 필수, NORMAL이면 resultNote 선택이고 사진을 보내면 400. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION(반납 완료 아님·이미 판정) → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 다른 요청(자동 확인 포함)이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.",
+        "operationId": "confirmReturn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/RentalReturnConfirmRequest"
+                  }
+                },
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_COUNT_INVALID": {
+                    "summary": "이미지 장수가 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_COUNT_INVALID",
+                        "details": [],
+                        "message": "이미지 장수가 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_INVALID_TYPE": {
+                    "summary": "jpg 또는 png 이미지만 업로드할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_INVALID_TYPE",
+                        "details": [],
+                        "message": "jpg 또는 png 이미지만 업로드할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_SIZE_EXCEEDED": {
+                    "summary": "이미지 용량이 너무 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_SIZE_EXCEEDED",
+                        "details": [],
+                        "message": "이미지 용량이 너무 큽니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_OWNER_ONLY": {
+                    "summary": "물품 제공자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_OWNER_ONLY",
+                        "details": [],
+                        "message": "물품 제공자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_CONCURRENT_UPDATE": {
+                    "summary": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_CONCURRENT_UPDATE",
+                        "details": [],
+                        "message": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_CONCURRENT_UPDATE, RENTAL_INVALID_TRANSITION"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "지원하지 않는 요청 형식입니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_UNSUPPORTED_MEDIA_TYPE",
+                        "details": [],
+                        "message": "지원하지 않는 요청 형식입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_UNSUPPORTED_MEDIA_TYPE"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "제공자 상태 확인 (REQ-018)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
+    "/api/rentals/{rentalId}/return-request": {
+      "post": {
+        "description": "대여자가 반납 사진·체크리스트·메모를 올리면 대여 중(RENTING) 또는 연체(OVERDUE)가 반납 완료(RETURNED, 상태 확인 대기)가 된다. 대여자가 요청 없이 물건을 돌려줬으면 제공자가 같은 API로 대리 접수한다(기록 작성자 \u003d 제공자). 기록은 수정할 수 없다. multipart: request part(Content-Type application/json, 필수) { checklist, note } + images 파일들. checklist는 ReturnChecklistItem 5개 키를 모두 true/false로 보낸다(빠지면 400, 모르는 키도 400). false 항목이 있으면 note 필수, 최대 글자 수 policies.md return.note-max. 사진 장수 inspection.images.min~max, 장당 inspection.images.max-file-size, jpg/png. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 409 RENTAL_INVALID_TRANSITION → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 다른 요청이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.",
+        "operationId": "requestReturn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/RentalReturnRequest"
+                  }
+                },
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_COUNT_INVALID": {
+                    "summary": "이미지 장수가 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_COUNT_INVALID",
+                        "details": [],
+                        "message": "이미지 장수가 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_INVALID_TYPE": {
+                    "summary": "jpg 또는 png 이미지만 업로드할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_INVALID_TYPE",
+                        "details": [],
+                        "message": "jpg 또는 png 이미지만 업로드할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_SIZE_EXCEEDED": {
+                    "summary": "이미지 용량이 너무 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_SIZE_EXCEEDED",
+                        "details": [],
+                        "message": "이미지 용량이 너무 큽니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_CONCURRENT_UPDATE": {
+                    "summary": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_CONCURRENT_UPDATE",
+                        "details": [],
+                        "message": "다른 요청이 먼저 처리되었습니다. 새로고침 후 다시 시도해 주세요."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_CONCURRENT_UPDATE, RENTAL_INVALID_TRANSITION"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "지원하지 않는 요청 형식입니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_UNSUPPORTED_MEDIA_TYPE",
+                        "details": [],
+                        "message": "지원하지 않는 요청 형식입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_UNSUPPORTED_MEDIA_TYPE"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "반납 요청 (REQ-018)",
+        "tags": [
+          "Rental"
+        ]
+      }
     }
   },
   "components": {
@@ -960,6 +1786,23 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/CancelAgreementResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseListRentalInspectionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentalInspectionResponse"
+            }
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -1199,7 +2042,7 @@
         "properties": {
           "activeCancelAgreement": {
             "$ref": "#/components/schemas/ActiveCancelAgreement",
-            "description": "진행 중인 양측 동의 취소 요청(REQUESTED이고 만료 전). 없으면 null"
+            "description": "진행 중인 양측 동의 취소 요청(REQUESTED이고 만료 전). 대여 예정(RESERVED)일 때만 채우고, 그 외 상태나 요청이 없으면 null"
           },
           "cancelFee": {
             "type": "integer",
@@ -1341,6 +2184,87 @@
           }
         }
       },
+      "RentalHandoverRequest": {
+        "type": "object",
+        "properties": {
+          "memo": {
+            "type": "string",
+            "description": "인계 메모 (선택). 최대 글자 수는 policies.md inspection.handover-memo-max",
+            "example": "충전기 포함, 앞면 작은 흠집 있음"
+          }
+        }
+      },
+      "RentalInspectionResponse": {
+        "type": "object",
+        "properties": {
+          "checklist": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "반납 체크리스트(ReturnChecklistItem별 true/false). 인계 기록이면 null"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "작성 시각"
+          },
+          "imageUrls": {
+            "type": "array",
+            "description": "사진 URL (올린 순서)",
+            "items": {
+              "type": "string"
+            }
+          },
+          "inspectionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "기록 ID",
+            "example": 1
+          },
+          "note": {
+            "type": "string",
+            "description": "인계 메모 또는 반납 메모. 없으면 null",
+            "example": "충전기 포함"
+          },
+          "phase": {
+            "type": "string",
+            "description": "단계",
+            "enum": [
+              "HANDOVER",
+              "RETURN"
+            ]
+          },
+          "result": {
+            "type": "string",
+            "description": "제공자 판정(반납 기록만). 판정 전이면 null",
+            "enum": [
+              "NORMAL",
+              "ABNORMAL"
+            ]
+          },
+          "resultImageUrls": {
+            "type": "array",
+            "description": "판정 사진 URL. 없으면 빈 목록",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resultNote": {
+            "type": "string",
+            "description": "판정 내용. 없으면 null",
+            "example": "모서리 파손"
+          },
+          "writerRole": {
+            "type": "string",
+            "description": "작성자 역할. 반납 대리 접수면 OWNER",
+            "enum": [
+              "RENTER",
+              "OWNER"
+            ]
+          }
+        }
+      },
       "RentalItem": {
         "type": "object",
         "properties": {
@@ -1364,6 +2288,54 @@
             "description": "대표 이미지 썸네일 URL. 이미지가 없으면 null"
           }
         }
+      },
+      "RentalReturnConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string",
+            "description": "판정. ABNORMAL이면 resultNote와 사진 필수, NORMAL이면 사진을 보내지 않는다",
+            "enum": [
+              "NORMAL",
+              "ABNORMAL"
+            ]
+          },
+          "resultNote": {
+            "type": "string",
+            "description": "판정 내용. ABNORMAL이면 필수(NORMAL은 선택), 최대 글자 수는 policies.md inspection.abnormal-note-max",
+            "example": "모서리가 깨져 있어요"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      },
+      "RentalReturnRequest": {
+        "type": "object",
+        "properties": {
+          "checklist": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "반납 체크리스트. ReturnChecklistItem 5개 키를 모두 true/false로 보낸다(빠지거나 모르는 키면 400)",
+            "example": {
+              "NO_EXTERIOR_DAMAGE": true,
+              "ALL_PARTS_INCLUDED": true,
+              "NO_CONTAMINATION": false,
+              "WORKS_NORMALLY": true,
+              "CONSUMABLES_RESTORED": true
+            }
+          },
+          "note": {
+            "type": "string",
+            "description": "반납 메모. 체크리스트에 false 항목이 있으면 필수, 최대 글자 수는 policies.md return.note-max",
+            "example": "옆면에 얼룩이 생겼어요"
+          }
+        },
+        "required": [
+          "checklist"
+        ]
       }
     },
     "securitySchemes": {

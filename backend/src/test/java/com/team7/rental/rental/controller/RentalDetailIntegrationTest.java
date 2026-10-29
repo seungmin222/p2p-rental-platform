@@ -18,8 +18,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.team7.rental.item.entity.Item;
 import com.team7.rental.member.entity.Member;
+import com.team7.rental.rental.entity.CancelReason;
 import com.team7.rental.rental.entity.Rental;
+import com.team7.rental.rental.entity.RentalCancelAgreement;
 import com.team7.rental.rental.entity.RentalStatus;
+import com.team7.rental.rental.repository.RentalCancelAgreementRepository;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -37,6 +40,9 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private EntityManagerFactory entityManagerFactory;
+
+	@Autowired
+	private RentalCancelAgreementRepository agreementRepository;
 
 	private Member owner;
 	private Member renter;
@@ -122,6 +128,30 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 		mockMvc.perform(get("/api/rentals/{id}", rental.getId()))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.error.code").value("AUTH_UNAUTHORIZED"));
+	}
+
+	@Test
+	@DisplayName("진행 중인 동의 취소 요청은 대여 예정일 때만 보이고, 인계 뒤 남은 REQUESTED 행은 보이지 않는다(데이터는 그대로)")
+	void activeCancelAgreementOnlyWhenReserved() throws Exception {
+		// given: 요청은 대여를 수정하지 않아 인계 뒤에도 REQUESTED 행이 남을 수 있다
+		agreementRepository.save(RentalCancelAgreement.request(rental.getId(), owner.getId(),
+			CancelReason.SCHEDULE_CHANGE, null, NOW.plusHours(48)));
+		Rental renting = rentalFixture.createRental(item, renter, RentalStatus.RENTING, START.plusDays(10),
+			START.plusDays(11));
+		agreementRepository.save(RentalCancelAgreement.request(renting.getId(), owner.getId(),
+			CancelReason.SCHEDULE_CHANGE, null, NOW.plusHours(48)));
+
+		// when, then
+		mockMvc.perform(get("/api/rentals/{id}", rental.getId()).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(renter.getId())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.activeCancelAgreement.requestedByMe").value(false));
+		mockMvc.perform(get("/api/rentals/{id}", renting.getId()).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(renter.getId())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.status").value("RENTING"))
+			.andExpect(jsonPath("$.data.activeCancelAgreement").doesNotExist());
+		assertThat(agreementRepository.findOpen(renting.getId(), NOW)).isPresent();
 	}
 
 	@Test
