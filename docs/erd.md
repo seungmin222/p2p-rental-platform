@@ -2,7 +2,7 @@
 
 ## 마이그레이션 번호
 
-Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치는 **첫 커밋에서 이 표에 행을 넣고 바로 push**해 번호를 선점하고, 머지 직전에 상태를 "머지"로 바꾼다. 번호를 고를 때는 develop의 이 표와 원격 작업 브랜치의 이 표를 둘 다 보고 가장 큰 번호 + 1을 쓴다(`docs/git-workflow.md` §4).
+Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치는 **첫 커밋에서 이 표에 행을 넣고 바로 push**해 번호를 선점하고, PR을 만들 때 상태를 "머지"로 바꾼다(develop에 들어간 행은 곧 머지된 것이다). 번호를 고를 때는 develop의 이 표와 원격 작업 브랜치의 이 표를 둘 다 보고 가장 큰 번호 + 1을 쓴다(`docs/git-workflow.md` §4).
 
 | 번호 | 파일 | 브랜치 | 상태 |
 | --- | --- | --- | --- |
@@ -11,7 +11,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V3 | `V3__insert_categories.sql` | `feat/member-item-entity` (#8) | 머지 |
 | V4 | `V4__create_rental_tables.sql` | `feat/rental-entity` (#9) | 머지 |
 | V5 | `V5__create_rental_cancel_agreements.sql` | `feat/rental-cancel` (#12) | 머지 |
-| V6 | `V6__create_item_inspections.sql` | `feat/rental-return` | 작업 중 |
+| V6 | `V6__create_item_inspections.sql` | `feat/rental-return` | 머지 |
 
 ## 규칙
 
