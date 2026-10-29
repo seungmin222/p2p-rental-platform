@@ -75,6 +75,14 @@ class ItemApiContractIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("검색 최소 금액이 최대 금액보다 크면 400이다")
+	void searchPriceValidation() throws Exception {
+		mockMvc.perform(get("/api/items").param("minPrice", "20000").param("maxPrice", "10000"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.details[*].field", contains("minPrice")));
+	}
+
+	@Test
 	@DisplayName("물품 회원 전용 API는 토큰 없이 부르면 401이다")
 	void memberOnlyRequiresLogin() throws Exception {
 		mockMvc.perform(get("/api/items/deposit-guide").param("categoryId", "1").param("itemPrice", "100000"))

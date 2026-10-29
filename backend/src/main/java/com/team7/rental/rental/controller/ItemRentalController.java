@@ -33,9 +33,9 @@ public class ItemRentalController {
 	@Operation(summary = "물품별 예약 현황 (REQ-020)", description = "미구현: 응답 형태만 확정. 제공자 전용. 해당 물품의 대여 건 전부(CANCELED 포함). "
 		+ "정렬: 다가오는·진행 중 건(PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED)을 시작일 오름차순으로 먼저, "
 		+ "완료·취소 건(COMPLETED·CANCELED)을 시작일 내림차순으로 뒤에(같은 시작일은 id 순). "
-		+ "페이지 크기는 policies.md item-rentals.page로 고정(size를 받지 않음). 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 RENTAL_OWNER_ONLY.")
+		+ "페이지 크기는 policies.md item-rentals.page로 고정(size를 받지 않음). 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 ITEM_NOT_OWNER.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
-	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, ITEM_NOT_FOUND, RENTAL_OWNER_ONLY})
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, ITEM_NOT_FOUND, ITEM_NOT_OWNER})
 	@GetMapping("/api/items/{itemId}/rentals")
 	public ApiResponse<PageResponse<ItemRentalResponse>> getItemRentals(@LoginMember
 	Long memberId, @PathVariable

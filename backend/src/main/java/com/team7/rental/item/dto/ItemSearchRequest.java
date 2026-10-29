@@ -10,7 +10,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 
 /**
  * 물품 검색 쿼리 파라미터 (REQ-010). 페이지 크기는 policies.md search.page로 고정이고 size를 받지 않는다.
- * 기간 규칙(둘 다 보내거나 둘 다 생략, 시작일 ≤ 종료일)은 {@link ValidItemInput}.
+ * 기간 규칙(둘 다 보내거나 둘 다 생략, 시작일 ≤ 종료일)과 minPrice ≤ maxPrice는 {@link ValidItemInput}. keyword 길이는 제한하지 않는다.
  *
  * @param sort 생략하면 ACCURACY
  * @param page 생략하면 0

@@ -113,9 +113,11 @@ public class ItemController {
 
 	@Operation(summary = "물품 삭제 (REQ-008)", description = "미구현: 응답 형태만 확정. 등록자만. 소프트 삭제(status = DELETED)라 과거 대여·채팅에는 \"삭제된 물품\"으로 남는다. "
 		+ "PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED 대여가 있으면 409 ITEM_HAS_ACTIVE_RENTAL이고 error.details에 해당 건을 한 건씩 담는다: "
-		+ "[{ field: \"rentals\", reason: \"2026-11-03 ~ 2026-11-05 대여 예정 (rentalId 12)\" }]. data는 null.")
+		+ "[{ field: \"rentals\", reason: \"2026-11-03 ~ 2026-11-05 대여 예정 (rentalId 12)\" }]. "
+		+ "검사와 삭제는 예약과 같은 물품 락 안에서 하므로 락을 못 잡으면 409 RENTAL_LOCK_TIMEOUT. data는 null.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
-	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, ITEM_NOT_FOUND, ITEM_NOT_OWNER, ITEM_HAS_ACTIVE_RENTAL})
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, ITEM_NOT_FOUND, ITEM_NOT_OWNER, ITEM_HAS_ACTIVE_RENTAL,
+		RENTAL_LOCK_TIMEOUT})
 	@DeleteMapping("/{itemId}")
 	public ApiResponse<Void> deleteItem(@LoginMember
 	Long memberId, @PathVariable
@@ -137,7 +139,7 @@ public class ItemController {
 	}
 
 	@Operation(summary = "물품 검색 (REQ-010)", description = "미구현: 응답 형태만 확정. " + REGION_NOTE
-		+ "페이지 크기는 policies.md search.page로 고정(size를 받지 않음). 시작일·종료일은 둘 다 보내거나 둘 다 생략하고, 시작일 > 종료일이면 400.")
+		+ "페이지 크기는 policies.md search.page로 고정(size를 받지 않음). 시작일·종료일은 둘 다 보내거나 둘 다 생략하고, 시작일 > 종료일이면 400(details endDate). minPrice > maxPrice면 400(details minPrice). keyword 길이는 제한하지 않는다.")
 	@ApiErrorCodes({COMMON_INVALID_INPUT})
 	@GetMapping
 	public ApiResponse<PageResponse<ItemSummaryResponse>> searchItems(@LoginMember(required = false)
