@@ -70,7 +70,7 @@ export function useCalendarDays(itemId, months) {
 
 /**
  * 상태 변경 응답(RentalDetailResponse)을 캐시에 넣고 관련 목록을 무효화한다.
- * 기간 점유가 바뀌는 경우(예약·취소)는 물품 캘린더·예약 현황도, 기록이 생기는 경우는 inspections도.
+ * 기간 점유가 바뀌는 경우(예약·취소·동의 수락·반납 요청)는 물품 캘린더·예약 현황도, 기록이 생기는 경우는 inspections도.
  */
 function applyRentalDetail(
   queryClient,
@@ -151,12 +151,12 @@ export function useHandover(rentalId) {
   );
 }
 
-/** variables: { request: { checklist, note }, images: File[] } */
+/** variables: { request: { checklist, note }, images: File[] }. RETURNED가 되면 기간 점유가 풀린다(대리 접수 포함). */
 export function useRequestReturn(rentalId) {
   return useRentalMutation(
     rentalId,
     ({ request, images }) => requestReturn(rentalId, request, images),
-    { inspectionsChanged: true },
+    { periodChanged: true, inspectionsChanged: true },
   );
 }
 
