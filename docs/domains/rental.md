@@ -133,10 +133,10 @@ try {
 - 본인 건만
 
 ## REQ-020 내 물품 관리 [1]
-`GET /api/members/me/items?tab=AVAILABLE|RENTING|HIDDEN`, `GET /api/items/{itemId}/rentals`
+`GET /api/members/me/items?tab=AVAILABLE|RENTING|HIDDEN&page=`, `GET /api/items/{itemId}/rentals?page=`
 - RENTING 탭 = RENTING·OVERDUE 대여가 있는 물품 / AVAILABLE 탭 = 그 외 공개 물품 / HIDDEN 탭 = 숨김(044 이후)
 - 카드: 조회·관심·채팅 수, 다가오는 예약 건수(RESERVED·PENDING_PAYMENT 중 startDate ≥ 오늘)
-- 예약 현황: 해당 물품 대여 건 기간순, 각 건 → 대여 상세(제공자 뷰)
+- 예약 현황: 해당 물품 대여 건 전부(CANCELED 포함). 다가오는·진행 중 건(PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED)을 시작일 오름차순으로 먼저, 완료·취소 건을 시작일 내림차순으로 뒤에(open-issues #20). 각 건 → 대여 상세(제공자 뷰). 남의 물품 403 `ITEM_NOT_OWNER`, 없음·삭제 404 `ITEM_NOT_FOUND`
 - 카드 메뉴: 수정·삭제·숨기기·끌어올리기
 
 ## REQ-023 / REQ-031 연체 감지·연체료·알림 [2 필수]

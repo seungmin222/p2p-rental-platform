@@ -36,7 +36,7 @@
 
 ## REQ-008 물품 삭제 [1]
 `DELETE /api/items/{itemId}` — 소프트 삭제(status=DELETED)
-- PENDING_PAYMENT/RESERVED/RENTING/OVERDUE/RETURNED 대여가 있으면 409 `ITEM_HAS_ACTIVE_RENTAL` + 해당 건(`error.details`에 한 건씩)
+- PENDING_PAYMENT/RESERVED/RENTING/OVERDUE/RETURNED 대여가 있으면 409 `ITEM_HAS_ACTIVE_RENTAL` + 해당 건(`error.details`에 한 건씩). 검사·삭제는 예약과 같은 락(`lock:item:{id}`) 안에서(open-issues #27)
 - 삭제 물품: 피드·검색 제외, 과거 대여 내역·채팅에서는 "삭제된 물품" 표시
 
 ## REQ-009 동네 물품 피드 [1]
@@ -57,7 +57,7 @@
 - **대여 희망 기간 입력 시**: 그 기간 전체가 어떤 available_period 하나에 포함되고, ACTIVE_FOR_PERIOD 대여와 겹치지 않는 물품만
 - availableOnly: 오늘 기준 대여 가능한 물품 (정의 확정 필요 → open-issues #6)
 - DELETED 제외(HIDDEN도 제외)
-- startDate > endDate → 400
+- startDate > endDate → 400, minPrice > maxPrice → 400(details minPrice). keyword 길이는 제한하지 않는다(open-issues #28)
 - 로그인 회원 검색어 → 최근·인기 검색어 저장(REQ-046 구현 시)
 - "정확도순": 초기에는 이름 일치 > 설명 일치 > 최신순 같은 단순 규칙으로 시작
 

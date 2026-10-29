@@ -8,7 +8,7 @@
 | 키(제안) | 값 | 관련 REQ |
 | --- | --- | --- |
 | `member.email.max` | 100자, 이메일 형식 | 001 |
-| `member.password` | 8~20자, 영문·숫자·특수문자 모두 포함 | 001, 005, 036 |
+| `member.password` | 8~20자, 공백 없는 ASCII 출력 문자(`!`~`~`)만, 영문·숫자·ASCII 기호 각 1개 이상 | 001, 005, 036 |
 | `member.nickname` | 2~10자 | 001, 005 |
 | `auth.access-token-ttl` | 30분 | 002 |
 | `auth.refresh-token-ttl` | 14일 | 002, 003 |

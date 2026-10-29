@@ -48,7 +48,16 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "성공",
+            "headers": {
+              "Set-Cookie": {
+                "description": "새 Refresh Token. refreshToken\u003d\u003cJWT\u003e; Path\u003d/api/auth; Max-Age\u003d\u003cpolicies.md auth.refresh-token-ttl 초\u003e; HttpOnly; SameSite\u003dLax; Secure(local 제외)",
+                "schema": {
+                  "type": "string"
+                },
+                "style": "simple"
+              }
+            }
           },
           "400": {
             "content": {
@@ -110,7 +119,16 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "성공",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Refresh Token 쿠키 삭제. refreshToken\u003d; Path\u003d/api/auth; Max-Age\u003d0; HttpOnly; SameSite\u003dLax; Secure(local 제외)",
+                "schema": {
+                  "type": "string"
+                },
+                "style": "simple"
+              }
+            }
           }
         },
         "summary": "로그아웃 (REQ-002)",
@@ -132,7 +150,16 @@
                 }
               }
             },
-            "description": "OK"
+            "description": "성공",
+            "headers": {
+              "Set-Cookie": {
+                "description": "새 Refresh Token. refreshToken\u003d\u003cJWT\u003e; Path\u003d/api/auth; Max-Age\u003d\u003cpolicies.md auth.refresh-token-ttl 초\u003e; HttpOnly; SameSite\u003dLax; Secure(local 제외)",
+                "schema": {
+                  "type": "string"
+                },
+                "style": "simple"
+              }
+            }
           },
           "401": {
             "content": {
@@ -185,7 +212,7 @@
     },
     "/api/items": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. regionId를 생략하면 로그인 회원의 대표 동네를 쓰고, 비회원이거나 대표 동네가 없으면 400 COMMON_INVALID_INPUT(details regionId). range는 받지만 동네 범위 설정(REQ-042) 전에는 NORMAL로 처리한다(거리 policies.md region.range). 물품 거래 장소 좌표가 기준 동네 중심에서 범위 안인 AVAILABLE 물품만(HIDDEN·DELETED 제외). 페이지 크기는 policies.md search.page로 고정(size를 받지 않음). 시작일·종료일은 둘 다 보내거나 둘 다 생략하고, 시작일 \u003e 종료일이면 400.",
+        "description": "미구현: 응답 형태만 확정. regionId를 생략하면 로그인 회원의 대표 동네를 쓰고, 비회원이거나 대표 동네가 없으면 400 COMMON_INVALID_INPUT(details regionId). range는 받지만 동네 범위 설정(REQ-042) 전에는 NORMAL로 처리한다(거리 policies.md region.range). 물품 거래 장소 좌표가 기준 동네 중심에서 범위 안인 AVAILABLE 물품만(HIDDEN·DELETED 제외). 페이지 크기는 policies.md search.page로 고정(size를 받지 않음). 시작일·종료일은 둘 다 보내거나 둘 다 생략하고, 시작일 \u003e 종료일이면 400(details endDate). minPrice \u003e maxPrice면 400(details minPrice). keyword 길이는 제한하지 않는다.",
         "operationId": "searchItems",
         "parameters": [
           {
@@ -731,7 +758,7 @@
     },
     "/api/items/{itemId}": {
       "delete": {
-        "description": "미구현: 응답 형태만 확정. 등록자만. 소프트 삭제(status \u003d DELETED)라 과거 대여·채팅에는 \"삭제된 물품\"으로 남는다. PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED 대여가 있으면 409 ITEM_HAS_ACTIVE_RENTAL이고 error.details에 해당 건을 한 건씩 담는다: [{ field: \"rentals\", reason: \"2026-11-03 ~ 2026-11-05 대여 예정 (rentalId 12)\" }]. data는 null.",
+        "description": "미구현: 응답 형태만 확정. 등록자만. 소프트 삭제(status \u003d DELETED)라 과거 대여·채팅에는 \"삭제된 물품\"으로 남는다. PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED 대여가 있으면 409 ITEM_HAS_ACTIVE_RENTAL이고 error.details에 해당 건을 한 건씩 담는다: [{ field: \"rentals\", reason: \"2026-11-03 ~ 2026-11-05 대여 예정 (rentalId 12)\" }]. 검사와 삭제는 예약과 같은 물품 락 안에서 하므로 락을 못 잡으면 409 RENTAL_LOCK_TIMEOUT. data는 null.",
         "operationId": "deleteItem",
         "parameters": [
           {
@@ -849,11 +876,22 @@
                       },
                       "success": false
                     }
+                  },
+                  "RENTAL_LOCK_TIMEOUT": {
+                    "summary": "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_LOCK_TIMEOUT",
+                        "details": [],
+                        "message": "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+                      },
+                      "success": false
+                    }
                   }
                 }
               }
             },
-            "description": "ITEM_HAS_ACTIVE_RENTAL"
+            "description": "ITEM_HAS_ACTIVE_RENTAL, RENTAL_LOCK_TIMEOUT"
           }
         },
         "security": [
@@ -1247,7 +1285,7 @@
     },
     "/api/items/{itemId}/rentals": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 제공자 전용. 해당 물품의 대여 건 전부(CANCELED 포함). 정렬: 다가오는·진행 중 건(PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED)을 시작일 오름차순으로 먼저, 완료·취소 건(COMPLETED·CANCELED)을 시작일 내림차순으로 뒤에(같은 시작일은 id 순). 페이지 크기는 policies.md item-rentals.page로 고정(size를 받지 않음). 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 RENTAL_OWNER_ONLY.",
+        "description": "미구현: 응답 형태만 확정. 제공자 전용. 해당 물품의 대여 건 전부(CANCELED 포함). 정렬: 다가오는·진행 중 건(PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED)을 시작일 오름차순으로 먼저, 완료·취소 건(COMPLETED·CANCELED)을 시작일 내림차순으로 뒤에(같은 시작일은 id 순). 페이지 크기는 policies.md item-rentals.page로 고정(size를 받지 않음). 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 ITEM_NOT_OWNER.",
         "operationId": "getItemRentals",
         "parameters": [
           {
@@ -1328,13 +1366,13 @@
             "content": {
               "application/json": {
                 "examples": {
-                  "RENTAL_OWNER_ONLY": {
-                    "summary": "물품 제공자만 처리할 수 있습니다.",
+                  "ITEM_NOT_OWNER": {
+                    "summary": "물품 등록자만 처리할 수 있습니다.",
                     "value": {
                       "error": {
-                        "code": "RENTAL_OWNER_ONLY",
+                        "code": "ITEM_NOT_OWNER",
                         "details": [],
-                        "message": "물품 제공자만 처리할 수 있습니다."
+                        "message": "물품 등록자만 처리할 수 있습니다."
                       },
                       "success": false
                     }
@@ -1342,7 +1380,7 @@
                 }
               }
             },
-            "description": "RENTAL_OWNER_ONLY"
+            "description": "ITEM_NOT_OWNER"
           },
           "404": {
             "content": {
@@ -1378,7 +1416,7 @@
     },
     "/api/members": {
       "post": {
-        "description": "미구현: 응답 형태만 확정. 글자 수 규칙은 policies.md member.email.max·member.password·member.nickname, 비밀번호는 영문·숫자·특수문자를 모두 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 가입 후 로그인 화면으로 이동한다.",
+        "description": "미구현: 응답 형태만 확정. 글자 수 규칙은 policies.md member.email.max·member.password·member.nickname, 비밀번호는 공백 없는 ASCII 출력 문자만, 영문·숫자·기호를 각각 1개 이상 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 가입 후 로그인 화면으로 이동한다.",
         "operationId": "signup",
         "requestBody": {
           "content": {
@@ -2004,7 +2042,7 @@
         ]
       },
       "post": {
-        "description": "미구현: 응답 형태만 확정. 인증 전 상태로 추가된다(인증은 verify). 첫 동네면 자동으로 대표 동네. 개수가 policies.md region.max-per-member를 넘으면 409 REGION_LIMIT_EXCEEDED, 이미 추가한 동네면 409 REGION_ALREADY_ADDED, 없는 행정동이면 404 COMMON_NOT_FOUND.",
+        "description": "미구현: 응답 형태만 확정. 인증 전 상태로 추가된다(인증은 verify). 첫 동네면 자동으로 대표 동네. 개수가 policies.md region.max-per-member를 넘으면 409 REGION_LIMIT_EXCEEDED, 이미 추가한 동네면 409 REGION_ALREADY_ADDED, 요청 바디의 regionId가 없는 행정동이면 400 COMMON_INVALID_INPUT(details regionId). 404는 경로 id가 없을 때만 쓴다.",
         "operationId": "addRegion",
         "requestBody": {
           "content": {
@@ -2066,26 +2104,6 @@
               }
             },
             "description": "AUTH_UNAUTHORIZED"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "examples": {
-                  "COMMON_NOT_FOUND": {
-                    "summary": "요청한 대상을 찾을 수 없습니다.",
-                    "value": {
-                      "error": {
-                        "code": "COMMON_NOT_FOUND",
-                        "details": [],
-                        "message": "요청한 대상을 찾을 수 없습니다."
-                      },
-                      "success": false
-                    }
-                  }
-                }
-              }
-            },
-            "description": "COMMON_NOT_FOUND"
           },
           "409": {
             "content": {
@@ -5502,10 +5520,10 @@
           },
           "newPassword": {
             "type": "string",
-            "description": "새 비밀번호. 글자 수는 policies.md member.password, 영문·숫자·특수문자 모두 포함",
+            "description": "새 비밀번호. 글자 수는 policies.md member.password, 공백 없는 ASCII 출력 문자, 영문·숫자·기호 각 1개 이상",
             "example": "newpass456@",
             "minLength": 1,
-            "pattern": "^(?\u003d.*[A-Za-z])(?\u003d.*\\d)(?\u003d.*[^A-Za-z\\d\\s]).*$"
+            "pattern": "^(?\u003d.*[A-Za-z])(?\u003d.*\\d)(?\u003d.*[!-/:-@\\[-`{-~])[!-~]*$"
           }
         },
         "required": [
@@ -5556,7 +5574,7 @@
           "memberRegionId": {
             "type": "integer",
             "format": "int64",
-            "description": "내 동네 ID (경로의 {id})",
+            "description": "내 동네 ID (경로의 {memberRegionId})",
             "example": 3
           },
           "regionId": {
@@ -5646,10 +5664,10 @@
           },
           "password": {
             "type": "string",
-            "description": "비밀번호. 글자 수는 policies.md member.password, 영문·숫자·특수문자 모두 포함",
+            "description": "비밀번호. 글자 수는 policies.md member.password, 공백 없는 ASCII 출력 문자, 영문·숫자·기호 각 1개 이상",
             "example": "rental123!",
             "minLength": 1,
-            "pattern": "^(?\u003d.*[A-Za-z])(?\u003d.*\\d)(?\u003d.*[^A-Za-z\\d\\s]).*$"
+            "pattern": "^(?\u003d.*[A-Za-z])(?\u003d.*\\d)(?\u003d.*[!-/:-@\\[-`{-~])[!-~]*$"
           }
         },
         "required": [

@@ -77,7 +77,7 @@ STOMP 목적지 접두사(`/pub`, `/sub`)는 구현 제안이며 백엔드·프�
 ### 페이지네이션
 - 무한 스크롤(피드, 채팅 내역, 알림): **커서 기반**. 요청 `cursor`, 응답 `{ items, nextCursor, hasNext }`.
 - 검색·목록: 페이지 기반. 요청 `page`(0부터), `size`(기본 20). 응답 `{ items, page, size, totalElements, hasNext }`.
-  단, 빌린 내역(REQ-019)은 size를 받지 않고 정책 키 `rental-history.page`로 고정한다(rental.md 019). 보낸 size는 무시된다.
+  단, 다음은 size를 받지 않고 정책 키로 고정한다(보낸 size는 무시): 검색(REQ-010) `search.page`, 빌린 내역(REQ-019) `rental-history.page`, 내 물품 관리(REQ-020) `my-items.page`, 물품별 예약 현황(REQ-020) `item-rentals.page`. 값은 `policies.md`.
 
 ### 인증
 - Access Token: `Authorization: Bearer <JWT>`, 30분.

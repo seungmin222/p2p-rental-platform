@@ -28,8 +28,12 @@
 | 20 | ✅ | API | 물품별 예약 현황(REQ-020) 응답 형태·"기간순" 정렬, 내 물품·예약 현황 페이지 크기 | 둘 다 `page` + `PageResponse`, size는 받지 않고 `my-items.page`·`item-rentals.page`(20) 고정. 예약 현황 정렬: 다가오는·진행 중 건(PENDING_PAYMENT~RETURNED) 시작일 오름차순 먼저, 완료·취소 건 시작일 내림차순 뒤에(지난 건이 쌓여도 다가오는 예약이 첫 페이지에 보이게). CANCELED 포함. 검색도 `search.page` 고정으로 size를 받지 않는다 |
 | 21 | ✅ | API | 피드(인증 X)·검색의 "기본 대표 동네"는 로그인 정보가 있어야 앎 | regionId 생략 시 로그인 회원의 대표 동네, 비회원·대표 동네 없음이면 400 `COMMON_INVALID_INPUT`(details regionId). 피드 인증을 `옵션`으로 바꿈(api.md) |
 | 22 | ✅ | 회원 | 같은 동네를 두 번 추가하는 경우의 에러 코드가 없음 | 409 `REGION_ALREADY_ADDED` "이미 추가한 동네입니다." |
-| 23 | ⬜ | ERD | 권장 보증금 API(`GET /api/items/deposit-guide`, api.md 1순위)가 쓰는 `damage_policies`가 erd.md에서 결제 [2] | (제안) `damage_policies`를 [1]로 올려 `feat/item-crud`에서 테이블·시드를 만들거나, 권장 비율만 1순위 설정값으로 두고 2순위에 테이블로 옮김. `feat/item-crud` 착수 시 결정 |
-| 24 | ⬜ | 인증 | 비밀번호 변경(REQ-005)은 "현재 요청의 family를 뺀 나머지"를 지우는데, RT 쿠키는 Path=`/api/auth`라 `/api/members/me/password`로 오지 않고 AT claim에도 familyId가 없음 | (제안) Access Token claim에 familyId를 추가(API 변경 없음). `feat/member-auth` 착수 시 결정 |
+| 23 | ✅ | ERD | 권장 보증금 API(`GET /api/items/deposit-guide`, api.md 1순위)가 쓰는 `damage_policies`가 erd.md에서 결제 [2] | `damage_policies` 테이블·시드를 1순위로 당긴다(erd.md [1]). 생성·시드는 `feat/item-crud` |
+| 24 | ✅ | 인증 | 비밀번호 변경(REQ-005)은 "현재 요청의 family를 뺀 나머지"를 지우는데, RT 쿠키는 Path=`/api/auth`라 `/api/members/me/password`로 오지 않고 AT claim에도 familyId가 없음 | Access Token claim에 `familyId`를 추가한다(API 변경 없음, member.md REQ-002). 구현은 `feat/member-auth` |
+| 25 | ✅ | API | 물품별 예약 현황의 "남의 물품" 403 코드(프론트 가정은 `RENTAL_OWNER_ONLY`) | 물품 소유자가 아니면 `ITEM_NOT_OWNER`로 통일. `RENTAL_OWNER_ONLY`는 대여 건의 제공자 검사(인계·상태 확인)에 그대로 쓴다 |
+| 26 | ✅ | 회원 | 비밀번호 "특수문자"의 범위·공백·한글 허용 여부 | 공백 없는 ASCII 출력 문자(`!`~`~`)만 허용, 영문·숫자·ASCII 기호(영문·숫자가 아닌 ASCII 출력 문자)를 각각 1개 이상. policies.md `member.password` |
+| 27 | ✅ | 물품 | 물품 삭제 검사(진행 중 대여)와 동시 예약의 경합 | 삭제도 `lock:item:{itemId}` 안에서 검사·삭제. 락 대기 실패는 409 `RENTAL_LOCK_TIMEOUT`(backend/CLAUDE.md 락 대상에 추가) |
+| 28 | ✅ | 검색 | minPrice > maxPrice, keyword 길이 | minPrice > maxPrice면 400 `COMMON_INVALID_INPUT`(details minPrice). keyword 길이는 제한하지 않는다 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

@@ -16,7 +16,7 @@
 - **로그인할 때마다 새 토큰 묶음(family)을 만든다.** 기기(브라우저)마다 family가 따로라 여러 기기에서 동시에 써도 서로 영향이 없다. Redis 키 `rt:{memberId}:{familyId}` = 현재 유효한 RT의 jti, TTL = RT 만료
 - 로그아웃: 현재 family 키만 삭제, 쿠키 만료
 - 예외: 계정 불일치 401 `AUTH_INVALID_CREDENTIALS` (이메일/비번 중 무엇이 틀렸는지 구분 금지), 탈퇴 회원 401 동일 코드
-- JWT claim: Access Token은 `sub=memberId`, `role`, `typ=ACCESS`. Refresh Token은 `sub=memberId`, `familyId`, `jti`, `typ=REFRESH`(`typ`로 AT·RT를 바꿔 쓰지 못하게 검증). 닉네임 등 변경 가능한 값은 넣지 않는다.
+- JWT claim: Access Token은 `sub=memberId`, `role`, `familyId`, `typ=ACCESS`(familyId는 비밀번호 변경 시 현재 기기 family를 남기려고, open-issues #24). Refresh Token은 `sub=memberId`, `familyId`, `jti`, `typ=REFRESH`(`typ`로 AT·RT를 바꿔 쓰지 못하게 검증). 닉네임 등 변경 가능한 값은 넣지 않는다.
 
 ## REQ-003 토큰 재발급 [1]
 `POST /api/auth/reissue`
