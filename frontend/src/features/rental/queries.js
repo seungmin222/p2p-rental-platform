@@ -13,6 +13,7 @@ import {
   respondCancelAgreement,
 } from './api';
 import { isStaleStateError } from './errorMessages';
+import { mergeCalendarDays } from './rentalData';
 
 // 상태가 바뀌는 화면이라 짧게(frontend/CLAUDE.md "API 연동 규칙")
 const SHORT_STALE_TIME = 5_000;
@@ -44,14 +45,23 @@ export function useRentalInspections(rentalId, { enabled }) {
   });
 }
 
-/** 연 달들의 캘린더. 결과 배열은 months 순서와 같다. */
-export function useCalendarMonths(itemId, months) {
+// 모듈 함수라 참조가 바뀌지 않아, 결과가 그대로면 TanStack Query가 이전 값을 돌려준다(days가 렌더마다 새 배열이 아님)
+function combineCalendar(results) {
+  return { days: mergeCalendarDays(results.map((result) => result.data)), results };
+}
+
+/**
+ * 연 달들의 캘린더를 불러와 Calendar의 days 하나로 합친다(달을 넘는 예약의 범위 검사용).
+ * results는 months 순서와 같다.
+ */
+export function useCalendarDays(itemId, months) {
   return useQueries({
     queries: months.map((month) => ({
       queryKey: rentalKeys.calendarMonth(itemId, month),
       queryFn: () => fetchCalendar(itemId, month),
       staleTime: SHORT_STALE_TIME,
     })),
+    combine: combineCalendar,
   });
 }
 
