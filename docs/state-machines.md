@@ -139,7 +139,6 @@ stateDiagram-v2
 | `RegionRange` | `NEAR`(1.5km), `NORMAL`(3km), `FAR`(6km) |
 | `InspectionPhase` | `HANDOVER`(인계), `RETURN`(반납) |
 | `InspectionResult` | `NORMAL`(정상), `ABNORMAL`(이상) — 제공자 상태 확인 판정 (erd `item_inspections.result`) |
-| `InspectionResult` | `NORMAL`(정상), `ABNORMAL`(이상) |
 | `DamageGrade` | `A`, `B`, `C`, `D` |
 | `DeductionType` | `NONE`, `FIXED`(정액), `ACTUAL`(실비), `FULL`(전액) |
 | `CancelReason` | `SCHEDULE_CHANGE`(일정 변경), `ITEM_PROBLEM`(물품 문제), `COUNTERPART_REQUEST`(상대방 요청), `OTHER`(기타, 사유 텍스트 필수) |

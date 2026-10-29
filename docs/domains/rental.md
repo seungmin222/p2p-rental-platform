@@ -80,7 +80,8 @@ try {
 
 ## REQ-016 대여 상태 관리 [1]
 `state-machines.md` §1 전이 표가 명세 그 자체. 구현 규칙:
-- `Rental` 엔티티 메서드로만 전이: `confirmPayment()`, `expire()`, `cancel(by, type, reason)`, `handover(by)`, `markOverdue()`, `requestReturn(by)`, `reportLost(by)`, `confirmNormal(by)`, `markAbnormal(by)`, `complete()`, `extend(newEnd)`
+- `Rental` 엔티티 메서드로만 전이: `cancel(canceledBy, type, reason, reasonText, cancelFee, now)`, `handover(now)`, `requestReturn(now)`, `confirmNormal(now)`, `markAbnormal()`, `complete(now)`. 2순위 브랜치에서 추가: `confirmPayment()`, `expire()`, `markOverdue()`, `reportLost(now)`, `extend(newEnd)`
+- 전이 메서드는 상태 가드만 보고 행위자를 받지 않는다. 누가 했는지는 서비스가 같은 트랜잭션에 저장하는 이력의 `changedBy`로 남긴다(대리 접수·양측 동의처럼 행위자를 엔티티가 알 수 없는 경우가 있다)
 - 각 메서드는 현재 상태를 검사하고 위반 시 `BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION)`(409). 전이 전용 예외 클래스를 만들지 않는다
 - 전이 시각을 컬럼에 기록: `handed_over_at`, `returned_at`, `completed_at`, `canceled_at`
 - 전이마다 `RentalStatusHistory` 생성 (도메인 이벤트 → 리스너에서 저장해도 됨)
