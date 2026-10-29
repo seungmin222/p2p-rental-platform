@@ -74,10 +74,17 @@ public class GlobalExceptionHandler {
 		return toResponse(anonymous ? ErrorCode.AUTH_UNAUTHORIZED : ErrorCode.AUTH_FORBIDDEN, List.of());
 	}
 
-	/** @Valid @RequestBody, @ModelAttribute 검증 실패 (MethodArgumentNotValidException 포함) */
+	/**
+	 * @Valid @RequestBody, @ModelAttribute 검증 실패 (MethodArgumentNotValidException 포함).
+	 * 바인딩 실패(타입 변환)의 기본 메시지에는 내부 클래스 이름이 들어 있어 형식 오류 문구로 바꾼다. 검증 메시지는 그대로 둔다.
+	 */
 	@ExceptionHandler(BindException.class)
 	public ResponseEntity<ApiResponse<Void>> handleBind(BindException e) {
-		return toResponse(ErrorCode.COMMON_INVALID_INPUT, toDetails(e.getFieldErrors()));
+		List<FieldErrorDetail> details = e.getFieldErrors().stream()
+			.map(error -> new FieldErrorDetail(error.getField(),
+				error.isBindingFailure() ? INVALID_FORMAT : error.getDefaultMessage()))
+			.toList();
+		return toResponse(ErrorCode.COMMON_INVALID_INPUT, details);
 	}
 
 	/** 컨트롤러 파라미터(@RequestParam, @PathVariable 등)의 제약 위반 */

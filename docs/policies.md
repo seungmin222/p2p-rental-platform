@@ -72,8 +72,8 @@
 | --- | --- | --- |
 | `chat.message.max` | 1,000자 | 027 |
 | `chat.history.page` | 50건 | 028 |
-| `feed.page` / `search.page` / `notification.page` | 20건 | 009, 010, 032 |
-| `review.write-deadline-days` | 거래 완료 후 7일 | 034 |
+| `feed.page` / `search.page` / `notification.page` / `rental-history.page` | 20건 (`rental-history.page`는 요청에서 size를 받지 않는 고정값) | 009, 010, 032, 019 |
+| `review.write-deadline-days` | 거래 완료 후 7일 (completed_at + 7일 정각까지 포함) | 034, 019 |
 | `review.content.max` | 300자 | 034 |
 | `trust.initial` / 범위 | 50점 / 0~100, 0.5 단위 | 054 |
 | `trust.delta` | 후기 BEST +2 / GOOD +1 / BAD −2, 칭찬 1개 +0.5(후기당 최대 +1.5), 연체 1일 −3(건당 최대 −10), 노쇼 −5, 신고 확정 −10 | 054 |

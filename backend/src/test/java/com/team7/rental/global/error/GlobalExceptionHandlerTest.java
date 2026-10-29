@@ -15,6 +15,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,6 +30,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 
 class GlobalExceptionHandlerTest {
 
@@ -116,6 +118,30 @@ class GlobalExceptionHandlerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("COMMON_INVALID_INPUT"))
 			.andExpect(jsonPath("$.error.details[0].field").value("size"));
+	}
+
+	@Test
+	@DisplayName("@ModelAttribute enum 변환 실패는 400과 해당 필드, 형식 오류 문구를 반환하고 내부 클래스 이름을 노출하지 않는다")
+	void modelAttributeBindingFailure() throws Exception {
+		// when, then
+		mockMvc.perform(get("/test/model").param("kind", "ALL").param("count", "1"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("COMMON_INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.details", hasSize(1)))
+			.andExpect(jsonPath("$.error.details[0].field").value("kind"))
+			.andExpect(jsonPath("$.error.details[0].reason").value("형식이 올바르지 않습니다."))
+			.andExpect(jsonPath("$.error.details[0].reason", not(containsString("java."))))
+			.andExpect(jsonPath("$.error.details[0].reason", not(containsString("com.team7"))));
+	}
+
+	@Test
+	@DisplayName("@ModelAttribute 검증 실패 메시지는 바꾸지 않는다")
+	void modelAttributeValidation() throws Exception {
+		// when, then
+		mockMvc.perform(get("/test/model").param("kind", "FIRST").param("count", "-1"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.details[0].field").value("count"))
+			.andExpect(jsonPath("$.error.details[0].reason").value("0 이상이어야 합니다."));
 	}
 
 	@Test
@@ -256,6 +282,22 @@ class GlobalExceptionHandlerTest {
 		ApiResponse<Void> unexpected() {
 			throw new IllegalStateException("secret-detail");
 		}
+
+		@GetMapping("/test/model")
+		ApiResponse<Void> model(@Valid @ModelAttribute
+		TestQuery query) {
+			return ApiResponse.ok();
+		}
+	}
+
+	enum TestKind {
+		FIRST
+	}
+
+	record TestQuery(
+		TestKind kind,
+		@PositiveOrZero(message = "0 이상이어야 합니다.")
+		Integer count) {
 	}
 
 	record TestRequest(

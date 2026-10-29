@@ -100,6 +100,119 @@
         ]
       }
     },
+    "/api/members/me/rentals": {
+      "get": {
+        "description": "본인이 대여자인 건만. 탭별 상태: UPCOMING \u003d PENDING_PAYMENT·RESERVED, ONGOING \u003d RENTING·OVERDUE·RETURNED, DONE \u003d COMPLETED·CANCELED. 정렬은 모든 탭에서 OVERDUE 먼저, 그다음 startDate 내림차순, id 내림차순. 페이지 크기는 policies.md rental-history.page로 고정이다. canWriteReview는 COMPLETED이고 completedAt + review.write-deadline-days 이내(정확히 기한 시각 포함)면 true다.",
+        "operationId": "getRentalHistory",
+        "parameters": [
+          {
+            "description": "조회 역할. 빌린 내역은 renter만 허용한다(빌려준 쪽은 REQ-020)",
+            "example": "renter",
+            "in": "query",
+            "name": "role",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "조회 역할. 빌린 내역은 renter만 허용한다(빌려준 쪽은 REQ-020)",
+              "example": "renter",
+              "pattern": "renter"
+            }
+          },
+          {
+            "description": "탭. 생략하면 ONGOING",
+            "in": "query",
+            "name": "tab",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ONGOING",
+              "description": "탭. 생략하면 ONGOING",
+              "enum": [
+                "UPCOMING",
+                "ONGOING",
+                "DONE"
+              ]
+            }
+          },
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseRentalHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "빌린 내역 조회 (REQ-019)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
     "/api/rentals": {
       "post": {
         "description": "1순위 단계(결제 비활성)와 무료 대여는 바로 RESERVED, 결제를 켜면 PENDING_PAYMENT로 생성해 결제 대기 시간(policies.md payment.expire-minutes) 동안 기간을 선점한다. 응답은 대여 상세와 같다.",
@@ -1812,6 +1925,20 @@
           }
         }
       },
+      "ApiResponsePageResponseRentalHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponseRentalHistoryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseRentalCalendarResponse": {
         "type": "object",
         "properties": {
@@ -1951,6 +2078,40 @@
           },
           "reason": {
             "type": "string"
+          }
+        }
+      },
+      "PageResponseRentalHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/RentalHistoryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
           }
         }
       },
@@ -2191,6 +2352,59 @@
             "type": "string",
             "description": "인계 메모 (선택). 최대 글자 수는 policies.md inspection.handover-memo-max",
             "example": "충전기 포함, 앞면 작은 흠집 있음"
+          }
+        }
+      },
+      "RentalHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "canWriteReview": {
+            "type": "boolean",
+            "description": "후기 작성 가능 여부. 거래 완료(COMPLETED) 후 policies.md review.write-deadline-days 이내면 true"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 종료일 (포함)",
+            "example": "2026-11-05"
+          },
+          "item": {
+            "$ref": "#/components/schemas/RentalItem"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/RentalCounterpart",
+            "description": "제공자"
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID",
+            "example": 1
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 시작일 (포함)",
+            "example": "2026-11-03"
+          },
+          "status": {
+            "type": "string",
+            "description": "대여 상태",
+            "enum": [
+              "PENDING_PAYMENT",
+              "RESERVED",
+              "RENTING",
+              "OVERDUE",
+              "RETURNED",
+              "COMPLETED",
+              "CANCELED"
+            ]
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "결제 금액 \u003d 대여료 + 보증금 (예약 시점)",
+            "example": 80000
           }
         }
       },

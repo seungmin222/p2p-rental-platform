@@ -41,7 +41,11 @@ public record PolicyProperties(
 	Inspection inspection,
 	/** 키는 return.* 그대로. return이 Java 예약어라 컴포넌트 이름만 다르다 */
 	@Valid @NotNull @Name("return")
-	Return returnPolicy) {
+	Return returnPolicy,
+	@Valid @NotNull
+	Review review,
+	@Valid @NotNull
+	RentalHistory rentalHistory) {
 
 	/**
 	 * @param originalMaxLongSide 원본 재인코딩 시 긴 변 최대 픽셀 (image.original-max-long-side)
@@ -166,5 +170,21 @@ public record PolicyProperties(
 		int noteMax,
 		@Positive
 		int autoConfirmDays) {
+	}
+
+	/**
+	 * @param writeDeadlineDays 거래 완료(completed_at) 후 후기 작성 기한 일수 (review.write-deadline-days)
+	 */
+	public record Review(
+		@Positive
+		int writeDeadlineDays) {
+	}
+
+	/**
+	 * @param page 빌린 내역(REQ-019) 페이지 크기 (rental-history.page). 요청에서 size를 받지 않는다
+	 */
+	public record RentalHistory(
+		@Positive
+		int page) {
 	}
 }

@@ -174,6 +174,25 @@ public class Rental extends BaseTimeEntity {
 		return status != RentalStatus.PENDING_PAYMENT || (paymentExpiresAt != null && paymentExpiresAt.isAfter(now));
 	}
 
+	/** {@link #canWriteReview(RentalStatus, LocalDateTime, LocalDateTime, int)}와 같은 판정. 후기 작성 가드(REQ-034)용 */
+	public boolean canWriteReview(LocalDateTime now, int deadlineDays) {
+		return canWriteReview(status, completedAt, now, deadlineDays);
+	}
+
+	/**
+	 * 후기 작성 기간인지: COMPLETED이고 now ≤ completedAt + deadlineDays(review.write-deadline-days). 정확히 기한 시각이면 아직 작성할 수
+	 * 있다. COMPLETED인데 completedAt이 없는 깨진 행은 false다. 빌린 내역(REQ-019)은 엔티티 대신 조회 컬럼으로 부른다.
+	 * <p>
+	 * "후기 미작성" 조건은 후기 테이블이 생기는 feat/review(REQ-034)에서 호출하는 쪽에 더한다.
+	 */
+	public static boolean canWriteReview(RentalStatus status, LocalDateTime completedAt, LocalDateTime now,
+		int deadlineDays) {
+		if (status != RentalStatus.COMPLETED || completedAt == null) {
+			return false;
+		}
+		return !now.isAfter(completedAt.plusDays(deadlineDays));
+	}
+
 	public boolean isParticipant(Long memberId) {
 		return renterId.equals(memberId) || ownerId.equals(memberId);
 	}
