@@ -66,7 +66,8 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 			.andExpect(jsonPath("$.data.counterpart.nickname").value(owner.getNickname()))
 			.andExpect(jsonPath("$.data.item.name").value(item.getName()))
 			.andExpect(jsonPath("$.data.item.isDeleted").value(false))
-			.andExpect(jsonPath("$.data.cancelFee").value(0));
+			.andExpect(jsonPath("$.data.cancelFee").value(0))
+			.andExpect(jsonPath("$.data.activeCancelAgreement").doesNotExist());
 	}
 
 	@Test
@@ -124,7 +125,7 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	@DisplayName("상세 조회는 쿼리 4개로 끝난다(대여·물품 요약·대표 이미지·상대 닉네임)")
+	@DisplayName("상세 조회는 쿼리 5개로 끝난다(대여·물품 요약·대표 이미지·상대 닉네임·진행 중인 동의 취소)")
 	void queryCount() throws Exception {
 		// given: 픽스처 저장이 섞이지 않게 요청 직전에 비운다
 		Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
@@ -136,6 +137,6 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 			.andExpect(status().isOk());
 
 		// then
-		assertThat(statistics.getPrepareStatementCount()).isEqualTo(4);
+		assertThat(statistics.getPrepareStatementCount()).isEqualTo(5);
 	}
 }

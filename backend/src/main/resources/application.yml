@@ -67,6 +67,9 @@ app:
       # cancel-fee.rate-percent / free-until-days-before: 대여자 단독 취소 수수료. 시작일 3일 전까지 무료, 그 뒤 대여료의 30% (REQ-015)
       rate-percent: 30
       free-until-days-before: 3
+    cancel-agreement:
+      # cancel-agreement.expire-hours: 양측 동의 취소 요청이 상대 무응답으로 만료되는 시간 (REQ-015)
+      expire-hours: 48
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

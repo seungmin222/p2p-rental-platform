@@ -32,7 +32,9 @@ public record PolicyProperties(
 	@Valid @NotNull
 	Cancel cancel,
 	@Valid @NotNull
-	CancelFee cancelFee) {
+	CancelFee cancelFee,
+	@Valid @NotNull
+	CancelAgreement cancelAgreement) {
 
 	/**
 	 * @param originalMaxLongSide 원본 재인코딩 시 긴 변 최대 픽셀 (image.original-max-long-side)
@@ -105,5 +107,13 @@ public record PolicyProperties(
 		int ratePercent,
 		@Positive
 		int freeUntilDaysBefore) {
+	}
+
+	/**
+	 * @param expireHours 양측 동의 취소 요청이 상대 무응답으로 만료되는 시간 (cancel-agreement.expire-hours)
+	 */
+	public record CancelAgreement(
+		@Positive
+		int expireHours) {
 	}
 }

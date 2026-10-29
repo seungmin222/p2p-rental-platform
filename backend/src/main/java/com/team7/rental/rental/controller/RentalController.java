@@ -16,6 +16,8 @@ import com.team7.rental.global.config.OpenApiConfig;
 import com.team7.rental.global.error.ApiErrorCodes;
 import com.team7.rental.global.response.ApiResponse;
 import com.team7.rental.global.security.LoginMember;
+import com.team7.rental.rental.dto.CancelAgreementRespondRequest;
+import com.team7.rental.rental.dto.CancelAgreementResponse;
 import com.team7.rental.rental.dto.RentalCancelRequest;
 import com.team7.rental.rental.dto.RentalCreateRequest;
 import com.team7.rental.rental.dto.RentalDetailResponse;
@@ -77,5 +79,39 @@ public class RentalController {
 		@Valid @RequestBody
 		RentalCancelRequest request) {
 		return ApiResponse.ok(rentalCancelService.cancel(rentalId, memberId, request));
+	}
+
+	@Operation(summary = "양측 동의 취소 요청 (REQ-015)", description = "시작일이 지나고 인계 전인 대여 예정(RESERVED)을 취소하려면 상대 동의가 필요하다. "
+		+ "당사자 한쪽이 요청하고, 상대가 응답하지 않으면 만료된다(policies.md cancel-agreement.expire-hours). "
+		+ "진행 중인 요청이 있으면 409, 거절·만료된 뒤에는 다시 요청할 수 있다. 시작일 전이면 단독 취소를 쓴다. "
+		+ "reason=OTHER면 reasonText 필수(cancel.reason-text-max).")
+	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_PARTICIPANT, RENTAL_NOT_FOUND,
+		RENTAL_INVALID_TRANSITION, RENTAL_CANCEL_AGREEMENT_TOO_EARLY, RENTAL_CANCEL_AGREEMENT_IN_PROGRESS})
+	@PostMapping("/{rentalId}/cancel-agreements")
+	@ResponseStatus(HttpStatus.CREATED)
+	public ApiResponse<CancelAgreementResponse> requestCancelAgreement(@LoginMember
+	Long memberId, @PathVariable
+	Long rentalId,
+		@Valid @RequestBody
+		RentalCancelRequest request) {
+		return ApiResponse.ok(rentalCancelService.requestAgreement(rentalId, memberId, request));
+	}
+
+	@Operation(summary = "양측 동의 취소 응답 (REQ-015)", description = "요청하지 않은 당사자가 수락하거나 거절한다. "
+		+ "ACCEPT면 대여가 CANCELED(cancelType=MUTUAL, 수수료 없음, 사유는 요청의 사유)가 되고, REJECT면 요청만 종료된다. "
+		+ "이미 응답했거나 만료된 요청은 409. 응답은 대여 상세와 같다.")
+	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_PARTICIPANT,
+		RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE, RENTAL_NOT_FOUND, RENTAL_CANCEL_AGREEMENT_NOT_FOUND,
+		RENTAL_CANCEL_AGREEMENT_CLOSED, RENTAL_INVALID_TRANSITION, COMMON_CONCURRENT_UPDATE})
+	@PatchMapping("/{rentalId}/cancel-agreements/{agreementId}")
+	public ApiResponse<RentalDetailResponse> respondCancelAgreement(@LoginMember
+	Long memberId, @PathVariable
+	Long rentalId, @PathVariable
+	Long agreementId,
+		@Valid @RequestBody
+		CancelAgreementRespondRequest request) {
+		return ApiResponse.ok(rentalCancelService.respondAgreement(rentalId, agreementId, memberId, request));
 	}
 }

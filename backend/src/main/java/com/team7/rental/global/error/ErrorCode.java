@@ -43,7 +43,12 @@ public enum ErrorCode {
 	RENTAL_PERIOD_CONFLICT(HttpStatus.CONFLICT, "이미 예약된 기간입니다."),
 	RENTAL_LOCK_TIMEOUT(HttpStatus.CONFLICT, "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."),
 	RENTAL_INVALID_TRANSITION(HttpStatus.CONFLICT, "현재 대여 상태에서는 처리할 수 없는 요청입니다."),
-	RENTAL_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "대여 시작일이 지나 단독으로 취소할 수 없습니다. 상대방에게 취소 동의를 요청해 주세요.");
+	RENTAL_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "대여 시작일이 지나 단독으로 취소할 수 없습니다. 상대방에게 취소 동의를 요청해 주세요."),
+	RENTAL_CANCEL_AGREEMENT_TOO_EARLY(HttpStatus.CONFLICT, "대여 시작일 전에는 단독으로 취소할 수 있습니다."),
+	RENTAL_CANCEL_AGREEMENT_IN_PROGRESS(HttpStatus.CONFLICT, "이미 진행 중인 취소 동의 요청이 있습니다."),
+	RENTAL_CANCEL_AGREEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "취소 동의 요청을 찾을 수 없습니다."),
+	RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE(HttpStatus.FORBIDDEN, "본인이 보낸 취소 동의 요청에는 응답할 수 없습니다."),
+	RENTAL_CANCEL_AGREEMENT_CLOSED(HttpStatus.CONFLICT, "이미 응답했거나 만료된 취소 동의 요청입니다.");
 
 	private final HttpStatus status;
 	private final String message;
