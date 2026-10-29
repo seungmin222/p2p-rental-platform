@@ -286,6 +286,29 @@ function toImageUrls(images) {
   return images.map((file) => URL.createObjectURL(file));
 }
 
+/** "YYYY-MM-DD"이고 실제로 있는 날짜(2026-02-30 거부) */
+function isRealDate(date) {
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return false;
+  }
+  const [year, month, day] = date.split('-').map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  return (
+    utc.getUTCFullYear() === year && utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day
+  );
+}
+
+/** 서버는 LocalDate로 못 읽으면(형식·없는 날짜) 400 COMMON_INVALID_INPUT, details에 필드 */
+function readDate(body, field) {
+  if (body?.[field] == null) {
+    invalidInput(field, '필수 값입니다.');
+  }
+  if (!isRealDate(body[field])) {
+    invalidInput(field, '형식이 올바르지 않습니다.');
+  }
+  return body[field];
+}
+
 function validateLength(field, text, max) {
   if (text && [...text].length > max) {
     invalidInput(field, `${max}자 이하로 입력해 주세요.`);
@@ -335,12 +358,15 @@ export const rentalHandlers = [
   http.post(
     '/api/rentals',
     handle(async ({ request }) => {
-      const { itemId, startDate, endDate } = (await request.json()) ?? {};
+      const body = await request.json();
+      if (body?.itemId == null) {
+        invalidInput('itemId', '필수 값입니다.');
+      }
+      const { itemId } = body;
+      const startDate = readDate(body, 'startDate');
+      const endDate = readDate(body, 'endDate');
       const today = todayInSeoul();
-      const validDates =
-        /^\d{4}-\d{2}-\d{2}$/.test(startDate ?? '') && /^\d{4}-\d{2}-\d{2}$/.test(endDate ?? '');
       if (
-        !validDates ||
         compareDate(startDate, today) < 0 ||
         compareDate(startDate, endDate) > 0 ||
         countDaysInclusive(startDate, endDate) > POLICY.MAX_DAYS
