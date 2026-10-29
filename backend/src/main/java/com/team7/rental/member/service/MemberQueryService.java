@@ -7,13 +7,14 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.team7.rental.member.dto.MemberResponse;
 import com.team7.rental.member.entity.Member;
 import com.team7.rental.member.repository.MemberRepository;
 
 import lombok.RequiredArgsConstructor;
 
 /**
- * 다른 도메인이 회원 정보를 읽는 창구. 지금은 대여 상세(REQ-016)·빌린 내역(REQ-019)의 닉네임만 있다.
+ * 회원 조회. 내 정보(REQ-005)와, 다른 도메인이 회원 정보를 읽는 창구(대여 상세 REQ-016·빌린 내역 REQ-019의 닉네임)를 겸한다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -42,5 +43,10 @@ public class MemberQueryService {
 		}
 		return memberRepository.findAllById(memberIds).stream()
 			.collect(Collectors.toMap(Member::getId, Member::getNickname));
+	}
+
+	/** 내 정보 (REQ-005). 대표 동네 요약 포함 */
+	public MemberResponse getMe(Long memberId) {
+		throw new UnsupportedOperationException("미구현: feat/member-region");
 	}
 }
