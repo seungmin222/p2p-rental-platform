@@ -16,6 +16,7 @@ import com.team7.rental.global.response.PageResponse;
 import com.team7.rental.item.dto.ItemSummary;
 import com.team7.rental.item.service.ItemQueryService;
 import com.team7.rental.member.service.MemberQueryService;
+import com.team7.rental.rental.dto.ItemRentalResponse;
 import com.team7.rental.rental.dto.RentalDetailResponse.RentalCounterpart;
 import com.team7.rental.rental.dto.RentalDetailResponse.RentalItem;
 import com.team7.rental.rental.dto.RentalHistoryResponse;
@@ -73,5 +74,13 @@ public class RentalHistoryService {
 			(long)row.rentalFee() + row.deposit(),
 			// "후기 미작성" 조건은 feat/review(REQ-034)에서 더한다
 			Rental.canWriteReview(row.status(), row.completedAt(), now, reviewDeadlineDays));
+	}
+
+	/**
+	 * 물품별 예약 현황 (REQ-020, 제공자). 다가오는·진행 중 건을 시작일 오름차순으로 먼저, 완료·취소 건을 시작일 내림차순으로 뒤에.
+	 * 페이지 크기 policies.md item-rentals.page.
+	 */
+	public PageResponse<ItemRentalResponse> getItemRentals(Long itemId, Long memberId, int page) {
+		throw new UnsupportedOperationException("미구현: feat/item-feed-search");
 	}
 }

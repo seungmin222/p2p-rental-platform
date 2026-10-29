@@ -10,9 +10,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
+import com.team7.rental.global.response.CursorResponse;
+import com.team7.rental.global.response.PageResponse;
 import com.team7.rental.item.dto.AvailablePeriod;
+import com.team7.rental.item.dto.ItemDepositGuideRequest;
+import com.team7.rental.item.dto.ItemDepositGuideResponse;
+import com.team7.rental.item.dto.ItemDetailResponse;
+import com.team7.rental.item.dto.ItemEditResponse;
+import com.team7.rental.item.dto.ItemFeedRequest;
 import com.team7.rental.item.dto.ItemRentalTarget;
+import com.team7.rental.item.dto.ItemSearchRequest;
 import com.team7.rental.item.dto.ItemSummary;
+import com.team7.rental.item.dto.ItemSummaryResponse;
+import com.team7.rental.item.dto.MyItemRequest;
+import com.team7.rental.item.dto.MyItemResponse;
 import com.team7.rental.item.entity.Item;
 import com.team7.rental.item.entity.ItemImage;
 import com.team7.rental.item.entity.ItemStatus;
@@ -23,8 +34,9 @@ import com.team7.rental.item.repository.ItemRepository;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 다른 도메인(rental 등)이 물품 정보를 읽는 창구. 엔티티 대신 item/dto의 record를 반환한다.
- * 지금은 대여 예약·캘린더·상세·빌린 내역(REQ-012·013·016·019)에 필요한 메서드만 있다.
+ * 물품 조회. 화면용 조회(REQ-006 권장 보증금·009 피드·010 검색·011 상세·020 내 물품, 아래쪽 미구현 메서드)와
+ * 다른 도메인(rental 등)이 물품 정보를 읽는 창구(대여 예약·캘린더·상세·빌린 내역 REQ-012·013·016·019)를 겸한다.
+ * 엔티티 대신 item/dto의 record를 반환한다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -34,6 +46,36 @@ public class ItemQueryService {
 	private final ItemRepository itemRepository;
 	private final ItemAvailablePeriodRepository itemAvailablePeriodRepository;
 	private final ItemImageRepository itemImageRepository;
+
+	/** 권장 보증금 범위 (REQ-006) */
+	public ItemDepositGuideResponse getDepositGuide(ItemDepositGuideRequest request) {
+		throw new UnsupportedOperationException("미구현: feat/item-crud");
+	}
+
+	/** 동네 피드 (REQ-009). regionId가 없으면 회원의 대표 동네 */
+	public CursorResponse<ItemSummaryResponse> getFeed(ItemFeedRequest request, Long memberId) {
+		throw new UnsupportedOperationException("미구현: feat/item-feed-search");
+	}
+
+	/** 필터링 검색 (REQ-010). regionId가 없으면 회원의 대표 동네 */
+	public PageResponse<ItemSummaryResponse> search(ItemSearchRequest request, Long memberId) {
+		throw new UnsupportedOperationException("미구현: feat/item-feed-search");
+	}
+
+	/** 상세 (REQ-011). memberId는 비회원이면 null */
+	public ItemDetailResponse getDetail(Long itemId, Long memberId) {
+		throw new UnsupportedOperationException("미구현: feat/item-crud");
+	}
+
+	/** 소유자 수정 화면 (REQ-007). itemPrice 포함 */
+	public ItemEditResponse getEditView(Long itemId, Long memberId) {
+		throw new UnsupportedOperationException("미구현: feat/item-crud");
+	}
+
+	/** 내 물품 관리 (REQ-020) */
+	public PageResponse<MyItemResponse> getMyItems(Long memberId, MyItemRequest request) {
+		throw new UnsupportedOperationException("미구현: feat/item-feed-search");
+	}
 
 	/**
 	 * 예약 대상 물품. 공개 여부는 {@link #validateVisible}과 같은 규칙이다.

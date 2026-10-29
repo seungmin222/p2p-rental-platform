@@ -44,10 +44,11 @@
 | 1 | GET | /api/items/deposit-guide?categoryId=&itemPrice= | 권장 보증금 범위 | O | 006 |
 | 1 | PATCH | /api/items/{itemId} | 수정 | O | 007 |
 | 1 | DELETE | /api/items/{itemId} | 소프트 삭제 | O | 008 |
-| 1 | GET | /api/items/feed?regionId=&range=&categoryId=&cursor= | 동네 피드 | X | 009 |
+| 1 | GET | /api/items/feed?regionId=&range=&categoryId=&cursor= | 동네 피드 (regionId 생략 시 로그인 회원 대표 동네) | 옵션 | 009 |
 | 1 | GET | /api/items?regionId=&range=&keyword=&categoryId=&minPrice=&maxPrice=&startDate=&endDate=&availableOnly=&sort=&page= | 검색 | 옵션 | 010 |
 | 1 | GET | /api/items/{itemId} | 상세 | 옵션 | 011 |
 | 1 | GET | /api/items/{itemId}/calendar?month=YYYY-MM | 대여 캘린더 | X | 012 |
+| 1 | GET | /api/members/me/items/{itemId} | 수정 화면 조회 (소유자 전용, itemPrice 포함) | O | 007 |
 | 2 | POST | /api/items/{itemId}/wishes | 관심 추가 | O | 022 |
 | 2 | DELETE | /api/items/{itemId}/wishes | 관심 해제 | O | 022 |
 | 2 | GET | /api/members/me/wishes | 관심 목록 | O | 022 |
@@ -75,8 +76,8 @@
 | 2 | POST | /api/rentals/{id}/lost-report | 미반납 신고(예정일 + 7일 이후) | O | 018, 049 |
 | 1 | GET | /api/rentals/{id}/inspections | 인계·반납 기록(+AI 결과) | O | 017, 018, 040 |
 | 1 | GET | /api/members/me/rentals?role=renter&tab=&page= | 빌린 내역 | O | 019 |
-| 1 | GET | /api/members/me/items?tab= | 내 물품 관리 | O | 020 |
-| 1 | GET | /api/items/{itemId}/rentals | 물품별 예약 현황(제공자) | O | 020 |
+| 1 | GET | /api/members/me/items?tab=&page= | 내 물품 관리 | O | 020 |
+| 1 | GET | /api/items/{itemId}/rentals?page= | 물품별 예약 현황(제공자) | O | 020 |
 | 2 | POST | /api/rentals/{id}/extensions | 연장 요청(추가 결제 생성) | O | 038 |
 | 2 | POST | /api/rentals/{id}/reviews | 후기 작성 | O | 034 |
 
