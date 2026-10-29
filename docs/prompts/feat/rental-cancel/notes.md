@@ -22,6 +22,10 @@ REQ-015 단독 취소 + 양측 동의 취소(1순위), 016 중 취소 전이. �
 - **`RentalCancelAgreement`에 `@Version`을 두지 않는다. 만료 배치와 응답이 겹치면 "만료 전에 확인을 통과한 응답이 이긴다".** 만료는 벌크 UPDATE라 버전을 올리지 않으므로 `@Version`을 두면 벌크와 섞여 의도치 않은 409나 덮어쓰기가 생긴다. 응답끼리는 대여 행 락으로 직렬화되고, 배치의 벌크 쿼리는 `status = REQUESTED and expires_at <= :now`로 상태를 다시 확인해 이미 응답한 행을 건드리지 않는다.
 - **수락·거절 응답은 같은 트랜잭션 안에서 `RentalQueryService.getRental`로 만든다.** 진행 중인 요청 조회(JPQL)가 실행되기 전 자동 flush로 ACCEPTED·REJECTED가 반영돼 activeCancelAgreement가 null이 된다. 통합 테스트로 고정했다.
 
+## 만료 배치
+- **`batch/CancelAgreementExpireJob`은 `RentalCancelService.expireOverdue(now)`만 부르고, 서비스는 벌크 `@Modifying(clearAutomatically = true, flushAutomatically = true)`로 EXPIRED 처리한다.** 대여 상태를 바꾸지 않으니 대여 이력은 없다. 벌크라 auditing이 돌지 않아 updated_at을 쿼리에서 직접 넣는다.
+- **cron은 `app.batch.cancel-agreement-expire-cron`**(10분, test 프로필은 `"-"`로 끄고 테스트가 직접 호출). 이후 배치 키도 `app.batch.*`에 모은다. ShedLock 이름 `rental.cancel-agreement-expire`, lockAtMostFor 5m(단일 UPDATE라 넉넉함)·lockAtLeastFor 30s.
+
 ## 수수료·정책 키
 - **`cancel-fee.rate-percent`(30)·`cancel-fee.free-until-days-before`(3)를 policies.md §2 표 아래에 추가**, 코드에 30·3을 쓰지 않는다. 계산은 long으로 하고 원 미만 절사.
 - **policies.md 키는 PolicyProperties 바인딩 형태에 맞춘다.** `cancel.reason-text.max`를 `cancel.reason-text-max`로 바꿨다(PR1의 `rental.lock-wait`과 같은 이유: 점 하나마다 중첩 record가 생긴다).

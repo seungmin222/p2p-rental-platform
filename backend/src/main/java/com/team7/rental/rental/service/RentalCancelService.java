@@ -117,6 +117,17 @@ public class RentalCancelService {
 		return rentalQueryService.getRental(rentalId, memberId);
 	}
 
+	/**
+	 * 만료 배치(CancelAgreementExpireJob)용. 만료 시각이 지난 REQUESTED 동의 요청을 EXPIRED로 바꾼다. 멱등.
+	 * 만료 전에 확인을 통과한 응답이 먼저 커밋했으면 상태가 REQUESTED가 아니라 건드리지 않는다.
+	 *
+	 * @return 만료한 건수
+	 */
+	@Transactional
+	public int expireOverdue(LocalDateTime now) {
+		return rentalCancelAgreementRepository.expireOverdue(now);
+	}
+
 	private Rental getParticipantRentalForUpdate(Long rentalId, Long memberId) {
 		Rental rental = rentalRepository.findByIdForUpdate(rentalId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_NOT_FOUND));

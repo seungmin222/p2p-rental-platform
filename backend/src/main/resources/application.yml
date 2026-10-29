@@ -38,6 +38,10 @@ app:
   security:
     # Swagger 경로 공개 여부. local 프로필에서만 true
     permit-swagger: false
+  batch:
+    # 배치 주기 (docs/policies.md 배치 주기). test 프로필은 "-"로 끈다
+    # 양측 동의 취소 요청 만료: 10분 (REQ-015)
+    cancel-agreement-expire-cron: "0 */10 * * * *"
   policy:
     # docs/policies.md 수치. 바꾸면 policies.md도 함께 수정 (PolicyProperties)
     image:
