@@ -40,6 +40,8 @@ export default function RentalStepBar({ steps }) {
             className={labelClassName(step)}
           >
             {step.label}
+            {/* 점 색은 장식이라 지난 단계는 스크린 리더에 글로 알린다 */}
+            {step.state === 'done' && <span className="sr-only"> 완료</span>}
           </li>
         ))}
       </ol>
