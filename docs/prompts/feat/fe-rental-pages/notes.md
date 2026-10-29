@@ -86,10 +86,17 @@ SCR-07 대여 예약 + SCR-08 대여 상세 + 공통(`features/rental/`)·MSW �
 - **반납 체크리스트 예/아니오 칩은 `min-w-11`(44px)**: '예' 칩이 41.6px라 가로 터치 영역이 모자랐다(헤드리스 360px 측정). 공통 Chip은 바꾸지 않고 이 화면에서만.
 - **사진은 누르면 원본을 새 탭으로**(라이트박스는 만들지 않음). 대표 사진 나란히 + 나머지는 44px 줄.
 
+## 백엔드에 확인할 것
+- **`GET /api/items/{id}`(REQ-011, 아직 openapi.json에 없음)** 응답에 예약 화면이 쓰는 필드: `images[].url`(첫 장을 썸네일로), `pricePerDay`, `deposit`, `owner{ nickname, regionName }`, `isOwner`. 이름은 대여 API에 맞춰 가정했다(`features/item/api.js` `toItemSummary` 한 곳).
+- **`POST /api/auth/reissue`** 응답이 `{ accessToken }`인지(`shared/api/reissue.js` `extractAccessToken`).
+- **2순위**: 대여 상세 응답(`RentalDetailResponse`)에 `depositStatus`와 보증금 차감 정보(차감액·사유)가 필요하다(REQ-025·049 화면). 지금 응답에는 없다.
+
 ## 결제 브랜치에서
 - **결제 카운트다운이 끝나면 지금은 "결제 시간이 지났어요"만 보이고 상세를 다시 불러오지 않는다.** 1순위(결제 꺼짐)에는 PENDING_PAYMENT가 생기지 않아 만료되는 화면이 없으므로, 만료 시 재조회(상세 무효화 → 서버가 CANCELED로 바꾼 상태 표시)는 결제 브랜치에서 넣는다.
 
 ## 확인
 - 헤드리스 Chrome(CDP)으로 `VITE_USE_MOCK=true` 390px·360px: 대여자(예약 → 상세 → 사유 검증·포커스 → 취소, 시작일 당일 동의 요청 → "취소 요청 중", 상대 요청 동의 → MUTUAL), 제공자(시작일 전 인계 비활성 → 당일 인계(사진 누락 오류) → 대리 접수(체크리스트 미선택·'아니오' 메모 오류) → 정상 확인 → 거래 완료, 이상 있음 → 판정 표시), 오류(물품 102 기간 충돌 → 토스트·선택 초기화, 403·404 대여, 다른 곳에서 먼저 반납된 26에 대리 접수 → 시트 안 "상태가 바뀌었어요" + 배지 갱신). `VITE_PAYMENT_ENABLED=true`로 결제 버튼·카운트다운·수수료 안내·취소 정보 수수료도 확인.
 - **백엔드 로컬 서버 연동은 아직 불가**: 로그인 API(REQ-002)가 없어 실제 AT를 받을 수 없다. 대여 API는 모두 인증 필요라 RequireAuth 뒤 화면이 401 → 재발급 실패로 로그인 화면으로 간다. feat/member-auth 머지 후 확인한다(백엔드 컨트롤러는 대여 3개뿐. local 비밀키로 JWT를 직접 서명하면 부를 수는 있지만 이번에는 하지 않았다).
+- 리뷰 반영 확인(헤드리스, worker.use로 목 응답을 바꿈): 반납 시트를 연 채 상세 재조회 500 → 시트·화면 유지, 토스트 1번(시트 안 조작으로 다시 그려도 늘지 않음). 예약 화면에서 기간을 고른 뒤 캘린더 재조회 500 → 선택·캘린더 유지, 토스트 1번. 네 폼 400 details → 첫 오류 필드 포커스. `/items/abc/reserve` → 요청 없이 "찾을 수 없어요". 목 `2026-02-30`·`2026-13-01` → 400 COMMON_INVALID_INPUT(details startDate/endDate). 스텝바 지난 단계 "예약 완료"처럼 읽힘. 360px 시드 25 바 버튼 3개 한 줄(각 약 104px, 잘림 없음).
+- **500kB 청크 경고는 이 브랜치에서 처음 생긴다**(develop b877af8 396kB → 이 브랜치 508kB). develop은 화면이 공통 UI·뮤테이션을 아직 쓰지 않아 트리 셰이킹으로 빠져 있었다. 늘어난 111kB: react-hook-form 35.7 · 화면에서 쓰기 시작한 shared/ui 20.1 · rental 컴포넌트·features·pages 약 32 · TanStack Query(useMutation·useQueries) 13. lazy 라우트 분리는 별도 작업(사용자 확인 대기).
 - `npm run build` 결과 JS 번들에 MSW·목 코드 없음. `dist/mockServiceWorker.js`는 `public/`에서 복사되는 기존 파일(등록하지 않으면 동작하지 않음).
