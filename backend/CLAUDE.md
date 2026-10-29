@@ -61,7 +61,7 @@ rental/
 - 포맷: **네이버 핵데이 Java 컨벤션**(탭 4, 120자). 손으로 맞추지 말고 커밋 전 `./gradlew spotlessApply`. 이름 규칙(클래스·DTO·메서드 동사·테스트)은 `docs/conventions.md` §2, DB 이름·제약·인덱스는 §4.
 - 컨트롤러는 얇게: 검증(`@Valid`) → 서비스 호출 → `ApiResponse.ok(...)`. 비즈니스 로직 금지.
 - DTO는 `record`. 엔티티를 응답으로 직접 반환하지 않는다.
-- 엔티티: `@Setter` 금지. 상태 변경은 의미 있는 메서드(`rental.handover(memberId)`)로. 생성은 정적 팩토리 또는 `@Builder(access = PRIVATE)` + 팩토리.
+- 엔티티: `@Setter` 금지. 상태 변경은 의미 있는 메서드(`rental.handover(now)`)로. 생성은 정적 팩토리 또는 `@Builder(access = PRIVATE)` + 팩토리.
 - `@Enumerated(EnumType.STRING)` 필수. Enum 코드는 `docs/state-machines.md`와 정확히 일치.
 - 연관관계: 기본 `LAZY`. 조회 성능 문제는 fetch join / DTO projection으로 해결. 양방향은 꼭 필요할 때만.
 - 정책 수치는 하드코딩 금지 → `PolicyProperties` 주입.
