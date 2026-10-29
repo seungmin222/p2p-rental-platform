@@ -38,9 +38,9 @@ src/
 ├── shared/
 │   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화, 토큰 재발급, authStore(AT)
 │   ├── ws/         STOMP 클라이언트 싱글톤
-│   ├── ui/         Button, ButtonLink, Badge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
-│   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), validators
-│   └── hooks/
+│   ├── ui/         Button, ButtonLink, Badge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Tabs, Thumbnail, InfiniteListFooter, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
+│   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), listParams(페이지·탭 쿼리), queryState(조회 실패 표시), validators
+│   └── hooks/      useInfiniteScroll, useTabParam, useRefetchErrorToast
 ├── mocks/          MSW 핸들러 (Swagger 응답 형태 그대로)
 └── styles/
 ```
@@ -92,8 +92,9 @@ src/
 - **서버에서 온 데이터는 전부 TanStack Query로 다룬다.** `useEffect + useState`로 API를 호출해 상태를 들고 있지 않는다. Zustand에는 서버 데이터를 복사해 두지 않는다(토큰·임시 동네·UI 상태만).
 - 조회는 `useQuery`/`useInfiniteQuery`, 변경은 `useMutation` → `onSuccess`에서 관련 queryKey `invalidateQueries`. 훅은 `features/*/queries.js`에 모으고 컴포넌트에서 axios를 직접 호출하지 않는다.
 - 기본 옵션(`QueryClient`): `retry: 1`(401·403·404·409는 재시도 안 함), `staleTime`은 목록 30초·상세 10초 정도로 시작. 캘린더·대여 상세처럼 상태가 바뀌는 화면은 짧게.
-- queryKey 규칙: `['items', 'feed', {regionId, range, categoryId}]`, `['items', id]`, `['rentals', id]`, `['items', id, 'calendar', month]`. 뮤테이션 후 관련 키 invalidate.
-- 무한 스크롤: `useInfiniteQuery` + `nextCursor`. IntersectionObserver.
+- queryKey 규칙: `['items', 'feed', {regionId, range, categoryId}]`, `['items', id]`, `['rentals', id]`, `['items', id, 'calendar', month]`, 빌린 내역 `['rentals', 'me', {role: 'renter', tab}]`, 내 물품 `['items', 'me', {tab}]`, 물품별 예약 현황 `['items', id, 'rentals']`. 뮤테이션 후 관련 키 invalidate.
+- 무한 스크롤: `useInfiniteQuery` + IntersectionObserver(`shared/hooks/useInfiniteScroll`, 목록 끝은 `InfiniteListFooter`). 피드·검색은 `nextCursor`, 빌린 내역·내 물품·물품별 예약 현황은 page/hasNext(`initialPageParam: 0`, `shared/lib/listParams.js`의 `getNextPageParam`·`flattenPages`, 빌린 내역은 size를 보내지 않음). 다음 페이지 실패는 목록은 두고 끝에 "다시 시도"(재조회 실패 토스트에서는 뺀다).
+- 목록 탭은 `shared/ui/Tabs` + URL `?tab=`(`useTabParam`, 바꿀 때 replace, 모르는 값이면 기본 탭) — 상세에 갔다가 뒤로 오면 같은 탭.
 
 ## 실시간 (STOMP)
 - 로그인 후 `shared/ws`의 싱글톤 클라이언트 연결, `connectHeaders: { Authorization: 'Bearer ' + AT }`. 토큰 재발급 시 재연결.
@@ -120,7 +121,7 @@ export const RENTAL_STATUS = {
 ### 대여 화면 규칙 (SCR-07·08)
 - 버튼 표는 `features/rental/rentalActions.js` `getRentalActions(rental, returnInspection, today)`, 스텝바는 `rentalSteps.js` `getRentalSteps(status)` 순수 함수(테스트 있음). today는 호출부가 `todayInSeoul()`로 넘긴다. RETURNED는 inspections를 불러오기 전(`returnInspection === undefined`)에는 버튼을 그리지 않는다.
 - 오류 문구는 `features/rental/errorMessages.js` 한 곳(code → 문구). `RENTAL_INVALID_TRANSITION`·`COMMON_CONCURRENT_UPDATE`·`RENTAL_CANCEL_AGREEMENT_CLOSED`는 "상태가 바뀌었어요. 다시 불러왔어요" + 상세·inspections 무효화(`queries.js`가 뮤테이션 onError에서 처리).
-- 상태 변경 응답이 RentalDetailResponse면 `['rentals', id]`에 `setQueryData`, `['rentals', 'me']` 무효화. 기간 점유가 바뀌면(예약·취소·동의 수락·반납 요청(대리 접수 포함)) 물품 캘린더·예약 현황도, 기록이 생기면(인계·반납·상태 확인) inspections도 무효화. 동의 요청(`CancelAgreementResponse`)은 상세를 다시 불러온다.
+- 상태 변경 응답이 RentalDetailResponse면 `['rentals', id]`에 `setQueryData`, `['rentals', 'me']`·`['items', 'me']`(내 물품 탭·다가오는 예약 수) 무효화. 기간 점유가 바뀌면(예약·취소·동의 수락·반납 요청(대리 접수 포함)) 물품 캘린더·예약 현황도, 기록이 생기면(인계·반납·상태 확인) inspections도 무효화. 동의 요청(`CancelAgreementResponse`)은 상세를 다시 불러온다.
 - 모달·시트는 열린 동안만 렌더해 폼이 매번 새로 시작한다. 모달 안의 오류는 모달 안에.
 - 결제 금액·수수료·보증금 보관 안내는 `VITE_PAYMENT_ENABLED`가 true일 때만 보인다(1순위엔 받지 않음). 연체료·손상 등급·차감·AI 비교는 2순위라 표시하지 않는다.
 - 정책 수치는 `features/rental/constants.js`(`RENTAL_TEXT_MAX`·`CANCEL_FEE`·`RETURN_AUTO_CONFIRM_DAYS`·`PAYMENT_EXPIRE_MINUTES`·`CANCEL_AGREEMENT_EXPIRE_HOURS`).
