@@ -1,6 +1,8 @@
 // 대여 화면의 오류 문구는 이 파일 한 곳에서 code로 고른다(HTTP 메시지 문자열로 분기하지 않는다).
 // 키는 docs/openapi.json에서 대여 화면이 부르는 API(대여 API, 물품 상세, 물품별 예약 현황) 응답 예시의 코드 전부.
 // RENTAL_OWNER_ONLY는 대여 API, ITEM_NOT_OWNER는 물품별 예약 현황의 제공자 전용 403.
+// 필드 오류 붙이기(applyFieldErrors)·제출 실패 처리(useSubmitErrorHandler)는 shared에 있다.
+import { createErrorMessageGetter } from '../../shared/lib/formErrors';
 
 const STALE_MESSAGE = '상태가 바뀌었어요. 다시 불러왔어요';
 
@@ -42,34 +44,8 @@ const STALE_CODES = [
 ];
 
 /** code에 맞는 문구. 모르는 code면 ApiError.message(CLIENT_* 포함 이미 한국어)를 쓴다. */
-export function getErrorMessage(error) {
-  return (
-    MESSAGES[error?.code] ??
-    error?.message ??
-    '일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요'
-  );
-}
+export const getErrorMessage = createErrorMessageGetter(MESSAGES);
 
 export function isStaleStateError(error) {
   return STALE_CODES.includes(error?.code);
-}
-
-/**
- * COMMON_INVALID_INPUT의 details[]를 react-hook-form setError로 필드에 붙인다.
- * fieldMap은 서버 field → 폼 필드 이름(예: { reasonText: 'reasonText', checklist: 'checklist.NO_EXTERIOR_DAMAGE' }).
- * 붙인 첫 필드 이름을 돌려주고, 하나도 못 붙였으면 null. 포커스는 옮기지 않는다(useSubmitErrorHandler가 제출 중 비활성이 풀린 뒤 옮김).
- */
-export function applyFieldErrors(error, setError, fieldMap) {
-  if (error?.code !== 'COMMON_INVALID_INPUT') {
-    return null;
-  }
-  let firstField = null;
-  for (const { field, reason } of error.details ?? []) {
-    const name = fieldMap[field];
-    if (name) {
-      setError(name, { type: 'server', message: reason });
-      firstField ??= name;
-    }
-  }
-  return firstField;
 }

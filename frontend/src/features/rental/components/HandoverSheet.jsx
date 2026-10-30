@@ -1,10 +1,11 @@
 import { useId } from 'react';
 import { useForm } from 'react-hook-form';
 
+import { useSubmitErrorHandler } from '../../../shared/hooks/useSubmitErrorHandler';
 import { BottomSheet, Button, TextField, toast } from '../../../shared/ui';
 import { RENTAL_TEXT_MAX } from '../constants';
+import { getErrorMessage } from '../errorMessages';
 import { useHandover } from '../queries';
-import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
 import { FormError, InspectionImageField } from './FormParts';
 
 const FIELD_MAP = { memo: 'memo' };
@@ -21,7 +22,10 @@ export default function HandoverSheet({ rental, onClose }) {
     setFocus,
     formState: { errors },
   } = useForm({ defaultValues: { images: [], memo: '' }, shouldFocusError: true });
-  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, FIELD_MAP);
+  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, {
+    fieldMap: FIELD_MAP,
+    getMessage: getErrorMessage,
+  });
 
   function onSubmit(values) {
     const memo = values.memo.trim();

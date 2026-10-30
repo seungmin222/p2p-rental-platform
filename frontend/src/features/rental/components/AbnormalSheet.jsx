@@ -1,10 +1,11 @@
 import { useId } from 'react';
 import { useForm } from 'react-hook-form';
 
+import { useSubmitErrorHandler } from '../../../shared/hooks/useSubmitErrorHandler';
 import { BottomSheet, Button, TextField, toast } from '../../../shared/ui';
 import { PAYMENT_ENABLED, RENTAL_TEXT_MAX } from '../constants';
+import { getErrorMessage } from '../errorMessages';
 import { useConfirmReturn } from '../queries';
-import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
 import { FormError, InspectionImageField } from './FormParts';
 
 const FIELD_MAP = { resultNote: 'resultNote' };
@@ -21,7 +22,10 @@ export default function AbnormalSheet({ rental, onClose }) {
     setFocus,
     formState: { errors },
   } = useForm({ defaultValues: { images: [], resultNote: '' }, shouldFocusError: true });
-  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, FIELD_MAP);
+  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, {
+    fieldMap: FIELD_MAP,
+    getMessage: getErrorMessage,
+  });
 
   function onSubmit(values) {
     mutation.mutate(

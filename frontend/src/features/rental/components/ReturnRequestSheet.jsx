@@ -1,11 +1,12 @@
 import { useId } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 
+import { useSubmitErrorHandler } from '../../../shared/hooks/useSubmitErrorHandler';
 import { BottomSheet, Button, Chip, TextField, toast } from '../../../shared/ui';
 import { RENTAL_TEXT_MAX, RETURN_CHECKLIST_ITEM } from '../constants';
+import { getErrorMessage } from '../errorMessages';
 import { useRequestReturn } from '../queries';
 import { toChecklist } from '../rentalData';
-import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
 import { FormError, InspectionImageField } from './FormParts';
 
 const CHECKLIST_KEYS = Object.keys(RETURN_CHECKLIST_ITEM);
@@ -81,7 +82,10 @@ export default function ReturnRequestSheet({ rental, onClose }) {
     },
     shouldFocusError: true,
   });
-  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, FIELD_MAP);
+  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, {
+    fieldMap: FIELD_MAP,
+    getMessage: getErrorMessage,
+  });
   const checklist = useWatch({ control, name: 'checklist' });
   const isNoteRequired = hasNo({ checklist });
 
