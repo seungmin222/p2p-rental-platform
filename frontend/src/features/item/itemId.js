@@ -2,9 +2,9 @@
 
 /** @returns {number | null} */
 export function parseItemId(value) {
-  if (typeof value !== 'string' || !/^\d+$/.test(value)) {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
     return null;
   }
   const itemId = Number(value);
-  return itemId > 0 && Number.isSafeInteger(itemId) ? itemId : null;
+  return Number.isSafeInteger(itemId) ? itemId : null;
 }

@@ -75,7 +75,7 @@ export function useSignup() {
  * leaveRef.current는 화면이 떠 있는 동안만 "그 화면을 떠나는 함수"다(LogoutButton). 있으면 먼저 떠난 뒤 지운다
  * (/me는 RequireAuth 안이라 AT를 먼저 지우면 /login?redirect=/me로 간다). 이미 내려갔으면 이동 없이 정리만 한다.
  * 진행 중인 내 정보 요청은 먼저 끊는다 — 서버가 세션을 끝낸 뒤 401로 돌아오면 재발급 실패 → 로그인 화면이다.
- * 로그아웃이 실패하면 끊은 요청을 다시 받는다.
+ * 로그아웃이 실패하면 끊은 요청을 다시 받는다. Promise를 돌려주지 않는다 — 돌려주면 재조회가 끝날 때까지 토스트·모달이 기다린다.
  */
 export function logoutMutationOptions(queryClient, leaveRef) {
   return {
@@ -86,7 +86,9 @@ export function logoutMutationOptions(queryClient, leaveRef) {
       await leaveRef?.current?.();
       clearLocalSession(queryClient);
     },
-    onError: () => queryClient.invalidateQueries({ queryKey: memberKeys.me(), exact: true }),
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: memberKeys.me(), exact: true });
+    },
   };
 }
 

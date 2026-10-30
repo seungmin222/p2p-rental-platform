@@ -13,9 +13,12 @@ describe('parseItemId', () => {
     expect(parseItemId('99999999999999999999999')).toBeNull();
   });
 
-  it.each(['0', '-1', '1.5', '1e3', 'abc', '', ' 1'])('%j는 null', (value) => {
-    expect(parseItemId(value)).toBeNull();
-  });
+  it.each(['0', '01', '007', '-1', '1.0', '1.5', '1e3', 'abc', '', ' ', ' 1', '1 '])(
+    '%j는 null',
+    (value) => {
+      expect(parseItemId(value)).toBeNull();
+    },
+  );
 
   it('값이 없으면 null', () => {
     expect(parseItemId(undefined)).toBeNull();

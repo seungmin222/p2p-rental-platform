@@ -73,6 +73,10 @@ export default function ItemImageCarousel({ images, name, children }) {
   }
 
   function handleKeyDown(event) {
+    // 수정 키와 함께면 브라우저 몫이다(Alt+←·→ 뒤로·앞으로)
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+      return;
+    }
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
       moveTo(index + (event.key === 'ArrowRight' ? 1 : -1));
