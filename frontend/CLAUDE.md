@@ -30,6 +30,8 @@ src/
 ├── pages/          화면 단위 (SCR-xx와 1:1)
 ├── dev/            개발 서버 전용 화면(`/dev/ui` 공통 UI 미리보기, 빌드에서 제외)
 ├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review)
+│   ├── auth/           로그인·가입·로그아웃(api·queries·constants·errorMessages, components/)
+│   ├── region/         동네(regionStatus 인증 상태 표시. 동네 화면은 feat/fe-region)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
 │       ├── queries.js      useQuery/useMutation 훅 + queryKey
@@ -39,8 +41,8 @@ src/
 │   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화, 토큰 재발급, authStore(AT)
 │   ├── ws/         STOMP 클라이언트 싱글톤
 │   ├── ui/         Button, ButtonLink, Badge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Tabs, Thumbnail, InfiniteListFooter, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
-│   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), listParams(페이지·탭 쿼리), queryState(조회 실패 표시), validators
-│   └── hooks/      useInfiniteScroll, useTabParam, useRefetchErrorToast
+│   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), listParams(페이지·탭 쿼리), queryState(조회 실패 표시), validators(회원 입력, 글자 수는 코드 포인트), formErrors(오류 문구 함수·필드 오류 붙이기)
+│   └── hooks/      useInfiniteScroll, useTabParam, useRefetchErrorToast, useSubmitErrorHandler
 ├── mocks/          MSW 핸들러 (Swagger 응답 형태 그대로)
 └── styles/
 ```
@@ -68,7 +70,7 @@ src/
 
 - 현재 순위의 라우트만 등록한다. 현재 순위보다 높은 순위 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(1순위 단계: 채팅·알림 탭).
 - 하단 탭(모바일): 홈 · 검색 · 채팅 · 알림 · 나의 대여. PC(≥1280px)는 상단 헤더 메뉴로 같은 구성.
-- 인증 필요 라우트는 `RequireAuth`로 감싸고, 비로그인 시 `/login?redirect=...`.
+- 인증 필요 라우트는 `RequireAuth`로 감싸고, 비로그인 시 `/login?redirect=...`. redirect는 `app/loginPath.js` `getSafeRedirect`로 거른다: `/`로 시작하고 `//`·`/\`로 시작하지 않으며 제어 문자가 없을 때만, `/login`·`/signup`이면 무시(오픈 리다이렉트 방지).
 - 동네 미설정 시 홈 진입 → `/regions`로 유도. 비회원 임시 동네는 localStorage.
 
 ## 사용 흐름 (핵심 경로)
@@ -79,7 +81,7 @@ src/
 - 응답은 `{ success, data, error }`. axios 응답 인터셉터에서 `data`만 꺼내고, 실패는 `ApiError(code, message, details, status)`로 정규화해 throw.
   - 서버 응답이 아닌 실패는 프론트 전용 코드: `CLIENT_NETWORK_ERROR`(응답 없음, `status` 0) · `CLIENT_TIMEOUT` · `CLIENT_INVALID_RESPONSE`(공통 래퍼가 아닌 응답, 예: 프록시 502). 요청 취소는 ApiError로 바꾸지 않는다.
 - **분기는 `error.code`로** (예: `RENTAL_PERIOD_CONFLICT` → "이미 예약된 기간입니다" 토스트 + 캘린더 refetch). HTTP 메시지 문자열로 분기하지 않는다.
-- 폼 검증 오류(`details[]`)는 react-hook-form `setError`로 필드에 매핑(`features/rental/errorMessages.js` `applyFieldErrors`).
+- 폼 제출 실패는 `shared/hooks/useSubmitErrorHandler`(onError로 사용): `details[]`는 `fieldMap`, 특정 code(예: 409 중복)는 `codeFields`로 필드에 붙이고 비활성이 풀린 뒤 첫 오류 필드로 포커스, 나머지는 `root.server`. 문구는 도메인별 `features/*/errorMessages.js`(`createErrorMessageGetter(MESSAGES)`, `shared/lib/formErrors.js`).
 - 폼은 react-hook-form. 제출할 때 검증하고 첫 오류 필드로 포커스(`shouldFocusError`). 값 구독은 `watch` 대신 `useWatch`(React Compiler가 `watch`가 있는 컴포넌트를 건너뛴다). 제출 중에는 Modal·BottomSheet `dismissible={false}`, 버튼 비활성.
 - **multipart**(사진 + JSON): `request` 파트는 `new Blob([JSON.stringify(body)], { type: 'application/json' })`(Content-Type이 없거나 text/plain이면 415 `COMMON_UNSUPPORTED_MEDIA_TYPE`), 사진은 `images` 파트를 장마다 반복 append. ImageUploader value에서 `file`만 꺼낸다(`features/rental/api.js` `toMultipart`).
 - Access Token은 **메모리(Zustand)에만**. localStorage 저장 금지. Refresh Token은 HttpOnly 쿠키라 JS가 만지지 않는다(`withCredentials: true`).
@@ -92,7 +94,7 @@ src/
 - **서버에서 온 데이터는 전부 TanStack Query로 다룬다.** `useEffect + useState`로 API를 호출해 상태를 들고 있지 않는다. Zustand에는 서버 데이터를 복사해 두지 않는다(토큰·임시 동네·UI 상태만).
 - 조회는 `useQuery`/`useInfiniteQuery`, 변경은 `useMutation` → `onSuccess`에서 관련 queryKey `invalidateQueries`. 훅은 `features/*/queries.js`에 모으고 컴포넌트에서 axios를 직접 호출하지 않는다.
 - 기본 옵션(`QueryClient`): `retry: 1`(401·403·404·409는 재시도 안 함), `staleTime`은 목록 30초·상세 10초 정도로 시작. 캘린더·대여 상세처럼 상태가 바뀌는 화면은 짧게.
-- queryKey 규칙: `['items', 'feed', {regionId, range, categoryId}]`, `['items', id]`, `['rentals', id]`, `['items', id, 'calendar', month]`, 빌린 내역 `['rentals', 'me', {role: 'renter', tab}]`, 내 물품 `['items', 'me', {tab}]`, 물품별 예약 현황 `['items', id, 'rentals']`. 뮤테이션 후 관련 키 invalidate.
+- queryKey 규칙: `['items', 'feed', {regionId, range, categoryId}]`, `['items', id]`, `['rentals', id]`, `['items', id, 'calendar', month]`, 빌린 내역 `['rentals', 'me', {role: 'renter', tab}]`, 내 물품 `['items', 'me', {tab}]`, 물품별 예약 현황 `['items', id, 'rentals']`, 내 정보 `['members', 'me']`(내 동네 `['members', 'me', 'regions']`는 그 하위). 뮤테이션 후 관련 키 invalidate.
 - 무한 스크롤: `useInfiniteQuery` + IntersectionObserver(`shared/hooks/useInfiniteScroll`, 목록 끝은 `InfiniteListFooter`). 피드·검색은 `nextCursor`, 빌린 내역·내 물품·물품별 예약 현황은 page/hasNext(`initialPageParam: 0`, `shared/lib/listParams.js`의 `getNextPageParam`·`flattenPages`, 빌린 내역은 size를 보내지 않음). 다음 페이지 실패는 목록은 두고 끝에 "다시 시도"(재조회 실패 토스트에서는 뺀다).
 - 목록 탭은 `shared/ui/Tabs` + URL `?tab=`(`useTabParam`, 바꿀 때 replace, 모르는 값이면 기본 탭) — 상세에 갔다가 뒤로 오면 같은 탭.
 
@@ -126,6 +128,14 @@ export const RENTAL_STATUS = {
 - 결제 금액·수수료·보증금 보관 안내는 `VITE_PAYMENT_ENABLED`가 true일 때만 보인다(1순위엔 받지 않음). 연체료·손상 등급·차감·AI 비교는 2순위라 표시하지 않는다.
 - 정책 수치는 `features/rental/constants.js`(`RENTAL_TEXT_MAX`·`CANCEL_FEE`·`RETURN_AUTO_CONFIRM_DAYS`·`PAYMENT_EXPIRE_MINUTES`·`CANCEL_AGREEMENT_EXPIRE_HOURS`).
 
+### 인증 화면 규칙 (SCR-01, `/me`)
+- 로그인 성공: `useLogin`이 `queryClient.clear()`(이전 사용자 캐시) → `setAccessToken`. 안전한 redirect가 있으면 그곳으로 replace, 없으면 `['members', 'me']`를 fetchQuery해 대표 동네가 없으면 `/regions`(state `{ fromLogin: true }`), 있으면 `/`(조회 실패도 `/`).
+- 이미 로그인한 사용자가 `/login`·`/signup`에 오면 redirect(없으면 `/`)로 보낸다. 로그인 여부는 **마운트할 때 한 번만** 본다(제출 성공으로 토큰이 생겨 다시 그려질 때 폼이 정한 이동보다 먼저 `/`로 가지 않게).
+- 가입 성공 → 토스트 + `/login`(redirect 유지, 가입한 이메일은 주소가 아니라 location state로 미리 채움). 비밀번호 확인 칸은 프론트 전용(보내지 않음).
+- 로그아웃(`/me` 맨 아래): API 성공 → `navigate('/', { replace: true, flushSync: true })` → `clearLocalSession`(AT·캐시). AT를 먼저 지우면 RequireAuth가 `/login?redirect=/me`로 보낸다. 실패면 토스트만(쿠키가 남아 있어 로컬만 지우면 안 됨).
+- 비밀번호가 들어간 로그인·가입 뮤테이션은 `gcTime: 0`(MutationCache에 오래 남지 않게).
+- 정책 수치는 `features/auth/constants.js`(`EMAIL_MAX`·`PASSWORD_LENGTH`·`NICKNAME_LENGTH`). 로그인 폼은 빈 값만 검사한다.
+
 ## UI 규칙
 - 모바일 우선(360px~). 데스크톱은 중앙 정렬 최대 폭 컨테이너.
 - 사용감은 **기존 동네 중고거래 앱과 최대한 비슷하게**: 카드형 피드, 하단 탭, 상세 하단 고정 바(관심 · 가격/보증금 · 채팅하기 · 예약하기), 채팅 상단 물품 요약, 우측 하단 "+ 물품 등록" 버튼. (특정 서비스 로고·브랜드 요소를 복제하지 않는다)
@@ -156,6 +166,7 @@ export const RENTAL_STATUS = {
 - **위치**: `navigator.geolocation` 권한 거부 시 안내 후 동네 검색만 제공.
 
 ## 개발 방식
+- **목 로그인 계정**(`mocks/memberSeed.js`, 가짜 값): `user1@example.com`(동네주민, 대여·물품 목의 "나", 대표 동네 인증 유효 + 두 번째 동네 인증 만료) · `user3@example.com`(텐트초보, 동네 없음 → 로그인 후 `/regions`). 비밀번호는 모두 `rental123!`(그 밖에 user2·user4). 목 세션은 localStorage `mock.session`(RT 쿠키 흉내)이라 새로고침해도 로그인이 유지되고, 가입한 계정은 메모리에만 있어 새로고침하면 사라진다. 콘솔 `window.__mockAuth.expireAccessToken()`으로 AT만 무효화해 401 → 재발급 → 재시도를 볼 수 있다. 대여·물품 목은 아직 AT를 보지 않고 회원 1 기준이다.
 - 백엔드가 컨트롤러·DTO를 먼저 머지하면 `docs/openapi.json`이 갱신된다. 그 스키마의 응답 형태 그대로 `mocks/` MSW 핸들러를 만들어 먼저 개발한다(공통 래퍼는 `mocks/response.js`의 `ok`·`fail` 헬퍼로). `VITE_USE_MOCK=true`로 전환.
   - MSW는 **개발 서버 + `VITE_USE_MOCK=true`일 때만** `main.jsx`가 동적 import로 시작하고 운영 번들에는 들어가지 않게 한다. 처리하지 않는 요청은 bypass. `public/mockServiceWorker.js`는 커밋한다(msw 버전을 올리면 `npx msw init public`으로 갱신).
 - 타입 힌트가 필요하면 openapi.json에서 JSDoc 타입을 생성해 쓸 수 있다(선택, `openapi-typescript` 등). 생성 파일은 직접 수정하지 않는다.

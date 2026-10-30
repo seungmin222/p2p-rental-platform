@@ -38,10 +38,11 @@
 | `feat/rental-cancel` | 015 (단독·양측 동의 취소, `feat/rental-reserve` 머지 후) | A |
 | `feat/rental-return` | 016(1순위 전이 완성), 017, 018 | A |
 | `feat/rental-history` | 019 (`feat/rental-return`에서 분리, 머지 후 착수) | A |
-| `feat/fe-auth-region` | SCR-01, 02 | FE |
+| `feat/fe-auth-region` | SCR-01, `/me` 프로필 요약·로그아웃 (SCR-02는 `feat/fe-region`으로 분리) | FE |
 | `feat/fe-item-pages` | SCR-03, 04, 05, 06 | FE |
 | `feat/fe-rental-pages` | SCR-07, 08 | FE |
 | `feat/fe-my-pages` | SCR-12 (`feat/fe-rental-pages`에서 분리, 머지 후 착수) | FE |
+| `feat/fe-region` | SCR-02 (`feat/fe-auth-region`에서 분리, 머지 후 착수) | FE |
 
 ### 2순위 (착수 시 확정)
 `feat/payment-core`(024·025) · `feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
