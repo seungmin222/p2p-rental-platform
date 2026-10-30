@@ -169,7 +169,7 @@ rental/
 - 외부 API는 Fake/WireMock. 토스 테스트 환경 실호출 테스트는 `@Tag("external")`로 분리해 기본 빌드에서 제외.
 - 테스트 이름은 한국어 `@DisplayName` 허용: `"같은 기간 동시 예약 시 1건만 성공한다"`.
 - 새 기능 PR은 해당 REQ의 "테스트 포인트"(도메인 문서)를 커버해야 한다.
-- 작업 중에는 바꾼 부분의 테스트만 돌린다(`./gradlew test --tests '<클래스>'`). 전체 테스트는 PR 직전 한 번, 출력은 실패 요약만 본다(bash: `./gradlew test -q 2>&1 | tail -n 80; echo "exit=${PIPESTATUS[0]}"`). 실패 내용은 `grep -A 15 '<failure' build/test-results/test/TEST-*.xml`로 해당 테스트만 읽는다. 빌드 로그·테스트 리포트 HTML을 통째로 읽지 않는다.
+- 작업 중에는 바꾼 부분의 테스트만 돌린다(`./gradlew test --tests '<클래스>'`). 전체 테스트는 PR 직전 한 번, 출력은 실패 요약만 본다(bash: `./gradlew test -q 2>&1 | tail -n 80; echo "exit=${PIPESTATUS[0]}"`). `-q`는 실패 개수만 보여 주므로, 실패한 테스트 이름과 내용은 `grep -B 1 -A 15 '<failure' build/test-results/test/TEST-*.xml`로 해당 테스트만 읽는다. 빌드 로그·테스트 리포트 HTML을 통째로 읽지 않는다.
 
 ## 설정·프로필
 - `application.yml`(공통), `application-local.yml`, `application-test.yml`, `application-prod.yml`.
