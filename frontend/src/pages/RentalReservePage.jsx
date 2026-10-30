@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router';
 
 import BottomActionBar from '../app/layout/BottomActionBar';
 import PageHeader from '../app/layout/PageHeader';
+import { parseItemId } from '../features/item/itemId';
 import { useItemSummary } from '../features/item/queries';
 import AmountSummary from '../features/rental/components/AmountSummary';
 import {
@@ -74,7 +75,7 @@ function ItemSummarySkeleton() {
 /** SCR-07 대여 예약(시안 Booking.html). 결제 화면(/payments/*)은 2순위라 예약 후 바로 대여 상세로 간다. */
 export default function RentalReservePage() {
   const { id } = useParams();
-  const itemId = Number(id);
+  const itemId = parseItemId(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
