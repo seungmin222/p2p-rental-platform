@@ -19,6 +19,13 @@ import {
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+// 범례. 라벨이 없는 상태는 그리지 않는다(예: 검색 필터의 기간 선택에는 예약됨이 없다)
+const LEGEND = [
+  { status: DAY_STATUS.AVAILABLE, sample: 'text-ink' },
+  { status: DAY_STATUS.BOOKED, sample: 'text-ink-faint line-through' },
+  { status: DAY_STATUS.UNAVAILABLE, sample: 'text-ink-disabled' },
+];
+
 const STATUS_TEXT = {
   [DAY_STATUS.AVAILABLE]: 'text-ink',
   [DAY_STATUS.BOOKED]: 'text-ink-faint line-through',
@@ -108,13 +115,15 @@ const NAV_BUTTON =
  * @param {{startDate: string, endDate: string | null} | null} props.value endDate가 null이면 시작일만 고른 상태
  * @param {(value: {startDate: string, endDate: string | null}) => void} props.onChange
  * @param {(month: string) => void} props.onMonthChange
- * @param {number} props.minDays
- * @param {number} props.maxDays
- * @param {Record<string, {label: string}>} props.statusLabels 상태 코드 → 라벨(features의 RENTAL_DAY_STATUS)
+ * @param {number} [props.minDays] readOnly가 아니면 필수
+ * @param {number} [props.maxDays] readOnly가 아니면 필수
+ * @param {Record<string, {label: string}>} props.statusLabels 상태 코드 → 라벨(features의 RENTAL_DAY_STATUS). 라벨이 없는 상태는 범례에서 뺀다
  * @param {string} [props.minMonth] 이전 달 버튼 비활성 기준 "YYYY-MM"
  * @param {string} [props.maxMonth] 다음 달 버튼 비활성 기준 "YYYY-MM"
  * @param {boolean} [props.isLoading] 날짜 칸을 스켈레톤으로 바꾸고 선택을 막는다(첫 로딩만)
  * @param {import('react').ReactNode} [props.title] 헤더 왼쪽(예: "기간 선택" 제목)
+ * @param {boolean} [props.readOnly] 보기 전용(물품 상세): 날짜를 고를 수 없고 버튼이 아닌 칸으로 그린다.
+ *   범례는 그대로 보이고 아래 선택 안내 문구는 없다. value·onChange·minDays·maxDays는 쓰지 않는다.
  */
 export default function Calendar({
   month,
@@ -129,6 +138,7 @@ export default function Calendar({
   maxMonth,
   isLoading = false,
   title,
+  readOnly = false,
 }) {
   const [rejection, setRejection] = useState(null);
   const statusByDate = useMemo(() => toStatusMap(days), [days]);
@@ -231,6 +241,18 @@ export default function Calendar({
           const available = status === DAY_STATUS.AVAILABLE;
           const position = rangePosition(value, date);
           const statusLabel = statusLabels[status]?.label ?? status;
+          if (readOnly) {
+            return (
+              <span
+                key={date}
+                role="img"
+                aria-label={`${formatMonthDay(date)} ${weekdayOf(date)}요일, ${statusLabel}`}
+                className={`flex h-11 items-center justify-center ${STATUS_TEXT[status]}`}
+              >
+                <span aria-hidden="true">{Number(date.slice(8))}</span>
+              </span>
+            );
+          }
           const label = `${formatMonthDay(date)} ${weekdayOf(date)}요일, ${statusLabel}${positionSuffix(position, value)}`;
           return (
             <button
@@ -262,30 +284,24 @@ export default function Calendar({
       </div>
 
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-        <li className="flex items-center gap-1.5">
-          <span aria-hidden="true" className="text-ink">
-            1
-          </span>
-          {statusLabels[DAY_STATUS.AVAILABLE]?.label}
-        </li>
-        <li className="flex items-center gap-1.5">
-          <span aria-hidden="true" className="text-ink-faint line-through">
-            1
-          </span>
-          {statusLabels[DAY_STATUS.BOOKED]?.label}
-        </li>
-        <li className="flex items-center gap-1.5">
-          <span aria-hidden="true" className="text-ink-disabled">
-            1
-          </span>
-          {statusLabels[DAY_STATUS.UNAVAILABLE]?.label}
-        </li>
+        {LEGEND.map(({ status, sample }) =>
+          statusLabels[status]?.label ? (
+            <li key={status} className="flex items-center gap-1.5">
+              <span aria-hidden="true" className={sample}>
+                1
+              </span>
+              {statusLabels[status].label}
+            </li>
+          ) : null,
+        )}
       </ul>
 
       {/* 영역은 그대로 두고 안쪽 문구만 거부마다 새로 만든다(새로 생긴 live 영역은 읽히지 않을 수 있어서) */}
-      <p aria-live="polite" className={`text-caption ${messageClass}`}>
-        <span key={activeRejection ? activeRejection.count : 'status'}>{message}</span>
-      </p>
+      {!readOnly && (
+        <p aria-live="polite" className={`text-caption ${messageClass}`}>
+          <span key={activeRejection ? activeRejection.count : 'status'}>{message}</span>
+        </p>
+      )}
     </div>
   );
 }

@@ -16,6 +16,6 @@ export function signup({ email, password, nickname }) {
 }
 
 /** GET /api/members/me → MemberResponse(대표 동네 요약 primaryRegion 포함, 없으면 null) */
-export function fetchMe() {
-  return apiClient.get('/members/me');
+export function fetchMe({ signal } = {}) {
+  return apiClient.get('/members/me', { signal });
 }

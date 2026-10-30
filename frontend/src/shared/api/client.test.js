@@ -145,6 +145,9 @@ describe('Authorization 헤더', () => {
     ['post', '/members'],
     ['get', '/regions'],
     ['get', '/regions/by-coord'],
+    ['get', '/items/feed'],
+    ['get', '/items'],
+    ['get', '/categories'],
   ])('공개 API %s %s에는 붙이지 않는다', async (method, path) => {
     const captured = captureAuthorization(method, path);
 
@@ -159,6 +162,36 @@ describe('Authorization 헤더', () => {
     await apiClient.get('/regions?keyword=송도');
 
     expect(captured.value).toBeNull();
+  });
+
+  it('피드·검색은 쿼리가 있어도 공개 API로 본다', async () => {
+    const feed = captureAuthorization('get', '/items/feed');
+    const search = captureAuthorization('get', '/items');
+
+    await apiClient.get('/items/feed', { params: { regionId: 1101 } });
+    await apiClient.get('/items?keyword=텐트');
+
+    expect(feed.value).toBeNull();
+    expect(search.value).toBeNull();
+  });
+
+  it('물품 상세(GET /items/{id})에는 Bearer AT를 붙인다 — isOwner가 로그인 사용자 기준이어야 해서', async () => {
+    const captured = captureAuthorization('get', '/items/101');
+
+    await apiClient.get('/items/101');
+
+    expect(captured.value).toBe('Bearer old-token');
+  });
+
+  it('물품 등록·수정·삭제와 내 물품 API에는 Bearer AT를 붙인다', async () => {
+    const post = captureAuthorization('post', '/items');
+    const mine = captureAuthorization('get', '/members/me/items');
+
+    await apiClient.post('/items');
+    await apiClient.get('/members/me/items');
+
+    expect(post.value).toBe('Bearer old-token');
+    expect(mine.value).toBe('Bearer old-token');
   });
 
   it('내 동네 API(GET /members/me/regions)에는 Bearer AT를 붙인다', async () => {
