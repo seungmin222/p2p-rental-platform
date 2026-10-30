@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 
+import { useSubmitErrorHandler } from '../../../shared/hooks/useSubmitErrorHandler';
 import { formatPrice } from '../../../shared/lib/format';
 import { Button, Chip, Modal, TextField, toast } from '../../../shared/ui';
 import {
@@ -10,9 +11,9 @@ import {
   PAYMENT_ENABLED,
   RENTAL_TEXT_MAX,
 } from '../constants';
+import { getErrorMessage } from '../errorMessages';
 import { useCancelRental, useRequestCancelAgreement } from '../queries';
 import { estimateCancelFee } from '../rentalData';
-import { useSubmitErrorHandler } from '../useSubmitErrorHandler';
 import { FormError } from './FormParts';
 
 // 서버 details[].field → 폼 필드
@@ -48,7 +49,10 @@ export default function CancelModal({ mode, rental, today, onClose }) {
     setFocus,
     formState: { errors },
   } = useForm({ defaultValues: { reason: null, reasonText: '' }, shouldFocusError: true });
-  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, FIELD_MAP);
+  const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, {
+    fieldMap: FIELD_MAP,
+    getMessage: getErrorMessage,
+  });
 
   const reason = useWatch({ control, name: 'reason' });
   const fee = mode === 'cancel' && PAYMENT_ENABLED ? estimateCancelFee(rental, today) : 0;
