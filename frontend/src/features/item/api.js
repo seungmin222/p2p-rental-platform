@@ -1,4 +1,4 @@
-import { apiClient } from '../../shared/api';
+import { apiClient, toMultipart } from '../../shared/api';
 
 /** GET /api/items/{itemId} (REQ-011). 토큰을 보내야 isOwner가 로그인 사용자 기준이다(공개 API 목록에 넣지 않음) */
 export function fetchItem(itemId) {
@@ -81,6 +81,52 @@ export function toItemSummary(item) {
  */
 export function fetchMyItems({ tab, page }) {
   return apiClient.get('/members/me/items', { params: { tab, page } });
+}
+
+/** POST /api/items (multipart: request ItemCreateRequest, images) → ItemCreateResponse { itemId } */
+export function createItem({ request, images }) {
+  return apiClient.post('/items', toMultipart(request, images));
+}
+
+/** GET /api/members/me/items/{itemId} → ItemEditResponse(소유자 전용, itemPrice·좌표 포함) */
+export function fetchItemForEdit(itemId) {
+  return apiClient.get(`/members/me/items/${itemId}`);
+}
+
+/** PATCH /api/items/{itemId} (multipart: request ItemUpdateRequest, images 새 파일만) → ItemEditResponse */
+export function updateItem(itemId, { request, images }) {
+  return apiClient.patch(`/items/${itemId}`, toMultipart(request, images));
+}
+
+/** DELETE /api/items/{itemId} → data null(소프트 삭제) */
+export function deleteItem(itemId) {
+  return apiClient.delete(`/items/${itemId}`);
+}
+
+/** GET /api/items/deposit-guide → ItemDepositGuideResponse { minDeposit, maxDeposit }. 로그인 필요 */
+export function fetchDepositGuide({ categoryId, itemPrice }) {
+  return apiClient.get('/items/deposit-guide', { params: { categoryId, itemPrice } });
+}
+
+/** ItemEditResponse → 폼 값(itemForm.js). 금액 칸은 문자열, 사진은 ImageUploader value 모양 */
+export function toItemEditForm(item) {
+  return {
+    name: item.name ?? '',
+    description: item.description ?? '',
+    images: (item.images ?? []).map((image) => ({ id: image.imageId, url: image.url })),
+    categoryId: item.categoryId,
+    condition: item.condition,
+    pricePerDay: String(item.pricePerDay),
+    itemPrice: String(item.itemPrice),
+    deposit: String(item.deposit),
+    availablePeriods: (item.availablePeriods ?? []).map(({ startDate, endDate }) => ({
+      startDate,
+      endDate,
+    })),
+    address: item.address ?? '',
+    latitude: item.latitude,
+    longitude: item.longitude,
+  };
 }
 
 /** 내 물품 관리 카드(openapi.json MyItemResponse 기준, 화면이 쓰는 필드만) */

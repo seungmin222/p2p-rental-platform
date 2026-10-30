@@ -29,6 +29,16 @@ export const MY_ITEM_TABS = {
 
 // policies.md item.price-per-day 상한(일 대여료 0원 또는 1,000원 ~ 1,000,000원). 검색 가격 필터 입력의 한도
 export const ITEM_PRICE_PER_DAY = { MAX: 1_000_000 };
+// policies.md item.deposit(0원 또는 1,000원 ~ 3,000,000원)
+export const ITEM_DEPOSIT = { MAX: 3_000_000 };
+// policies.md item.price-per-day·item.deposit의 0원이 아닐 때 하한
+export const ITEM_MIN_PAID_AMOUNT = 1000;
+// policies.md item.item-price.max(0 ~ 10,000,000원, 비공개)
+export const ITEM_PRICE = { MAX: 10_000_000 };
+// policies.md item.name.max·description.max. ADDRESS는 openapi ItemCreateRequest.address maxLength
+export const ITEM_TEXT_MAX = { NAME: 50, DESCRIPTION: 2000, ADDRESS: 200 };
+// 권장 보증금 조회: 물품 가격을 치는 동안 요청하지 않게 기다리는 시간(UI 조절값)
+export const DEPOSIT_GUIDE_DEBOUNCE_MS = 400;
 
 /** REQ-010 정렬(openapi GET /api/items sort). 기본 ACCURACY */
 export const ITEM_SORT = {
