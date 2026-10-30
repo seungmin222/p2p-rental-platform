@@ -3,12 +3,15 @@ import { useNavigate, useParams } from 'react-router';
 
 import PageHeader from '../app/layout/PageHeader';
 import { useMe } from '../features/auth/queries';
+import { toItemEditForm } from '../features/item/api';
 import ItemForm from '../features/item/components/ItemForm';
 import { getErrorMessage } from '../features/item/errorMessages';
-import { createItemFormValues, toCreatePayload } from '../features/item/itemForm';
-import { useCreateItem } from '../features/item/queries';
+import { createItemFormValues, toCreatePayload, toUpdatePayload } from '../features/item/itemForm';
+import { parseItemId } from '../features/item/itemId';
+import { useCreateItem, useItemForEdit, useUpdateItem } from '../features/item/queries';
 import { todayInSeoul } from '../shared/lib/date';
-import { ButtonLink, toast } from '../shared/ui';
+import { isInitialLoadError } from '../shared/lib/queryState';
+import { ButtonLink, ErrorState, Skeleton, toast } from '../shared/ui';
 
 /** 대표 동네 인증 안내. 입력을 막지 않고, 인증하러 가면 입력이 사라진다고 미리 알린다 */
 function RegionVerifyNotice({ ref }) {
@@ -81,8 +84,95 @@ function ItemCreate() {
   );
 }
 
+/** 수정 폼. 처음 받은 값을 기준으로 바뀐 필드만 보낸다(이후 재조회로 입력이 덮이지 않게 한 번만 잡는다) */
+function ItemEditForm({ itemId, item }) {
+  const navigate = useNavigate();
+  const mutation = useUpdateItem(itemId);
+  const [initialValues] = useState(() => toItemEditForm(item));
+
+  function handleSave(values, onError) {
+    const payload = toUpdatePayload(initialValues, values);
+    if (!payload) {
+      toast.show({ message: '바뀐 내용이 없어요' });
+      navigate(`/items/${itemId}`, { replace: true });
+      return;
+    }
+    mutation.mutate(payload, {
+      onSuccess: () => {
+        toast.show({ message: '물품을 수정했어요' });
+        navigate(`/items/${itemId}`, { replace: true });
+      },
+      onError,
+    });
+  }
+
+  return (
+    <ItemForm
+      initialValues={initialValues}
+      isEdit
+      isPending={mutation.isPending}
+      submitLabel="수정하기"
+      onSave={handleSave}
+    />
+  );
+}
+
+function FormSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="불러오는 중" className="flex flex-col gap-4 pt-2">
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-12 w-full" />
+    </div>
+  );
+}
+
+/** 수정(REQ-007). 남의 물품 403 ITEM_NOT_OWNER, 없음·삭제 404 ITEM_NOT_FOUND, 잘못된 id는 요청하지 않는다 */
+function ItemEdit({ id }) {
+  const itemId = parseItemId(id);
+  const query = useItemForEdit(itemId);
+
+  let content;
+  if (itemId == null || (isInitialLoadError(query) && query.error.code === 'ITEM_NOT_FOUND')) {
+    content = (
+      <>
+        <ErrorState title="물품을 찾을 수 없어요" message="삭제되었거나 없는 물품이에요." />
+        <div className="flex justify-center">
+          <ButtonLink to="/" variant="secondary">
+            홈으로
+          </ButtonLink>
+        </div>
+      </>
+    );
+  } else if (isInitialLoadError(query) && query.error.code === 'ITEM_NOT_OWNER') {
+    content = (
+      <>
+        <ErrorState title="수정할 수 없어요" message="내 물품만 수정할 수 있어요." />
+        <div className="flex justify-center">
+          <ButtonLink to={`/items/${itemId}`} variant="secondary">
+            물품 보기
+          </ButtonLink>
+        </div>
+      </>
+    );
+  } else if (isInitialLoadError(query)) {
+    content = <ErrorState message={getErrorMessage(query.error)} onRetry={query.refetch} />;
+  } else if (!query.data) {
+    content = <FormSkeleton />;
+  } else {
+    content = <ItemEditForm itemId={itemId} item={query.data} />;
+  }
+  return (
+    <>
+      <PageHeader title="물품 수정" />
+      {content}
+    </>
+  );
+}
+
 /** SCR-06 물품 등록·수정 */
 export default function ItemFormPage() {
   const { id } = useParams();
-  return id === undefined ? <ItemCreate /> : null;
+  return id === undefined ? <ItemCreate /> : <ItemEdit key={id} id={id} />;
 }
