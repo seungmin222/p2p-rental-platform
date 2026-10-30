@@ -4,7 +4,7 @@ import { addMonths, monthOf, todayInSeoul } from '../../../shared/lib/date';
 import { BottomSheet, Button, Calendar, Chip, TextField } from '../../../shared/ui';
 import { RENTAL_PERIOD } from '../../rental/constants';
 import { DEFAULT_ITEM_SORT, ITEM_SORT } from '../constants';
-import { buildFilterDays } from '../filterCalendar';
+import { buildFilterDaysInRange } from '../filterCalendar';
 import { validatePriceRange } from '../searchParams';
 
 // 필터의 기간 선택은 예약된 날이 없고 지난 날짜만 막힌다
@@ -29,7 +29,12 @@ function FilterForm({ filters, onApply, onClose }) {
     filters.startDate ? { startDate: filters.startDate, endDate: filters.endDate } : null,
   );
   const [month, setMonth] = useState(period ? monthOf(period.startDate) : thisMonth);
-  const days = useMemo(() => buildFilterDays(month, today), [month, today]);
+  const maxMonth = addMonths(thisMonth, MAX_MONTHS_AHEAD);
+  // 달을 넘긴 기간을 고를 수 있게 넘겨 볼 수 있는 달을 모두 넘긴다(Calendar는 받은 days 전체로 범위를 검사한다)
+  const days = useMemo(
+    () => buildFilterDaysInRange(thisMonth, maxMonth, today),
+    [thisMonth, maxMonth, today],
+  );
 
   const price = validatePriceRange(minText, maxText);
   // 시작일만 고른 상태는 적용할 수 없다(서버는 시작·종료를 함께 받는다)
@@ -118,7 +123,7 @@ function FilterForm({ filters, onApply, onClose }) {
           maxDays={RENTAL_PERIOD.MAX_DAYS}
           statusLabels={PERIOD_STATUS_LABELS}
           minMonth={thisMonth}
-          maxMonth={addMonths(thisMonth, MAX_MONTHS_AHEAD)}
+          maxMonth={maxMonth}
         />
       </section>
 

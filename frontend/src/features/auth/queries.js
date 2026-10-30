@@ -15,11 +15,19 @@ function meQueryOptions() {
 /**
  * 내 정보(닉네임·프로필 이미지·대표 동네 요약).
  * - 비회원 화면(홈·검색)에서 같이 쓰면 enabled를 로그인 여부로 넘긴다 — 토큰이 없을 때 부르면 401 → 재발급 실패 → 로그인 화면 이동이다.
- * - refetchOnMount를 false로 넘기면 이미 받은 데이터가 있을 때 화면에 들어올 때 다시 부르지 않는다. 로그아웃은 홈으로 먼저 이동한 뒤
- *   AT를 지우는데(useLogout), 그 사이에 홈이 내 정보를 다시 부르면 서버가 이미 세션을 끝냈을 때 401 → 로그인 화면으로 가 버린다.
+ * - refetchOnMount에 refetchIfInvalidated를 넘기면 이미 받은 데이터는 무효화됐을 때만 다시 받는다.
  */
 export function useMe({ enabled = true, refetchOnMount = true } = {}) {
   return useQuery({ ...meQueryOptions(), enabled, refetchOnMount });
+}
+
+/**
+ * 홈·검색의 refetchOnMount. 로그아웃은 홈으로 먼저 이동한 뒤 AT를 지우는데(useLogout), 그 사이에 홈이 내 정보를 다시 부르면
+ * 서버가 이미 세션을 끝냈을 때 401 → 로그인 화면으로 가 버린다. 그래서 stale이라는 이유만으로는 다시 받지 않는다.
+ * 대표 동네가 바뀌면 무효화되는데(동네 뮤테이션) /regions에는 구독자가 없어 표시만 남으므로, 그 표시가 있을 때만 다시 받는다.
+ */
+export function refetchIfInvalidated(query) {
+  return query.state.isInvalidated;
 }
 
 /**

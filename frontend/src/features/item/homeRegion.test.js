@@ -68,6 +68,12 @@ describe('resolveFeedRegion', () => {
       expect(resolve({ isLoggedIn: true, isMeError: true })).toEqual({ status: 'error' });
     });
 
+    it('무효화된 내 정보를 다시 받는 중이면 이전 동네 대신 loading', () => {
+      expect(resolve({ isLoggedIn: true, me: ME, isMeOutdated: true })).toEqual({
+        status: 'loading',
+      });
+    });
+
     it('이미 받은 데이터가 있으면 재조회가 실패해도 그 동네를 쓴다', () => {
       expect(resolve({ isLoggedIn: true, me: ME, isMeError: true })).toMatchObject({
         status: 'ready',

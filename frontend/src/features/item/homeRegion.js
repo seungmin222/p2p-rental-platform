@@ -10,11 +10,21 @@
  * @returns {{ status: 'loading' | 'error' | 'ready' | 'none', regionId?: number, regionName?: string }}
  *   none = 동네 없음(동네 설정 안내), loading·error = 로그인했는데 내 정보를 아직·못 받음
  */
-export function resolveFeedRegion({ isLoggedIn, me, isMePending, isMeError, guestRegion }) {
+export function resolveFeedRegion({
+  isLoggedIn,
+  me,
+  isMePending,
+  isMeError,
+  isMeOutdated = false,
+  guestRegion,
+}) {
   if (!isLoggedIn) {
     return guestRegion
       ? { status: 'ready', regionId: guestRegion.regionId, regionName: guestRegion.name }
       : { status: 'none' };
+  }
+  if (isMeOutdated) {
+    return { status: 'loading' };
   }
   if (me?.primaryRegion) {
     return {
