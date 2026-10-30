@@ -11,6 +11,11 @@
 4. **명세와 코드가 다르면 코드를 맞추지 말고 먼저 알린다.** 명세 자체가 모순이면 `docs/open-issues.md`에 추가하고 사용자에게 확인한다.
 5. **문서도 함께 갱신한다.** API·엔티티·정책이 바뀌면 `docs/api.md`, `docs/erd.md`, `docs/policies.md`를 같은 커밋에서 수정한다.
 6. **API 필드는 추측하지 않는다.** 구현된 API의 요청·응답 필드는 백엔드 DTO 코드(백엔드 작업 시) 또는 `docs/openapi.json`(프론트 작업 시)으로 확인한다. `docs/api.md`는 목차일 뿐 필드를 담지 않는다. 자세한 역할 분담은 아래 "API 계약".
+   - `docs/openapi.json`(약 220KB)은 Read로 통째로 읽지 않는다. 필요한 경로·스키마만 꺼내 본다(저장소 루트 기준, 경로 목록이 필요하면 `Object.keys(s.paths)`만 출력):
+     ```bash
+     node -e "const s=require('./docs/openapi.json');console.log(JSON.stringify(s.paths['/api/items/{itemId}'],null,1))"
+     node -e "const s=require('./docs/openapi.json');console.log(JSON.stringify(s.components.schemas.ItemDetailResponse,null,1))"
+     ```
 
 ## 문서 지도
 
@@ -108,6 +113,7 @@ cd frontend && npm run format && npm run lint && npm run build
 - `/finish-work`로 PR을 올린 뒤: "PR 머지(및 확인 요청 반영)가 끝나면 이 세션을 닫고, 다음 브랜치는 새 세션에서 `/start-work`로 시작하세요."
 - 이 세션에서 다른 브랜치로 넘어가려 할 때(`/start-work`를 이 세션에서 두 번째로 부를 때 포함): 새 세션을 권한다.
 - 같은 수정을 되돌렸다 다시 하는 등 방향이 크게 바뀌었을 때, 또는 앞에서 정한 내용을 다시 확인해야 할 만큼 대화가 길어졌다고 느낄 때: "여기까지 커밋하고 새 세션에서 이어 가는 게 좋겠습니다"라고 제안한다. 제안 전에 커밋되지 않은 변경이 없도록 정리한다.
+- REQ 하나(또는 큰 단계)를 끝내 코드와 `notes.md` 결정 기록을 함께 커밋한 뒤: `/clear` 후 이어 가자고 한 줄로 제안한다. 같은 브랜치를 이어 가는 것이므로 "브랜치 하나 = 세션 하나"의 예외다. 다시 필요한 문서는 그때 다시 읽는다.
 - 코드 리뷰는 별도 세션에서 `/check-spec`으로 하고, 리뷰 세션은 파일을 수정하지 않는다. 지적사항은 원래 작업 세션에서 반영한다.
 
 ### 결정 기록 (`docs/prompts/<브랜치명>/notes.md`)
