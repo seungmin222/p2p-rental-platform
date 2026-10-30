@@ -26,3 +26,17 @@ export const MY_ITEM_TABS = {
   AVAILABLE: { label: '대여 가능' },
   RENTING: { label: '대여 중' },
 };
+
+// policies.md item.price-per-day 상한(일 대여료 0원 또는 1,000원 ~ 1,000,000원). 검색 가격 필터 입력의 한도
+export const ITEM_PRICE_PER_DAY = { MAX: 1_000_000 };
+
+/** REQ-010 정렬(openapi GET /api/items sort). 기본 ACCURACY */
+export const ITEM_SORT = {
+  ACCURACY: { label: '정확도순' },
+  LATEST: { label: '최신순' },
+  PRICE_ASC: { label: '낮은 가격순' },
+};
+export const DEFAULT_ITEM_SORT = 'ACCURACY';
+
+// 카테고리는 거의 바뀌지 않는다(관리자 변경은 3순위)
+export const CATEGORY_STALE_TIME = 10 * 60 * 1000;

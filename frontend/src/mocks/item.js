@@ -10,6 +10,10 @@
 // | 106 | 접이식 자전거 | 이웃(4) | 삭제된 물품(isDeleted) 표시용 |
 // | 107 | 보드게임 세트 | 나(1) | 내 물품 대여 가능 탭, 예약 현황 23건(시트 안 더 불러오기), 다가오는 예약 1건 |
 // | 108 | 아이스박스 45L | 나(1) | 내 물품 대여 가능 탭, 이미지 없음·대여 없음·카운터 0 |
+// | 201~ | itemSeed.js | 캠핑조아·텐트초보·이웃 | 피드·검색 확인용(동네별로 나뉨, 표는 itemSeed.js) |
+//
+// 동네(regionId)는 행정동 시드(memberSeed.js MOCK_REGION_MASTER)를 따른다. 101~108은 이전에 "송도동" 같은 이름이었으나
+// 홈 헤더(내 동네 이름)·내 동네 목과 한 이름으로 보이게 행정동 이름(송도1동 등)으로 맞췄다.
 //
 // 물품 상세(GET /api/items/{itemId})는 openapi.json ItemDetailResponse 필드를 전부 돌려준다. 물품 동네·거래 장소는
 // 제공자 동네(MOCK_REGIONS)를 따르고, 카테고리 id·이름은 백엔드 V3__insert_categories.sql 순서와 같다.
@@ -17,32 +21,46 @@
 import { http } from 'msw';
 
 import { addDays, todayInSeoul } from '../shared/lib/date';
+import { createFeedSeed } from './itemSeed';
+import { MOCK_REGION_MASTER } from './memberSeed';
 import { readPathId } from './pageList';
 import { fail, ok } from './response';
+import { authenticateMockRequest } from './session';
 
 /** 로그인한 나 */
 export const MOCK_ME = 1;
 
-/** V3__insert_categories.sql 순서(categoryId = 넣은 순서) 중 시드가 쓰는 것 */
-const MOCK_CATEGORIES = {
-  1: '캠핑·아웃도어',
-  2: '공구·DIY',
-  3: '촬영·영상 장비',
-  6: '취미·시즌 용품',
-};
+/** V3__insert_categories.sql(categoryId = 넣은 순서, sortOrder 같음) 그대로 */
+export const MOCK_CATEGORIES = [
+  { categoryId: 1, name: '캠핑·아웃도어', sortOrder: 1 },
+  { categoryId: 2, name: '공구·DIY', sortOrder: 2 },
+  { categoryId: 3, name: '촬영·영상 장비', sortOrder: 3 },
+  { categoryId: 4, name: '유아용품', sortOrder: 4 },
+  { categoryId: 5, name: '파티·행사용품', sortOrder: 5 },
+  { categoryId: 6, name: '취미·시즌 용품', sortOrder: 6 },
+  { categoryId: 7, name: '생활가전', sortOrder: 7 },
+  { categoryId: 8, name: '기타', sortOrder: 8 },
+];
 
-/** 동네 → 물품 거래 장소(그 동네의 대략적인 위치) */
-const MOCK_REGIONS = {
-  송도동: { address: '인천 연수구 송도동 센트럴로 160', latitude: 37.3925, longitude: 126.6392 },
-  연수동: { address: '인천 연수구 연수동 청능대로 105', latitude: 37.4179, longitude: 126.6787 },
-  동춘동: { address: '인천 연수구 동춘동 앵고개로 233', latitude: 37.4048, longitude: 126.6704 },
+function categoryName(categoryId) {
+  return MOCK_CATEGORIES.find((category) => category.categoryId === categoryId)?.name;
+}
+
+/** 거래 장소 주소(그 동네의 대략적인 위치). 좌표는 행정동 마스터의 중심 좌표 */
+const MOCK_ADDRESSES = {
+  1101: '인천 연수구 송도동 센트럴로 160',
+  1102: '인천 연수구 송도동 컨벤시아대로 165',
+  1103: '인천 연수구 연수동 청능대로 105',
+  1104: '인천 연수구 동춘동 앵고개로 233',
+  1105: '인천 연수구 옥련동 옥련로 12',
+  1106: '인천 연수구 청학동 청능대로 20',
 };
 
 export const MOCK_MEMBERS = {
-  1: { nickname: '동네주민', regionName: '송도동' },
-  2: { nickname: '캠핑조아', regionName: '연수동' },
-  3: { nickname: '텐트초보', regionName: '송도동' },
-  4: { nickname: '이웃', regionName: '동춘동' },
+  1: { nickname: '동네주민', regionName: '송도1동' },
+  2: { nickname: '캠핑조아', regionName: '연수1동' },
+  3: { nickname: '텐트초보', regionName: '송도1동' },
+  4: { nickname: '이웃', regionName: '동춘1동' },
 };
 
 /** 회색 면에 글자를 얹은 자리 이미지(외부 이미지 없이) */
@@ -55,6 +73,7 @@ export function placeholderImage(label, color = '#EDEBE5') {
 const ITEMS = [
   {
     itemId: 101,
+    regionId: 1103,
     name: '4인용 거실형 텐트',
     ownerId: 2,
     pricePerDay: 15000,
@@ -72,6 +91,7 @@ const ITEMS = [
   },
   {
     itemId: 102,
+    regionId: 1103,
     name: '전동 드릴 세트',
     ownerId: 2,
     pricePerDay: 5000,
@@ -86,6 +106,7 @@ const ITEMS = [
   },
   {
     itemId: 103,
+    regionId: 1101,
     name: '캠핑 의자 2개',
     ownerId: 1,
     pricePerDay: 3000,
@@ -100,6 +121,7 @@ const ITEMS = [
   },
   {
     itemId: 104,
+    regionId: 1101,
     name: '빔 프로젝터',
     ownerId: 1,
     pricePerDay: 20000,
@@ -114,6 +136,7 @@ const ITEMS = [
   },
   {
     itemId: 105,
+    regionId: 1103,
     name: '캠핑 랜턴',
     ownerId: 2,
     pricePerDay: 4000,
@@ -128,6 +151,7 @@ const ITEMS = [
   },
   {
     itemId: 106,
+    regionId: 1104,
     name: '접이식 자전거',
     ownerId: 4,
     pricePerDay: 12000,
@@ -142,6 +166,7 @@ const ITEMS = [
   },
   {
     itemId: 107,
+    regionId: 1101,
     name: '보드게임 세트',
     ownerId: 1,
     pricePerDay: 2000,
@@ -156,6 +181,7 @@ const ITEMS = [
   },
   {
     itemId: 108,
+    regionId: 1101,
     name: '아이스박스 45L',
     ownerId: 1,
     pricePerDay: 5000,
@@ -169,23 +195,28 @@ const ITEMS = [
   },
 ];
 
+// 피드·검색용 시드(itemSeed.js)를 같은 목록에 둔다. 101~108이 앞이라 기존 id 조회·내 물품(회원 1)은 그대로다
+const ALL_ITEMS = [...ITEMS, ...createFeedSeed()];
+
 /** 예약하면 항상 기간 충돌인 물품 */
 export const CONFLICT_ITEM_ID = 102;
 
 export function findMockItem(itemId) {
-  const item = ITEMS.find((candidate) => candidate.itemId === Number(itemId));
+  const item = ALL_ITEMS.find((candidate) => candidate.itemId === Number(itemId));
   if (!item) {
     return null;
   }
   const today = todayInSeoul();
-  const regionName = MOCK_MEMBERS[item.ownerId].regionName;
+  const region = MOCK_REGION_MASTER.find((candidate) => candidate.regionId === item.regionId);
   return {
     ...item,
     isDeleted: item.isDeleted ?? false,
     thumbnailUrl: item.hasNoImage ? null : placeholderImage(item.name, item.color),
-    regionName,
-    ...MOCK_REGIONS[regionName],
-    bumpedAt: `${addDays(today, -item.bumpedDaysAgo)}T10:00:00`,
+    regionName: region.name,
+    address: MOCK_ADDRESSES[item.regionId],
+    latitude: region.lat,
+    longitude: region.lng,
+    bumpedAt: item.bumpedAt ?? `${addDays(today, -item.bumpedDaysAgo)}T10:00:00`,
     counts: item.counts ?? { viewCount: 0, wishCount: 0, chatCount: 0 },
     availablePeriods: item.availablePeriods.map(([from, to]) => ({
       startDate: addDays(today, from),
@@ -194,9 +225,14 @@ export function findMockItem(itemId) {
   };
 }
 
+/** 피드·검색이 보는 전체 물품(삭제된 것 포함, 거르는 것은 itemLogic) */
+export function listMockItems() {
+  return ALL_ITEMS.map((item) => findMockItem(item.itemId));
+}
+
 /** 삭제되지 않은 내 물품 */
 export function listMyMockItems() {
-  return ITEMS.filter((item) => item.ownerId === MOCK_ME && !item.isDeleted).map((item) =>
+  return ALL_ITEMS.filter((item) => item.ownerId === MOCK_ME && !item.isDeleted).map((item) =>
     findMockItem(item.itemId),
   );
 }
@@ -204,7 +240,8 @@ export function listMyMockItems() {
 export const itemHandlers = [
   // openapi.json ItemDetailResponse 그대로. 검사 순서: itemId 형식 400 → 404. 숨김 물품은 시드에 없어
   // (숨기기 REQ-044 전) 없는·삭제된 물품만 404. 조회 수는 올리지 않는다(새로고침마다 바뀌면 화면 확인이 어려워서).
-  http.get('/api/items/:itemId', ({ params }) => {
+  // 비회원도 볼 수 있어 토큰이 없어도 되고, 있으면 isOwner를 그 회원 기준으로 채운다.
+  http.get('/api/items/:itemId', ({ params, request }) => {
     const itemId = readPathId(params.itemId);
     if (itemId == null) {
       return fail(400, 'COMMON_INVALID_INPUT', '입력값이 올바르지 않습니다.', [
@@ -223,7 +260,7 @@ export const itemHandlers = [
       images: item.thumbnailUrl
         ? [{ imageId: item.itemId * 10, url: item.thumbnailUrl, thumbnailUrl: item.thumbnailUrl }]
         : [],
-      category: { categoryId: item.categoryId, name: MOCK_CATEGORIES[item.categoryId] },
+      category: { categoryId: item.categoryId, name: categoryName(item.categoryId) },
       condition: item.condition,
       description: item.description,
       pricePerDay: item.pricePerDay,
@@ -244,7 +281,8 @@ export const itemHandlers = [
         profileImageUrl: null,
         regionName: owner.regionName,
       },
-      isOwner: item.ownerId === MOCK_ME,
+      // 로그인한 회원 기준(토큰이 있을 때만). 토큰이 없거나 만료면 비회원처럼 false
+      isOwner: authenticateMockRequest(request)?.memberId === item.ownerId,
     });
   }),
 ];

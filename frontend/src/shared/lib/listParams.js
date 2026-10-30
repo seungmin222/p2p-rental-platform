@@ -1,8 +1,14 @@
-// 목록 화면의 페이지·탭 처리 순수 함수. page/hasNext 방식(PageResponse: { items, page, size, totalElements, hasNext })용.
+// 목록 화면의 페이지·탭 처리 순수 함수. page/hasNext 방식(PageResponse: { items, page, size, totalElements, hasNext })과
+// 커서 방식(CursorResponse: { items, hasNext, nextCursor })용.
 
 /** useInfiniteQuery getNextPageParam: 다음 페이지가 있으면 page + 1, 없으면 undefined(더 부르지 않음) */
 export function getNextPageParam(lastPage) {
   return lastPage?.hasNext ? lastPage.page + 1 : undefined;
+}
+
+/** 커서 방식 getNextPageParam: 다음이 있으면 nextCursor, 없으면 undefined(더 부르지 않음). 첫 페이지 pageParam은 undefined */
+export function getNextCursorParam(lastPage) {
+  return lastPage?.hasNext && lastPage.nextCursor != null ? lastPage.nextCursor : undefined;
 }
 
 /**

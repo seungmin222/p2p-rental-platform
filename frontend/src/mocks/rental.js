@@ -23,7 +23,8 @@ import {
   toPageResponse,
 } from './pageList';
 import { fail, ok } from './response';
-import { createRentalSeed, minutesFromNow, toServerDateTime } from './rentalSeed';
+import { minutesFromNow } from './rentalSeed';
+import { db, nowServer, occupiesPeriod } from './rentalStore';
 
 const PAYMENT_ENABLED = import.meta.env.VITE_PAYMENT_ENABLED === 'true';
 
@@ -120,22 +121,6 @@ function handle(resolver) {
       throw error;
     }
   };
-}
-
-const db = createRentalSeed();
-
-const ACTIVE_FOR_PERIOD = ['PENDING_PAYMENT', 'RESERVED', 'RENTING', 'OVERDUE'];
-
-function nowServer() {
-  return toServerDateTime(new Date());
-}
-
-/** 결제 대기는 만료 전인 것만 기간을 점유한다(rental.md REQ-012) */
-function occupiesPeriod(rental) {
-  if (!ACTIVE_FOR_PERIOD.includes(rental.status)) {
-    return false;
-  }
-  return rental.status !== 'PENDING_PAYMENT' || rental.paymentExpiresAt > nowServer();
 }
 
 function isOpen(agreement) {

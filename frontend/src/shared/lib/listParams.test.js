@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { flattenPages, getNextPageParam, normalizeTab } from './listParams';
+import { flattenPages, getNextCursorParam, getNextPageParam, normalizeTab } from './listParams';
 
 function page(number, items, hasNext) {
   return { items, page: number, size: 20, totalElements: 99, hasNext };
@@ -14,6 +14,21 @@ describe('getNextPageParam', () => {
 
   it('마지막 페이지면 undefined', () => {
     expect(getNextPageParam(page(1, [], false))).toBeUndefined();
+  });
+});
+
+describe('getNextCursorParam', () => {
+  it('hasNext면 nextCursor', () => {
+    expect(getNextCursorParam({ items: [], hasNext: true, nextCursor: 'abc' })).toBe('abc');
+  });
+
+  it('마지막 페이지(hasNext false)면 nextCursor가 있어도 undefined — 더 부르지 않는다', () => {
+    expect(getNextCursorParam({ items: [], hasNext: false, nextCursor: 'abc' })).toBeUndefined();
+    expect(getNextCursorParam({ items: [], hasNext: false, nextCursor: null })).toBeUndefined();
+  });
+
+  it('hasNext인데 nextCursor가 없으면 undefined(같은 첫 페이지를 다시 부르지 않게)', () => {
+    expect(getNextCursorParam({ items: [], hasNext: true, nextCursor: null })).toBeUndefined();
   });
 });
 
