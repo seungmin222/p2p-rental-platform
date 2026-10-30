@@ -4,6 +4,8 @@ import { flattenPages, getNextPageParam } from '../../shared/lib/listParams';
 import { fetchItem, fetchMyItems, toItemSummary, toMyItem } from './api';
 
 export const itemKeys = {
+  // 동네 피드 전체. 필터 키 ['items', 'feed', { regionId, range, categoryId }]의 앞부분이라 대표 동네가 바뀌면 이 키로 무효화한다
+  feed: () => ['items', 'feed'],
   detail: (itemId) => ['items', itemId],
   mine: () => ['items', 'me'],
   mineTab: (tab) => ['items', 'me', { tab }],
