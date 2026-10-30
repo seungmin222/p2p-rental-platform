@@ -27,12 +27,13 @@
 ```
 src/
 ├── app/            라우터, QueryClientProvider, 레이아웃(하단 탭 / PC 헤더)
-│   └── layout/         AppLayout, PageHeader, BottomActionBar, FloatingActionButton
+│   └── layout/         AppLayout, PageHeader, BackButton, BottomActionBar, FloatingActionButton
 ├── pages/          화면 단위 (SCR-xx와 1:1)
 ├── dev/            개발 서버 전용 화면(`/dev/ui` 공통 UI 미리보기, 빌드에서 제외)
 ├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review)
 │   ├── auth/           로그인·가입·로그아웃(api·queries·constants·errorMessages, components/)
 │   ├── region/         동네(api·queries·constants·errorMessages·geolocation·guestRegionStore·myRegions·regionStatus, components/)
+│   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay, components/)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
 │       ├── queries.js      useQuery/useMutation 훅 + queryKey
@@ -72,7 +73,7 @@ src/
 - 현재 순위의 라우트만 등록한다. 현재 순위보다 높은 순위 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(1순위 단계: 채팅·알림 탭).
 - 하단 탭(모바일): 홈 · 검색 · 채팅 · 알림 · 나의 대여. PC(≥1280px)는 상단 헤더 메뉴로 같은 구성.
 - 인증 필요 라우트는 `RequireAuth`로 감싸고, 비로그인 시 `/login?redirect=...`. redirect는 `app/loginPath.js` `getSafeRedirect`로 거른다: `/`로 시작하고 `//`·`/\`로 시작하지 않으며 제어 문자가 없을 때만, `/login`·`/signup`이면 무시(오픈 리다이렉트 방지).
-- 동네 미설정 시 홈 진입 → `/regions`로 유도(feat/fe-item-pages). 비회원 임시 동네는 localStorage `rental.guestRegion`(`features/region/guestRegionStore.js`).
+- 홈·검색의 동네는 `features/item/homeRegion.js` `resolveFeedRegion`이 정한다: 로그인(AT 있음)이면 `/members/me`의 `primaryRegion`(인증이 만료·미인증이어도 피드는 보여 준다), 비회원이면 localStorage `rental.guestRegion`(`features/region/guestRegionStore.js`). 둘 다 없으면(로그인했는데 대표 동네가 없는 경우 포함) 피드 대신 안내 + `/regions` 버튼을 보이고 **자동으로 옮기지 않는다**(`/regions`에서 뒤로 가기를 누르면 홈으로 돌아와 다시 옮겨지는 루프가 생긴다). 로그인한 사용자에게는 임시 동네를 쓰지 않는다.
 
 ## 사용 흐름 (핵심 경로)
 `로그인 → 동네 인증 → 홈 → 상세 → 예약하기(캘린더 기간 선택) → 결제 → 대여 상세(인계 → 반납 요청 → 상태 확인) → 후기 → 프로필`
@@ -91,7 +92,7 @@ src/
   - `/auth/login`·`/auth/logout`·`/auth/reissue`의 401은 재발급을 시도하지 않는다.
 - 앱 시작 시 `/api/auth/reissue`를 한 번 호출해 로그인 상태 복원. 끝날 때까지 라우트 렌더를 보류하고, 실패하면 비로그인으로 진행한다(로그인 화면으로 보내지 않음).
 - 로그아웃하거나 재발급에 실패하면 저장된 AT를 지운다.
-- 공개 API(`/api/auth/**`, `POST /api/members`, `GET /api/regions`, `GET /api/regions/by-coord`)에는 Authorization 헤더를 붙이지 않는다. 판정은 **baseURL을 뺀 상대 경로**(`/auth/**`, `POST /members`, `GET /regions`, `GET /regions/by-coord`, 쿼리 제외) 기준(`shared/api/client.js` `isPublicApi`).
+- 공개 API(`/api/auth/**`, `POST /api/members`, `GET /api/regions`, `GET /api/regions/by-coord`, `GET /api/items/feed`, `GET /api/items`(검색), `GET /api/categories`)에는 Authorization 헤더를 붙이지 않는다. 판정은 **baseURL을 뺀 상대 경로**(`/auth/**`, `POST /members`, `GET /regions`, `GET /regions/by-coord`, `GET /items/feed`, `GET /items`, `GET /categories`, 쿼리 제외) 기준(`shared/api/client.js` `isPublicApi`). **`GET /api/items/{itemId}`(상세)는 넣지 않는다** — 토큰을 보내야 `isOwner`가 로그인 사용자 기준으로 채워진다. 피드·검색은 `regionId`를 항상 명시해서 부른다(공개라 토큰으로 대표 동네를 알릴 수 없다).
 - **서버에서 온 데이터는 전부 TanStack Query로 다룬다.** `useEffect + useState`로 API를 호출해 상태를 들고 있지 않는다. Zustand에는 서버 데이터를 복사해 두지 않는다(토큰·임시 동네·UI 상태만).
 - 조회는 `useQuery`/`useInfiniteQuery`, 변경은 `useMutation` → `onSuccess`에서 관련 queryKey `invalidateQueries`. 훅은 `features/*/queries.js`에 모으고 컴포넌트에서 axios를 직접 호출하지 않는다.
 - 기본 옵션(`QueryClient`): `retry: 1`(401·403·404·409는 재시도 안 함), `staleTime`은 목록 30초·상세 10초 정도로 시작. 캘린더·대여 상세처럼 상태가 바뀌는 화면은 짧게.
@@ -137,6 +138,15 @@ export const RENTAL_STATUS = {
 - 비밀번호가 들어간 로그인·가입 뮤테이션은 `gcTime: 0`(MutationCache에 오래 남지 않게).
 - 정책 수치는 `features/auth/constants.js`(`EMAIL_MAX`·`PASSWORD_LENGTH`·`NICKNAME_LENGTH`). 로그인 폼은 빈 값만 검사한다.
 
+### 물품 화면 규칙 (SCR-03 홈 · SCR-04 검색 · SCR-05 상세)
+- queryKey: 피드 `['items', 'feed', { regionId, categoryId }]`(`itemKeys.feedList`, 커서 방식 `useInfiniteQuery`), 검색 `['items', 'search', { regionId, ...조건 }]`(`itemKeys.searchList`, page 방식), 상세 `['items', itemId]`, 카테고리 `['categories']`(`staleTime` 10분). 카테고리·동네가 바뀌면 키가 달라져 처음 페이지부터 다시 받는다. 마지막 페이지(`hasNext` false)에서는 `getNextCursorParam`(`shared/lib/listParams.js`)이 undefined를 돌려 더 부르지 않는다.
+- **홈 카테고리 칩은 URL `?category=`**(`readCategoryParam`), 검색 조건(`q`·`category`·`sort`·`minPrice`·`maxPrice`·`startDate`·`endDate`·`availableOnly`)은 전부 URL 쿼리에 둔다(`features/item/searchParams.js`: 읽을 때마다 걸러 틀린 값은 없는 것으로, 기본값은 주소에 넣지 않음). 바꿀 때는 replace. 같은 값이 queryKey가 된다. 키워드는 제출(엔터·검색 버튼)할 때만 반영하고, 키워드·카테고리·가격·기간·대여 가능만 중 하나도 없으면 조회하지 않는다(정렬만으로는 조회하지 않음).
+- 검색 필터(정렬·일 대여료·대여 희망 기간·대여 가능한 물품만)는 "필터" 버튼 → BottomSheet 하나(`SearchFilterSheet`)에 모으고, 카테고리는 칩. 가격 한도는 `features/item/constants.js` `ITEM_PRICE_PER_DAY`(policies `item.price-per-day`), 기간은 기존 `Calendar`(범위 선택, 최대 `RENTAL_PERIOD.MAX_DAYS`)에 `buildFilterDays`(오늘부터 선택 가능)를 넘긴다.
+- 카드 표시(`itemDisplay.js`): 일 대여료 0원 → "무료"(policies `item.price-per-day`: 0원 등록 허용), 보증금 0원 → 보증금 줄을 그리지 않음, "대여 중" 배지(`isRenting`)는 카드에만(`Badge tone="green"`). 관심·채팅 수, 신뢰 점수·거래 횟수, 지도, "이런 물품은 어때요?", 알림 아이콘은 2·3순위라 그리지 않는다.
+- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 주소 텍스트. 내 물품(`isOwner`)이면 예약하기 대신 "내 물품 관리"(`/me/items`) 링크. 없는·삭제된 물품과 숫자가 아닌 id는 ErrorState + 홈(숫자가 아니면 요청하지 않음).
+- 로그인·로그아웃은 `queryClient.clear()`로 이전 사용자의 `['items', id]`(isOwner)를 지운다. 단, 로그아웃은 홈으로 먼저 이동한 뒤 AT를 지우므로 홈이 내 정보를 다시 부르면 서버가 이미 세션을 끝낸 경우 401 → 로그인 화면으로 가 버린다. 그래서 홈·검색은 `useMe({ enabled: 로그인 여부, refetchOnMount: false })`로 이미 받은 내 정보를 다시 부르지 않고, 로그아웃 직후에는 이전 내 정보가 남아 있어도 `resolveFeedRegion`이 로그인 여부(AT)가 false면 보지 않는다.
+- 오류 문구는 `features/item/errorMessages.js` 한 곳(code → 문구).
+
 ### 동네 화면 규칙 (SCR-02, `/regions`)
 - 로그인하면 `MyRegionManager`(내 동네 목록 `MyRegionList` + 추가), 아니면 `GuestRegionPicker`(임시 동네 하나). 검색·현재 위치로 찾기는 둘이 `RegionFinder`를 같이 쓴다.
 - **좌표는 TanStack Query 캐시·state·Zustand·로그에 두지 않는다.** 위치 뮤테이션 variables에는 좌표를 돌려주는 함수(`locate`)만 넣고 mutationFn 안에서 부른다(`features/region/queries.js`, `queries.test.js`가 MutationCache·QueryCache를 훑어 확인). 현재 위치로 찾은 좌표는 `RegionFinder`의 좌표 칸(`coordsSlot.js` `createCoordsSlot`, 찾기 호출마다 토큰 — 늦게 온 응답은 좌표·결과 표시 모두 버림)에만 두고, 새 검색 입력·검색 결과 선택·찾은 결과로 추가를 시도한 직후·언마운트 때 비운다. 추가 직후 인증은 그 좌표로 하고, 좌표가 없으면 인증을 부르지 않는다.
@@ -174,8 +184,9 @@ export const RENTAL_STATUS = {
 - **위치**: `navigator.geolocation` 권한 거부 시 안내 후 동네 검색으로 추가하게 한다(인증 안 된 상태로 추가 가능). 위치 버튼은 막지 않는다.
 
 ## 개발 방식
-- **목 로그인 계정**(`mocks/memberSeed.js`, 가짜 값): `user1@example.com`(동네주민, 대여·물품 목의 "나", 대표 동네 인증 유효 + 두 번째 동네 인증 만료) · `user3@example.com`(텐트초보, 동네 없음 → 로그인 후 `/regions`). 비밀번호는 모두 `rental123!`(그 밖에 user2·user4). 목 세션은 localStorage `mock.session`(RT 쿠키 흉내)이라 새로고침해도 로그인이 유지되고, 가입한 계정은 메모리에만 있어 새로고침하면 사라진다. 콘솔 `window.__mockAuth.expireAccessToken()`으로 AT만 무효화해 401 → 재발급 → 재시도를 볼 수 있다. 대여·물품 목은 아직 AT를 보지 않고 회원 1 기준이다.
+- **목 로그인 계정**(`mocks/memberSeed.js`, 가짜 값): `user1@example.com`(동네주민, 대여·물품 목의 "나", 대표 동네 인증 유효 + 두 번째 동네 인증 만료) · `user3@example.com`(텐트초보, 동네 없음 → 로그인 후 `/regions`). 비밀번호는 모두 `rental123!`(그 밖에 user2·user4). 목 세션은 localStorage `mock.session`(RT 쿠키 흉내)이라 새로고침해도 로그인이 유지되고, 가입한 계정은 메모리에만 있어 새로고침하면 사라진다. 콘솔 `window.__mockAuth.expireAccessToken()`으로 AT만 무효화해 401 → 재발급 → 재시도를 볼 수 있다. 물품 상세 목은 토큰이 있으면 `isOwner`를 그 회원 기준으로 채우고, 대여 목은 아직 AT를 보지 않고 회원 1 기준이다.
 - **목 동네**(`mocks/memberSeed.js` `MOCK_REGION_MASTER`, 인천 연수구 행정동 6개: 송도1동·송도2동·연수1동·동춘1동·옥련1동·청학동). 좌표 → 동네는 가장 가까운 시드 중심이 3km 안이면 그 동네, 아니면 404(`mocks/regionLogic.js`). 위치는 크롬 DevTools → More tools → Sensors → Location에서 바꾼다. 예: 송도1동 `37.3925, 126.639` · 연수1동 `37.418, 126.679` · 어느 동네도 아닌 곳(서울 강남역) `37.4979, 127.0276`. "현재 위치로 찾기"는 위치를 1분 동안 캐시하므로(maximumAge) 좌표를 바꾼 뒤 1분 안에 다시 찾으면 이전 위치가 쓰일 수 있다. 목록의 인증은 캐시하지 않아 바로 반영된다.
+- **목 물품·카테고리**(`mocks/item.js` 101~108 + `mocks/itemSeed.js` 201~): 행정동 시드의 regionId로 동네별로 나뉜다. 송도1동 30개(피드 2페이지 20 + 10, 같은 시각 등록이 여럿인 커서 경계, 무료·보증금 없음·대여 중 배지), 송도2동 7개(1페이지), 연수1동 12개, 동춘1동 5개, 옥련1동 3개, 청학동 0개(빈 피드). 카테고리는 `V3__insert_categories.sql` 8개 그대로. 피드·검색·카테고리 목은 `mocks/feed.js`, 계산(필터·정렬·커서·페이지·검증)은 `mocks/itemLogic.js` 순수 함수. 새로고침하면 시드로 돌아간다. 확인용 로그인: `user1`(송도1동 대표, 내 물품 103·104·107·108) · `user2`(연수1동 대표) · `user3`(동네 없음 → 홈 안내).
 - 백엔드가 컨트롤러·DTO를 먼저 머지하면 `docs/openapi.json`이 갱신된다. 그 스키마의 응답 형태 그대로 `mocks/` MSW 핸들러를 만들어 먼저 개발한다(공통 래퍼는 `mocks/response.js`의 `ok`·`fail` 헬퍼로). `VITE_USE_MOCK=true`로 전환.
   - MSW는 **개발 서버 + `VITE_USE_MOCK=true`일 때만** `main.jsx`가 동적 import로 시작하고 운영 번들에는 들어가지 않게 한다. 처리하지 않는 요청은 bypass. `public/mockServiceWorker.js`는 커밋한다(msw 버전을 올리면 `npx msw init public`으로 갱신).
 - 타입 힌트가 필요하면 openapi.json에서 JSDoc 타입을 생성해 쓸 수 있다(선택, `openapi-typescript` 등). 생성 파일은 직접 수정하지 않는다.
