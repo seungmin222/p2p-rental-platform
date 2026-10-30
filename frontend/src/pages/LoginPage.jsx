@@ -45,11 +45,11 @@ function LoginForm({ redirect, defaultEmail }) {
       { email: values.email.trim(), password: values.password },
       {
         onSuccess: async () => {
+          setIsMovingOn(true);
           if (redirect) {
             navigate(redirect, { replace: true });
             return;
           }
-          setIsMovingOn(true);
           const destination = await fetchPostLoginDestination(queryClient);
           navigate(destination.to, { replace: true, state: destination.state });
         },
@@ -65,6 +65,7 @@ function LoginForm({ redirect, defaultEmail }) {
         <fieldset disabled={isBusy} className="flex flex-col gap-4">
           <TextField
             label="이메일"
+            required
             type="email"
             autoComplete="email"
             inputMode="email"
@@ -77,6 +78,7 @@ function LoginForm({ redirect, defaultEmail }) {
           />
           <TextField
             label="비밀번호"
+            required
             type="password"
             autoComplete="current-password"
             error={errors.password?.message}

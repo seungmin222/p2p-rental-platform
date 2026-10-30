@@ -132,7 +132,7 @@ export const RENTAL_STATUS = {
 - 로그인 성공: `useLogin`이 `queryClient.clear()`(이전 사용자 캐시) → `setAccessToken`. 안전한 redirect가 있으면 그곳으로 replace, 없으면 `['members', 'me']`를 fetchQuery해 대표 동네가 없으면 `/regions`(state `{ fromLogin: true }`), 있으면 `/`(조회 실패도 `/`).
 - 이미 로그인한 사용자가 `/login`·`/signup`에 오면 redirect(없으면 `/`)로 보낸다. 로그인 여부는 **마운트할 때 한 번만** 본다(제출 성공으로 토큰이 생겨 다시 그려질 때 폼이 정한 이동보다 먼저 `/`로 가지 않게).
 - 가입 성공 → 토스트 + `/login`(redirect 유지, 가입한 이메일은 주소가 아니라 location state로 미리 채움). 비밀번호 확인 칸은 프론트 전용(보내지 않음).
-- 로그아웃(`/me` 맨 아래): API 성공 → `navigate('/', { replace: true, flushSync: true })` → `clearLocalSession`(AT·캐시). AT를 먼저 지우면 RequireAuth가 `/login?redirect=/me`로 보낸다. 실패면 토스트만(쿠키가 남아 있어 로컬만 지우면 안 됨).
+- 로그아웃(`/me` 맨 아래): API 성공 → `navigate('/', { replace: true, flushSync: true })` → `clearLocalSession`(AT·캐시). 정리는 `useLogout` 훅 옵션 onSuccess에서 하므로 요청 중에 화면을 벗어나도 빠지지 않는다(그때는 이동 없이 정리만). AT를 먼저 지우면 RequireAuth가 `/login?redirect=/me`로 보낸다. 실패면 토스트만(쿠키가 남아 있어 로컬만 지우면 안 됨).
 - 비밀번호가 들어간 로그인·가입 뮤테이션은 `gcTime: 0`(MutationCache에 오래 남지 않게).
 - 정책 수치는 `features/auth/constants.js`(`EMAIL_MAX`·`PASSWORD_LENGTH`·`NICKNAME_LENGTH`). 로그인 폼은 빈 값만 검사한다.
 

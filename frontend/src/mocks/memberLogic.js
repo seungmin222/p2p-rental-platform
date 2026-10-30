@@ -15,10 +15,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // eslint-disable-next-line no-useless-escape
 const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!-/:-@\[-`{-~])[!-~]*$/;
 const PASSWORD_PATTERN_MESSAGE = '공백·한글 없이 영문, 숫자, 기호를 각각 1개 이상 포함해 주세요.';
-// Bean Validation 기본 문구(한국어). @Email은 도메인의 점을 요구하지 않는 수준으로 흉내
+// Bean Validation 기본 문구(한국어). @Email은 도메인의 점을 요구하지 않는 수준 + local part 64자 제한으로 흉내
+// (Hibernate EmailValidator가 local part를 64자까지만 받아서, 100자 경계를 확인할 때 서버와 결과가 같도록)
 const NOT_BLANK_MESSAGE = '공백일 수 없습니다';
 const EMAIL_MESSAGE = '올바른 형식의 이메일 주소여야 합니다';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+$/;
+const EMAIL_LOCAL_PART_MAX = 64;
 
 /** 백엔드 MemberTexts.length와 같이 코드 포인트로 센다 */
 function length(text) {
@@ -51,7 +53,7 @@ export function validateSignup(body, policy = MOCK_MEMBER_POLICY) {
 
   if (isBlank(email)) {
     details.push({ field: 'email', reason: NOT_BLANK_MESSAGE });
-  } else if (!EMAIL_PATTERN.test(email)) {
+  } else if (!EMAIL_PATTERN.test(email) || length(email.split('@')[0]) > EMAIL_LOCAL_PART_MAX) {
     details.push({ field: 'email', reason: EMAIL_MESSAGE });
   } else if (length(email) > policy.emailMax) {
     details.push({ field: 'email', reason: `${policy.emailMax}자 이하로 입력해 주세요.` });

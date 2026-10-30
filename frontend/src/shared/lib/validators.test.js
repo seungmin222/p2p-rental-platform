@@ -84,11 +84,15 @@ describe('validateEmail', () => {
     expect(validateEmail('user@localhost', { max: 100 })).toBe(true);
   });
 
+  // 백엔드 @Email은 local part를 64자까지만 받으므로 local 64자 + 도메인으로 길이를 맞춘다
   it('100자는 통과, 101자는 실패', () => {
-    const at100 = `${'a'.repeat(88)}@example.com`;
+    const local = 'a'.repeat(64);
+    const at100 = `${local}@${'b'.repeat(23)}.example.com`;
+    const at101 = `${local}@${'b'.repeat(24)}.example.com`;
     expect(at100).toHaveLength(100);
+    expect(at101).toHaveLength(101);
     expect(validateEmail(at100, { max: 100 })).toBe(true);
-    expect(validateEmail(`a${at100}`, { max: 100 })).toBe('100자 이하로 입력해 주세요');
+    expect(validateEmail(at101, { max: 100 })).toBe('100자 이하로 입력해 주세요');
   });
 });
 

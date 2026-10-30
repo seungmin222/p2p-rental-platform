@@ -29,6 +29,22 @@ describe('getSafeRedirect', () => {
   });
 });
 
+describe('getSafeRedirect 디코드 순서', () => {
+  it('인코딩된 채로 들어온 값은 /로 시작하지 않으면 거부', () => {
+    expect(getSafeRedirect('%2F%2Fevil.com')).toBeNull();
+  });
+
+  it("'/%2F/evil.com'은 앱 안 경로로 허용(브라우저가 //로 풀지 않는다)", () => {
+    expect(getSafeRedirect('/%2F/evil.com')).toBe('/%2F/evil.com');
+  });
+
+  it('쿼리에서 디코드된 값(URLSearchParams.get)으로 검사하면 //evil.com이라 거부', () => {
+    const value = new URLSearchParams('redirect=%2F%2Fevil.com').get('redirect');
+    expect(value).toBe('//evil.com');
+    expect(getSafeRedirect(value)).toBeNull();
+  });
+});
+
 describe('주소 만들기', () => {
   it('toLoginPath는 돌아올 경로를 인코딩한다', () => {
     expect(toLoginPath('/me/rentals?tab=DONE')).toBe(

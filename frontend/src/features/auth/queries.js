@@ -54,9 +54,21 @@ export function useSignup() {
   return useMutation({ mutationFn: signup, gcTime: 0 });
 }
 
-/** 로그아웃 API만 부른다. 성공 뒤 이동 → clearLocalSession 순서는 화면이 지킨다(LogoutButton) */
-export function useLogout() {
-  return useMutation({ mutationFn: logout });
+/**
+ * 로그아웃. 서버가 성공하면 화면이 내려갔어도 반드시 로컬(AT·캐시)을 지운다 — 정리를 훅 옵션 onSuccess에 두는 이유는
+ * 컴포넌트가 내려가면 mutate에 넘긴 호출별 onSuccess가 불리지 않아서다.
+ * leaveRef.current는 화면이 떠 있는 동안만 "그 화면을 떠나는 함수"다(LogoutButton). 있으면 먼저 떠난 뒤 지운다
+ * (/me는 RequireAuth 안이라 AT를 먼저 지우면 /login?redirect=/me로 간다). 이미 내려갔으면 이동 없이 정리만 한다.
+ */
+export function useLogout(leaveRef) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: logout,
+    onSuccess: async () => {
+      await leaveRef?.current?.();
+      clearLocalSession(queryClient);
+    },
+  });
 }
 
 /** 로컬 로그인 상태(AT·캐시)를 지운다. 로그아웃 API가 성공한 뒤에만 부른다(실패면 쿠키가 남아 다음 시작 때 복원되므로) */

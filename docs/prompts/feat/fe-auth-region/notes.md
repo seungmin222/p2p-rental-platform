@@ -37,6 +37,7 @@ SCR-01 로그인·회원가입(REQ-001·002), 재발급 목 교체(REQ-003), `/m
 - **redirect 검사(`app/loginPath.js` `getSafeRedirect`)**: `/`로 시작하고 `//`·`/\`로 시작하지 않을 때만, `/login`·`/signup`(쿼리·끝 슬래시 포함)이면 무시. **제어 문자(탭·줄바꿈)가 있으면 거부**도 더했다 — 브라우저가 URL에서 지워 `/\t/evil.com`이 `//evil.com`이 된다.
 - **가입 성공 → 토스트 + `/login`(redirect 유지)**, 가입한 이메일은 주소가 아니라 location state로 넘겨 미리 채우고 비밀번호 칸에 포커스. 주소·기록에 이메일을 남기지 않으려고.
 - **로그아웃 순서**: API 성공 → `navigate('/', { replace: true, flushSync: true })` → AT 삭제 → `queryClient.clear()`. RouterProvider가 경로 변경을 transition으로 반영할 수 있어 `await navigate`만으로는 `/me`가 아직 그려진 채 AT 삭제(동기 렌더)가 먼저 반영될 수 있다. flushSync로 새 화면까지 커밋한 뒤 지운다. 실패(네트워크·5xx)면 토스트만 띄우고 로그인 상태 유지(RT 쿠키가 남아 다음 시작 때 복원되므로 로컬만 지우면 안 됨). 확인 문구 "이 기기에서만 로그아웃돼요"(family 단위 로그아웃, member.md REQ-002).
+  - **로컬 정리는 `useLogout` 훅 옵션 onSuccess에서 한다(리뷰 반영)**: 컴포넌트가 내려가면 mutate에 넘긴 호출별 onSuccess가 불리지 않아, 요청 중에 화면을 벗어나면 서버는 로그아웃됐는데 AT·캐시가 남았다. LogoutButton은 떠 있는 동안만 ref에 "홈으로 떠나기" 함수를 두고, 훅은 그 함수가 있으면 먼저 떠난 뒤, 없으면 이동 없이 정리만 한다.
 - **`queryClient.clear()` 메모(로그인·로그아웃 공통)**: clear는 화면에 떠 있는 쿼리까지 캐시에서 떼어 내, 그 화면은 다시 불러오지 않는다. 지금은 로그인 화면·로그아웃 후 홈에 쿼리가 없어 문제없다. 홈에 피드 쿼리가 붙으면(feat/fe-item-pages) `resetQueries()`로 바꿔야 할 수 있다.
 - **로그인·가입 뮤테이션은 `gcTime: 0`**: variables에 비밀번호가 들어가 MutationCache에 남는다. 화면이 내려가면 바로 지우고, 로그인 성공 시는 clear()가 지운다.
 - **`/me` 프로필 요약**: 사진(없으면 자리 원) · 닉네임 · 대표 동네 + 인증 상태 배지(`getVerifyStatus`: 유효 green "인증 완료 · M월 D일까지", 만료 amber, 미인증 gray). 동네가 없으면 "아직 동네가 없어요 · 동네 설정하기"(`/regions`). 서버 isVerified를 그대로 따르고 날짜로 다시 판정하지 않는다. 로그아웃은 메뉴 아래 회색 면 버튼 + ConfirmModal.
@@ -47,6 +48,7 @@ SCR-01 로그인·회원가입(REQ-001·002), 재발급 목 교체(REQ-003), `/m
 - **AT는 `mock-at.{memberId}.{발급 순번}`**, 재발급마다 바뀌고 메모리에만 있다. 새로 만든 보호 API 목(`GET /api/members/me`)은 현재 AT가 아니면 401 `AUTH_UNAUTHORIZED`. **기존 대여·물품 목은 건드리지 않았다**(AT를 보지 않고 MOCK_ME = 회원 1 기준). 그래서 회원 3으로 로그인해도 빌린 내역·내 물품은 회원 1의 것이 보인다.
 - **`window.__mockAuth.expireAccessToken()`**(`mocks/browser.js`): AT만 무효화해 401 → 재발급 → 재시도를 콘솔에서 확인한다.
 - **로그인 목**: 빈 값 400 `COMMON_INVALID_INPUT`(details, "공백일 수 없습니다"), 불일치 401 `AUTH_INVALID_CREDENTIALS`. **가입 목**: 백엔드 검증과 같은 규칙·문구의 400 details(필드마다 첫 위반 하나로 단순화), 중복 409(이메일 → 닉네임 순서로 가정). 가입 계정은 메모리에만 있어 새로고침하면 사라진다(그 세션은 재발급 401).
+- **가입 목은 이메일 local part 64자 초과를 @Email 문구("올바른 형식의 이메일 주소여야 합니다")로 거부한다(리뷰 반영)**: Hibernate EmailValidator가 local part를 64자까지만 받아서, 100자 경계 같은 값을 넣었을 때 목과 서버의 결과가 같도록. 프론트 검증은 느슨한 그대로다.
 - **시드**(비밀번호 모두 `rental123!`, 가짜 값): 회원 1 동네주민(송도1동 대표 인증 D-5 → 유효 + 연수1동 인증 D-40 → 만료) · 2 캠핑조아(연수1동) · 3 텐트초보(동네 없음) · 4 이웃(동춘1동 미인증). 닉네임은 기존 목(item.js MOCK_MEMBERS)과 같다. 동네 이름은 행정동(송도1동 등)이라 **물품 목의 동네명(송도동 등)과 다를 수 있다**(물품 목은 바꾸지 않았다).
 - 목은 화면 상수를 가져오지 않는 규칙대로 정책 값을 `memberLogic.js` `MOCK_MEMBER_POLICY`에 따로 뒀다.
 
@@ -63,7 +65,7 @@ SCR-01 로그인·회원가입(REQ-001·002), 재발급 목 교체(REQ-003), `/m
 5. `frontend/CLAUDE.md`에 `shared/lib/validators`가 있다고 적혀 있었지만 파일이 없었다 — 이 브랜치에서 만들었다(문서 쪽 문제, 백엔드와 무관).
 
 ## 확인
-- `npm run lint`·`npm test`(21파일 279개)·`npm run build` 통과. 바뀐 파일만 `npx prettier --check`.
+- `npm run lint`·`npm test`(21파일 283개)·`npm run build` 통과. 바뀐 파일만 `npx prettier --check`.
 - **build 결과에 목 코드 없음**: `.env.local`에 `VITE_USE_MOCK=true`인 채로 빌드해도 `dist/assets/*.js`에 `__mockAuth`·`mock-at`·`msw`·시드 이메일 문자열이 없다(`mocks/browser.js`는 main.jsx가 개발 서버 + VITE_USE_MOCK일 때만 동적 import). JS 번들 532,473B(fe-my-pages 기록 521.90kB 대비 약 +10kB, develop 직접 빌드 비교는 안 함). 500kB 경고는 기존 "다음에" 그대로.
 - 브라우저(앱 내장 브라우저, `VITE_USE_MOCK=true`, 360px·390px, 가로 넘침 없음):
   - 비로그인 `/me` → `/login?redirect=%2Fme` → 빈 제출(두 필드 오류, 이메일 포커스) → 틀린 비밀번호(폼 아래 "이메일 또는 비밀번호가 맞지 않아요") → 회원 1 로그인 → `/me`(동네주민 · 송도1동 · 인증 완료 · 11월 24일까지).

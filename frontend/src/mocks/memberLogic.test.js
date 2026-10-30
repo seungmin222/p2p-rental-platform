@@ -49,10 +49,19 @@ describe('validateSignup', () => {
     expect(validateSignup({ ...VALID, nickname: '가'.repeat(10) + '😀' })).toHaveLength(1);
   });
 
-  it('이메일 101자', () => {
-    const email = `${'a'.repeat(89)}@example.com`;
-    expect(validateSignup({ ...VALID, email })).toEqual([
+  it('이메일 100자 통과, 101자는 글자 수 문구(local part 64자 + 도메인)', () => {
+    const local = 'a'.repeat(64);
+    expect(validateSignup({ ...VALID, email: `${local}@${'b'.repeat(23)}.example.com` })).toEqual(
+      [],
+    );
+    expect(validateSignup({ ...VALID, email: `${local}@${'b'.repeat(24)}.example.com` })).toEqual([
       { field: 'email', reason: '100자 이하로 입력해 주세요.' },
+    ]);
+  });
+
+  it('local part 65자는 @Email 형식 문구', () => {
+    expect(validateSignup({ ...VALID, email: `${'a'.repeat(65)}@example.com` })).toEqual([
+      { field: 'email', reason: '올바른 형식의 이메일 주소여야 합니다' },
     ]);
   });
 });
