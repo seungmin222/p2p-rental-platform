@@ -2,7 +2,14 @@
 import { authHandlers } from './auth';
 import { itemHandlers } from './item';
 import { memberHandlers } from './member';
+import { regionHandlers } from './region';
 import { rentalHandlers } from './rental';
 
 // 캘린더(/api/items/:itemId/calendar)가 물품 상세(/api/items/:itemId)보다 구체적이라 순서와 무관하게 맞는다
-export const handlers = [...authHandlers, ...memberHandlers, ...rentalHandlers, ...itemHandlers];
+export const handlers = [
+  ...authHandlers,
+  ...memberHandlers,
+  ...regionHandlers,
+  ...rentalHandlers,
+  ...itemHandlers,
+];
