@@ -11,7 +11,7 @@ import {
   setPrimaryMyRegion,
   verifyMyRegion,
 } from './api';
-import { getCurrentCoords } from './geolocation';
+import { getCurrentCoords, VERIFY_GEOLOCATION_OPTIONS } from './geolocation';
 import { replaceMemberRegion } from './myRegions';
 
 // 좌표 규칙(fe-auth-region notes): TanStack Query는 뮤테이션 variables·data를 MutationCache에 두고 Devtools에도 보이므로
@@ -58,15 +58,20 @@ function invalidateFeed(queryClient) {
 
 const STALE_LIST_CODES = ['COMMON_NOT_FOUND', 'REGION_ALREADY_ADDED', 'REGION_LIMIT_EXCEEDED'];
 
+/** 실패 뒤 목록이 서버와 어긋났으면 다시 불러온다. onError가 이 Promise를 돌려줘 뮤테이션이 목록 갱신까지 끝나지 않는다 */
 function refetchIfStale(queryClient, error) {
-  if (STALE_LIST_CODES.includes(error?.code)) {
-    refetchMine(queryClient);
-  }
+  return STALE_LIST_CODES.includes(error?.code) ? refetchMine(queryClient) : undefined;
+}
+
+/** 인증 위치는 캐시를 쓰지 않는다(VERIFY_GEOLOCATION_OPTIONS) */
+function getVerifyCoords() {
+  return getCurrentCoords(VERIFY_GEOLOCATION_OPTIONS);
 }
 
 /**
- * 현재 위치 → 행정동(by-coord). variables { locate?, onLocated? }, data는 RegionResponse만.
- * 좌표는 mutationFn 안에서 받아 onLocated(호출부의 ref에 넣는 콜백)로만 넘긴다. 비회원은 onLocated를 넘기지 않는다.
+ * 현재 위치 → 행정동(by-coord). variables { locate?, onLocated?, token? }, data는 RegionResponse만.
+ * 좌표는 mutationFn 안에서 받아 onLocated(호출부의 좌표 칸에 넣는 콜백)로만 넘긴다. 비회원은 onLocated를 넘기지 않는다.
+ * token은 호출부가 늦게 온 결과를 가려내는 번호(coordsSlot.js)이며 좌표가 아니다. locate 기본은 찾기 옵션(1분 캐시).
  */
 export function locateRegionMutationOptions() {
   return {
@@ -81,13 +86,13 @@ export function locateRegionMutationOptions() {
 }
 
 /**
- * 동네 인증. variables { memberRegionId, locate? }(locate 기본은 브라우저 현재 위치).
+ * 동네 인증. variables { memberRegionId, locate? }(locate 기본은 캐시 없는 브라우저 현재 위치, 추가 직후는 찾은 좌표).
  * 응답(동네 하나)은 순서·대표를 바꾸지 않으므로 목록의 그 항목만 바꾼다. 목록에 아직 없으면(추가 직후 재조회 중) 다시 불러온다.
  */
 export function verifyRegionMutationOptions(queryClient) {
   return {
     mutationKey: [...MUTATION_KEY, 'verify'],
-    mutationFn: async ({ memberRegionId, locate = getCurrentCoords }) =>
+    mutationFn: async ({ memberRegionId, locate = getVerifyCoords }) =>
       verifyMyRegion(memberRegionId, await locate()),
     onSuccess: async (updated) => {
       // 추가 직후 재조회가 인증 전 목록을 늦게 덮어쓰지 않게 먼저 멈춘다

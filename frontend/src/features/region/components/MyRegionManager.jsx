@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router';
 import { Button, toast } from '../../../shared/ui';
 import { REGION_MAX_PER_MEMBER } from '../constants';
 import { getErrorMessage } from '../errorMessages';
-import { LOCATION_ERROR, LocationError } from '../geolocation';
 import { isRegionAdded, isRegionLimitReached } from '../myRegions';
 import { useAddRegion, useMyRegions, useRegionMutating, useVerifyRegion } from '../queries';
 import MyRegionList from './MyRegionList';
@@ -35,9 +34,10 @@ export default function MyRegionManager() {
 
   /**
    * 추가. 현재 위치로 찾은 동네면(takeCoords 있음) 같은 좌표로 바로 인증한다(위치를 다시 받지 않음).
-   * 결과: 둘 다 성공 / 추가만 성공(인증 실패 문구 앞에 "동네는 추가했어요.") / 추가 실패(좌표도 버림)
+   * 결과: 둘 다 성공 / 추가만 성공(인증 실패 문구 앞에 "동네는 추가했어요.") / 추가 실패(좌표도 버림).
+   * 좌표가 없으면(검색으로 추가했거나 칸이 이미 비었음) 인증을 부르지 않고 목록에서 인증하라고 안내한다
    */
-  async function handleSelect(region, { takeCoords }) {
+  async function handleSelect(region, { takeCoords } = {}) {
     let added;
     try {
       added = await add.mutateAsync({ regionId: region.regionId });
@@ -46,19 +46,20 @@ export default function MyRegionManager() {
       toast.show({ message: getErrorMessage(error), tone: 'danger' });
       return;
     }
-    if (!takeCoords) {
+    let coords = takeCoords?.() ?? null;
+    if (!coords) {
       toast.show({ message: `${region.name}을 추가했어요. 목록에서 인증해 주세요` });
       return;
     }
     try {
+      // 좌표는 variables에 넣지 않고 돌려주는 함수로만 넘긴다(queries.js 좌표 규칙).
+      // 한 번 돌려준 뒤 비워, MutationCache에 남는 이 함수가 좌표를 붙잡고 있지 않게
       await verify.mutateAsync({
         memberRegionId: added.memberRegionId,
         locate: async () => {
-          const coords = takeCoords();
-          if (!coords) {
-            throw new LocationError(LOCATION_ERROR.UNAVAILABLE);
-          }
-          return coords;
+          const value = coords;
+          coords = null;
+          return value;
         },
       });
       toast.show({ message: `${region.name}을 추가하고 인증했어요` });
@@ -86,7 +87,6 @@ export default function MyRegionManager() {
           동네 추가
         </h2>
         <RegionFinder
-          keepsCoords
           getSelectState={getSelectState}
           onSelect={handleSelect}
           isBusy={isMutating}

@@ -10,11 +10,18 @@ function toPath(config) {
   return path.startsWith('/') ? path : `/${path}`;
 }
 
-/** Authorization을 붙이지 않는 공개 API: /auth/**, POST /members */
+// 공개 GET(openapi에 security 없음): 동네 검색·좌표 변환
+const PUBLIC_GET_PATHS = ['/regions', '/regions/by-coord'];
+
+/** Authorization을 붙이지 않는 공개 API: /auth/**, POST /members, GET /regions, GET /regions/by-coord */
 function isPublicApi(config) {
   const path = toPath(config);
   const method = (config.method ?? 'get').toLowerCase();
-  return path.startsWith('/auth/') || (method === 'post' && path === '/members');
+  return (
+    path.startsWith('/auth/') ||
+    (method === 'post' && path === '/members') ||
+    (method === 'get' && PUBLIC_GET_PATHS.includes(path))
+  );
 }
 
 /** 401이어도 재발급을 시도하지 않는 경로 */

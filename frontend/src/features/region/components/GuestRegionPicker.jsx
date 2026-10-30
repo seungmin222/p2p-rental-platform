@@ -10,7 +10,7 @@ const LINK =
 
 /**
  * 비회원 임시 동네 선택(SCR-02, member.md REQ-004): 검색·현재 위치로 하나를 골라 이 브라우저에만 저장하고 홈으로.
- * 인증·내 동네 목록은 없다. 좌표는 받지 않는다(keepsCoords 끔).
+ * 인증·내 동네 목록은 없다. 좌표는 받지 않는다(isGuest).
  */
 export default function GuestRegionPicker() {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ export default function GuestRegionPicker() {
         <h2 id="find-region-title" className="text-heading">
           동네 찾기
         </h2>
-        <RegionFinder getSelectState={getSelectState} onSelect={handleSelect} />
+        <RegionFinder isGuest getSelectState={getSelectState} onSelect={handleSelect} />
       </section>
     </div>
   );

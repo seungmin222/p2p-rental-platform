@@ -40,10 +40,12 @@ function RegionRow({ region, isLocked, verify, setPrimary, onVerify, onSetPrimar
         </p>
         <p className="text-caption text-ink-muted">{region.fullName}</p>
       </div>
+      {/* aria-label은 동네 이름 + 눈에 보이는 라벨 그대로(줄마다 같은 버튼이 있어 이름으로 구분, 음성 명령도 맞게) */}
       <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"
           size="sm"
+          aria-label={`${region.regionName} ${getVerifyActionLabel(region)}`}
           disabled={isLocked}
           isLoading={isPendingFor(verify, region.memberRegionId)}
           onClick={() => onVerify(region)}
@@ -54,6 +56,7 @@ function RegionRow({ region, isLocked, verify, setPrimary, onVerify, onSetPrimar
           <Button
             variant="secondary"
             size="sm"
+            aria-label={`${region.regionName} 대표로`}
             disabled={isLocked}
             isLoading={isPendingFor(setPrimary, region.memberRegionId)}
             onClick={() => onSetPrimary(region)}
@@ -61,7 +64,13 @@ function RegionRow({ region, isLocked, verify, setPrimary, onVerify, onSetPrimar
             대표로
           </Button>
         )}
-        <Button variant="danger" size="sm" disabled={isLocked} onClick={() => onDelete(region)}>
+        <Button
+          variant="danger"
+          size="sm"
+          aria-label={`${region.regionName} 삭제`}
+          disabled={isLocked}
+          onClick={() => onDelete(region)}
+        >
           삭제
         </Button>
       </div>

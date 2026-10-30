@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue';
 import { Button, Spinner, TextField } from '../../../shared/ui';
 import { REGION_SEARCH_DEBOUNCE_MS } from '../constants';
+import { createCoordsSlot } from '../coordsSlot';
 import { getErrorMessage, getLocateErrorMessage } from '../errorMessages';
 import { useLocateRegion, useRegionSearch } from '../queries';
 
@@ -13,10 +14,12 @@ function RegionResultRow({ region, selectState, isBlocked, onSelect }) {
   return (
     <li className="flex items-center justify-between gap-3 py-2">
       <span className="min-w-0 text-body break-keep">{region.fullName}</span>
+      {/* 눈에 보이는 라벨을 그대로 담는다(음성 명령으로 "추가"를 말해도 눌리게) */}
       <Button
         variant={selectState.disabled ? 'secondary' : 'outline'}
         size="sm"
         className="shrink-0"
+        aria-label={`${region.name} ${selectState.label}`}
         disabled={selectState.disabled || isBlocked}
         onClick={onSelect}
       >
@@ -62,7 +65,7 @@ function SearchResults({ keyword, query, getSelectState, isBlocked, onSelect }) 
           region={region}
           selectState={getSelectState(region)}
           isBlocked={isBlocked}
-          onSelect={() => onSelect(region, {})}
+          onSelect={() => onSelect(region)}
         />
       ))}
     </ul>
@@ -72,14 +75,15 @@ function SearchResults({ keyword, query, getSelectState, isBlocked, onSelect }) 
 /**
  * 동네 검색 + 현재 위치로 찾기(로그인·비회원 공용). 무엇을 할지는 호출부가 정한다.
  *
- * 좌표 규칙(queries.js): keepsCoords(로그인)일 때만 by-coord에 쓴 좌표를 이 컴포넌트의 ref에 두고,
- * 찾은 동네를 고르면 onSelect에 takeCoords(꺼내면서 지움)를 넘긴다. 새로 검색하거나 다시 찾거나 화면을 떠나면 지우고,
- * 찾은 동네를 고를 수 없으면(이미 추가·최대 개수) 바로 지운다. 비회원은 좌표를 받지도 않는다.
+ * 좌표 규칙(queries.js): 로그인일 때만 by-coord에 쓴 좌표를 좌표 칸(coordsSlot.js)에 두고, 찾은 동네를 고르면
+ * onSelect에 takeCoords(꺼내면서 비움)를 넘긴다. 찾기 호출마다 토큰을 받아 늦게 온 응답은 좌표도 결과 표시도 버린다.
+ * 비우는 때: 새 검색 입력, 검색 결과에서 고를 때, 찾은 결과로 추가를 시도한 직후(성공·실패 무관), 언마운트.
+ * 비회원은 좌표를 받지도 않는다.
  *
  * @param {object} props
  * @param {(region) => { label: string, disabled: boolean }} props.getSelectState 결과 줄 버튼
- * @param {(region, { takeCoords?: () => object | null }) => void} props.onSelect
- * @param {boolean} [props.keepsCoords]
+ * @param {(region, { takeCoords?: () => object | null }) => Promise | void} props.onSelect
+ * @param {boolean} [props.isGuest] 비회원: 좌표를 받지 않고 위치 권한 거부 문구가 "고르기"용
  * @param {string | null} [props.lockedNotice] 있으면 안내를 보여 주고 고르기·위치 찾기를 막는다(최대 개수)
  * @param {boolean} [props.isBusy] 다른 동작 중이면 고르기를 막는다
  * @param {string} [props.locateHint] 찾은 동네 아래 안내(로그인: 추가하면 바로 인증)
@@ -87,7 +91,7 @@ function SearchResults({ keyword, query, getSelectState, isBlocked, onSelect }) 
 export default function RegionFinder({
   getSelectState,
   onSelect,
-  keepsCoords = false,
+  isGuest = false,
   lockedNotice = null,
   isBusy = false,
   locateHint,
@@ -96,51 +100,56 @@ export default function RegionFinder({
   const searchKeyword = useDebouncedValue(keyword, REGION_SEARCH_DEBOUNCE_MS).trim();
   const search = useRegionSearch(searchKeyword);
   const locate = useLocateRegion();
-  const coordsRef = useRef(null);
+  // 좌표 칸 객체만 state로 둔다(좌표는 객체 클로저 안이라 state·Devtools에 보이지 않음)
+  const [slot] = useState(createCoordsSlot);
+  // 결과를 보여 줄 찾기 호출의 토큰. 비우면 올라가 이전 호출 결과가 가려진다
+  const [currentToken, setCurrentToken] = useState(0);
   const isLocked = lockedNotice !== null;
+  const isCurrentCall = locate.variables?.token === currentToken;
+  const located = locate.isSuccess && isCurrentCall ? locate.data : null;
+  const locateError = locate.isError && isCurrentCall ? locate.error : null;
 
-  useEffect(
-    () => () => {
-      coordsRef.current = null;
-    },
-    [],
-  );
+  useEffect(() => () => slot.clear(), [slot]);
 
-  function takeCoords() {
-    const coords = coordsRef.current;
-    coordsRef.current = null;
-    return coords;
+  function clearSlot() {
+    setCurrentToken(slot.clear());
   }
 
   function handleKeywordChange(event) {
     setKeyword(event.target.value);
-    // 새로 검색하면 찾은 위치 결과와 그 좌표를 버린다
-    coordsRef.current = null;
-    locate.reset();
+    clearSlot();
   }
 
   function handleLocate() {
-    coordsRef.current = null;
-    locate.mutate(
-      {
-        onLocated: keepsCoords
-          ? (coords) => {
-              coordsRef.current = coords;
-            }
-          : undefined,
-      },
-      {
-        onSuccess: (region) => {
-          if (getSelectState(region).disabled) {
-            coordsRef.current = null;
-          }
-        },
-      },
-    );
+    const token = slot.begin();
+    setCurrentToken(token);
+    locate.mutate({
+      token,
+      onLocated: isGuest
+        ? undefined
+        : (coords) => {
+            slot.put(token, coords);
+          },
+    });
   }
 
-  function handleSelectLocated(region) {
-    onSelect(region, keepsCoords ? { takeCoords } : {});
+  function handleSelectSearched(region) {
+    clearSlot();
+    onSelect(region, {});
+  }
+
+  async function handleSelectLocated(region) {
+    // 찾은 뒤 목록이 바뀌었을 수 있어 누를 때 다시 판단한다
+    if (getSelectState(region).disabled) {
+      clearSlot();
+      return;
+    }
+    try {
+      await onSelect(region, isGuest ? {} : { takeCoords: () => slot.take() });
+    } finally {
+      // 추가를 시도한 직후에는 성공·실패와 무관하게 비운다(호출부가 꺼내지 않았어도)
+      slot.take();
+    }
   }
 
   return (
@@ -158,22 +167,22 @@ export default function RegionFinder({
           현재 위치로 찾기
         </Button>
         {/* 권한 거부도 버튼을 막지 않는다: 브라우저 설정에서 다시 켤 수 있어 누를 때마다 다시 묻는다 */}
-        {locate.isError && (
+        {locateError && (
           <p role="alert" className="text-caption text-danger">
-            {getLocateErrorMessage(locate.error)}
+            {getLocateErrorMessage(locateError, { isGuest })}
           </p>
         )}
-        {locate.isSuccess && (
+        {located && (
           <div className="rounded-xl border border-line px-4 py-1">
             <ul aria-label="현재 위치의 동네">
               <RegionResultRow
-                region={locate.data}
-                selectState={getSelectState(locate.data)}
+                region={located}
+                selectState={getSelectState(located)}
                 isBlocked={isBusy || isLocked}
-                onSelect={() => handleSelectLocated(locate.data)}
+                onSelect={() => handleSelectLocated(located)}
               />
             </ul>
-            {locateHint && !getSelectState(locate.data).disabled && (
+            {locateHint && !getSelectState(located).disabled && (
               <p className="pb-2 text-xs text-ink-muted">{locateHint}</p>
             )}
           </div>
@@ -195,7 +204,7 @@ export default function RegionFinder({
           query={search}
           getSelectState={getSelectState}
           isBlocked={isBusy || isLocked}
-          onSelect={onSelect}
+          onSelect={handleSelectSearched}
         />
       </div>
     </div>

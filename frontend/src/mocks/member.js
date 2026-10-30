@@ -42,6 +42,8 @@ function regionError({ status, code, details = [] }) {
 
 // 경로 id가 Long이 아니면 타입 변환 실패 400(details 없음)
 const INVALID_PATH_ID = { status: 400, code: 'COMMON_INVALID_INPUT' };
+// 요청 본문 검증 실패 400(details를 붙여 쓴다)
+const INVALID_BODY = { status: 400, code: 'COMMON_INVALID_INPUT' };
 const NOT_FOUND = { status: 404, code: 'COMMON_NOT_FOUND' };
 
 export const memberHandlers = [
@@ -112,7 +114,7 @@ export const memberHandlers = [
     }
     const { coord, details } = readCoord(await request.json().catch(() => null));
     if (details) {
-      return regionError({ ...INVALID_PATH_ID, details });
+      return regionError({ ...INVALID_BODY, details });
     }
     const result = verifyMemberRegion(
       memberDb,

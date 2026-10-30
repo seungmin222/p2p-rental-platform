@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createJSONStorage } from 'zustand/middleware';
 
 import {
@@ -60,6 +60,21 @@ describe('guestRegionStore', () => {
       }),
     });
     expect(createStore(storage).getState().guestRegion).toBeNull();
+  });
+
+  it('JSON이 아닌 값이면 없음으로(오류 없이 시작)', () => {
+    const storage = memoryStorage({ [GUEST_REGION_STORAGE_KEY]: '송도1동' });
+    expect(createStore(storage).getState().guestRegion).toBeNull();
+  });
+
+  it('version이 다른 값이면 없음으로(migrate 없음)', () => {
+    // zustand persist가 migrate 함수가 없다고 console.error를 남긴다
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const storage = memoryStorage({
+      [GUEST_REGION_STORAGE_KEY]: JSON.stringify({ state: { guestRegion: REGION }, version: 0 }),
+    });
+    expect(createStore(storage).getState().guestRegion).toBeNull();
+    consoleError.mockRestore();
   });
 
   it('저장된 값에 다른 필드가 있으면 버린다', () => {

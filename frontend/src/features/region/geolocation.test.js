@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  GEOLOCATION_OPTIONS,
   getCurrentCoords,
+  LOCATE_GEOLOCATION_OPTIONS,
   LOCATION_ERROR,
   LocationError,
+  VERIFY_GEOLOCATION_OPTIONS,
 } from './geolocation';
 
 function failingGeolocation(code) {
@@ -12,11 +13,15 @@ function failingGeolocation(code) {
 }
 
 describe('getCurrentCoords', () => {
-  it('성공하면 { lat, lng }만, 정해진 옵션으로 부른다', async () => {
-    const getCurrentPosition = vi.fn((success) =>
+  function succeeding() {
+    return vi.fn((success) =>
       success({ coords: { latitude: 37.39, longitude: 126.63, accuracy: 20 } }),
     );
-    await expect(getCurrentCoords({ getCurrentPosition })).resolves.toEqual({
+  }
+
+  it('성공하면 { lat, lng }만. 기본은 찾기 옵션(1분 캐시)', async () => {
+    const getCurrentPosition = succeeding();
+    await expect(getCurrentCoords(undefined, { getCurrentPosition })).resolves.toEqual({
       lat: 37.39,
       lng: 126.63,
     });
@@ -25,7 +30,17 @@ describe('getCurrentCoords', () => {
       timeout: 10000,
       maximumAge: 60000,
     });
-    expect(getCurrentPosition.mock.calls[0][2]).toBe(GEOLOCATION_OPTIONS);
+    expect(getCurrentPosition.mock.calls[0][2]).toBe(LOCATE_GEOLOCATION_OPTIONS);
+  });
+
+  it('인증 옵션은 캐시를 쓰지 않는다(maximumAge 0), 나머지는 같다', async () => {
+    const getCurrentPosition = succeeding();
+    await getCurrentCoords(VERIFY_GEOLOCATION_OPTIONS, { getCurrentPosition });
+    expect(getCurrentPosition.mock.calls[0][2]).toEqual({
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 0,
+    });
   });
 
   it.each([
@@ -33,23 +48,24 @@ describe('getCurrentCoords', () => {
     [2, LOCATION_ERROR.UNAVAILABLE],
     [3, LOCATION_ERROR.TIMEOUT],
   ])('GeolocationPositionError %i → %s', async (code, expected) => {
-    const error = await getCurrentCoords(failingGeolocation(code)).catch((e) => e);
+    const error = await getCurrentCoords(undefined, failingGeolocation(code)).catch((e) => e);
     expect(error).toBeInstanceOf(LocationError);
     expect(error.code).toBe(expected);
     expect(error.status).toBeUndefined();
   });
 
   it('geolocation이 없으면 미지원', async () => {
-    await expect(getCurrentCoords(undefined)).rejects.toMatchObject({
+    // node에는 navigator.geolocation이 없다(기본값)
+    await expect(getCurrentCoords()).rejects.toMatchObject({
       code: LOCATION_ERROR.UNSUPPORTED,
     });
-    await expect(getCurrentCoords({})).rejects.toMatchObject({
+    await expect(getCurrentCoords(undefined, {})).rejects.toMatchObject({
       code: LOCATION_ERROR.UNSUPPORTED,
     });
   });
 
   it('모르는 오류 code는 위치 없음으로', async () => {
-    await expect(getCurrentCoords(failingGeolocation(99))).rejects.toMatchObject({
+    await expect(getCurrentCoords(undefined, failingGeolocation(99))).rejects.toMatchObject({
       code: LOCATION_ERROR.UNAVAILABLE,
     });
   });

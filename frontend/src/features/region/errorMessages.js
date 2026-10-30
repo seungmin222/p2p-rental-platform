@@ -3,9 +3,11 @@
 import { createErrorMessageGetter } from '../../shared/lib/formErrors';
 import { LOCATION_ERROR } from './geolocation';
 
-// 권한 거부는 검색으로 추가할 수 있다고 함께 안내한다(member.md REQ-004 예외: 인증 안 된 상태로 추가 가능)
+// 권한 거부는 검색으로 추가할 수 있다고 함께 안내한다(member.md REQ-004 예외: 인증 안 된 상태로 추가 가능).
+// 비회원은 인증이 없고 동네를 "고르기"만 하므로 문구가 다르다
 export const LOCATION_DENIED_MESSAGE =
   '위치 권한이 없어 인증할 수 없어요. 검색으로 동네를 추가할 수 있어요';
+export const GUEST_LOCATION_DENIED_MESSAGE = '위치 권한이 없어요. 검색으로 동네를 골라 주세요';
 
 const MESSAGES = {
   COMMON_INVALID_INPUT: '요청을 처리하지 못했어요. 다시 시도해 주세요',
@@ -22,9 +24,16 @@ const MESSAGES = {
 
 export const getErrorMessage = createErrorMessageGetter(MESSAGES);
 
-/** by-coord 404는 "동네 없음"이 아니라 "이 위치의 동네를 못 찾음"이라 문구가 다르다 */
-export function getLocateErrorMessage(error) {
-  return error?.code === 'COMMON_NOT_FOUND'
-    ? '이 위치의 동네를 찾지 못했어요. 검색으로 찾아 주세요'
-    : getErrorMessage(error);
+/**
+ * "현재 위치로 찾기" 실패 문구. by-coord 404는 "동네 없음"이 아니라 "이 위치의 동네를 못 찾음"이고,
+ * 권한 거부는 비회원(isGuest)이면 고르기 문구.
+ */
+export function getLocateErrorMessage(error, { isGuest = false } = {}) {
+  if (error?.code === 'COMMON_NOT_FOUND') {
+    return '이 위치의 동네를 찾지 못했어요. 검색으로 찾아 주세요';
+  }
+  if (isGuest && error?.code === LOCATION_ERROR.DENIED) {
+    return GUEST_LOCATION_DENIED_MESSAGE;
+  }
+  return getErrorMessage(error);
 }

@@ -143,12 +143,30 @@ describe('Authorization 헤더', () => {
     ['post', '/auth/login'],
     ['post', '/auth/reissue'],
     ['post', '/members'],
+    ['get', '/regions'],
+    ['get', '/regions/by-coord'],
   ])('공개 API %s %s에는 붙이지 않는다', async (method, path) => {
     const captured = captureAuthorization(method, path);
 
     await apiClient[method](path);
 
     expect(captured.value).toBeNull();
+  });
+
+  it('동네 검색은 쿼리가 있어도 공개 API로 본다', async () => {
+    const captured = captureAuthorization('get', '/regions');
+
+    await apiClient.get('/regions?keyword=송도');
+
+    expect(captured.value).toBeNull();
+  });
+
+  it('내 동네 API(GET /members/me/regions)에는 Bearer AT를 붙인다', async () => {
+    const captured = captureAuthorization('get', '/members/me/regions');
+
+    await apiClient.get('/members/me/regions');
+
+    expect(captured.value).toBe('Bearer old-token');
   });
 
   it('회원 API(GET /members/me)에는 Bearer AT를 붙인다', async () => {

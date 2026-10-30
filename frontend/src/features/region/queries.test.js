@@ -1,4 +1,4 @@
-import { MutationObserver, QueryClient } from '@tanstack/react-query';
+import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { queryClient as appQueryClient } from '../../app/queryClient';
@@ -155,6 +155,51 @@ describe('좌표가 캐시에 남지 않는다', () => {
     expect(api.verifyMyRegion).toHaveBeenCalledWith(8, COORDS);
     expect(coordsRef.current).toBeNull();
     expectNoCoordsInCache(client);
+  });
+});
+
+describe('실패 뒤 목록 갱신', () => {
+  it('REGION_LIMIT_EXCEEDED면 목록을 다시 받은 뒤에 뮤테이션이 끝난다', async () => {
+    api.addMyRegion.mockRejectedValue(
+      new ApiError({ code: 'REGION_LIMIT_EXCEEDED', message: '초과', status: 409 }),
+    );
+    const fresh = [MY_REGION, { ...MY_REGION, memberRegionId: 9, isPrimary: false }];
+    let resolveList;
+    api.fetchMyRegions.mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve;
+      }),
+    );
+    // 목록을 보여 주는 화면이 있는 상태(무효화하면 다시 받는다)
+    const unsubscribe = new QueryObserver(client, {
+      queryKey: regionKeys.mine(),
+      queryFn: api.fetchMyRegions,
+      staleTime: Infinity,
+    }).subscribe(() => {});
+
+    let settled = false;
+    const done = run(client, addRegionMutationOptions(client), { regionId: 1102 })
+      .catch(() => {})
+      .finally(() => {
+        settled = true;
+      });
+    await vi.waitFor(() => expect(api.fetchMyRegions).toHaveBeenCalled());
+    expect(settled).toBe(false);
+    expect(client.isMutating()).toBe(1);
+
+    resolveList(fresh);
+    await done;
+    expect(client.isMutating()).toBe(0);
+    expect(client.getQueryData(regionKeys.mine())).toEqual(fresh);
+    unsubscribe();
+  });
+
+  it('목록과 무관한 실패(검증 400 등)는 다시 받지 않는다', async () => {
+    api.addMyRegion.mockRejectedValue(
+      new ApiError({ code: 'COMMON_INVALID_INPUT', message: '입력', status: 400 }),
+    );
+    await run(client, addRegionMutationOptions(client), { regionId: 1 }).catch(() => {});
+    expect(api.fetchMyRegions).not.toHaveBeenCalled();
   });
 });
 

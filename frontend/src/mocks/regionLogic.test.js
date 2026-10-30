@@ -78,6 +78,14 @@ describe('findRegionByCoord', () => {
     expect(findRegionByCoord(single, outside)).toBeNull();
   });
 
+  it('정확히 기준 거리면 포함한다(경계 포함, notes 가정)', () => {
+    const point = { lat: 37 + 3 / KM_PER_LAT_DEGREE, lng: 127 };
+    const exactKm = distanceKm(single[0], point);
+    expect(exactKm).toBeCloseTo(3, 9);
+    expect(findRegionByCoord(single, point, exactKm)?.regionId).toBe(1);
+    expect(findRegionByCoord(single, point, exactKm - 1e-9)).toBeNull();
+  });
+
   it('가장 가까운 시드 중심의 동네', () => {
     expect(findRegionByCoord(MOCK_REGION_MASTER, SONGDO1).name).toBe('송도1동');
     expect(findRegionByCoord(MOCK_REGION_MASTER, { lat: 37.428, lng: 126.664 }).name).toBe(

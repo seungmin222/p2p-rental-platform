@@ -90,7 +90,7 @@ src/
   - `/auth/login`·`/auth/logout`·`/auth/reissue`의 401은 재발급을 시도하지 않는다.
 - 앱 시작 시 `/api/auth/reissue`를 한 번 호출해 로그인 상태 복원. 끝날 때까지 라우트 렌더를 보류하고, 실패하면 비로그인으로 진행한다(로그인 화면으로 보내지 않음).
 - 로그아웃하거나 재발급에 실패하면 저장된 AT를 지운다.
-- 공개 API(`/api/auth/**`, `POST /api/members`)에는 Authorization 헤더를 붙이지 않는다. 판정은 **baseURL을 뺀 상대 경로**(`/auth/**`, `POST /members`) 기준.
+- 공개 API(`/api/auth/**`, `POST /api/members`, `GET /api/regions`, `GET /api/regions/by-coord`)에는 Authorization 헤더를 붙이지 않는다. 판정은 **baseURL을 뺀 상대 경로**(`/auth/**`, `POST /members`, `GET /regions`, `GET /regions/by-coord`, 쿼리 제외) 기준(`shared/api/client.js` `isPublicApi`).
 - **서버에서 온 데이터는 전부 TanStack Query로 다룬다.** `useEffect + useState`로 API를 호출해 상태를 들고 있지 않는다. Zustand에는 서버 데이터를 복사해 두지 않는다(토큰·임시 동네·UI 상태만).
 - 조회는 `useQuery`/`useInfiniteQuery`, 변경은 `useMutation` → `onSuccess`에서 관련 queryKey `invalidateQueries`. 훅은 `features/*/queries.js`에 모으고 컴포넌트에서 axios를 직접 호출하지 않는다.
 - 기본 옵션(`QueryClient`): `retry: 1`(401·403·404·409는 재시도 안 함), `staleTime`은 목록 30초·상세 10초 정도로 시작. 캘린더·대여 상세처럼 상태가 바뀌는 화면은 짧게.
@@ -138,9 +138,9 @@ export const RENTAL_STATUS = {
 
 ### 동네 화면 규칙 (SCR-02, `/regions`)
 - 로그인하면 `MyRegionManager`(내 동네 목록 `MyRegionList` + 추가), 아니면 `GuestRegionPicker`(임시 동네 하나). 검색·현재 위치로 찾기는 둘이 `RegionFinder`를 같이 쓴다.
-- **좌표는 TanStack Query 캐시·state·Zustand·로그에 두지 않는다.** 위치 뮤테이션 variables에는 좌표를 돌려주는 함수(`locate`)만 넣고 mutationFn 안에서 부른다(`features/region/queries.js`, `queries.test.js`가 MutationCache·QueryCache를 훑어 확인). 현재 위치로 찾은 좌표는 `RegionFinder`의 ref에만 두고 추가 → 인증에 한 번 쓴 뒤, 새 검색·다시 찾기·화면 이탈 때 지운다.
-- 위치는 `features/region/geolocation.js` `getCurrentCoords`(옵션 `{ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }`), 실패는 `LocationError`(`CLIENT_LOCATION_*`, ApiError가 아님). 권한 거부여도 버튼을 막지 않고 누를 때마다 다시 시도하며 안내한다(브라우저 설정에서 다시 켤 수 있어서).
-- 목록 갱신: 인증 응답은 그 항목만 `setQueryData`, 추가·삭제는 목록 무효화, 대표 변경 응답(목록 전체)은 `setQueryData`. 셋 다 끝나면 `['members', 'me']` 무효화, 대표가 바뀌면 `['items', 'feed']`도. 뮤테이션은 목록 갱신까지 끝나야 끝나고, 동네 뮤테이션이 하나라도 진행 중이면 목록 버튼 전체를 막는다(`useRegionMutating`).
+- **좌표는 TanStack Query 캐시·state·Zustand·로그에 두지 않는다.** 위치 뮤테이션 variables에는 좌표를 돌려주는 함수(`locate`)만 넣고 mutationFn 안에서 부른다(`features/region/queries.js`, `queries.test.js`가 MutationCache·QueryCache를 훑어 확인). 현재 위치로 찾은 좌표는 `RegionFinder`의 좌표 칸(`coordsSlot.js` `createCoordsSlot`, 찾기 호출마다 토큰 — 늦게 온 응답은 좌표·결과 표시 모두 버림)에만 두고, 새 검색 입력·검색 결과 선택·찾은 결과로 추가를 시도한 직후·언마운트 때 비운다. 추가 직후 인증은 그 좌표로 하고, 좌표가 없으면 인증을 부르지 않는다.
+- 위치는 `features/region/geolocation.js` `getCurrentCoords(options)`. 옵션은 용도별: "현재 위치로 찾기" `LOCATE_GEOLOCATION_OPTIONS`(`{ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }`), 목록의 인증 `VERIFY_GEOLOCATION_OPTIONS`(같고 `maximumAge: 0` — 불일치 뒤 바로 다시 인증할 때 이전 위치가 돌아오지 않게). 실패는 `LocationError`(`CLIENT_LOCATION_*`, ApiError가 아님). 권한 거부여도 버튼을 막지 않고 누를 때마다 다시 시도하며 안내한다(브라우저 설정에서 다시 켤 수 있어서). 거부 문구는 회원(인증 불가 + 검색으로 추가)·비회원(검색으로 고르기) 두 가지.
+- 목록 갱신: 인증 응답은 그 항목만 `setQueryData`, 추가·삭제는 목록 무효화, 대표 변경 응답(목록 전체)은 `setQueryData`. 셋 다 끝나면 `['members', 'me']` 무효화, 대표가 바뀌면 `['items', 'feed']`도. 뮤테이션은 목록 갱신까지 끝나야 끝나고(실패로 목록이 어긋난 경우의 재조회 포함), 동네 뮤테이션이 하나라도 진행 중이면 목록 버튼 전체를 막는다(`useRegionMutating`).
 - 인증 판정은 서버 `isVerified`를 그대로 쓴다(`regionStatus.js` `getVerifyStatus`). 최대 개수는 `features/region/constants.js` `REGION_MAX_PER_MEMBER`.
 
 ## UI 규칙
@@ -174,7 +174,7 @@ export const RENTAL_STATUS = {
 
 ## 개발 방식
 - **목 로그인 계정**(`mocks/memberSeed.js`, 가짜 값): `user1@example.com`(동네주민, 대여·물품 목의 "나", 대표 동네 인증 유효 + 두 번째 동네 인증 만료) · `user3@example.com`(텐트초보, 동네 없음 → 로그인 후 `/regions`). 비밀번호는 모두 `rental123!`(그 밖에 user2·user4). 목 세션은 localStorage `mock.session`(RT 쿠키 흉내)이라 새로고침해도 로그인이 유지되고, 가입한 계정은 메모리에만 있어 새로고침하면 사라진다. 콘솔 `window.__mockAuth.expireAccessToken()`으로 AT만 무효화해 401 → 재발급 → 재시도를 볼 수 있다. 대여·물품 목은 아직 AT를 보지 않고 회원 1 기준이다.
-- **목 동네**(`mocks/memberSeed.js` `MOCK_REGION_MASTER`, 인천 연수구 행정동 6개: 송도1동·송도2동·연수1동·동춘1동·옥련1동·청학동). 좌표 → 동네는 가장 가까운 시드 중심이 3km 안이면 그 동네, 아니면 404(`mocks/regionLogic.js`). 위치는 크롬 DevTools → More tools → Sensors → Location에서 바꾼다. 예: 송도1동 `37.3925, 126.639` · 연수1동 `37.418, 126.679` · 어느 동네도 아닌 곳(서울 강남역) `37.4979, 127.0276`. 위치는 1분 동안 캐시되므로(maximumAge) 좌표를 바꾼 뒤 1분 안에 다시 누르면 이전 위치가 쓰일 수 있다(헤드리스 확인에서는 브라우저 컨텍스트를 새로 열어 피했다).
+- **목 동네**(`mocks/memberSeed.js` `MOCK_REGION_MASTER`, 인천 연수구 행정동 6개: 송도1동·송도2동·연수1동·동춘1동·옥련1동·청학동). 좌표 → 동네는 가장 가까운 시드 중심이 3km 안이면 그 동네, 아니면 404(`mocks/regionLogic.js`). 위치는 크롬 DevTools → More tools → Sensors → Location에서 바꾼다. 예: 송도1동 `37.3925, 126.639` · 연수1동 `37.418, 126.679` · 어느 동네도 아닌 곳(서울 강남역) `37.4979, 127.0276`. "현재 위치로 찾기"는 위치를 1분 동안 캐시하므로(maximumAge) 좌표를 바꾼 뒤 1분 안에 다시 찾으면 이전 위치가 쓰일 수 있다. 목록의 인증은 캐시하지 않아 바로 반영된다.
 - 백엔드가 컨트롤러·DTO를 먼저 머지하면 `docs/openapi.json`이 갱신된다. 그 스키마의 응답 형태 그대로 `mocks/` MSW 핸들러를 만들어 먼저 개발한다(공통 래퍼는 `mocks/response.js`의 `ok`·`fail` 헬퍼로). `VITE_USE_MOCK=true`로 전환.
   - MSW는 **개발 서버 + `VITE_USE_MOCK=true`일 때만** `main.jsx`가 동적 import로 시작하고 운영 번들에는 들어가지 않게 한다. 처리하지 않는 요청은 bypass. `public/mockServiceWorker.js`는 커밋한다(msw 버전을 올리면 `npx msw init public`으로 갱신).
 - 타입 힌트가 필요하면 openapi.json에서 JSDoc 타입을 생성해 쓸 수 있다(선택, `openapi-typescript` 등). 생성 파일은 직접 수정하지 않는다.
