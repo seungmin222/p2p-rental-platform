@@ -12,6 +12,7 @@
 | 화면 동작·예외 상황·에러별 안내 | `docs/domains/*.md` |
 
 - **필드명을 추측해서 쓰지 않는다.** openapi.json에서 확인하고, 없으면(미구현 API) 백엔드 담당과 응답 형태를 합의할 때까지 MSW 목에 `// TODO: 백엔드 확정 전 임시` 주석을 단다. 코드에서 미확정 응답 필드를 읽어야 하면 그 접근을 함수 하나로 격리하고 같은 주석을 단다. 확정되면 그 함수만 openapi.json에 맞추고 TODO를 지운다(격리는 유지. 예: `shared/api/reissue.js`의 `extractAccessToken`, `features/item/api.js`의 `toItemSummary`).
+- `docs/openapi.json`(약 220KB)은 Read로 통째로 읽지 않는다. 필요한 경로·스키마만 꺼내 본다(명령 예시는 루트 `CLAUDE.md` 규칙 6).
 - openapi.json과 실제 응답이 다르면 프론트에서 맞추지 말고 백엔드에 알린다(openapi.json 재생성 누락일 가능성).
 - 사람은 백엔드 로컬 서버의 `/swagger-ui.html`에서 직접 호출해 볼 수 있다.
 
@@ -182,4 +183,5 @@ export const RENTAL_STATUS = {
 - Node 버전: `frontend/.nvmrc`(현재 `24`, LTS)로 팀원과 CI가 같은 버전을 쓴다.
 - 포맷은 Prettier, 이름 규칙은 `docs/conventions.md` §5. 커밋 전 `npm run format`.
 - `npm run lint`, `npm run test`, `npm run build`가 통과해야 PR (CI도 같은 순서).
+- 작업 중에는 바꾼 부분의 테스트만 돌린다(`npx vitest run <파일>`). 전체 테스트는 PR 직전 한 번, 출력은 실패 요약만 본다(`npx vitest run --reporter=dot`). 빌드 로그를 통째로 읽지 않는다.
 - 1순위 단계에서는 결제 화면 대신 "예약 완료 → 대여 상세"로 바로 이동 (백엔드 `payment-enabled=false`와 맞춤). 플래그 `VITE_PAYMENT_ENABLED`.
