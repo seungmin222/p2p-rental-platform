@@ -4,14 +4,22 @@ import { Button } from '../../../shared/ui';
 
 /**
  * 검색어 입력 + 필터 버튼. 제출(엔터·검색 버튼)할 때만 키워드를 올린다(onSubmit, 앞뒤 공백 제거).
- * keyword가 바뀌면(제출·뒤로 가기) 입력칸을 그 값으로 다시 시작하려고 호출부가 key={keyword}를 준다.
+ * keyword가 바뀌면(뒤로 가기 등) 입력칸 값만 맞춘다. 다시 그리면 제출 뒤 포커스가 입력칸에서 빠진다.
  */
 export default function SearchForm({ keyword, filterCount, onSubmit, onOpenFilter }) {
   const [draft, setDraft] = useState(keyword);
+  const [syncedKeyword, setSyncedKeyword] = useState(keyword);
+  if (keyword !== syncedKeyword) {
+    setSyncedKeyword(keyword);
+    setDraft(keyword);
+  }
 
   function handleSubmit(event) {
     event.preventDefault();
-    onSubmit(draft.trim());
+    const trimmed = draft.trim();
+    // 키워드가 그대로여도(공백만 더한 경우) 입력칸은 지운 값으로
+    setDraft(trimmed);
+    onSubmit(trimmed);
   }
 
   return (

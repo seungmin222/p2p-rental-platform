@@ -40,3 +40,5 @@ export const DEFAULT_ITEM_SORT = 'ACCURACY';
 
 // 카테고리는 거의 바뀌지 않는다(관리자 변경은 3순위)
 export const CATEGORY_STALE_TIME = 10 * 60 * 1000;
+// 상세(isOwner·가격)는 목록보다 짧게(frontend/CLAUDE.md 기본 옵션)
+export const ITEM_DETAIL_STALE_TIME = 10 * 1000;

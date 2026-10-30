@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useAuthStore } from '../../shared/api';
-import { memberKeys, refetchIfInvalidated, useMe } from '../auth/queries';
+import { memberKeys, refetchIfInvalidated, useIsLoggingOut, useMe } from '../auth/queries';
 import { useGuestRegionStore } from '../region/guestRegionStore';
 import { resolveFeedRegion } from './homeRegion';
 
@@ -12,7 +12,12 @@ import { resolveFeedRegion } from './homeRegion';
 export function useFeedRegion() {
   const isLoggedIn = useAuthStore((state) => state.accessToken !== null);
   // 이미 받은 내 정보는 무효화됐을 때만 다시 받는다(useMe 설명). 대표 동네를 바꾸면 동네 뮤테이션이 무효화한다
-  const meQuery = useMe({ enabled: isLoggedIn, refetchOnMount: refetchIfInvalidated });
+  // 로그아웃 중에 홈으로 들어오면 받아 둔 내 정보가 없어도(/me에서 로딩·실패) 부르지 않는다
+  const isLoggingOut = useIsLoggingOut();
+  const meQuery = useMe({
+    enabled: isLoggedIn && !isLoggingOut,
+    refetchOnMount: refetchIfInvalidated,
+  });
   const queryClient = useQueryClient();
   const guestRegion = useGuestRegionStore((state) => state.guestRegion);
   const region = resolveFeedRegion({

@@ -15,7 +15,9 @@ import RentalDetailPage from '../pages/RentalDetailPage';
 import RentalReservePage from '../pages/RentalReservePage';
 import SearchPage from '../pages/SearchPage';
 import SignupPage from '../pages/SignupPage';
+import { clearLocalSession } from '../features/auth/queries';
 import { setUnauthorizedHandler } from '../shared/api';
+import { queryClient } from './queryClient';
 import AppLayout from './layout/AppLayout';
 import { toLoginPath } from './loginPath';
 import RequireAuth from './RequireAuth';
@@ -74,11 +76,12 @@ export const router = createBrowserRouter([
   },
 ]);
 
-// 재발급 실패 시 새로고침 없이 로그인 화면으로 보내고, 돌아올 경로를 넘긴다
+// 재발급 실패 시 새로고침 없이 로그인 화면으로 보내고, 돌아올 경로를 넘긴다.
+// 로그아웃과 같이 캐시도 지운다 — 남겨 두면 비회원으로 돌아온 화면에 이전 사용자의 isOwner·내 정보가 보인다
 setUnauthorizedHandler(() => {
   const { pathname, search } = router.state.location;
-  if (pathname === '/login') {
-    return;
+  if (pathname !== '/login') {
+    router.navigate(toLoginPath(pathname + search), { replace: true });
   }
-  router.navigate(toLoginPath(pathname + search), { replace: true });
+  clearLocalSession(queryClient);
 });

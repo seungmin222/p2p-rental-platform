@@ -7,7 +7,7 @@ import ItemListView from '../features/item/components/ItemListView';
 import RegionGate from '../features/item/components/RegionGate';
 import SearchFilterSheet from '../features/item/components/SearchFilterSheet';
 import SearchForm from '../features/item/components/SearchForm';
-import { useSearch } from '../features/item/queries';
+import { useCategoryFilter, useSearch } from '../features/item/queries';
 import {
   countSheetFilters,
   hasSearchCondition,
@@ -18,8 +18,8 @@ import { useFeedRegion } from '../features/item/useFeedRegion';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { EmptyState } from '../shared/ui';
 
-function SearchResults({ regionId, filters }) {
-  const search = useSearch(regionId, filters);
+function SearchResults({ regionId, filters, isResolving }) {
+  const search = useSearch(regionId, filters, { enabled: !isResolving });
   useRefetchErrorToast([search]);
 
   if (!hasSearchCondition(filters)) {
@@ -57,7 +57,9 @@ export default function SearchPage() {
   const region = useFeedRegion();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const filters = useMemo(() => parseSearchParams(searchParams), [searchParams]);
+  const parsedFilters = useMemo(() => parseSearchParams(searchParams), [searchParams]);
+  const { categoryId, isResolving } = useCategoryFilter(parsedFilters.categoryId);
+  const filters = useMemo(() => ({ ...parsedFilters, categoryId }), [parsedFilters, categoryId]);
 
   // 조건을 바꿀 때는 기록을 쌓지 않는다(뒤로 가기가 조건을 거슬러 가지 않게)
   function updateFilters(patch) {
@@ -72,7 +74,6 @@ export default function SearchPage() {
       ) : (
         <>
           <SearchForm
-            key={filters.keyword}
             keyword={filters.keyword}
             filterCount={countSheetFilters(filters)}
             onSubmit={(keyword) => updateFilters({ keyword })}
@@ -82,7 +83,7 @@ export default function SearchPage() {
             categoryId={filters.categoryId}
             onChange={(categoryId) => updateFilters({ categoryId })}
           />
-          <SearchResults regionId={region.regionId} filters={filters} />
+          <SearchResults regionId={region.regionId} filters={filters} isResolving={isResolving} />
           <SearchFilterSheet
             open={isFilterOpen}
             onClose={() => setIsFilterOpen(false)}

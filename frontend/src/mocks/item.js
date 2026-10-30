@@ -2,10 +2,10 @@
 //
 // | itemId | 물품 | 제공자 | 쓰임 |
 // | --- | --- | --- | --- |
-// | 101 | 4인용 거실형 텐트 15,000원/일 · 보증금 50,000원 | 캠핑조아(2) | 예약 화면 기본. 가능 기간 오늘~+40일, +45~+90일(사이 UNAVAILABLE), 예약됨이 섞임 |
+// | 101 | 4인용 거실형 텐트 15,000원/일 · 보증금 50,000원 | 캠핑조아(2) | 이미지 3장. 예약 화면 기본. 가능 기간 오늘~+40일, +45~+90일(사이 UNAVAILABLE), 예약됨이 섞임 |
 // | 102 | 전동 드릴 세트 5,000원/일 · 보증금 없음 | 캠핑조아(2) | 예약하면 항상 409 RENTAL_PERIOD_CONFLICT |
 // | 103 | 캠핑 의자 2개 | 나(1) | 본인 물품(예약 대신 안내), 제공자 시드 |
-// | 104 | 빔 프로젝터 | 나(1) | 제공자 시드 |
+// | 104 | 빔 프로젝터 | 나(1) | 이미지 2장. 제공자 시드 |
 // | 105 | 캠핑 랜턴 | 캠핑조아(2) | 대여자 시드 |
 // | 106 | 접이식 자전거 | 이웃(4) | 삭제된 물품(isDeleted) 표시용 |
 // | 107 | 보드게임 세트 | 나(1) | 내 물품 대여 가능 탭, 예약 현황 23건(시트 안 더 불러오기), 다가오는 예약 1건 |
@@ -83,6 +83,7 @@ const ITEMS = [
       [45, 90],
     ],
     color: '#E8F1EC',
+    imageCount: 3,
     categoryId: 1,
     condition: 'LIGHTLY_USED',
     description: '4인 가족이 쓰기 좋은 거실형 텐트예요. 펙·스트링·그라운드시트 포함.',
@@ -128,6 +129,7 @@ const ITEMS = [
     deposit: 100000,
     availablePeriods: [[0, 60]],
     color: '#F6F5F1',
+    imageCount: 2,
     counts: { viewCount: 128, wishCount: 17, chatCount: 9 },
     categoryId: 3,
     condition: 'LIGHTLY_USED',
@@ -201,6 +203,17 @@ const ALL_ITEMS = [...ITEMS, ...createFeedSeed()];
 /** 예약하면 항상 기간 충돌인 물품 */
 export const CONFLICT_ITEM_ID = 102;
 
+/** 상세 이미지. 자리 이미지 하나를 원본·썸네일에 함께 쓰고, 여러 장인 물품(imageCount)은 번호를 붙여 구분한다 */
+function toMockImages(item) {
+  if (item.hasNoImage) {
+    return [];
+  }
+  return Array.from({ length: item.imageCount ?? 1 }, (_, index) => {
+    const url = placeholderImage(index === 0 ? item.name : `${item.name} ${index + 1}`, item.color);
+    return { imageId: item.itemId * 10 + index, url, thumbnailUrl: url };
+  });
+}
+
 export function findMockItem(itemId) {
   const item = ALL_ITEMS.find((candidate) => candidate.itemId === Number(itemId));
   if (!item) {
@@ -212,6 +225,7 @@ export function findMockItem(itemId) {
     ...item,
     isDeleted: item.isDeleted ?? false,
     thumbnailUrl: item.hasNoImage ? null : placeholderImage(item.name, item.color),
+    images: toMockImages(item),
     regionName: region.name,
     address: MOCK_ADDRESSES[item.regionId],
     latitude: region.lat,
@@ -256,10 +270,7 @@ export const itemHandlers = [
     return ok({
       itemId: item.itemId,
       name: item.name,
-      // 자리 이미지 하나를 원본·썸네일에 함께 쓴다
-      images: item.thumbnailUrl
-        ? [{ imageId: item.itemId * 10, url: item.thumbnailUrl, thumbnailUrl: item.thumbnailUrl }]
-        : [],
+      images: item.images,
       category: { categoryId: item.categoryId, name: categoryName(item.categoryId) },
       condition: item.condition,
       description: item.description,

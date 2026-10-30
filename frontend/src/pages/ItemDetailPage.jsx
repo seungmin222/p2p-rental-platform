@@ -8,6 +8,7 @@ import ItemImageCarousel from '../features/item/components/ItemImageCarousel';
 import { ItemOwnerRow, ItemSummary, ItemTradePlace } from '../features/item/components/ItemInfo';
 import { getErrorMessage } from '../features/item/errorMessages';
 import { getPriceParts, getDepositText } from '../features/item/itemDisplay';
+import { parseItemId } from '../features/item/itemId';
 import { useItemDetail } from '../features/item/queries';
 import { RENTAL_DAY_STATUS } from '../features/rental/constants';
 import { useCalendarDays } from '../features/rental/queries';
@@ -52,8 +53,6 @@ function ItemCalendar({ itemId }) {
           value={null}
           onChange={() => {}}
           onMonthChange={setMonth}
-          minDays={1}
-          maxDays={1}
           statusLabels={RENTAL_DAY_STATUS}
           minMonth={thisMonth}
           isLoading={result?.isPending ?? true}
@@ -110,8 +109,8 @@ function NotFound() {
 /** SCR-05 물품 상세(REQ-011). 토큰을 보내 isOwner가 로그인 사용자 기준이다 */
 export default function ItemDetailPage() {
   const { id } = useParams();
-  // 숫자가 아니면 요청하지 않고 바로 "찾을 수 없어요"
-  const itemId = /^\d+$/.test(id ?? '') ? Number(id) : null;
+  // 올바른 id가 아니면 요청하지 않고 바로 "찾을 수 없어요"
+  const itemId = parseItemId(id);
   const query = useItemDetail(itemId);
   useRefetchErrorToast([query]);
 

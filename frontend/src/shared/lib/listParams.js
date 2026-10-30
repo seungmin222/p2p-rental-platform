@@ -6,7 +6,7 @@ export function getNextPageParam(lastPage) {
   return lastPage?.hasNext ? lastPage.page + 1 : undefined;
 }
 
-/** 커서 방식 getNextPageParam: 다음이 있으면 nextCursor, 없으면 undefined(더 부르지 않음). 첫 페이지 pageParam은 undefined */
+/** 커서 방식 getNextPageParam: 다음이 있으면 nextCursor, 없으면 undefined(더 부르지 않음). 첫 페이지 pageParam은 null이다(useFeed의 initialPageParam) */
 export function getNextCursorParam(lastPage) {
   return lastPage?.hasNext && lastPage.nextCursor != null ? lastPage.nextCursor : undefined;
 }

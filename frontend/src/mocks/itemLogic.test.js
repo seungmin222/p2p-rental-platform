@@ -300,11 +300,22 @@ describe('searchMatches', () => {
       ).toEqual([3, 2, 1]);
     });
 
-    it('대여 가능만(기간 없음): 오늘 가능 기간 안이고 오늘 예약이 없어야 한다', () => {
-      // 1·2는 오늘(10-30)이 가능 기간 밖
-      expect(search(periodItems, 'availableOnly=true')).toEqual([3]);
+    it('대여 가능만(기간 없음): 오늘 이후 가능 기간이 남아 있고 오늘 예약이 없어야 한다(open-issues #6)', () => {
+      const query = 'availableOnly=true&sort=LATEST';
+      // 1·2는 가능 기간이 앞으로 시작해도 남아 있으므로 포함
+      expect(search(periodItems, query)).toEqual([3, 2, 1]);
+      // 오늘 예약이 있으면 제외. 경계: 오늘 끝나는 예약도 겹침
       const todayBooked = [{ itemId: 3, startDate: '2026-10-29', endDate: '2026-10-30' }];
-      expect(search(periodItems, 'availableOnly=true', todayBooked)).toEqual([]);
+      expect(search(periodItems, query, todayBooked)).toEqual([2, 1]);
+      // 내일 시작하는 예약은 오늘과 겹치지 않음
+      const tomorrowBooked = [{ itemId: 3, startDate: '2026-10-31', endDate: '2026-11-02' }];
+      expect(search(periodItems, query, tomorrowBooked)).toEqual([3, 2, 1]);
+      // 가능 기간이 어제 끝났으면 제외, 오늘 끝나면 포함
+      const ended = [
+        item(4, { availablePeriods: [{ startDate: '2026-10-01', endDate: '2026-10-29' }] }),
+        item(5, { availablePeriods: [{ startDate: '2026-10-01', endDate: '2026-10-30' }] }),
+      ];
+      expect(search(ended, query)).toEqual([5]);
     });
 
     it('availableOnly=false는 거르지 않는다', () => {

@@ -215,7 +215,7 @@ function overlapsOccupying(occupying, itemId, start, end) {
 }
 
 /**
- * 대여 가능 판정(openapi availableOnly). 기간을 보냈으면 그 기간 전체가 가능 기간 하나에 들어가고 점유 대여와 겹치지 않아야 하고,
+ * 대여 가능 판정(openapi availableOnly, open-issues #6). 기간을 보냈으면 그 기간 전체가 가능 기간 하나에 들어가고 점유 대여와 겹치지 않아야 하고,
  * 없으면 오늘 이후 가능 기간이 남아 있고 오늘이 예약되지 않아야 한다.
  */
 function isRentable(item, occupying, { startDate, endDate }, today) {
@@ -227,7 +227,6 @@ function isRentable(item, occupying, { startDate, endDate }, today) {
   }
   return (
     item.availablePeriods.some((period) => compareDate(period.endDate, today) >= 0) &&
-    isInsideAvailablePeriod(item, today, today) &&
     !overlapsOccupying(occupying, item.itemId, today, today)
   );
 }

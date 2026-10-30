@@ -115,8 +115,8 @@ const NAV_BUTTON =
  * @param {{startDate: string, endDate: string | null} | null} props.value endDate가 null이면 시작일만 고른 상태
  * @param {(value: {startDate: string, endDate: string | null}) => void} props.onChange
  * @param {(month: string) => void} props.onMonthChange
- * @param {number} props.minDays
- * @param {number} props.maxDays
+ * @param {number} [props.minDays] readOnly가 아니면 필수
+ * @param {number} [props.maxDays] readOnly가 아니면 필수
  * @param {Record<string, {label: string}>} props.statusLabels 상태 코드 → 라벨(features의 RENTAL_DAY_STATUS). 라벨이 없는 상태는 범례에서 뺀다
  * @param {string} [props.minMonth] 이전 달 버튼 비활성 기준 "YYYY-MM"
  * @param {string} [props.maxMonth] 다음 달 버튼 비활성 기준 "YYYY-MM"

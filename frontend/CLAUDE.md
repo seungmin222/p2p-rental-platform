@@ -33,7 +33,7 @@ src/
 ├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review)
 │   ├── auth/           로그인·가입·로그아웃(api·queries·constants·errorMessages, components/)
 │   ├── region/         동네(api·queries·constants·errorMessages·geolocation·guestRegionStore·myRegions·regionStatus, components/)
-│   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay, components/)
+│   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay·itemId, components/)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
 │       ├── queries.js      useQuery/useMutation 훅 + queryKey
@@ -96,7 +96,7 @@ src/
 - **서버에서 온 데이터는 전부 TanStack Query로 다룬다.** `useEffect + useState`로 API를 호출해 상태를 들고 있지 않는다. Zustand에는 서버 데이터를 복사해 두지 않는다(토큰·임시 동네·UI 상태만).
 - 조회는 `useQuery`/`useInfiniteQuery`, 변경은 `useMutation` → `onSuccess`에서 관련 queryKey `invalidateQueries`. 훅은 `features/*/queries.js`에 모으고 컴포넌트에서 axios를 직접 호출하지 않는다.
 - 기본 옵션(`QueryClient`): `retry: 1`(401·403·404·409는 재시도 안 함), `staleTime`은 목록 30초·상세 10초 정도로 시작. 캘린더·대여 상세처럼 상태가 바뀌는 화면은 짧게.
-- queryKey 규칙: `['items', 'feed', {regionId, range, categoryId}]`, `['items', id]`, `['rentals', id]`, `['items', id, 'calendar', month]`, 빌린 내역 `['rentals', 'me', {role: 'renter', tab}]`, 내 물품 `['items', 'me', {tab}]`, 물품별 예약 현황 `['items', id, 'rentals']`, 내 정보 `['members', 'me']`(내 동네 `['members', 'me', 'regions']`는 그 하위), 동네 검색 `['regions', {keyword}]`, 동네 피드 전체 `['items', 'feed']`(`itemKeys.feed()`, 대표 동네가 바뀌면 무효화). 뮤테이션 후 관련 키 invalidate.
+- queryKey 규칙: `['items', 'feed', {regionId, categoryId}]`(범위 `range`는 REQ-042 때 더한다), `['items', id]`, `['rentals', id]`, `['items', id, 'calendar', month]`, 빌린 내역 `['rentals', 'me', {role: 'renter', tab}]`, 내 물품 `['items', 'me', {tab}]`, 물품별 예약 현황 `['items', id, 'rentals']`, 내 정보 `['members', 'me']`(내 동네 `['members', 'me', 'regions']`는 그 하위), 동네 검색 `['regions', {keyword}]`, 동네 피드 전체 `['items', 'feed']`(`itemKeys.feed()`, 대표 동네가 바뀌면 무효화). 뮤테이션 후 관련 키 invalidate.
 - 무한 스크롤: `useInfiniteQuery` + IntersectionObserver(`shared/hooks/useInfiniteScroll`, 목록 끝은 `InfiniteListFooter`). 피드·검색은 `nextCursor`, 빌린 내역·내 물품·물품별 예약 현황은 page/hasNext(`initialPageParam: 0`, `shared/lib/listParams.js`의 `getNextPageParam`·`flattenPages`, 빌린 내역은 size를 보내지 않음). 다음 페이지 실패는 목록은 두고 끝에 "다시 시도"(재조회 실패 토스트에서는 뺀다).
 - 목록 탭은 `shared/ui/Tabs` + URL `?tab=`(`useTabParam`, 바꿀 때 replace, 모르는 값이면 기본 탭) — 상세에 갔다가 뒤로 오면 같은 탭.
 
@@ -134,16 +134,16 @@ export const RENTAL_STATUS = {
 - 로그인 성공: `useLogin`이 `queryClient.clear()`(이전 사용자 캐시) → `setAccessToken`. 안전한 redirect가 있으면 그곳으로 replace, 없으면 `['members', 'me']`를 fetchQuery해 대표 동네가 없으면 `/regions`(state `{ fromLogin: true }`), 있으면 `/`(조회 실패도 `/`).
 - 이미 로그인한 사용자가 `/login`·`/signup`에 오면 redirect(없으면 `/`)로 보낸다. 로그인 여부는 **마운트할 때 한 번만** 본다(제출 성공으로 토큰이 생겨 다시 그려질 때 폼이 정한 이동보다 먼저 `/`로 가지 않게).
 - 가입 성공 → 토스트 + `/login`(redirect 유지, 가입한 이메일은 주소가 아니라 location state로 미리 채움). 비밀번호 확인 칸은 프론트 전용(보내지 않음).
-- 로그아웃(`/me` 맨 아래): API 성공 → `navigate('/', { replace: true, flushSync: true })` → `clearLocalSession`(AT·캐시). 정리는 `useLogout` 훅 옵션 onSuccess에서 하므로 요청 중에 화면을 벗어나도 빠지지 않는다(그때는 이동 없이 정리만). AT를 먼저 지우면 RequireAuth가 `/login?redirect=/me`로 보낸다. 실패면 토스트만(쿠키가 남아 있어 로컬만 지우면 안 됨).
+- 로그아웃(`/me` 맨 아래): 진행 중인 내 정보 요청을 끊고 → API 성공 → `navigate('/', { replace: true, flushSync: true })` → `clearLocalSession`(AT·캐시). 로그아웃 중에 들어온 홈·검색은 내 정보를 부르지 않는다(`useIsLoggingOut`). 재발급 실패도 `clearLocalSession`으로 같이 정리한다(`app/router.jsx`). 정리는 `useLogout` 훅 옵션 onSuccess에서 하므로 요청 중에 화면을 벗어나도 빠지지 않는다(그때는 이동 없이 정리만). AT를 먼저 지우면 RequireAuth가 `/login?redirect=/me`로 보낸다. 실패면 토스트만(쿠키가 남아 있어 로컬만 지우면 안 됨).
 - 비밀번호가 들어간 로그인·가입 뮤테이션은 `gcTime: 0`(MutationCache에 오래 남지 않게).
 - 정책 수치는 `features/auth/constants.js`(`EMAIL_MAX`·`PASSWORD_LENGTH`·`NICKNAME_LENGTH`). 로그인 폼은 빈 값만 검사한다.
 
 ### 물품 화면 규칙 (SCR-03 홈 · SCR-04 검색 · SCR-05 상세)
-- queryKey: 피드 `['items', 'feed', { regionId, categoryId }]`(`itemKeys.feedList`, 커서 방식 `useInfiniteQuery`), 검색 `['items', 'search', { regionId, ...조건 }]`(`itemKeys.searchList`, page 방식), 상세 `['items', itemId]`, 카테고리 `['categories']`(`staleTime` 10분). 카테고리·동네가 바뀌면 키가 달라져 처음 페이지부터 다시 받는다. 마지막 페이지(`hasNext` false)에서는 `getNextCursorParam`(`shared/lib/listParams.js`)이 undefined를 돌려 더 부르지 않는다.
-- **홈 카테고리 칩은 URL `?category=`**(`readCategoryParam`), 검색 조건(`q`·`category`·`sort`·`minPrice`·`maxPrice`·`startDate`·`endDate`·`availableOnly`)은 전부 URL 쿼리에 둔다(`features/item/searchParams.js`: 읽을 때마다 걸러 틀린 값은 없는 것으로, 기본값은 주소에 넣지 않음). 바꿀 때는 replace. 같은 값이 queryKey가 된다. 키워드는 제출(엔터·검색 버튼)할 때만 반영하고, 키워드·카테고리·가격·기간·대여 가능만 중 하나도 없으면 조회하지 않는다(정렬만으로는 조회하지 않음).
+- queryKey: 피드 `['items', 'feed', {regionId, categoryId}]`(`itemKeys.feedList`, 커서 방식 `useInfiniteQuery`), 검색 `['items', 'search', {regionId, ...조건}]`(`itemKeys.searchList`, page 방식), 상세 `['items', itemId]`, 카테고리 `['categories']`(`staleTime` 10분). 카테고리·동네가 바뀌면 키가 달라져 처음 페이지부터 다시 받는다. 마지막 페이지(`hasNext` false)에서는 `getNextCursorParam`(`shared/lib/listParams.js`)이 undefined를 돌려 더 부르지 않는다.
+- **홈 카테고리 칩은 URL `?category=`**(`readCategoryParam`), 검색 조건(`q`·`category`·`sort`·`minPrice`·`maxPrice`·`startDate`·`endDate`·`availableOnly`)은 전부 URL 쿼리에 둔다(`features/item/searchParams.js`: 읽을 때마다 걸러 틀린 값은 없는 것으로, 기본값은 주소에 넣지 않음). 없는 카테고리(`?category=9999`)는 카테고리 목록을 받은 뒤 "전체"로 본다(`useCategoryFilter`, 목록을 받는 동안은 요청하지 않음). 바꿀 때는 replace. 같은 값이 queryKey가 된다. 키워드는 제출(엔터·검색 버튼)할 때만 반영하고, 키워드·카테고리·가격·기간·대여 가능만 중 하나도 없으면 조회하지 않는다(정렬만으로는 조회하지 않음).
 - 검색 필터(정렬·일 대여료·대여 희망 기간·대여 가능한 물품만)는 "필터" 버튼 → BottomSheet 하나(`SearchFilterSheet`)에 모으고, 카테고리는 칩. 가격 한도는 `features/item/constants.js` `ITEM_PRICE_PER_DAY`(policies `item.price-per-day`), 기간은 기존 `Calendar`(범위 선택, 최대 `RENTAL_PERIOD.MAX_DAYS`)에 `buildFilterDaysInRange`(넘겨 볼 수 있는 달 전체, 오늘부터 선택 가능)를 넘긴다.
 - 카드 표시(`itemDisplay.js`): 일 대여료 0원 → "무료"(policies `item.price-per-day`: 0원 등록 허용), 보증금 0원 → 보증금 줄을 그리지 않음, "대여 중" 배지(`isRenting`)는 카드에만(`Badge tone="green"`). 관심·채팅 수, 신뢰 점수·거래 횟수, 지도, "이런 물품은 어때요?", 알림 아이콘은 2·3순위라 그리지 않는다.
-- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 주소 텍스트. 내 물품(`isOwner`)이면 예약하기 대신 "내 물품 관리"(`/me/items`) 링크. 없는·삭제된 물품과 숫자가 아닌 id는 ErrorState + 홈(숫자가 아니면 요청하지 않음).
+- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 주소 텍스트. 내 물품(`isOwner`)이면 예약하기 대신 "내 물품 관리"(`/me/items`) 링크. 없는·삭제된 물품과 잘못된 id는 ErrorState + 홈(`features/item/itemId.js` `parseItemId`: 양의 안전한 정수가 아니면 요청하지 않음). 이미지는 스와이프, 키보드 화살표, 이전·다음 버튼(터치 기기에서는 숨김)으로 넘긴다.
 - 로그인·로그아웃은 `queryClient.clear()`로 이전 사용자의 `['items', id]`(isOwner)를 지운다. 단, 로그아웃은 홈으로 먼저 이동한 뒤 AT를 지우므로 홈이 내 정보를 다시 부르면 서버가 이미 세션을 끝낸 경우 401 → 로그인 화면으로 가 버린다. 그래서 홈·검색은 `useMe({ enabled: 로그인 여부, refetchOnMount: refetchIfInvalidated })`로 이미 받은 내 정보를 **무효화됐을 때만** 다시 받는다(대표 동네를 바꾸면 무효화되고, `/regions`에는 구독자가 없어 홈에 들어올 때 받는다. 받는 동안은 이전 동네 대신 로딩). 로그아웃 경로는 무효화를 거치지 않는다. 로그아웃 직후에는 이전 내 정보가 남아 있어도 `resolveFeedRegion`이 로그인 여부(AT)가 false면 보지 않는다.
 - 오류 문구는 `features/item/errorMessages.js` 한 곳(code → 문구).
 
@@ -186,7 +186,7 @@ export const RENTAL_STATUS = {
 ## 개발 방식
 - **목 로그인 계정**(`mocks/memberSeed.js`, 가짜 값): `user1@example.com`(동네주민, 대여·물품 목의 "나", 대표 동네 인증 유효 + 두 번째 동네 인증 만료) · `user3@example.com`(텐트초보, 동네 없음 → 로그인 후 `/regions`). 비밀번호는 모두 `rental123!`(그 밖에 user2·user4). 목 세션은 localStorage `mock.session`(RT 쿠키 흉내)이라 새로고침해도 로그인이 유지되고, 가입한 계정은 메모리에만 있어 새로고침하면 사라진다. 콘솔 `window.__mockAuth.expireAccessToken()`으로 AT만 무효화해 401 → 재발급 → 재시도를 볼 수 있다. 물품 상세 목은 토큰이 있으면 `isOwner`를 그 회원 기준으로 채우고, 대여 목은 아직 AT를 보지 않고 회원 1 기준이다.
 - **목 동네**(`mocks/memberSeed.js` `MOCK_REGION_MASTER`, 인천 연수구 행정동 6개: 송도1동·송도2동·연수1동·동춘1동·옥련1동·청학동). 좌표 → 동네는 가장 가까운 시드 중심이 3km 안이면 그 동네, 아니면 404(`mocks/regionLogic.js`). 위치는 크롬 DevTools → More tools → Sensors → Location에서 바꾼다. 예: 송도1동 `37.3925, 126.639` · 연수1동 `37.418, 126.679` · 어느 동네도 아닌 곳(서울 강남역) `37.4979, 127.0276`. "현재 위치로 찾기"는 위치를 1분 동안 캐시하므로(maximumAge) 좌표를 바꾼 뒤 1분 안에 다시 찾으면 이전 위치가 쓰일 수 있다. 목록의 인증은 캐시하지 않아 바로 반영된다.
-- **목 물품·카테고리**(`mocks/item.js` 101~108 + `mocks/itemSeed.js` 201~): 행정동 시드의 regionId로 동네별로 나뉜다. 송도1동 30개(피드 2페이지 20 + 10, 같은 시각 등록이 여럿인 커서 경계, 무료·보증금 없음·대여 중 배지), 송도2동 7개(1페이지), 연수1동 12개, 동춘1동 5개, 옥련1동 3개, 청학동 0개(빈 피드). 카테고리는 `V3__insert_categories.sql` 8개 그대로. 피드·검색·카테고리 목은 `mocks/feed.js`, 계산(필터·정렬·커서·페이지·검증)은 `mocks/itemLogic.js` 순수 함수. 새로고침하면 시드로 돌아간다. 확인용 로그인: `user1`(송도1동 대표, 내 물품 103·104·107·108) · `user2`(연수1동 대표) · `user3`(동네 없음 → 홈 안내).
+- **목 물품·카테고리**(`mocks/item.js` 101~108 + `mocks/itemSeed.js` 201~): 행정동 시드의 regionId로 동네별로 나뉜다. 송도1동 30개(피드 2페이지 20 + 10, 같은 시각 등록이 여럿인 커서 경계, 무료·보증금 없음·대여 중 배지), 송도2동 7개(1페이지), 이미지 여러 장은 101(3장)·104(2장)·201(5장), 연수1동 12개, 동춘1동 5개, 옥련1동 3개, 청학동 0개(빈 피드). 카테고리는 `V3__insert_categories.sql` 8개 그대로. 피드·검색·카테고리 목은 `mocks/feed.js`, 계산(필터·정렬·커서·페이지·검증)은 `mocks/itemLogic.js` 순수 함수. 새로고침하면 시드로 돌아간다. 확인용 로그인: `user1`(송도1동 대표, 내 물품 103·104·107·108) · `user2`(연수1동 대표) · `user3`(동네 없음 → 홈 안내).
 - 백엔드가 컨트롤러·DTO를 먼저 머지하면 `docs/openapi.json`이 갱신된다. 그 스키마의 응답 형태 그대로 `mocks/` MSW 핸들러를 만들어 먼저 개발한다(공통 래퍼는 `mocks/response.js`의 `ok`·`fail` 헬퍼로). `VITE_USE_MOCK=true`로 전환.
   - MSW는 **개발 서버 + `VITE_USE_MOCK=true`일 때만** `main.jsx`가 동적 import로 시작하고 운영 번들에는 들어가지 않게 한다. 처리하지 않는 요청은 bypass. `public/mockServiceWorker.js`는 커밋한다(msw 버전을 올리면 `npx msw init public`으로 갱신).
 - 타입 힌트가 필요하면 openapi.json에서 JSDoc 타입을 생성해 쓸 수 있다(선택, `openapi-typescript` 등). 생성 파일은 직접 수정하지 않는다.

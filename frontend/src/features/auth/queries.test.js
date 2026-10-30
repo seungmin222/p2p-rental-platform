@@ -1,7 +1,11 @@
-import { QueryClient, QueryObserver } from '@tanstack/query-core';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/query-core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { memberKeys, refetchIfInvalidated } from './queries';
+import { useAuthStore } from '../../shared/api';
+import { logout } from './api';
+import { logoutMutationOptions, memberKeys, refetchIfInvalidated } from './queries';
+
+vi.mock('./api', () => ({ logout: vi.fn() }));
 
 const ME = { memberId: 1, primaryRegion: { regionId: 1101, regionName: '송도1동' } };
 
@@ -55,5 +59,64 @@ describe('refetchIfInvalidated (홈·검색의 내 정보)', () => {
     mount(new QueryClient(), queryFn);
 
     expect(queryFn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('logoutMutationOptions', () => {
+  beforeEach(() => {
+    useAuthStore.getState().setAccessToken('token');
+  });
+
+  function runLogout(queryClient, leaveRef) {
+    return new MutationObserver(queryClient, logoutMutationOptions(queryClient, leaveRef)).mutate();
+  }
+
+  it('홈으로 떠나는 동안은 로그아웃 중이고 AT도 남아 있다 — 그 뒤에 지운다', async () => {
+    logout.mockResolvedValue(null);
+    const queryClient = new QueryClient();
+    let seen = null;
+    const leaveRef = {
+      current: () => {
+        seen = {
+          mutating: queryClient.isMutating({ mutationKey: ['auth', 'logout'] }),
+          token: useAuthStore.getState().accessToken,
+        };
+      },
+    };
+
+    await runLogout(queryClient, leaveRef);
+
+    expect(seen).toEqual({ mutating: 1, token: 'token' });
+    expect(useAuthStore.getState().accessToken).toBeNull();
+  });
+
+  it('진행 중인 내 정보 요청을 먼저 끊는다 — 401로 돌아와 로그인 화면으로 가지 않게', async () => {
+    logout.mockResolvedValue(null);
+    const queryClient = new QueryClient();
+    let signal = null;
+    queryClient
+      .fetchQuery({
+        queryKey: memberKeys.me(),
+        queryFn: (context) => {
+          signal = context.signal;
+          return new Promise(() => {});
+        },
+      })
+      .catch(() => {});
+
+    await runLogout(queryClient, { current: null });
+
+    expect(signal.aborted).toBe(true);
+  });
+
+  it('로그아웃이 실패하면 AT를 두고 내 정보를 다시 받게 표시한다', async () => {
+    logout.mockRejectedValue(new Error('network'));
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(memberKeys.me(), ME);
+
+    await expect(runLogout(queryClient, { current: null })).rejects.toThrow('network');
+
+    expect(useAuthStore.getState().accessToken).toBe('token');
+    expect(queryClient.getQueryState(memberKeys.me()).isInvalidated).toBe(true);
   });
 });

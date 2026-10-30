@@ -42,6 +42,21 @@ export function readCategoryParam(searchParams) {
 }
 
 /**
+ * URL의 카테고리를 실제 카테고리와 맞춘다. 없는 값(?category=9999)이면 "전체"(null)로 본다.
+ * 목록을 받는 중이면 isResolving(그 값으로 요청하지 않게 호출부가 기다린다), 목록을 못 받았으면 판단할 수 없어 URL 값을 그대로 쓴다.
+ */
+export function resolveCategory(categoryId, categories, isCategoriesPending) {
+  if (categoryId == null) {
+    return { categoryId: null, isResolving: false };
+  }
+  if (isCategoriesPending) {
+    return { categoryId, isResolving: true };
+  }
+  const isKnown = !categories || categories.some((category) => category.categoryId === categoryId);
+  return { categoryId: isKnown ? categoryId : null, isResolving: false };
+}
+
+/**
  * URLSearchParams → 검색 조건. 키워드는 앞뒤 공백을 지운다.
  * 가격은 0 ~ 일 대여료 상한(policies item.price-per-day)의 정수이고 최소 > 최대면 둘 다 버린다(서버는 400).
  * 기간은 시작·종료가 둘 다 있고 시작 ≤ 종료일 때만 쓴다(서버는 둘 다 보내거나 둘 다 생략).

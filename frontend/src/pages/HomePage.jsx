@@ -4,10 +4,11 @@ import FloatingActionButton from '../app/layout/FloatingActionButton';
 import CategoryChips from '../features/item/components/CategoryChips';
 import ItemListView from '../features/item/components/ItemListView';
 import RegionGate from '../features/item/components/RegionGate';
-import { useFeed } from '../features/item/queries';
+import { useCategoryFilter, useFeed } from '../features/item/queries';
 import { readCategoryParam, SEARCH_PARAM } from '../features/item/searchParams';
 import { useFeedRegion } from '../features/item/useFeedRegion';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
+import { Skeleton } from '../shared/ui';
 
 function SearchIcon() {
   return (
@@ -44,7 +45,8 @@ function ChevronDownIcon() {
 }
 
 /** 내 동네 이름(시안 "연수동 ▾") → /regions, 우측 검색 아이콘 → /search. 알림 아이콘은 알림 화면(2순위)이 없어 두지 않는다 */
-function HomeHeader({ regionName }) {
+function HomeHeader({ region }) {
+  const { regionName } = region;
   return (
     <header className="sticky top-0 z-10 -mx-4 flex h-14 items-center justify-between border-b border-divider bg-white px-4">
       <Link
@@ -52,7 +54,12 @@ function HomeHeader({ regionName }) {
         aria-label={regionName ? `동네 설정, 현재 ${regionName}` : '동네 설정'}
         className="-ml-1 flex min-h-11 items-center gap-0.5 rounded-lg px-1 text-title focus-visible:outline-2 focus-visible:outline-primary"
       >
-        <span className="truncate">{regionName ?? '동네 설정'}</span>
+        {region.status === 'loading' ? (
+          // 내 정보를 받는 동안 "동네 설정"이 잠깐 보이지 않게
+          <Skeleton className="h-6 w-20" />
+        ) : (
+          <span className="truncate">{regionName ?? '동네 설정'}</span>
+        )}
         <ChevronDownIcon />
       </Link>
       <Link
@@ -69,8 +76,8 @@ function HomeHeader({ regionName }) {
 function Feed({ regionId }) {
   const [searchParams, setSearchParams] = useSearchParams();
   // 선택은 URL ?category=에 둔다(상세에 갔다가 뒤로 와도 그대로). 바꿀 때는 기록을 쌓지 않는다
-  const categoryId = readCategoryParam(searchParams);
-  const feed = useFeed({ regionId, categoryId });
+  const { categoryId, isResolving } = useCategoryFilter(readCategoryParam(searchParams));
+  const feed = useFeed({ regionId, categoryId, enabled: !isResolving });
   useRefetchErrorToast([feed]);
 
   function handleCategoryChange(nextCategoryId) {
@@ -114,7 +121,7 @@ export default function HomePage() {
   const region = useFeedRegion();
   return (
     <>
-      <HomeHeader regionName={region.regionName} />
+      <HomeHeader region={region} />
       {region.status === 'ready' ? (
         <Feed regionId={region.regionId} />
       ) : (

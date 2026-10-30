@@ -5,6 +5,7 @@ import {
   hasSearchCondition,
   parsePriceInput,
   parseSearchParams,
+  resolveCategory,
   toApiParams,
   toSearchParams,
   validatePriceRange,
@@ -91,6 +92,36 @@ describe('parseSearchParams', () => {
   it('availableOnly는 true일 때만 켠다', () => {
     expect(parse('availableOnly=1').availableOnly).toBe(false);
     expect(parse('availableOnly=true').availableOnly).toBe(true);
+  });
+});
+
+describe('resolveCategory', () => {
+  const CATEGORIES = [{ categoryId: 1, name: '캠핑·아웃도어', sortOrder: 1 }];
+
+  it('있는 카테고리는 그대로', () => {
+    expect(resolveCategory(1, CATEGORIES, false)).toEqual({ categoryId: 1, isResolving: false });
+  });
+
+  it('없는 카테고리는 전체(null)', () => {
+    expect(resolveCategory(9999, CATEGORIES, false)).toEqual({
+      categoryId: null,
+      isResolving: false,
+    });
+  });
+
+  it('목록을 받는 중이면 기다린다 — 없는 값으로 요청하지 않게', () => {
+    expect(resolveCategory(9999, undefined, true)).toEqual({ categoryId: 9999, isResolving: true });
+  });
+
+  it('고르지 않았으면 기다리지 않는다', () => {
+    expect(resolveCategory(null, undefined, true)).toEqual({
+      categoryId: null,
+      isResolving: false,
+    });
+  });
+
+  it('목록을 못 받았으면 판단하지 않고 URL 값을 쓴다', () => {
+    expect(resolveCategory(1, undefined, false)).toEqual({ categoryId: 1, isResolving: false });
   });
 });
 

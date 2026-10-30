@@ -67,6 +67,9 @@ const REGION_COUNTS = [
 /** 대여 중 배지를 보여 줄 물품(대여 목 시드와 무관한 표시용). 대여 목의 isRenting은 대여 DB로 계산하고 이것과 합친다 */
 const RENTING_ITEM_IDS = [203, 211];
 
+/** 상세 이미지가 여러 장인 물품(n / N·넘김 확인용). 정책 상한은 10장 */
+const IMAGE_COUNTS = { 201: 5 };
+
 /**
  * 시드 생성. now는 테스트에서 바꿔 넣는다.
  * 5개마다 직전 물품과 같은 시각에 등록해(커서 경계) id 순서로만 구분되게 한다.
@@ -91,6 +94,7 @@ export function createFeedSeed(now = Date.now()) {
         deposit: pricePerDay === 0 || index % 6 === 5 ? 0 : pricePerDay * 5,
         availablePeriods: [[0, 60]],
         color: COLORS[itemId % COLORS.length],
+        imageCount: IMAGE_COUNTS[itemId],
         categoryId,
         condition: CONDITIONS[itemId % CONDITIONS.length],
         description: `${name} 대여해요. 깨끗하게 관리했어요.`,
