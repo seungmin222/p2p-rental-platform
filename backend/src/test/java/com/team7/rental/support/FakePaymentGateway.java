@@ -36,6 +36,7 @@ public class FakePaymentGateway implements PaymentGateway {
 	private final Deque<Fault> cancelFaults = new ArrayDeque<>();
 	private final List<Integer> appliedCancels = new ArrayList<>();
 	private Runnable beforeConfirm = () -> {};
+	private Runnable beforeCancel = () -> {};
 	private int confirmCalls;
 	private int cancelCalls;
 	private int appliedConfirms;
@@ -53,6 +54,11 @@ public class FakePaymentGateway implements PaymentGateway {
 	/** 다음 승인이 PG에 닿기 직전에 실행한다(경합 재현) */
 	public synchronized void beforeNextConfirm(Runnable action) {
 		this.beforeConfirm = action;
+	}
+
+	/** 다음 취소가 처리되기 직전에 실행한다(PG 응답 지연 재현) */
+	public synchronized void beforeNextCancel(Runnable action) {
+		this.beforeCancel = action;
 	}
 
 	/** PG에 승인된 결제가 이미 있는 상태를 만든다 */
@@ -94,6 +100,7 @@ public class FakePaymentGateway implements PaymentGateway {
 		confirmFaults.clear();
 		cancelFaults.clear();
 		appliedCancels.clear();
+		beforeCancel = () -> {};
 		beforeConfirm = () -> {};
 		confirmCalls = 0;
 		cancelCalls = 0;
@@ -144,6 +151,8 @@ public class FakePaymentGateway implements PaymentGateway {
 	@Override
 	public synchronized PgResult cancel(String paymentKey, int cancelAmount, String cancelReason,
 		String idempotencyKey) {
+		beforeCancel.run();
+		beforeCancel = () -> {};
 		cancelCalls++;
 		Fault fault = cancelFaults.poll();
 		if (fault == Fault.ERROR) {

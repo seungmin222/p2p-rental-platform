@@ -1,5 +1,7 @@
 package com.team7.rental.payment.entity;
 
+import java.time.LocalDateTime;
+
 import com.team7.rental.global.entity.BaseTimeEntity;
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
@@ -67,6 +69,9 @@ public class Payment extends BaseTimeEntity {
 
 	/** 아직 끝나지 않은 환불액. null이 아니면 환불이 남아 있다 */
 	private Integer refundPendingAmount;
+
+	/** 마지막 PG 취소 시도 시각. 재시도 간격의 기준 */
+	private LocalDateTime lastRefundAttemptAt;
 
 	@Column(nullable = false)
 	private int refundRetryCount;
@@ -138,7 +143,7 @@ public class Payment extends BaseTimeEntity {
 	 * @throws IllegalArgumentException 금액이 0원 이하이거나 남은 금액보다 클 때. 0원은 PG를 부르지 않는다
 	 * @throws BusinessException PAYMENT_INVALID_STATUS: 승인된 결제가 아니거나 진행 중인 환불이 있을 때
 	 */
-	public void requestRefund(int refundAmount) {
+	public void requestRefund(int refundAmount, LocalDateTime now) {
 		if (status != PaymentStatus.APPROVED || refundPendingAmount != null) {
 			throw new BusinessException(ErrorCode.PAYMENT_INVALID_STATUS);
 		}
@@ -146,6 +151,12 @@ public class Payment extends BaseTimeEntity {
 			throw new IllegalArgumentException("환불 금액이 올바르지 않습니다: " + refundAmount);
 		}
 		this.refundPendingAmount = refundAmount;
+		this.lastRefundAttemptAt = now;
+	}
+
+	/** 재시도 TX1: PG를 다시 부르기 직전 시각을 남긴다 */
+	public void recordRefundAttempt(LocalDateTime now) {
+		this.lastRefundAttemptAt = now;
 	}
 
 	/**

@@ -154,7 +154,7 @@ class PaymentReconcileJobTest extends IntegrationTestSupport {
 	void pendingRefundNotFlagged() {
 		// given
 		Payment payment = paymentFixture.createApproved(rental(START));
-		payment.requestRefund(payment.getAmount());
+		payment.requestRefund(payment.getAmount(), CREATED_AT);
 		paymentRepository.save(payment);
 		paymentGateway.changeBalance(payment.getOrderId(), 0);
 		testClock.fixAt(RUN_AT);

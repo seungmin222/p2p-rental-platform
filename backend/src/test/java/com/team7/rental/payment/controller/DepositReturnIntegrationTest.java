@@ -214,6 +214,26 @@ class DepositReturnIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("PG 응답이 늦어도 다음 재시도는 시도 시각 + 10분 정각에 돌고, 1초 전에는 돌지 않는다")
+	void retryIntervalFromAttempt() throws Exception {
+		// given: 시도는 NOW, PG 응답·결과 반영은 30초 뒤
+		Payment payment = paymentFixture.createApproved(rental);
+		paymentGateway.failNextCancel(Fault.ERROR);
+		paymentGateway.beforeNextCancel(() -> testClock.advance(Duration.ofSeconds(30)));
+		confirm(json(NORMAL)).andExpect(status().isOk());
+		assertThat(reload(payment).getLastRefundAttemptAt()).isEqualTo(NOW);
+		LocalDateTime dueAt = NOW.plus(RETRY_INTERVAL);
+
+		// when, then
+		testClock.fixAt(dueAt.minusSeconds(1));
+		assertThat(retryJob.retryDue(dueAt.minusSeconds(1))).isZero();
+		testClock.fixAt(dueAt);
+		assertThat(retryJob.retryDue(dueAt)).isEqualTo(1);
+		assertThat(reload(payment).getLastRefundAttemptAt()).isEqualTo(dueAt);
+		assertThat(reload(payment).getRefundPendingAmount()).isNull();
+	}
+
+	@Test
 	@DisplayName("응답이 유실된 뒤 같은 멱등성 키로 재시도하면 중복 환불이 0건이다")
 	void lostResponseNoDuplicate() throws Exception {
 		// given
@@ -270,7 +290,7 @@ class DepositReturnIntegrationTest extends IntegrationTestSupport {
 		ReflectionTestUtils.setField(rental, "status", RentalStatus.CANCELED);
 		rental = rentalRepository.save(rental);
 		Payment payment = paymentFixture.createApproved(rental);
-		payment.requestRefund(80_000);
+		payment.requestRefund(80_000, NOW);
 		paymentRepository.save(payment);
 		transactionRepository.save(PaymentTransaction.pending(payment.getId(), PaymentTransactionAction.CANCEL, 80_000,
 			"cancel-refund:" + rental.getId()));

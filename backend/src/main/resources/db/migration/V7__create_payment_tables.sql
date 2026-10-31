@@ -13,6 +13,7 @@ CREATE TABLE payments (
     deposit_status        VARCHAR(30)  NULL COMMENT 'DepositStatus. type=RENTAL이고 승인된 뒤에만',
     refunded_amount       INT          NOT NULL DEFAULT 0 COMMENT '누적 취소 금액',
     refund_pending_amount INT          NULL COMMENT '아직 끝나지 않은 환불액. NULL이 아니면 재시도 배치 대상',
+    last_refund_attempt_at DATETIME(6) NULL COMMENT '마지막 PG 취소 시도 시각. 재시도 간격 기준',
     refund_retry_count    INT          NOT NULL DEFAULT 0,
     needs_admin_check     BOOLEAN      NOT NULL DEFAULT FALSE,
     idempotency_key       VARCHAR(100) NOT NULL COMMENT '승인 API 멱등성 키',

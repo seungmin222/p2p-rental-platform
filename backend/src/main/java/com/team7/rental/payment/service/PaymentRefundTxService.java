@@ -40,7 +40,7 @@ public class PaymentRefundTxService {
 
 	/** TX1. 호출하는 쪽 트랜잭션에 참여한다(대여 전이와 같이 커밋해야 서버가 죽어도 환불이 남는다) */
 	public RefundTicket prepare(Payment payment, int amount, RefundPurpose purpose, Completion completion) {
-		payment.requestRefund(amount);
+		payment.requestRefund(amount, LocalDateTime.now(clock));
 		PaymentTransaction transaction = paymentTransactionRepository.save(PaymentTransaction.pending(payment.getId(),
 			PaymentTransactionAction.CANCEL, amount, purpose.keyOf(payment.getRentalId())));
 		return ticketOf(payment, transaction, purpose, completion, false);
@@ -105,7 +105,7 @@ public class PaymentRefundTxService {
 	}
 
 	/**
-	 * 재시도 배치 대상: 환불이 남았고 관리자 확인 전이며, 마지막 변경 후 refund.retry 간격이 지난 결제. 간격을 보므로 진행 중인 첫 시도와 겹치지 않고,
+	 * 재시도 배치 대상: 환불이 남았고 관리자 확인 전이며, 마지막 PG 시도 후 refund.retry 간격이 지난 결제. 시도 시각을 보므로 PG 응답이 늦어도 다음 회차를 놓치지 않고, 진행 중인 첫 시도와 겹치지 않으며,
 	 * 첫 시도가 서버 중단으로 끝나지 못한 건(REFUND_FAILED가 아니어도)도 찾는다.
 	 */
 	@Transactional(readOnly = true)
@@ -127,6 +127,7 @@ public class PaymentRefundTxService {
 		PaymentTransaction last = paymentTransactionRepository
 			.findFirstByPaymentIdAndActionOrderByIdDesc(payment.getId(), PaymentTransactionAction.CANCEL)
 			.orElseThrow();
+		payment.recordRefundAttempt(LocalDateTime.now(clock));
 		PaymentTransaction transaction = paymentTransactionRepository.save(PaymentTransaction.pending(payment.getId(),
 			PaymentTransactionAction.CANCEL, last.getAmount(), last.getIdempotencyKey()));
 		RefundPurpose purpose = RefundPurpose.ofKey(last.getIdempotencyKey());

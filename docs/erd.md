@@ -156,6 +156,7 @@ erDiagram
 | held_at DATETIME(6) NULL | 보증금 보류 시작 — 7일 관리자 확정 기준 |
 | refunded_amount INT | 누적 취소 금액 |
 | refund_pending_amount INT NULL | 아직 끝나지 않은 환불액. NULL이 아니면 환불이 남아 있다(재시도 배치 대상). 보증금 0원이라 depositStatus가 NONE인 결제의 취소 환불 실패, TX1 직후 서버 중단도 이 값으로 찾는다 |
+| last_refund_attempt_at DATETIME(6) NULL | 마지막 PG 취소 시도 시각(시도마다 기록). 재시도 간격의 기준 |
 | refund_retry_count INT, needs_admin_check BOOLEAN | 환불 재시도 횟수, 5회 초과 시 true |
 | damage_grade, deduction_amount, deduction_reason | **확정된 차감 결과만** (협의 이력은 deduction_proposals). 손상 발생률 집계용. `held_at`과 함께 REQ-049 마이그레이션에서 추가 |
 | idempotency_key UK | |

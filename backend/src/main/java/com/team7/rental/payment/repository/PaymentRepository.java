@@ -20,12 +20,12 @@ import jakarta.persistence.LockModeType;
  */
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
-	/** 환불 재시도 대상: 환불이 남았고 관리자 확인 전이며 updatedAt ≤ threshold. id 순 */
+	/** 환불 재시도 대상: 환불이 남았고 관리자 확인 전이며 lastRefundAttemptAt ≤ threshold. id 순 */
 	@Query("""
 		select new com.team7.rental.payment.repository.RefundRetryTarget(p.id, p.rentalId) from Payment p
 		where p.refundPendingAmount is not null
 			and p.needsAdminCheck = false
-			and p.updatedAt <= :threshold
+			and p.lastRefundAttemptAt <= :threshold
 		order by p.id
 		""")
 	List<RefundRetryTarget> findRefundRetryTargets(@Param("threshold")

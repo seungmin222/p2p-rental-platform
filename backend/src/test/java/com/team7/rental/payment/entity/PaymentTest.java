@@ -2,6 +2,8 @@ package com.team7.rental.payment.entity;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +13,7 @@ import com.team7.rental.global.error.ErrorCode;
 class PaymentTest {
 
 	private static final int MAX_RETRY = 5;
+	private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 28, 10, 0);
 
 	private Payment approved(int rentalFee, int deposit) {
 		Payment payment = Payment.createForRental(1L, "order-1", "key-1", rentalFee, deposit);
@@ -52,11 +55,11 @@ class PaymentTest {
 		Payment depositOnly = approved(0, 5_000);
 
 		// when
-		full.requestRefund(15_000);
+		full.requestRefund(15_000, NOW);
 		full.applyRefund();
-		partial.requestRefund(5_000);
+		partial.requestRefund(5_000, NOW);
 		partial.applyRefund();
-		depositOnly.requestRefund(5_000);
+		depositOnly.requestRefund(5_000, NOW);
 		depositOnly.applyRefund();
 
 		// then
@@ -73,7 +76,7 @@ class PaymentTest {
 	void noDepositStaysNone() {
 		// given
 		Payment payment = approved(10_000, 0);
-		payment.requestRefund(10_000);
+		payment.requestRefund(10_000, NOW);
 
 		// when
 		payment.markRefundFailed();
@@ -95,7 +98,7 @@ class PaymentTest {
 	void refundFailedThenRefunded() {
 		// given
 		Payment payment = approved(10_000, 5_000);
-		payment.requestRefund(5_000);
+		payment.requestRefund(5_000, NOW);
 
 		// when
 		payment.markRefundFailed();
@@ -115,11 +118,11 @@ class PaymentTest {
 	void requestRefundGuards() {
 		Payment payment = approved(10_000, 5_000);
 
-		assertThatThrownBy(() -> payment.requestRefund(0)).isInstanceOf(IllegalArgumentException.class);
-		assertThatThrownBy(() -> payment.requestRefund(15_001)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> payment.requestRefund(0, NOW)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> payment.requestRefund(15_001, NOW)).isInstanceOf(IllegalArgumentException.class);
 
-		payment.requestRefund(5_000);
-		assertThatThrownBy(() -> payment.requestRefund(5_000)).isInstanceOf(BusinessException.class);
+		payment.requestRefund(5_000, NOW);
+		assertThatThrownBy(() -> payment.requestRefund(5_000, NOW)).isInstanceOf(BusinessException.class);
 	}
 
 	@Test
