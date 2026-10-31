@@ -13,4 +13,9 @@ public record RentalPaymentView(Long rentalId, Long itemId, Long renterId, Renta
 	public boolean isPayable() {
 		return status == RentalStatus.PENDING_PAYMENT && !paymentExpired;
 	}
+
+	/** 결제 승인으로 RESERVED 이상이 됐는지 */
+	public boolean isReservedOrLater() {
+		return status != RentalStatus.PENDING_PAYMENT && status != RentalStatus.CANCELED;
+	}
 }

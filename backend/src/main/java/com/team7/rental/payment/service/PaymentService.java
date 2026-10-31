@@ -96,6 +96,8 @@ public class PaymentService {
 		if (outcome.refund() != null) {
 			log.warn("Payment approved after rental expired, refunding: orderId={}", request.orderId());
 			paymentRefundService.execute(outcome.refund());
+		}
+		if (outcome.canceledAfterExpiry()) {
 			throw new BusinessException(ErrorCode.PAYMENT_CANCELED_AFTER_EXPIRY);
 		}
 		return outcome.response();

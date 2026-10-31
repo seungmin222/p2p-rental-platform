@@ -328,6 +328,23 @@ class PaymentConfirmIntegrationTest extends IntegrationTestSupport {
 		assertThat(payment.getRefundPendingAmount()).isEqualTo(AMOUNT);
 	}
 
+	@Test
+	@DisplayName("경합으로 환불이 남은 주문을 다시 승인하면 첫 응답과 같은 409이고 PG를 또 부르지 않는다")
+	void repeatAfterExpiredDuringConfirm() throws Exception {
+		// given: 결제 APPROVED(환불 남음) + 대여 CANCELED
+		String orderId = orderIdOf(rental);
+		paymentGateway.beforeNextConfirm(() -> testClock.advance(Duration.ofMinutes(16)));
+		paymentGateway.failNextCancel(Fault.ERROR);
+		confirm(renter, orderId, AMOUNT).andExpect(status().isConflict());
+		assertThat(onlyPayment().getStatus()).isEqualTo(PaymentStatus.APPROVED);
+
+		// when, then
+		confirm(renter, orderId, AMOUNT).andExpect(status().isConflict())
+			.andExpect(jsonPath("$.error.code").value("PAYMENT_CANCELED_AFTER_EXPIRY"));
+		assertThat(paymentGateway.confirmCalls()).isEqualTo(1);
+		assertThat(paymentGateway.cancelCalls()).isEqualTo(1);
+	}
+
 	private String orderIdOf(Rental target) throws Exception {
 		String body = createOrder(renter, target).andExpect(status().isCreated())
 			.andReturn().getResponse().getContentAsString();

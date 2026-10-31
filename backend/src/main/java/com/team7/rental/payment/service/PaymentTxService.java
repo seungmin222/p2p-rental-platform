@@ -57,8 +57,13 @@ public class PaymentTxService {
 	record Proceed(Long rentalId, Long transactionId, String idempotencyKey, int amount) implements ConfirmDecision {
 	}
 
-	/** TX2의 결론. refund가 있으면 승인 직후 대여가 만료·취소된 경합이라 전액 취소를 이어서 한다 */
-	record ConfirmOutcome(PaymentConfirmResponse response, RefundTicket refund) {
+	/**
+	 * TX2의 결론.
+	 *
+	 * @param refund 승인 직후 대여가 만료·취소된 경합이면 이어서 할 전액 취소
+	 * @param canceledAfterExpiry 경합이라 PAYMENT_CANCELED_AFTER_EXPIRY로 답한다. 동시에 들어온 다른 요청이 환불을 맡았으면 refund는 null이다
+	 */
+	record ConfirmOutcome(PaymentConfirmResponse response, RefundTicket refund, boolean canceledAfterExpiry) {
 	}
 
 	private final PaymentRepository paymentRepository;
@@ -108,7 +113,8 @@ public class PaymentTxService {
 	/**
 	 * TX1: 검증과 시도 기록. 금액은 저장된 값과 비교한다(서버 계산이 기준, 원칙 1).
 	 *
-	 * @throws BusinessException PAYMENT_RENTER_ONLY, PAYMENT_INVALID_STATUS(FAILED 주문), PAYMENT_EXPIRED(대여가 이미 만료·취소)
+	 * @throws BusinessException PAYMENT_RENTER_ONLY, PAYMENT_INVALID_STATUS(FAILED 주문), PAYMENT_EXPIRED(대여가 이미 만료·취소),
+	 *     PAYMENT_CANCELED_AFTER_EXPIRY(경합으로 취소된 주문의 재호출. 첫 응답과 같게 답한다)
 	 */
 	public ConfirmDecision prepareConfirm(Long rentalId, Long memberId, String orderId, String paymentKey,
 		int requestAmount) {
@@ -120,6 +126,9 @@ public class PaymentTxService {
 		Payment payment = paymentRepository.findByOrderIdForUpdate(orderId).orElseThrow();
 		if (payment.getStatus() == PaymentStatus.FAILED) {
 			throw new BusinessException(ErrorCode.PAYMENT_INVALID_STATUS);
+		}
+		if (isCanceledAfterExpiry(payment, rental)) {
+			throw new BusinessException(ErrorCode.PAYMENT_CANCELED_AFTER_EXPIRY);
 		}
 		if (payment.getStatus() != PaymentStatus.READY) {
 			return new AlreadyProcessed(PaymentConfirmResponse.of(payment));
@@ -148,9 +157,14 @@ public class PaymentTxService {
 		Payment payment = paymentRepository.findByOrderIdForUpdate(orderId).orElseThrow();
 		transactionOf(transactionId).succeed(result.toRecord());
 		if (payment.getStatus() != PaymentStatus.READY && payment.getStatus() != PaymentStatus.FAILED) {
-			return new ConfirmOutcome(PaymentConfirmResponse.of(payment), null);
+			return new ConfirmOutcome(PaymentConfirmResponse.of(payment), null, isCanceledAfterExpiry(payment, rental));
 		}
 		return approveAndSettle(rental, payment, result.payment().paymentKey(), now);
+	}
+
+	// 승인은 됐는데 대여가 RESERVED에 이르지 못했다: 경합으로 환불 중이거나 환불이 남은 건이다
+	private boolean isCanceledAfterExpiry(Payment payment, RentalPaymentView rental) {
+		return payment.getStatus() == PaymentStatus.APPROVED && !rental.isReservedOrLater();
 	}
 
 	private ConfirmOutcome approveAndSettle(RentalPaymentView rental, Payment payment, String paymentKey,
@@ -159,14 +173,14 @@ public class PaymentTxService {
 		payment.approve(paymentKey);
 		if (rental.isPayable()) {
 			rentalPaymentTxService.confirmPayment(rentalId, now);
-			return new ConfirmOutcome(PaymentConfirmResponse.of(payment), null);
+			return new ConfirmOutcome(PaymentConfirmResponse.of(payment), null, false);
 		}
 		if (rental.status() == RentalStatus.PENDING_PAYMENT) {
 			rentalPaymentTxService.expirePayment(rentalId, now);
 		}
 		RefundTicket refund = paymentRefundTxService.prepare(payment, payment.getAmount(), RefundPurpose.CANCEL,
 			null);
-		return new ConfirmOutcome(PaymentConfirmResponse.of(payment), refund);
+		return new ConfirmOutcome(PaymentConfirmResponse.of(payment), refund, true);
 	}
 
 	/** TX2: PG 오류 반영. 대여는 PENDING_PAYMENT를 유지하고 만료 배치가 취소한다 */
