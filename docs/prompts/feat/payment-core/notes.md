@@ -3,7 +3,7 @@
 ## 요약
 - API: `POST /api/payments`, `POST /api/payments/confirm`. 내부 호출: 취소 환불, 보증금 반환. 배치: 결제 만료, 인계 없음 자동 취소, 환불 재시도, PG 조정.
 - 주요 파일: `payment/service/PaymentService`·`PaymentTxService`·`PaymentRefundService`·`PaymentRefundTxService`·`PaymentReconcileService`, `payment/client/PaymentGateway`·`TossPaymentGateway`, `payment/batch/*`, `rental/service/RentalRefundPort`·`RentalPaymentTxService`·`RentalCancelTxService`, `rental/batch/NoHandoverCancelJob`, `V7__create_payment_tables.sql`, 테스트 `support/FakePaymentGateway`·`PaymentFixture`.
-- 남은 일: 장애 주입 결과표(`docs/experiments/payment.md`)와 결제 알림(REQ-032)은 이 브랜치 범위 밖이다. 토스 실제 호출은 로컬에서 수동 확인이 필요하다.
+- 남은 일: 장애 주입 결과표(`docs/experiments/payment.md`)와 결제 알림(REQ-032)은 이 브랜치 범위 밖이다. 토스 실제 호출은 로컬에서 수동 확인이 필요하다. 동시성 테스트 공백(늦은 승인 vs 만료 배치 동시 실행, 환불 중 상태 확인)은 14주차 장애 주입 실험에서 다룬다.
 - 다음 브랜치: `feat/rental-overdue`는 `requestReturn`에서 `overdue_fee`만 채우면 된다. REQ-049는 아래 "상태 확인 이상"에서 잇고, REQ-039는 `PaymentRefundTxService`의 주석 두 곳(취소 수수료, 보증금 반환 완료)과 PG 없이 완료되는 `RentalInspectionTxService.judge`에 정산 생성을 붙인다. 연장 결제(038)는 `Payment`에 팩토리와 주문 API의 extensionId를 더한다.
 
 ## 범위
