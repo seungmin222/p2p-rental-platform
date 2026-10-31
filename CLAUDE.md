@@ -101,7 +101,7 @@ cd frontend && npm run format && npm run lint && npm run build
 
 - `/start-work <브랜치 또는 REQ>` — develop 최신화 → 작업 브랜치 생성·이동 → 할 일 요약 (인자가 없으면 멈추고, 프로젝트 채팅에서 브랜치를 정해 오라고 안내한다)
 - `/implement-req REQ-013` — 명세 확인 → 질문 → 구현 → 테스트 → 문서 갱신
-- `/check-spec [REQ-xxx]` — 변경 사항이 명세와 맞는지 검토(수정 없음)
+- `/check-spec [브랜치명] [REQ-xxx]` — 변경 사항이 명세와 맞는지 검토(수정 없음)
 - `/finish-work` — 테스트 → 체크리스트 → develop 반영 → push → PR 생성
 
 보통 하루 작업은 `/start-work` → `/implement-req`(여러 번) → `/finish-work` 순서다.
