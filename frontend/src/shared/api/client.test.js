@@ -1,9 +1,9 @@
-import { http } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fail, ok } from '../../mocks/response';
-import { ApiError, CLIENT_NETWORK_ERROR } from './ApiError';
+import { ApiError, CLIENT_INVALID_RESPONSE, CLIENT_NETWORK_ERROR } from './ApiError';
 import { useAuthStore } from './authStore';
 import { apiClient, setUnauthorizedHandler } from './client';
 
@@ -78,6 +78,86 @@ describe('응답 정규화', () => {
       code: CLIENT_NETWORK_ERROR,
       status: 0,
     });
+  });
+});
+
+describe('2xx 응답 검사', () => {
+  it.each([
+    ['HTML 문자열', () => HttpResponse.html('<!doctype html><html></html>')],
+    ['래퍼 없는 JSON', () => HttpResponse.json({ itemId: 1 })],
+    ['success 누락', () => HttpResponse.json({ data: { itemId: 1 }, error: null })],
+    [
+      'success가 false',
+      () =>
+        HttpResponse.json({
+          success: false,
+          data: null,
+          error: { code: 'ITEM_NOT_FOUND', message: '없음', details: [] },
+        }),
+    ],
+  ])('%s이면 CLIENT_INVALID_RESPONSE로 거부한다', async (_, resolver) => {
+    server.use(http.post(`${API}/items`, resolver));
+
+    const error = await apiClient.post('/items').catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({
+      code: CLIENT_INVALID_RESPONSE,
+      message: '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+      details: [],
+      status: 200,
+    });
+    expect(reissueCount).toBe(0);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBe('old-token');
+  });
+
+  it('재발급 후 재시도가 200 HTML이면 거부하고 새 토큰을 유지한다', async () => {
+    server.use(
+      http.get(`${API}/a`, ({ request }) =>
+        request.headers.get('Authorization') === 'Bearer new-token'
+          ? HttpResponse.html('<html></html>')
+          : fail(401, 'AUTH_UNAUTHORIZED', '로그인이 필요합니다.'),
+      ),
+    );
+
+    await expect(apiClient.get('/a')).rejects.toMatchObject({
+      code: CLIENT_INVALID_RESPONSE,
+      status: 200,
+    });
+
+    expect(reissueCount).toBe(1);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBe('new-token');
+  });
+
+  it('실패 응답의 비정상 본문과 같은 모양의 오류를 만든다', async () => {
+    server.use(
+      http.get(`${API}/a`, () => HttpResponse.html('<html></html>')),
+      http.get(`${API}/b`, () => HttpResponse.html('<html></html>', { status: 502 })),
+    );
+
+    const on2xx = await apiClient.get('/a').catch((e) => e);
+    const onFailure = await apiClient.get('/b').catch((e) => e);
+
+    expect(onFailure).toMatchObject({
+      code: on2xx.code,
+      message: on2xx.message,
+      details: on2xx.details,
+      status: 502,
+    });
+  });
+
+  it('{ success: true, data: null }은 null로 통과한다', async () => {
+    server.use(http.delete(`${API}/items/1`, () => ok(null)));
+
+    await expect(apiClient.delete('/items/1')).resolves.toBeNull();
+  });
+
+  it('{ success: true, data: {...} }은 data를 돌려준다', async () => {
+    server.use(http.post(`${API}/items`, () => ok({ itemId: 1 }, { status: 201 })));
+
+    await expect(apiClient.post('/items')).resolves.toEqual({ itemId: 1 });
   });
 });
 

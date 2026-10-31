@@ -81,7 +81,7 @@ src/
 
 ## API 연동 규칙
 - 응답은 `{ success, data, error }`. axios 응답 인터셉터에서 `data`만 꺼내고, 실패는 `ApiError(code, message, details, status)`로 정규화해 throw.
-  - 서버 응답이 아닌 실패는 프론트 전용 코드: `CLIENT_NETWORK_ERROR`(응답 없음, `status` 0) · `CLIENT_TIMEOUT` · `CLIENT_INVALID_RESPONSE`(공통 래퍼가 아닌 응답, 예: 프록시 502). 요청 취소는 ApiError로 바꾸지 않는다.
+  - 서버 응답이 아닌 실패는 프론트 전용 코드: `CLIENT_NETWORK_ERROR`(응답 없음, `status` 0) · `CLIENT_TIMEOUT` · `CLIENT_INVALID_RESPONSE`(공통 래퍼가 아닌 응답, 예: 프록시 502. 2xx는 `success === true`만 통과). 요청 취소는 ApiError로 바꾸지 않는다.
 - **분기는 `error.code`로** (예: `RENTAL_PERIOD_CONFLICT` → "이미 예약된 기간입니다" 토스트 + 캘린더 refetch). HTTP 메시지 문자열로 분기하지 않는다.
 - 폼 제출 실패는 `shared/hooks/useSubmitErrorHandler`(onError로 사용): `details[]`는 `fieldMap`, 특정 code(예: 409 중복)는 `codeFields`로 필드에 붙이고 비활성이 풀린 뒤 첫 오류 필드로 포커스, 나머지는 `root.server`. 문구는 도메인별 `features/*/errorMessages.js`(`createErrorMessageGetter(MESSAGES)`, `shared/lib/formErrors.js`).
 - 폼은 react-hook-form. 제출할 때 검증하고 첫 오류 필드로 포커스(`shouldFocusError`). 값 구독은 `watch` 대신 `useWatch`(React Compiler가 `watch`가 있는 컴포넌트를 건너뛴다). 제출 중에는 Modal·BottomSheet `dismissible={false}`, 버튼 비활성.
