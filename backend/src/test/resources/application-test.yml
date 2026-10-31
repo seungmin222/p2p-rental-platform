@@ -14,6 +14,7 @@ app:
     # 배치는 테스트에서 직접 호출한다
     cancel-agreement-expire-cron: "-"
     return-auto-confirm-cron: "-"
+    payment-expire-cron: "-"
   storage:
     local:
       root-dir: build/test-uploads

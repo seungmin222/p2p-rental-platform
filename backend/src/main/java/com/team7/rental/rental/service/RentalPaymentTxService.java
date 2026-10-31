@@ -2,6 +2,7 @@ package com.team7.rental.rental.service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,12 @@ public class RentalPaymentTxService {
 	 */
 	public RentalPaymentView lock(Long rentalId) {
 		return viewOf(getForUpdate(rentalId), LocalDateTime.now(clock));
+	}
+
+	/** 결제 만료 배치 대상 id */
+	@Transactional(readOnly = true)
+	public List<Long> findPaymentExpiredIds(LocalDateTime now) {
+		return rentalRepository.findPaymentExpiredIds(now);
 	}
 
 	/** 결제 승인: PENDING_PAYMENT → RESERVED */

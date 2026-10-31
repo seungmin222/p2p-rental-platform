@@ -2,6 +2,7 @@ package com.team7.rental.payment.service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import com.team7.rental.payment.entity.Payment;
 import com.team7.rental.payment.entity.PaymentStatus;
 import com.team7.rental.payment.entity.PaymentTransaction;
 import com.team7.rental.payment.entity.PaymentTransactionAction;
+import com.team7.rental.payment.entity.PaymentTransactionResult;
 import com.team7.rental.payment.entity.PaymentType;
 import com.team7.rental.payment.repository.PaymentRepository;
 import com.team7.rental.payment.repository.PaymentTransactionRepository;
@@ -163,6 +165,39 @@ public class PaymentTxService {
 		if (payment.getStatus() == PaymentStatus.READY) {
 			payment.fail();
 		}
+	}
+
+	/** 결제 만료 배치 대상 대여 id */
+	@Transactional(readOnly = true)
+	public List<Long> findExpiredRentalIds(LocalDateTime now) {
+		return rentalPaymentTxService.findPaymentExpiredIds(now);
+	}
+
+	/**
+	 * 결제 만료 한 건. 대상 조회 뒤 승인·취소됐을 수 있어 조건을 다시 본다.
+	 *
+	 * @return 처리했으면 true
+	 */
+	public boolean expire(Long rentalId, LocalDateTime now) {
+		RentalPaymentView rental = rentalPaymentTxService.lock(rentalId);
+		if (rental.status() != RentalStatus.PENDING_PAYMENT || !rental.paymentExpired()) {
+			return false;
+		}
+		rentalPaymentTxService.expirePayment(rentalId, now);
+		closeReadyOrders(rentalId);
+		return true;
+	}
+
+	/**
+	 * 대여가 결제 없이 끝났을 때 READY 주문을 FAILED로 닫는다. 승인 결과를 모르는(시도 PENDING) 주문은 PG에 승인됐을 수 있어 조정 배치가 보도록 남긴다.
+	 * 호출하는 쪽이 대여 행 락을 잡은 트랜잭션 안에서 부른다.
+	 */
+	public void closeReadyOrders(Long rentalId) {
+		paymentRepository.findAllByRentalIdForUpdate(rentalId, PaymentType.RENTAL).stream()
+			.filter(payment -> payment.getStatus() == PaymentStatus.READY)
+			.filter(payment -> !paymentTransactionRepository.existsByPaymentIdAndActionAndResult(payment.getId(),
+				PaymentTransactionAction.APPROVE, PaymentTransactionResult.PENDING))
+			.forEach(Payment::fail);
 	}
 
 	private PaymentTransaction transactionOf(Long transactionId) {

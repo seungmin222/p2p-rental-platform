@@ -51,6 +51,8 @@ app:
     cancel-agreement-expire-cron: "0 */10 * * * *"
     # 자동 상태 확인(반납 요청 후 return.auto-confirm-days): 1시간 (REQ-018)
     return-auto-confirm-cron: "0 0 * * * *"
+    # 결제 만료: 1분 (REQ-024)
+    payment-expire-cron: "0 * * * * *"
   policy:
     # docs/policies.md 수치. 바꾸면 policies.md도 함께 수정 (PolicyProperties)
     image:
