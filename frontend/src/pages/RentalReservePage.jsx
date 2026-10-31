@@ -6,6 +6,7 @@ import BottomActionBar from '../app/layout/BottomActionBar';
 import PageHeader from '../app/layout/PageHeader';
 import { parseItemId } from '../features/item/itemId';
 import { useItemSummary } from '../features/item/queries';
+import { startPayment } from '../features/payment/startPayment';
 import AmountSummary from '../features/rental/components/AmountSummary';
 import {
   CANCEL_FEE,
@@ -16,6 +17,7 @@ import {
 } from '../features/rental/constants';
 import { getErrorMessage } from '../features/rental/errorMessages';
 import { rentalKeys, useCalendarDays, useCreateRental } from '../features/rental/queries';
+import { calcTotalAmount, requiresPayment } from '../features/rental/rentalData';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { countDaysInclusive, monthOf, todayInSeoul } from '../shared/lib/date';
 import { formatPrice } from '../shared/lib/format';
@@ -72,7 +74,7 @@ function ItemSummarySkeleton() {
   );
 }
 
-/** SCR-07 대여 예약(시안 Booking.html). 결제 화면(/payments/*)은 2순위라 예약 후 바로 대여 상세로 간다. */
+/** SCR-07 대여 예약(시안 Booking.html). 결제 대기가 되면 대여 상세로 옮긴 뒤 결제창을 연다(뒤로 가도 예약 화면으로 오지 않게). */
 export default function RentalReservePage() {
   const { id } = useParams();
   const itemId = parseItemId(id);
@@ -97,7 +99,8 @@ export default function RentalReservePage() {
   const item = itemQuery.data;
   const rentalDays = value?.endDate ? countDaysInclusive(value.startDate, value.endDate) : null;
   const rentalFee = item && rentalDays ? item.pricePerDay * rentalDays : null;
-  const totalAmount = rentalFee != null ? rentalFee + item.deposit : null;
+  const totalAmount =
+    rentalFee != null ? calcTotalAmount(item.pricePerDay, rentalDays, item.deposit) : null;
 
   function handleMonthChange(next) {
     setMonth(next);
@@ -111,6 +114,10 @@ export default function RentalReservePage() {
         onSuccess: (rental) => {
           toast.show({ message: '예약했어요' });
           navigate(`/rentals/${rental.rentalId}`, { replace: true });
+          // 무료 대여는 바로 RESERVED라 결제가 없다
+          if (PAYMENT_ENABLED && rental.status === 'PENDING_PAYMENT') {
+            startPayment(queryClient, rental.rentalId);
+          }
         },
         onError: (error) => {
           if (RESELECT_CODES.includes(error.code)) {
@@ -179,6 +186,8 @@ export default function RentalReservePage() {
   }
 
   const canSubmit = Boolean(item && value?.endDate);
+  // 무료 대여는 결제 없이 바로 RESERVED다(물품을 불러오기 전에는 결제가 있는 쪽으로 그린다)
+  const isPayable = PAYMENT_ENABLED && (!item || requiresPayment(item.pricePerDay, item.deposit));
 
   return (
     <>
@@ -244,7 +253,7 @@ export default function RentalReservePage() {
         </p>
       </div>
 
-      {PAYMENT_ENABLED ? (
+      {isPayable ? (
         <BottomActionBar className="flex flex-col gap-2">
           <p className="text-center text-xs text-ink-muted">
             예약 후 <b className="text-danger">{PAYMENT_EXPIRE_MINUTES}분 안에</b> 결제하지 않으면

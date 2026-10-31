@@ -42,7 +42,10 @@ export default function AmountSummary({
       {hasPeriod && (
         <>
           <div aria-hidden="true" className="my-0.5 h-px bg-line" />
-          <Row label={PAYMENT_ENABLED ? '총 결제 금액' : '합계'} className="text-price">
+          <Row
+            label={PAYMENT_ENABLED && totalAmount > 0 ? '총 결제 금액' : '합계'}
+            className="text-price"
+          >
             {formatPrice(totalAmount)}
           </Row>
         </>

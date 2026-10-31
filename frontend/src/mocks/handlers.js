@@ -5,6 +5,7 @@ import { itemHandlers } from './item';
 import { itemWriteHandlers } from './itemWrite';
 import { memberHandlers } from './member';
 import { regionHandlers } from './region';
+import { paymentHandlers } from './payment';
 import { rentalHandlers } from './rental';
 
 // 캘린더(/api/items/:itemId/calendar)는 물품 상세(/api/items/:itemId)보다 구체적이라 순서와 무관하게 맞는다.
@@ -14,6 +15,7 @@ export const handlers = [
   ...memberHandlers,
   ...regionHandlers,
   ...rentalHandlers,
+  ...paymentHandlers,
   ...feedHandlers,
   ...itemWriteHandlers,
   ...itemHandlers,

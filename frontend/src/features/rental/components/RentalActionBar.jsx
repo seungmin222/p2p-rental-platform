@@ -1,8 +1,11 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
 
 import BottomActionBar from '../../../app/layout/BottomActionBar';
 import { parseServerDateTime } from '../../../shared/lib/format';
 import { Button, ConfirmModal, toast } from '../../../shared/ui';
+import { useIsPaymentStarting } from '../../payment/queries';
+import { startPayment } from '../../payment/startPayment';
 import { PAYMENT_ENABLED } from '../constants';
 import { getErrorMessage } from '../errorMessages';
 import { useConfirmReturn, useRespondCancelAgreement } from '../queries';
@@ -13,18 +16,25 @@ import { FormError } from './FormParts';
 import HandoverSheet from './HandoverSheet';
 import ReturnRequestSheet from './ReturnRequestSheet';
 
-/** 결제 만료까지 남은 시간 "12:04"(1초마다 갱신) */
-function PaymentCountdown({ expiresAt }) {
+/** 결제 만료까지 남은 초(1초마다 갱신). 만료 시각이 없으면 null */
+function usePaymentSecondsLeft(expiresAt) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    if (!expiresAt) {
+      return undefined;
+    }
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [expiresAt]);
   const expiry = parseServerDateTime(expiresAt)?.getTime();
-  if (expiry == null) {
+  return expiry == null ? null : Math.max(0, Math.floor((expiry - now) / 1000));
+}
+
+/** 결제 만료까지 남은 시간 "12:04" */
+function PaymentCountdown({ seconds }) {
+  if (seconds == null) {
     return null;
   }
-  const seconds = Math.max(0, Math.floor((expiry - now) / 1000));
   if (seconds === 0) {
     return <p className="text-center text-xs text-danger">결제 시간이 지났어요</p>;
   }
@@ -91,9 +101,15 @@ function NormalConfirmModal({ rental, onClose }) {
     mutation.mutate(
       { request: { result: 'NORMAL' }, images: [] },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
           onClose();
-          toast.show({ message: '정상으로 확인했어요. 거래가 완료됐어요' });
+          // 보증금 반환이 실패했거나 결과를 모르면 200 + RETURNED다(재시도 배치가 완료한다)
+          toast.show({
+            message:
+              result.status === 'COMPLETED'
+                ? '정상으로 확인했어요. 거래가 완료됐어요'
+                : '정상으로 확인했어요. 보증금 반환을 처리하고 있어요',
+          });
         },
       },
     );
@@ -146,12 +162,16 @@ function ActionDialog({ type, rental, today, onClose }) {
 
 /**
  * 대여 상세 하단 바. 무엇을 보여 줄지는 getRentalActions(표 하나)만 보고 정한다.
- * 비활성 버튼은 사유를 버튼 아래에 쓰고 aria-describedby로 잇는다. "결제하기"는 2순위라 동작이 없다.
+ * 비활성 버튼은 사유를 버튼 아래에 쓰고 aria-describedby로 잇는다. "결제하기"는 모달 없이 토스 결제창을 연다.
  */
 export default function RentalActionBar({ rental, returnInspection, today }) {
   const reasonId = useId();
   const [openType, setOpenType] = useState(null);
   const { actions, notice } = getRentalActions(rental, returnInspection, today);
+  const queryClient = useQueryClient();
+  // SCR-07에서 시작한 결제창도 여기서 기다린다
+  const isPaymentStarting = useIsPaymentStarting(rental.rentalId);
+  const secondsLeft = usePaymentSecondsLeft(notice?.paymentExpiresAt);
 
   // 열어 둔 액션이 표에서 사라졌으면(다시 불러온 상태가 바뀜) 그 모달은 그대로 두고 닫힐 때까지 기다린다
   const dialog = openType && (
@@ -167,7 +187,7 @@ export default function RentalActionBar({ rental, returnInspection, today }) {
   return (
     <>
       <BottomActionBar className="flex flex-col gap-2">
-        {notice?.paymentExpiresAt && <PaymentCountdown expiresAt={notice.paymentExpiresAt} />}
+        {notice?.paymentExpiresAt && <PaymentCountdown seconds={secondsLeft} />}
         {notice?.text && (
           <p
             className={`text-center text-caption ${notice.tone === 'danger' ? 'font-semibold text-danger' : 'text-ink-muted'}`}
@@ -182,9 +202,18 @@ export default function RentalActionBar({ rental, returnInspection, today }) {
                 key={action.type}
                 variant={action.variant}
                 className="min-w-0 flex-1 px-3"
-                disabled={action.disabledReason != null}
+                disabled={
+                  action.disabledReason != null ||
+                  (action.type === A.PAY && secondsLeft === 0) ||
+                  (action.type === A.CANCEL && isPaymentStarting)
+                }
+                isLoading={action.type === A.PAY && isPaymentStarting}
                 aria-describedby={action.disabledReason ? reasonId : undefined}
-                onClick={action.type === A.PAY ? undefined : () => setOpenType(action.type)}
+                onClick={
+                  action.type === A.PAY
+                    ? () => startPayment(queryClient, rental.rentalId)
+                    : () => setOpenType(action.type)
+                }
               >
                 {action.label}
               </Button>

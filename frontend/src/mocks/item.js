@@ -1,4 +1,4 @@
-// 물품 목. 대여 목(rental.js)도 이 카탈로그를 쓴다. 나 = 회원 1(MOCK_ME).
+// 물품 목. 대여 목(rental.js)도 이 카탈로그를 쓴다. 시드의 "나" = 회원 1(MOCK_ME).
 //
 // | itemId | 물품 | 제공자 | 쓰임 |
 // | --- | --- | --- | --- |
@@ -257,9 +257,9 @@ export function listMockItems() {
 }
 
 /** 삭제되지 않은 내 물품 */
-export function listMyMockItems() {
+export function listMyMockItems(memberId = MOCK_ME) {
   return itemDb.items
-    .filter((item) => item.ownerId === MOCK_ME && !item.isDeleted)
+    .filter((item) => item.ownerId === memberId && !item.isDeleted)
     .map((item) => findMockItem(item.itemId));
 }
 

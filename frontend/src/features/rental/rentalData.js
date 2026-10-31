@@ -56,6 +56,51 @@ export function estimateCancelFee(rental, today) {
   return Math.floor((rental.rentalFee * CANCEL_FEE.RATE_PERCENT) / 100);
 }
 
+/** 결제 금액 = 대여료 + 보증금. 예약 화면의 미리보기용이고 확정 금액은 서버가 계산한다. */
+export function calcTotalAmount(pricePerDay, rentalDays, deposit) {
+  return pricePerDay * rentalDays + deposit;
+}
+
+/** 결제가 필요한 물품인가. 일 대여료와 보증금이 모두 0원이면 무료 대여다(policies.md) */
+export function requiresPayment(pricePerDay, deposit) {
+  return pricePerDay > 0 || deposit > 0;
+}
+
+/** 결제 대기이고 만료 시각이 지났는가(now는 밀리초) */
+export function isPaymentExpired(rental, now) {
+  if (rental.status !== 'PENDING_PAYMENT') {
+    return false;
+  }
+  const expiry = parseServerDateTime(rental.paymentExpiresAt)?.getTime();
+  return expiry != null && expiry <= now;
+}
+
+/** 단독 취소로 돌려받을 금액(payment.md 취소 시 환불). 결제 대기 취소는 결제한 돈이 없어 0 */
+export function refundOnCancel(statusBeforeCancel, canceled) {
+  return statusBeforeCancel === 'RESERVED' ? canceled.totalAmount - canceled.cancelFee : 0;
+}
+
+/**
+ * 보증금 처리 결과 안내. 없으면 null.
+ * TODO: 대여 상세 응답에 보증금 상태·누적 환불액·연체료가 없어 있는 필드로만 추정한다. 연체료(REQ-023)·차감(REQ-049)이
+ * 들어오면 "보증금 전액 반환" 가정이 틀어지므로 그 전에 백엔드와 필드를 합의해 바꾼다.
+ */
+export function getDepositNotice(rental, returnInspection) {
+  if (rental.deposit <= 0 || !returnInspection) {
+    return null;
+  }
+  if (rental.status === 'COMPLETED' && returnInspection.result === 'NORMAL') {
+    return { kind: 'REFUNDED', amount: rental.deposit };
+  }
+  if (rental.status === 'RETURNED' && returnInspection.result === 'NORMAL') {
+    return { kind: 'REFUNDING' };
+  }
+  if (rental.status === 'RETURNED' && returnInspection.result === 'ABNORMAL') {
+    return { kind: 'WAITING' };
+  }
+  return null;
+}
+
 /** 반납 폼의 답({ KEY: true | false | null })을 API 체크리스트 맵으로. 5개 키를 모두 boolean으로 채운다. */
 export function toChecklist(answers) {
   return Object.fromEntries(

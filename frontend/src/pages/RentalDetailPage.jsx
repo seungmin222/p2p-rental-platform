@@ -13,7 +13,12 @@ import {
 } from '../features/rental/constants';
 import { getErrorMessage } from '../features/rental/errorMessages';
 import { useRental, useRentalInspections } from '../features/rental/queries';
-import { findInspection, formatDateTime, formatShortRange } from '../features/rental/rentalData';
+import {
+  findInspection,
+  formatDateTime,
+  formatShortRange,
+  getDepositNotice,
+} from '../features/rental/rentalData';
 import { getRentalSteps } from '../features/rental/rentalSteps';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { todayInSeoul } from '../shared/lib/date';
@@ -58,6 +63,20 @@ function CancelInfoCard({ rental }) {
           <InfoRow label="취소 수수료">{formatPrice(rental.cancelFee)}</InfoRow>
         )}
       </dl>
+    </section>
+  );
+}
+
+/** 보증금 처리 결과. 결제가 켜져 있을 때만(rentalData.getDepositNotice의 TODO 참고) */
+function DepositNoticeCard({ notice }) {
+  const text = {
+    REFUNDED: `보증금 ${formatPrice(notice.amount)} 반환을 완료했어요`,
+    REFUNDING: '보증금 반환을 처리하고 있어요',
+    WAITING: '보증금 처리를 기다리고 있어요',
+  }[notice.kind];
+  return (
+    <section aria-label="보증금" className="rounded-xl bg-accent-soft px-3.5 py-3 text-caption">
+      <p className="font-semibold text-accent-strong">{text}</p>
     </section>
   );
 }
@@ -144,6 +163,7 @@ export default function RentalDetailPage() {
   // undefined = 아직 못 불러옴(getRentalActions가 버튼을 그리지 않는다)
   const returnInspection = hasRecords ? findInspection(inspectionsQuery.data, 'RETURN') : null;
   const itemName = rental.item.isDeleted ? '삭제된 물품' : rental.item.name;
+  const depositNotice = PAYMENT_ENABLED ? getDepositNotice(rental, returnInspection) : null;
 
   return (
     <>
@@ -166,6 +186,8 @@ export default function RentalDetailPage() {
             counterpartNickname={rental.counterpart.nickname}
           />
         )}
+
+        {depositNotice && <DepositNoticeCard notice={depositNotice} />}
 
         {hasRecords && <InspectionRecords query={inspectionsQuery} />}
 

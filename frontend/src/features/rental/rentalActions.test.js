@@ -42,11 +42,14 @@ describe('getRentalActions', () => {
       expect(result.notice).toBeNull();
     });
 
-    it.each(ROLES)('%s: 결제 켜짐이면 결제하기 + 남은 결제 시간 안내', (myRole) => {
+    it.each([
+      ['RENTER', [A.CANCEL, A.PAY]],
+      ['OWNER', [A.CANCEL]],
+    ])('%s: 결제 켜짐이면 결제하기는 대여자만, 남은 결제 시간 안내는 둘 다', (myRole, expected) => {
       const result = getRentalActions(pending(myRole), undefined, TODAY, {
         isPaymentEnabled: true,
       });
-      expect(types(result)).toEqual([A.CANCEL, A.PAY]);
+      expect(types(result)).toEqual(expected);
       expect(result.notice).toEqual({ tone: 'default', paymentExpiresAt: '2026-10-29T10:15:00' });
     });
   });

@@ -25,7 +25,7 @@ import {
   toItemRental,
 } from './api';
 import { isStaleStateError } from './errorMessages';
-import { mergeCalendarDays } from './rentalData';
+import { isPaymentExpired, mergeCalendarDays } from './rentalData';
 
 // 상태가 바뀌는 화면이라 짧게(frontend/CLAUDE.md "API 연동 규칙")
 const SHORT_STALE_TIME = 5_000;
@@ -49,6 +49,9 @@ export function useRental(rentalId) {
     staleTime: SHORT_STALE_TIME,
     // 경로의 id가 숫자가 아니면 부르지 않는다(화면이 바로 "볼 수 없어요")
     enabled: rentalId != null,
+    // 결제 시간이 지나면 만료 배치가 취소할 때까지 다시 불러온다
+    refetchInterval: ({ state }) =>
+      state.data && isPaymentExpired(state.data, Date.now()) ? SHORT_STALE_TIME : false,
   });
 }
 
