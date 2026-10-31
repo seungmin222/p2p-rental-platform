@@ -1,16 +1,21 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { flattenPages, getNextCursorParam, getNextPageParam } from '../../shared/lib/listParams';
 import {
+  createItem,
+  deleteItem,
   fetchCategories,
+  fetchDepositGuide,
   fetchFeed,
   fetchItem,
+  fetchItemForEdit,
   fetchMyItems,
   searchItems,
   toItemCard,
   toItemDetail,
   toItemSummary,
   toMyItem,
+  updateItem,
 } from './api';
 import { CATEGORY_STALE_TIME, ITEM_DETAIL_STALE_TIME } from './constants';
 import { hasSearchCondition, resolveCategory, toApiParams } from './searchParams';
@@ -23,6 +28,15 @@ export const itemKeys = {
   search: () => ['items', 'search'],
   searchList: (regionId, filters) => ['items', 'search', { regionId, ...filters }],
   detail: (itemId) => ['items', itemId],
+  // 수정 폼. detail의 하위라 detail을 무효화할 때는 exact로 부른다(방금 넣은 수정 응답을 다시 받지 않게)
+  edit: (itemId) => ['items', itemId, 'edit'],
+  // rentalKeys.calendar와 같은 키(rental/queries가 이 파일을 가져오므로 반대로 가져오지 않는다)
+  calendar: (itemId) => ['items', itemId, 'calendar'],
+  depositGuide: ({ categoryId, itemPrice }) => [
+    'items',
+    'deposit-guide',
+    { categoryId, itemPrice },
+  ],
   mine: () => ['items', 'me'],
   mineTab: (tab) => ['items', 'me', { tab }],
   categories: () => ['categories'],
@@ -104,6 +118,103 @@ export function useItemSummary(itemId) {
     // 경로의 id가 숫자가 아니면 부르지 않는다(화면이 바로 "찾을 수 없어요")
     enabled: Number.isInteger(itemId),
   });
+}
+
+/** REQ-007 수정 폼을 채울 조회(소유자 전용). 남의 물품 403, 없음·삭제 404 */
+export function useItemForEdit(itemId) {
+  return useQuery({
+    queryKey: itemKeys.edit(itemId),
+    queryFn: () => fetchItemForEdit(itemId),
+    enabled: Number.isInteger(itemId),
+    // 수정 화면에 들어올 때마다 지금 값으로 채운다
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+/** 권장 보증금(REQ-006). 카테고리와 유효한 물품 가격이 있을 때만 부른다. 안내일 뿐이라 실패해도 폼을 막지 않는다 */
+export function useDepositGuide({ categoryId, itemPrice }) {
+  return useQuery({
+    queryKey: itemKeys.depositGuide({ categoryId, itemPrice }),
+    queryFn: () => fetchDepositGuide({ categoryId, itemPrice }),
+    enabled: Number.isInteger(categoryId) && Number.isInteger(itemPrice),
+    staleTime: CATEGORY_STALE_TIME,
+  });
+}
+
+function invalidateItemLists(queryClient) {
+  queryClient.invalidateQueries({ queryKey: itemKeys.feed() });
+  queryClient.invalidateQueries({ queryKey: itemKeys.search() });
+  queryClient.invalidateQueries({ queryKey: itemKeys.mine() });
+}
+
+/**
+ * REQ-006 등록. variables에 거래 장소 좌표가 들어가 끝나면 바로 지운다(gcTime 0).
+ * 훅 밖에서 테스트하려고 옵션을 나눈다.
+ */
+export function createItemMutationOptions(queryClient) {
+  return {
+    mutationFn: createItem,
+    gcTime: 0,
+    onSuccess: () => invalidateItemLists(queryClient),
+  };
+}
+
+export function useCreateItem() {
+  const queryClient = useQueryClient();
+  return useMutation(createItemMutationOptions(queryClient));
+}
+
+/**
+ * REQ-007 수정. 응답이 ItemEditResponse라 상세 모양이 아니다: 수정 키만 setQueryData, 캘린더(기간)·목록은 무효화.
+ * 상세(exact)는 reset한다: 무효화만 하면 이전 내용이 먼저 그려져 새 대표 사진이 앞에 낄 때 캐러셀 스냅이 이전 사진을 따라가고,
+ * remove는 마운트된 관찰자(저장 중 뒤로 간 상세)를 갱신하지 않아 이전 내용에 멈춘다.
+ * 화면을 벗어나도 빠지지 않도록 mutate() 콜백이 아니라 훅 옵션에 둔다.
+ */
+export function updateItemMutationOptions(queryClient, itemId) {
+  return {
+    mutationFn: (payload) => updateItem(itemId, payload),
+    gcTime: 0,
+    onSuccess: (data) => {
+      queryClient.setQueryData(itemKeys.edit(itemId), data);
+      queryClient.resetQueries({ queryKey: itemKeys.detail(itemId), exact: true });
+      queryClient.invalidateQueries({ queryKey: itemKeys.calendar(itemId) });
+      invalidateItemLists(queryClient);
+    },
+  };
+}
+
+export function useUpdateItem(itemId) {
+  const queryClient = useQueryClient();
+  return useMutation(updateItemMutationOptions(queryClient, itemId));
+}
+
+/**
+ * REQ-008 삭제. variables는 itemId.
+ * 상세 화면에서 지울 때는 onDeleted로 먼저 이동해야 한다: 상세가 떠 있는 채로 캐시를 지우면 다시 받아 404가 잠깐 보인다.
+ * 훅 옵션(화면을 벗어나도 실행)이라 정리가 빠지지 않는다. 과거 대여의 "삭제된 물품" 표시를 위해 대여도 무효화한다.
+ * 이미 지워진 물품(404)이면 내 물품 목록만 다시 받는다.
+ */
+export function deleteItemMutationOptions(queryClient, { onDeleted } = {}) {
+  return {
+    mutationFn: deleteItem,
+    onSuccess: (_, itemId) => {
+      onDeleted?.(itemId);
+      queryClient.removeQueries({ queryKey: itemKeys.detail(itemId) });
+      invalidateItemLists(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    },
+    onError: (error) => {
+      if (error?.code === 'ITEM_NOT_FOUND') {
+        queryClient.invalidateQueries({ queryKey: itemKeys.mine() });
+      }
+    },
+  };
+}
+
+export function useDeleteItem(options) {
+  const queryClient = useQueryClient();
+  return useMutation(deleteItemMutationOptions(queryClient, options));
 }
 
 // 모듈 함수라 참조가 바뀌지 않아, 데이터가 그대로면 이전 결과를 돌려준다

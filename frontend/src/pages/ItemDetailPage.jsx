@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 
 import BackButton from '../app/layout/BackButton';
 import BottomActionBar from '../app/layout/BottomActionBar';
 import PageHeader from '../app/layout/PageHeader';
+import DeleteItemModal from '../features/item/components/DeleteItemModal';
 import ItemImageCarousel from '../features/item/components/ItemImageCarousel';
 import { ItemOwnerRow, ItemSummary, ItemTradePlace } from '../features/item/components/ItemInfo';
 import { getErrorMessage } from '../features/item/errorMessages';
@@ -15,7 +16,7 @@ import { useCalendarDays } from '../features/rental/queries';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { monthOf, todayInSeoul } from '../shared/lib/date';
 import { isInitialLoadError } from '../shared/lib/queryState';
-import { ButtonLink, Calendar, ErrorState, Skeleton } from '../shared/ui';
+import { Button, ButtonLink, Calendar, ErrorState, Skeleton, toast } from '../shared/ui';
 
 function DetailSkeleton() {
   return (
@@ -62,7 +63,36 @@ function ItemCalendar({ itemId }) {
   );
 }
 
-/** 하단 바: 일 대여료·보증금 + 예약하기. 내 물품이면 예약 대신 "내 물품 관리"(수정·삭제는 feat/fe-item-form에서) */
+/** 내 물품의 수정·삭제. 삭제하면 내 물품 관리로 먼저 옮긴 뒤 캐시를 지운다(상세가 다시 받아 404가 보이지 않게) */
+function OwnerActions({ item }) {
+  const navigate = useNavigate();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  function handleDeleted() {
+    navigate('/me/items', { replace: true, flushSync: true });
+    toast.show({ message: '물품을 삭제했어요' });
+  }
+
+  return (
+    <div className="flex shrink-0 gap-2">
+      <Button variant="danger" onClick={() => setIsDeleting(true)}>
+        삭제
+      </Button>
+      <ButtonLink to={`/items/${item.itemId}/edit`} variant="outline">
+        수정
+      </ButtonLink>
+      {isDeleting && (
+        <DeleteItemModal
+          item={item}
+          onClose={() => setIsDeleting(false)}
+          onDeleted={handleDeleted}
+        />
+      )}
+    </div>
+  );
+}
+
+/** 하단 바: 일 대여료·보증금 + 예약하기. 내 물품이면 예약 대신 수정·삭제 */
 function DetailBar({ item }) {
   const price = getPriceParts(item.pricePerDay);
   const depositText = getDepositText(item.deposit) ?? '보증금 없음';
@@ -80,9 +110,7 @@ function DetailBar({ item }) {
         </span>
       </div>
       {item.isOwner ? (
-        <ButtonLink to="/me/items" variant="outline" className="shrink-0">
-          내 물품 관리
-        </ButtonLink>
+        <OwnerActions item={item} />
       ) : (
         <ButtonLink to={`/items/${item.itemId}/reserve`} className="shrink-0">
           예약하기

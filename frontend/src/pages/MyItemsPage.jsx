@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 
 import PageHeader from '../app/layout/PageHeader';
+import DeleteItemModal from '../features/item/components/DeleteItemModal';
 import { MY_ITEM_TABS } from '../features/item/constants';
 import { useMyItems } from '../features/item/queries';
 import ItemRentalsSheet from '../features/rental/components/ItemRentalsSheet';
@@ -19,6 +20,7 @@ import {
   Skeleton,
   Tabs,
   Thumbnail,
+  toast,
 } from '../shared/ui';
 
 const DEFAULT_TAB = 'AVAILABLE';
@@ -28,8 +30,8 @@ const EMPTY_TITLES = {
   RENTING: '대여 중인 물품이 없어요',
 };
 
-/** 카드 메뉴는 1순위에 "수정"만(삭제는 REQ-008, 숨기기·끌어올리기는 3순위) */
-function MyItemCard({ item, onOpenRentals }) {
+/** 카드 메뉴는 1순위에 수정·삭제(REQ-008)까지(숨기기·끌어올리기는 3순위) */
+function MyItemCard({ item, onOpenRentals, onDelete }) {
   return (
     <div className="flex flex-col gap-2.5 py-3.5">
       <Link
@@ -67,6 +69,14 @@ function MyItemCard({ item, onOpenRentals }) {
         >
           수정
         </ButtonLink>
+        <Button
+          variant="danger"
+          size="sm"
+          aria-label={`${item.name} 삭제`}
+          onClick={() => onDelete(item)}
+        >
+          삭제
+        </Button>
       </div>
     </div>
   );
@@ -92,7 +102,7 @@ function ListSkeleton() {
   );
 }
 
-function MyItemList({ tab, onOpenRentals }) {
+function MyItemList({ tab, onOpenRentals, onDelete }) {
   const query = useMyItems(tab);
   useRefetchErrorToast([query]);
 
@@ -122,7 +132,7 @@ function MyItemList({ tab, onOpenRentals }) {
       <ul>
         {query.data.map((item) => (
           <li key={item.itemId} className="border-b border-divider">
-            <MyItemCard item={item} onOpenRentals={onOpenRentals} />
+            <MyItemCard item={item} onOpenRentals={onOpenRentals} onDelete={onDelete} />
           </li>
         ))}
       </ul>
@@ -135,6 +145,13 @@ function MyItemList({ tab, onOpenRentals }) {
 export default function MyItemsPage() {
   const [tab, setTab] = useTabParam(MY_ITEM_TABS, DEFAULT_TAB);
   const [sheetItem, setSheetItem] = useState(null);
+  const [deletingItem, setDeletingItem] = useState(null);
+
+  function handleDeleted() {
+    setDeletingItem(null);
+    toast.show({ message: '물품을 삭제했어요' });
+  }
+
   return (
     <>
       <PageHeader title="내 물품 관리" />
@@ -145,10 +162,17 @@ export default function MyItemsPage() {
         onChange={setTab}
         listClassName="sticky top-14 z-10 -mx-4 bg-white px-4"
       >
-        <MyItemList key={tab} tab={tab} onOpenRentals={setSheetItem} />
+        <MyItemList key={tab} tab={tab} onOpenRentals={setSheetItem} onDelete={setDeletingItem} />
       </Tabs>
       {/* 열린 동안만 렌더해 그때 조회한다 */}
       {sheetItem && <ItemRentalsSheet item={sheetItem} onClose={() => setSheetItem(null)} />}
+      {deletingItem && (
+        <DeleteItemModal
+          item={deletingItem}
+          onClose={() => setDeletingItem(null)}
+          onDeleted={handleDeleted}
+        />
+      )}
     </>
   );
 }

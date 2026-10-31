@@ -1,6 +1,60 @@
 import { describe, expect, it } from 'vitest';
 
-import { toItemCard, toItemDetail, toItemSummary, toMyItem } from './api';
+import { toMultipart } from '../../shared/api';
+import { toItemCard, toItemDetail, toItemEditForm, toItemSummary, toMyItem } from './api';
+
+describe('toMultipart', () => {
+  it('request는 JSON 파트, 사진은 images 파트를 반복한다', async () => {
+    const fileA = new File(['a'], 'a.png', { type: 'image/png' });
+    const fileB = new File(['b'], 'b.png', { type: 'image/png' });
+
+    const form = toMultipart({ name: '텐트' }, [fileA, fileB]);
+
+    const request = form.get('request');
+    expect(request.type).toBe('application/json');
+    expect(JSON.parse(await request.text())).toEqual({ name: '텐트' });
+    expect(form.getAll('images').map((file) => file.name)).toEqual(['a.png', 'b.png']);
+  });
+
+  it('사진이 없으면 images 파트가 없다', () => {
+    expect(toMultipart({}).getAll('images')).toEqual([]);
+  });
+});
+
+describe('toItemEditForm', () => {
+  it('금액은 문자열로, 사진은 ImageUploader 모양으로 바꾼다', () => {
+    const form = toItemEditForm({
+      itemId: 101,
+      name: '텐트',
+      description: '설명',
+      images: [{ imageId: 12, url: '/a.jpg', thumbnailUrl: '/t.jpg' }],
+      categoryId: 1,
+      condition: 'USED',
+      pricePerDay: 0,
+      itemPrice: 200000,
+      deposit: 50000,
+      availablePeriods: [{ startDate: '2026-11-01', endDate: '2026-11-30' }],
+      address: '인천',
+      latitude: 37.39,
+      longitude: 126.63,
+      status: 'AVAILABLE',
+    });
+    expect(form).toEqual({
+      name: '텐트',
+      description: '설명',
+      images: [{ id: 12, url: '/a.jpg' }],
+      categoryId: 1,
+      condition: 'USED',
+      pricePerDay: '0',
+      itemPrice: '200000',
+      deposit: '50000',
+      availablePeriods: [{ startDate: '2026-11-01', endDate: '2026-11-30' }],
+      address: '인천',
+      latitude: 37.39,
+      longitude: 126.63,
+    });
+  });
+});
 
 describe('toItemSummary', () => {
   const detail = {

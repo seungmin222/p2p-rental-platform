@@ -197,8 +197,15 @@ const ITEMS = [
   },
 ];
 
-// 피드·검색용 시드(itemSeed.js)를 같은 목록에 둔다. 101~108이 앞이라 기존 id 조회·내 물품(회원 1)은 그대로다
-const ALL_ITEMS = [...ITEMS, ...createFeedSeed()];
+// 피드·검색용 시드(itemSeed.js)를 같은 목록에 둔다. 101~108이 앞이라 기존 id 조회·내 물품(회원 1)은 그대로다.
+// 메모리 저장소: 등록·수정·삭제(itemWrite.js)가 이 항목을 고치고 조회가 모두 여기를 본다. 새로고침하면 시드로 돌아간다.
+// 등록·수정한 항목은 시드의 계산 값 대신 저장한 값을 쓴다(images·periods·address·latitude·longitude·itemPrice).
+const seedItems = [...ITEMS, ...createFeedSeed()];
+export const itemDb = {
+  items: seedItems,
+  nextItemId: Math.max(...seedItems.map((item) => item.itemId)),
+  nextImageId: 1_000_000, // 시드 이미지 id(itemId × 10 + 순번)와 겹치지 않게
+};
 
 /** 예약하면 항상 기간 충돌인 물품 */
 export const CONFLICT_ITEM_ID = 102;
@@ -215,40 +222,45 @@ function toMockImages(item) {
 }
 
 export function findMockItem(itemId) {
-  const item = ALL_ITEMS.find((candidate) => candidate.itemId === Number(itemId));
+  const item = itemDb.items.find((candidate) => candidate.itemId === Number(itemId));
   if (!item) {
     return null;
   }
   const today = todayInSeoul();
   const region = MOCK_REGION_MASTER.find((candidate) => candidate.regionId === item.regionId);
+  const images = item.images ?? toMockImages(item);
   return {
     ...item,
     isDeleted: item.isDeleted ?? false,
-    thumbnailUrl: item.hasNoImage ? null : placeholderImage(item.name, item.color),
-    images: toMockImages(item),
+    thumbnailUrl: images[0]?.thumbnailUrl ?? null,
+    images,
     regionName: region.name,
-    address: MOCK_ADDRESSES[item.regionId],
-    latitude: region.lat,
-    longitude: region.lng,
+    address: item.address ?? MOCK_ADDRESSES[item.regionId],
+    latitude: item.latitude ?? region.lat,
+    longitude: item.longitude ?? region.lng,
+    // 시드에는 없어 일 대여료로 어림한다(수정 폼을 채우는 소유자 전용 값)
+    itemPrice: item.itemPrice ?? item.pricePerDay * 20,
     bumpedAt: item.bumpedAt ?? `${addDays(today, -item.bumpedDaysAgo)}T10:00:00`,
     counts: item.counts ?? { viewCount: 0, wishCount: 0, chatCount: 0 },
-    availablePeriods: item.availablePeriods.map(([from, to]) => ({
-      startDate: addDays(today, from),
-      endDate: addDays(today, to),
-    })),
+    availablePeriods:
+      item.periods ??
+      item.availablePeriods.map(([from, to]) => ({
+        startDate: addDays(today, from),
+        endDate: addDays(today, to),
+      })),
   };
 }
 
 /** 피드·검색이 보는 전체 물품(삭제된 것 포함, 거르는 것은 itemLogic) */
 export function listMockItems() {
-  return ALL_ITEMS.map((item) => findMockItem(item.itemId));
+  return itemDb.items.map((item) => findMockItem(item.itemId));
 }
 
 /** 삭제되지 않은 내 물품 */
 export function listMyMockItems() {
-  return ALL_ITEMS.filter((item) => item.ownerId === MOCK_ME && !item.isDeleted).map((item) =>
-    findMockItem(item.itemId),
-  );
+  return itemDb.items
+    .filter((item) => item.ownerId === MOCK_ME && !item.isDeleted)
+    .map((item) => findMockItem(item.itemId));
 }
 
 export const itemHandlers = [
