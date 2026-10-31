@@ -9,6 +9,7 @@
 | Java | **네이버 캠퍼스 핵데이 Java 컨벤션** — Spotless + 네이버 Eclipse formatter XML (+ 선택: Checkstyle 네이버 규칙) | `./gradlew spotlessApply` (수정), `./gradlew spotlessCheck` (검사) |
 | JS/JSX/CSS | ESLint + Prettier | `npm run lint`, `npm run format` |
 | 공통 | `.editorconfig` (루트) | IDE가 자동 적용 |
+| 줄바꿈 | `.gitattributes` (루트) — LF 고정, `.bat`·`.cmd`만 CRLF | git이 자동 적용 |
 
 - 네이버 컨벤션 요지: **들여쓰기 탭(크기 4)**, 한 줄 최대 120자, 중괄호 K&R 스타일, import에 `*` 사용 금지, 파일 끝 개행.
 - 설정 파일 위치: `backend/config/naver-eclipse-formatter.xml`(필수), `backend/config/naver-checkstyle-rules.xml`(선택). 원본은 GitHub `naver/hackday-conventions-java` 저장소에서 받는다. 버전·Spotless 설정법은 도입 시점의 저장소 README를 확인한다.
