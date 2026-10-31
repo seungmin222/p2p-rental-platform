@@ -57,6 +57,8 @@ app:
     no-handover-cancel-cron: "0 0 9 * * *"
     # 환불 재시도: 10분 (REQ-025)
     refund-retry-cron: "0 */10 * * * *"
+    # PG 조정: 1시간 (REQ-024)
+    payment-reconcile-cron: "0 30 * * * *"
   policy:
     # docs/policies.md 수치. 바꾸면 policies.md도 함께 수정 (PolicyProperties)
     image:

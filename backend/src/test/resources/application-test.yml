@@ -17,6 +17,7 @@ app:
     payment-expire-cron: "-"
     no-handover-cancel-cron: "-"
     refund-retry-cron: "-"
+    payment-reconcile-cron: "-"
   storage:
     local:
       root-dir: build/test-uploads

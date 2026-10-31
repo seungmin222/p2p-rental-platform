@@ -30,6 +30,20 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	List<RefundRetryTarget> findRefundRetryTargets(@Param("threshold")
 	LocalDateTime threshold);
 
+	/**
+	 * 조정 대상: createdAt ≥ since(최근 결제)이고 updatedAt ≤ settledBefore(진행 중인 요청과 겹치지 않게), 관리자 확인 전. id 순
+	 */
+	@Query("""
+		select new com.team7.rental.payment.repository.ReconcileTarget(p.id, p.rentalId, p.orderId) from Payment p
+		where p.createdAt >= :since
+			and p.updatedAt <= :settledBefore
+			and p.needsAdminCheck = false
+		order by p.id
+		""")
+	List<ReconcileTarget> findReconcileTargets(@Param("since")
+	LocalDateTime since, @Param("settledBefore")
+	LocalDateTime settledBefore);
+
 	@Query("select p.rentalId from Payment p where p.orderId = :orderId")
 	Optional<Long> findRentalIdByOrderId(@Param("orderId")
 	String orderId);

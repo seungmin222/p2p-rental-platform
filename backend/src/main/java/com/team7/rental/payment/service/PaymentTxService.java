@@ -3,6 +3,7 @@ package com.team7.rental.payment.service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -10,27 +11,32 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
+import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.payment.client.PgResult;
 import com.team7.rental.payment.dto.PaymentConfirmResponse;
 import com.team7.rental.payment.entity.Payment;
 import com.team7.rental.payment.entity.PaymentStatus;
 import com.team7.rental.payment.entity.PaymentTransaction;
 import com.team7.rental.payment.entity.PaymentTransactionAction;
+import com.team7.rental.payment.entity.PaymentTransactionResult;
 import com.team7.rental.payment.entity.PaymentType;
 import com.team7.rental.payment.repository.PaymentRepository;
 import com.team7.rental.payment.repository.PaymentTransactionRepository;
+import com.team7.rental.payment.repository.ReconcileTarget;
 import com.team7.rental.rental.dto.RentalPaymentView;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.service.RentalPaymentTxService;
 import com.team7.rental.rental.service.RentalRefundPort.RefundTicket;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 결제의 트랜잭션 부분 (REQ-024). 모든 쓰기는 대여 행 락 → 결제 행 락 순서로 시작한다. PG 호출은 {@link PaymentService}가 TX1과 TX2 사이에 한다.
  * <p>
  * 대여 행 락을 잡기 전에 일반 SELECT를 하지 않는다. MySQL REPEATABLE READ에서 첫 일반 읽기가 스냅샷을 만들어, 락을 기다린 뒤에도 옛 값을 읽게 된다.
  */
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -59,6 +65,7 @@ public class PaymentTxService {
 	private final PaymentTransactionRepository paymentTransactionRepository;
 	private final RentalPaymentTxService rentalPaymentTxService;
 	private final PaymentRefundTxService paymentRefundTxService;
+	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
 	/**
@@ -144,7 +151,13 @@ public class PaymentTxService {
 		if (payment.getStatus() != PaymentStatus.READY && payment.getStatus() != PaymentStatus.FAILED) {
 			return new ConfirmOutcome(PaymentConfirmResponse.of(payment), null);
 		}
-		payment.approve(result.payment().paymentKey());
+		return approveAndSettle(rental, payment, result.payment().paymentKey(), now);
+	}
+
+	private ConfirmOutcome approveAndSettle(RentalPaymentView rental, Payment payment, String paymentKey,
+		LocalDateTime now) {
+		Long rentalId = rental.rentalId();
+		payment.approve(paymentKey);
 		if (rental.isPayable()) {
 			rentalPaymentTxService.confirmPayment(rentalId, now);
 			return new ConfirmOutcome(PaymentConfirmResponse.of(payment), null);
@@ -186,6 +199,68 @@ public class PaymentTxService {
 		rentalPaymentTxService.expirePayment(rentalId, now);
 		paymentRefundTxService.closeReadyOrders(rentalId);
 		return true;
+	}
+
+	/**
+	 * 조정 배치 대상: 최근(reconciliation.lookback-hours) 결제 중 payment.expire-minutes 동안 바뀌지 않은 것. 그 시간이 지나면 승인 요청이 끝났다고 볼 수 있어 진행 중인 요청과 겹치지 않는다.
+	 */
+	@Transactional(readOnly = true)
+	public List<ReconcileTarget> findReconcileTargets(LocalDateTime now) {
+		return paymentRepository.findReconcileTargets(now.minusHours(policyProperties.reconciliation().lookbackHours()),
+			now.minusMinutes(policyProperties.payment().expireMinutes()));
+	}
+
+	/**
+	 * PG 조회 결과와 대조해 반영한다. 조회 뒤 상태가 바뀌었을 수 있어 행 락을 잡고 다시 본다.
+	 * <ul>
+	 *   <li>승인 전(READY·FAILED)인데 PG는 승인: 승인 경합과 같게 처리한다(유효하면 확정, 아니면 전액 환불)</li>
+	 *   <li>승인 전인데 PG에 승인이 없음: READY면 FAILED로 닫는다</li>
+	 *   <li>승인 후: 잔액이 내부 기록(결제 금액 − 누적 취소)과 다르면 고치지 않고 관리자 확인 대상으로 표시한다. 환불이 남아 있으면 재시도 배치 몫이라 건너뛴다</li>
+	 * </ul>
+	 *
+	 * @return 커밋 뒤 실행할 환불
+	 */
+	public Optional<RefundTicket> reconcile(ReconcileTarget target, PgResult result) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		RentalPaymentView rental = rentalPaymentTxService.lock(target.rentalId());
+		Payment payment = paymentRepository.findByIdForUpdate(target.paymentId()).orElseThrow();
+		boolean notApproved = payment.getStatus() == PaymentStatus.READY || payment.getStatus() == PaymentStatus.FAILED;
+		if (result instanceof PgResult.Failure failure && !PgResult.NOT_FOUND.equals(failure.code())) {
+			log.warn("Reconcile lookup rejected: paymentId={}, code={}", payment.getId(), failure.code());
+			return Optional.empty();
+		}
+		PgResult.PgPayment pgPayment = result instanceof PgResult.Success success ? success.payment() : null;
+		boolean pgApproved = pgPayment != null && pgPayment.isApproved();
+		if (notApproved) {
+			if (!pgApproved) {
+				pendingApprovals(payment).forEach(transaction -> transaction.fail(result.toRecord()));
+				if (payment.getStatus() == PaymentStatus.READY) {
+					payment.fail();
+				}
+				return Optional.empty();
+			}
+			if (pgPayment.balanceAmount() != payment.getAmount()) {
+				flag(payment, "approved elsewhere with a different balance");
+				return Optional.empty();
+			}
+			pendingApprovals(payment).forEach(transaction -> transaction.succeed(result.toRecord()));
+			return Optional.ofNullable(approveAndSettle(rental, payment, pgPayment.paymentKey(), now).refund());
+		}
+		if (payment.getRefundPendingAmount() == null
+			&& (!pgApproved || pgPayment.balanceAmount() != payment.balance())) {
+			flag(payment, "balance mismatch");
+		}
+		return Optional.empty();
+	}
+
+	private List<PaymentTransaction> pendingApprovals(Payment payment) {
+		return paymentTransactionRepository.findAllByPaymentIdAndActionAndResult(payment.getId(),
+			PaymentTransactionAction.APPROVE, PaymentTransactionResult.PENDING);
+	}
+
+	private void flag(Payment payment, String reason) {
+		log.error("Payment needs admin check: paymentId={}, reason={}", payment.getId(), reason);
+		payment.flagForAdminCheck();
 	}
 
 	private PaymentTransaction transactionOf(Long transactionId) {

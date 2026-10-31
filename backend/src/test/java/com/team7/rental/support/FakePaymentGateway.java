@@ -40,6 +40,7 @@ public class FakePaymentGateway implements PaymentGateway {
 	private int cancelCalls;
 	private int appliedConfirms;
 	private int lookups;
+	private boolean lookupUnknown;
 
 	public synchronized void failNextConfirm(Fault fault) {
 		confirmFaults.add(fault);
@@ -98,6 +99,19 @@ public class FakePaymentGateway implements PaymentGateway {
 		cancelCalls = 0;
 		appliedConfirms = 0;
 		lookups = 0;
+		lookupUnknown = false;
+	}
+
+	/** 다음 조회가 결과를 모르게 끝난다 */
+	public synchronized void failNextLookup() {
+		lookupUnknown = true;
+	}
+
+	/** PG 잔액을 내부 기록과 다르게 만든다(불일치 재현) */
+	public synchronized void changeBalance(String orderId, int balance) {
+		PgPayment payment = paymentsByOrderId.get(orderId);
+		paymentsByOrderId.put(orderId, new PgPayment(payment.paymentKey(), orderId, "PARTIAL_CANCELED",
+			payment.totalAmount(), balance));
 	}
 
 	@Override
@@ -164,6 +178,10 @@ public class FakePaymentGateway implements PaymentGateway {
 	@Override
 	public synchronized PgResult findByOrderId(String orderId) {
 		lookups++;
+		if (lookupUnknown) {
+			lookupUnknown = false;
+			return new PgResult.Unknown("timeout");
+		}
 		PgPayment payment = paymentsByOrderId.get(orderId);
 		return payment == null ? new PgResult.Failure(PgResult.NOT_FOUND, "결제 없음") : new PgResult.Success(payment);
 	}
