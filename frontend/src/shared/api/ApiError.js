@@ -19,6 +19,15 @@ export class ApiError extends Error {
   }
 }
 
+/** 공통 래퍼가 아닌 응답의 오류. 실패 응답과 2xx 응답 검사가 같이 쓴다. */
+export function createInvalidResponseError(status) {
+  return new ApiError({
+    code: CLIENT_INVALID_RESPONSE,
+    message: '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+    status,
+  });
+}
+
 export function toApiError(error) {
   if (error instanceof ApiError) {
     return error;
@@ -42,9 +51,5 @@ export function toApiError(error) {
       status: response.status,
     });
   }
-  return new ApiError({
-    code: CLIENT_INVALID_RESPONSE,
-    message: '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-    status: response.status,
-  });
+  return createInvalidResponseError(response.status);
 }

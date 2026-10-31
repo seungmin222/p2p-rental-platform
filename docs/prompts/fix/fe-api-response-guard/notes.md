@@ -1,0 +1,15 @@
+# fix/fe-api-response-guard 결정 기록
+
+## 결정
+
+- **2xx `success: false`**: 본문의 코드를 쓰지 않고 `CLIENT_INVALID_RESPONSE`로 거부한다. 백엔드 실패 응답은 `ErrorCode`의 상태 코드로만 나가므로(4xx·5xx) 2xx 실패 본문은 규약 위반이고, 우리 서버 응답이라고 믿고 화면 분기를 태우지 않는다.
+- **본문 없는 성공 응답(204 등)**: 지금은 막는다. openapi.json의 2xx 36개와 컨트롤러가 모두 `ApiResponse`를 쓰고 `noContent`가 없다. 204 API가 생기면 이 인터셉터도 같이 고쳐야 한다.
+- **`{ success: true }`(data 없음)**: `undefined`로 통과하며 테스트로 고정하지 않는다. 백엔드는 null 필드를 생략하는 설정이 없어 항상 `data`를 보내므로 생기지 않는 입력이고, 테스트로 고정하면 계약에 없는 형태를 허용 동작처럼 보이게 한다.
+- **조회 재시도**: 거부된 조회는 status가 200이라 `NO_RETRY_STATUSES`에 걸리지 않아 1회 재시도한다. 일시적인 프록시 오류에 맞는 동작이라 그대로 둔다(사용자 확인).
+- **재발급**: `reissue.js`는 이번 범위에서 고치지 않고 open-issues #31에 올렸다.
+
+## 브라우저 확인 결과 (2026-10-31, 목 모드)
+- 재발급으로 로그인 복원, 홈 피드, 물품 상세 표시에 회귀 없음.
+- 개발 서버의 실제 200 HTML을 `apiClient`로 GET·POST → 둘 다 `CLIENT_INVALID_RESPONSE`, status 200.
+- 동네 삭제(`data: null`) → null, 동네 추가(201) → data, 없는 물품 → `ITEM_NOT_FOUND` 404.
+- 확인 방법의 한계: 위 API 호출은 화면 조작이 아니라 페이지에서 `apiClient`를 직접 불렀다. 실제 백엔드·프록시 응답으로는 확인하지 않았다.

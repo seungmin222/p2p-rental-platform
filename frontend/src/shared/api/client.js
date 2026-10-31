@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { toApiError } from './ApiError';
+import { createInvalidResponseError, toApiError } from './ApiError';
 import { useAuthStore } from './authStore';
 import { API_BASE_URL, reissueAccessToken } from './reissue';
 
@@ -53,7 +53,13 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response.data?.data,
+  (response) => {
+    // data 유무로 판정하지 않는다: { success: true, data: null }은 정상 응답이다
+    if (response.data?.success !== true) {
+      throw createInvalidResponseError(response.status);
+    }
+    return response.data.data;
+  },
   async (error) => {
     // 취소는 그대로 넘긴다(TanStack Query가 취소로 인식해야 함)
     if (axios.isCancel(error)) {
