@@ -41,6 +41,10 @@ export const ITEM_PRICE = { MAX: 10_000_000 };
 export const ITEM_TEXT_MAX = { NAME: 50, DESCRIPTION: 2000, ADDRESS: 200 };
 // 권장 보증금 조회: 물품 가격을 치는 동안 요청하지 않게 기다리는 시간(UI 조절값)
 export const DEPOSIT_GUIDE_DEBOUNCE_MS = 400;
+// 거래 장소 위치 요청의 자체 상한(UI 조절값). geolocation timeout은 권한 창 대기를 포함하지 않아 따로 둔다
+export const TRADE_PLACE_LOCATE_DEADLINE_MS = 15 * 1000;
+// 상한을 넘어 끝난 위치 요청의 프론트 전용 코드(LocationError). 거래 장소에서만 쓴다
+export const LOCATION_NO_RESPONSE = 'CLIENT_LOCATION_NO_RESPONSE';
 
 /** REQ-010 정렬(openapi GET /api/items sort). 기본 ACCURACY */
 export const ITEM_SORT = {

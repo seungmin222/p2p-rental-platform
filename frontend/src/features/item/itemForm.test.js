@@ -1,7 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { LOCATION_ERROR, TRADE_PLACE_GEOLOCATION_OPTIONS } from '../region/geolocation';
+import {
+  ITEM_IMAGE_MAX_MB,
+  ITEM_MIN_PAID_AMOUNT,
+  LOCATION_NO_RESPONSE,
+  TRADE_PLACE_LOCATE_DEADLINE_MS,
+} from './constants';
 import {
   createItemFormValues,
+  getCategoryStatus,
+  getPaidAmountHint,
+  getTradePlaceCoords,
+  isSubmitBlocked,
+  ITEM_IMAGE_HINT,
   parseAmount,
   toCreatePayload,
   toImageOrder,
@@ -240,5 +252,104 @@ describe('toUpdatePayload', () => {
     expect(toUpdatePayload(initial, { ...initial, availablePeriods }).request).toEqual({
       availablePeriods,
     });
+  });
+});
+
+describe('getTradePlaceCoords', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** 응답을 호출부가 정하는 위치 스텁 */
+  function pendingGeolocation() {
+    const calls = [];
+    return {
+      calls,
+      getCurrentPosition: (success, error, options) => calls.push({ success, error, options }),
+    };
+  }
+  const coords = (latitude, longitude) => ({ coords: { latitude, longitude } });
+
+  it('고정밀 옵션으로 요청하고, 상한 안에 온 응답을 돌려주며 타이머를 지운다', async () => {
+    vi.useFakeTimers();
+    const geolocation = pendingGeolocation();
+    const result = getTradePlaceCoords(geolocation);
+
+    expect(geolocation.calls[0].options).toBe(TRADE_PLACE_GEOLOCATION_OPTIONS);
+    geolocation.calls[0].success(coords(37, 126));
+
+    await expect(result).resolves.toEqual({ lat: 37, lng: 126 });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('권한 창에 답하지 않으면 상한에서 NO_RESPONSE로 끝난다', async () => {
+    vi.useFakeTimers();
+    const result = getTradePlaceCoords(pendingGeolocation());
+    let settled = false;
+    result.catch(() => {
+      settled = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(TRADE_PLACE_LOCATE_DEADLINE_MS - 1);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    await expect(result).rejects.toMatchObject({ code: LOCATION_NO_RESPONSE });
+  });
+
+  it('상한 뒤에 온 응답은 버리고, 다시 누른 요청의 결과에 섞이지 않는다', async () => {
+    vi.useFakeTimers();
+    const geolocation = pendingGeolocation();
+    const first = getTradePlaceCoords(geolocation);
+    const firstResult = expect(first).rejects.toMatchObject({ code: LOCATION_NO_RESPONSE });
+    await vi.advanceTimersByTimeAsync(TRADE_PLACE_LOCATE_DEADLINE_MS);
+    await firstResult;
+
+    const second = getTradePlaceCoords(geolocation);
+    geolocation.calls[0].success(coords(1, 2));
+    geolocation.calls[1].success(coords(37, 126));
+
+    await expect(second).resolves.toEqual({ lat: 37, lng: 126 });
+    await expect(first).rejects.toMatchObject({ code: LOCATION_NO_RESPONSE });
+  });
+
+  it('상한 전의 위치 실패는 그 코드 그대로 돌려준다', async () => {
+    vi.useFakeTimers();
+    const geolocation = pendingGeolocation();
+    const result = getTradePlaceCoords(geolocation);
+    geolocation.calls[0].error({ code: 1 });
+
+    await expect(result).rejects.toMatchObject({ code: LOCATION_ERROR.DENIED });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe('getCategoryStatus', () => {
+  it('받은 목록이 있으면 재조회 실패여도 ready', () => {
+    expect(getCategoryStatus({ isPending: true, isFetching: true })).toBe('loading');
+    expect(getCategoryStatus({ isPending: false, isFetching: true })).toBe('loading');
+    expect(getCategoryStatus({ isPending: false, isFetching: false })).toBe('error');
+    expect(getCategoryStatus({ data: [], isPending: false, isFetching: false })).toBe('ready');
+  });
+});
+
+describe('isSubmitBlocked', () => {
+  it('카테고리 로딩 중이거나 위치를 가져오는 중이면 막는다', () => {
+    expect(isSubmitBlocked({ categoryStatus: 'loading', isLocating: false })).toBe(true);
+    expect(isSubmitBlocked({ categoryStatus: 'ready', isLocating: true })).toBe(true);
+    expect(isSubmitBlocked({ categoryStatus: 'error', isLocating: true })).toBe(true);
+  });
+
+  it('실패는 막지 않는다(검증이 처리하고, 수정은 고른 값으로 저장할 수 있다)', () => {
+    expect(isSubmitBlocked({ categoryStatus: 'error', isLocating: false })).toBe(false);
+    expect(isSubmitBlocked({ categoryStatus: 'ready', isLocating: false })).toBe(false);
+  });
+});
+
+describe('폼 안내 문구', () => {
+  it('수치는 constants 값과 같다', () => {
+    const minPaid = ITEM_MIN_PAID_AMOUNT.toLocaleString();
+    expect(getPaidAmountHint('무료')).toBe(`0원(무료) 또는 ${minPaid}원 이상`);
+    expect(ITEM_IMAGE_HINT).toContain(`장당 ${ITEM_IMAGE_MAX_MB}MB`);
   });
 });

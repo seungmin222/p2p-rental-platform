@@ -5,6 +5,7 @@ import {
   LOCATE_GEOLOCATION_OPTIONS,
   LOCATION_ERROR,
   LocationError,
+  TRADE_PLACE_GEOLOCATION_OPTIONS,
   VERIFY_GEOLOCATION_OPTIONS,
 } from './geolocation';
 
@@ -68,5 +69,19 @@ describe('getCurrentCoords', () => {
     await expect(getCurrentCoords(undefined, failingGeolocation(99))).rejects.toMatchObject({
       code: LOCATION_ERROR.UNAVAILABLE,
     });
+  });
+});
+
+describe('용도별 옵션', () => {
+  it('거래 장소만 고정밀이고 동네 위치·인증은 그대로다', () => {
+    expect(TRADE_PLACE_GEOLOCATION_OPTIONS).toMatchObject({
+      enableHighAccuracy: true,
+      maximumAge: 0,
+    });
+    expect(LOCATE_GEOLOCATION_OPTIONS).toMatchObject({
+      enableHighAccuracy: false,
+      maximumAge: 60000,
+    });
+    expect(VERIFY_GEOLOCATION_OPTIONS).toMatchObject({ enableHighAccuracy: false, maximumAge: 0 });
   });
 });

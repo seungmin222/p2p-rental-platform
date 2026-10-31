@@ -2,7 +2,7 @@
 // 키는 docs/openapi.json 물품 API 응답 예시의 코드 + 위치 실패(LocationError, 프론트 전용 코드).
 import { createErrorMessageGetter } from '../../shared/lib/formErrors';
 import { LOCATION_ERROR } from '../region/geolocation';
-import { ITEM_IMAGE_MAX_MB, ITEM_IMAGES } from './constants';
+import { ITEM_IMAGE_MAX_MB, ITEM_IMAGES, LOCATION_NO_RESPONSE } from './constants';
 
 const MESSAGES = {
   COMMON_INVALID_INPUT: '요청을 처리하지 못했어요. 다시 시도해 주세요',
@@ -21,6 +21,7 @@ const MESSAGES = {
   [LOCATION_ERROR.UNAVAILABLE]: '현재 위치를 확인할 수 없어요. 잠시 후 다시 시도해 주세요',
   [LOCATION_ERROR.TIMEOUT]: '위치를 확인하는 데 시간이 오래 걸려요. 다시 시도해 주세요',
   [LOCATION_ERROR.UNSUPPORTED]: '이 브라우저에서는 현재 위치를 쓸 수 없어요',
+  [LOCATION_NO_RESPONSE]: '위치를 가져오지 못했어요. 위치 권한 창을 확인하고 다시 시도해 주세요',
 };
 
 export const getErrorMessage = createErrorMessageGetter(MESSAGES);
