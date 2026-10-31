@@ -6,10 +6,10 @@ description: 현재 브랜치 작업을 마무리하고 PR을 준비한다
 
 1. 현재 브랜치가 `main`/`develop`이면 중단하고 알린다.
 2. 포맷터 실행(backend: `./gradlew spotlessApply`, frontend: `npm run format`) — 변경이 생기면 `style(...)` 커밋으로 분리. 이어서 전체 테스트를 한 번 실행하고 출력은 실패 요약만 본다(backend는 bash로: `./gradlew test -q 2>&1 | tail -n 80; echo "exit=${PIPESTATUS[0]}"`, frontend: `npm run lint && npx vitest run --reporter=dot && npm run build`). 실패하면(backend는 `exit`가 0이 아니면) `grep -B 1 -A 15 '<failure' build/test-results/test/TEST-*.xml`처럼 해당 테스트만 읽어 원인을 보고하고 멈춘다. 빌드 로그·테스트 리포트 HTML을 통째로 읽지 않는다. (도구 설정이 아직 없으면 건너뛰고 알린다)
-3. PR 체크리스트(`.github/pull_request_template.md`)를 하나씩 확인한다. API가 바뀌었으면 `docs/openapi.json` 재생성, 문서 갱신 누락이 있으면 반영해 커밋한다.
+3. PR 체크리스트(`.github/pull_request_template.md`)를 하나씩 확인한다. API가 바뀌었으면 `docs/openapi.json` 재생성, 문서 갱신 누락이 있으면 반영해 커밋한다. Flyway를 추가했으면 PR을 만들기 전에 `docs/erd.md` 번호 표의 상태를 "머지"로 바꾸는 커밋이 들어 있는지 확인한다.
 3-1. `docs/prompts/<브랜치명>/notes.md` 맨 위의 `## 요약`을 CLAUDE.md 결정 기록 규칙대로 쓰거나 갱신하고, 같은 커밋에 포함한다.
 4. `git fetch origin && git rebase origin/develop`. 충돌이 나면 멈추고 설명한다. 이미 push한 브랜치라 강제 push가 필요하면 이유를 설명하고 승인받는다.
 5. `git push -u origin <브랜치>`.
 6. PR 제목과 본문(템플릿 채운 것)을 보여주고 승인받은 뒤 `gh pr create --base develop`으로 생성한다. `gh`가 없거나 로그인 안 되어 있으면 GitHub 웹에서 PR 만드는 링크와 붙여 넣을 본문을 준다.
-7. 이 PR이 `docs/git-workflow.md` §6의 "확인 요청 예외"(API 변경, 공통 코드, Flyway 추가)에 해당하는지 판단해 알린다. Flyway를 추가했으면 PR을 만들기 전에 `docs/erd.md` 번호 표의 상태를 "머지"로 바꾸는 커밋이 들어 있는지 확인한다. 해당하면 누구에게 확인을 요청할지 안내하고, 아니면 "변경 파일을 한 번 훑어본 뒤 GitHub에서 Squash and merge를 누르면 됩니다"라고 안내한다. 머지 버튼은 사용자가 직접 누른다. 머지 후 팀 채팅에 공유하라고 덧붙인다.
-8. 마지막으로 안내한다: "머지(와 확인 요청 반영)가 끝나면 이 세션은 닫고, 다음 작업은 새 세션에서 `/start-work`로 시작하세요. 리뷰 반영이 필요하면 이 세션에서 계속하면 됩니다."
+7. 이 PR이 `docs/git-workflow.md` §6의 "확인 요청 예외"(API 변경, 공통 코드, Flyway 추가)에 해당하는지 판단해 알린다. 해당하면 누구에게 확인을 요청할지 안내하고, 아니면 "변경 파일을 한 번 훑어본 뒤 GitHub에서 Squash and merge를 누르면 됩니다"라고 안내한다. 머지 버튼은 사용자가 직접 누른다. 머지 후 팀 채팅에 공유하라고 덧붙인다.
+8. 마지막으로 안내한다: "머지(와 확인 요청 반영)가 끝나면 이 세션은 닫고, 다음 브랜치는 프로젝트 채팅에서 제안받아 새 세션에서 `/start-work <브랜치명>`으로 시작하세요. 리뷰 반영이 필요하면 이 세션에서 계속하고, 반영 후 notes.md의 `## 요약`도 맞게 고치세요."
