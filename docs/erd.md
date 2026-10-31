@@ -12,7 +12,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V4 | `V4__create_rental_tables.sql` | `feat/rental-entity` (#9) | 머지 |
 | V5 | `V5__create_rental_cancel_agreements.sql` | `feat/rental-cancel` (#12) | 머지 |
 | V6 | `V6__create_item_inspections.sql` | `feat/rental-return` | 머지 |
-| V7 | `V7__create_payment_tables.sql` | `feat/payment-core` | 작업 중 |
+| V7 | `V7__create_payment_tables.sql` | `feat/payment-core` | 머지 |
 
 ## 규칙
 

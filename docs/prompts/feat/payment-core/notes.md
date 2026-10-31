@@ -3,7 +3,8 @@
 ## 요약
 - API: `POST /api/payments`, `POST /api/payments/confirm`. 내부 호출: 취소 환불, 보증금 반환. 배치: 결제 만료, 인계 없음 자동 취소, 환불 재시도, PG 조정.
 - 주요 파일: `payment/service/PaymentService`·`PaymentTxService`·`PaymentRefundService`·`PaymentRefundTxService`·`PaymentReconcileService`, `payment/client/PaymentGateway`·`TossPaymentGateway`, `payment/batch/*`, `rental/service/RentalRefundPort`·`RentalPaymentTxService`·`RentalCancelTxService`, `rental/batch/NoHandoverCancelJob`, `V7__create_payment_tables.sql`, 테스트 `support/FakePaymentGateway`·`PaymentFixture`.
-- 남은 일: 장애 주입 결과표(`docs/experiments/payment.md`)와 결제 알림(REQ-032)은 이 브랜치 범위 밖이다. 토스 실제 호출은 로컬에서 수동 확인이 필요하다. 동시성 테스트 공백(늦은 승인 vs 만료 배치 동시 실행, 환불 중 상태 확인)은 14주차 장애 주입 실험에서 다룬다.
+- 남은 일: 장애 주입 결과표(`docs/experiments/payment.md`)와 결제 알림(REQ-032)은 이 브랜치 범위 밖이다. 동시성 테스트 공백(늦은 승인 vs 만료 배치 동시 실행, 환불 중 상태 확인)은 14주차 장애 주입 실험에서 다룬다.
+- 남은 일: payment-enabled를 켜기 전에 실제 토스로 승인·취소 환불·보증금 반환을 한 번씩 확인하고, 같은 키 재시도가 실패 응답을 재생하는지 확인한다(재생하면 재시도 키 전략을 바꾼다, open-issues #33).
 - 다음 브랜치: `feat/rental-overdue`는 `requestReturn`에서 `overdue_fee`만 채우면 된다. REQ-049는 아래 "상태 확인 이상"에서 잇고, REQ-039는 `PaymentRefundTxService`의 주석 두 곳(취소 수수료, 보증금 반환 완료)과 PG 없이 완료되는 `RentalInspectionTxService.judge`에 정산 생성을 붙인다. 연장 결제(038)는 `Payment`에 팩토리와 주문 API의 extensionId를 더한다.
 
 ## 범위
@@ -22,6 +23,8 @@
 - **PG 오류면 FAILED, 재결제는 새 주문이다.** 대여는 PENDING_PAYMENT를 유지한다. READY 주문은 재사용해 결제창을 다시 열 수 있다.
 - **응답 유실이면 orderId로 한 번 조회한다.** 안 보이면 처리 중일 수 있어 실패로 처리하지 않고 503 + READY·시도 PENDING으로 둔다.
 - **만료·취소 때 시도 PENDING인 READY 주문은 닫지 않는다.** PG에 승인됐을 수 있어 조정 배치가 판단한다.
+- **경합 환불이 이미 성공한 주문의 승인 재호출은 200 + status CANCELED로 둔다.** 첫 응답(409)과 다르지만 상태가 사실대로 보이고, 정상 승인 후 취소된 주문의 재호출과 구분하려면 취소 종류까지 봐야 해서 이 브랜치에서 넓히지 않았다.
+- **취소·보증금 경로의 `FOR UPDATE` 읽기는 그대로 둔다.** 다른 대여의 주문 INSERT를 잠깐 기다리게 할 수 있지만, `createOrder`가 갭 락을 잡지 않아 교착 순환은 생기지 않고, 이 경로들은 결제 행을 바꾸므로 잠금 읽기가 필요하다. 이 조합을 검증한 테스트는 없다.
 
 ## 환불
 - **`refund_pending_amount`로 재시도 대상을 찾는다.** depositStatus만으로는 보증금 0원 결제의 취소 환불 실패(NONE 유지)와 TX1 직후 서버 중단을 찾을 수 없다.
