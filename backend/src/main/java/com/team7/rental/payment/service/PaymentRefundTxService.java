@@ -56,6 +56,8 @@ public class PaymentRefundTxService {
 		return payments.stream()
 			.filter(payment -> payment.getStatus() == PaymentStatus.APPROVED)
 			.findFirst()
+			// 환불액 0원은 PG를 부르지 않고 상태만 둔다(원칙 7). 보증금이 있으면 0원이 될 수 없어 보증금 상태도 그대로다
+			.filter(payment -> payment.getAmount() - cancelFee > 0)
 			.map(payment -> prepare(payment, payment.getAmount() - cancelFee, RefundPurpose.CANCEL, null));
 	}
 

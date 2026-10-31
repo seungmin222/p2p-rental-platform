@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,6 +32,8 @@ import com.team7.rental.payment.repository.PaymentTransactionRepository;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.repository.RentalRepository;
+import com.team7.rental.rental.service.RentalRefundPort;
+import com.team7.rental.rental.service.RentalRefundPort.RefundTicket;
 import com.team7.rental.support.FakePaymentGateway.Fault;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
@@ -42,6 +45,9 @@ class RentalCancelRefundIntegrationTest extends IntegrationTestSupport {
 	private static final LocalDate END = LocalDate.of(2026, 11, 5);
 	private static final int AMOUNT = 80_000;
 	private static final String CANCEL_BODY = "{\"reason\": \"SCHEDULE_CHANGE\"}";
+
+	@Autowired
+	private RentalRefundPort rentalRefundPort;
 
 	@Autowired
 	private RentalRepository rentalRepository;
@@ -190,6 +196,27 @@ class RentalCancelRefundIntegrationTest extends IntegrationTestSupport {
 		Payment failed = reload(payment);
 		assertThat(failed.getDepositStatus()).isEqualTo(DepositStatus.NONE);
 		assertThat(failed.getRefundPendingAmount()).isEqualTo(30_000);
+	}
+
+	@Test
+	@DisplayName("수수료가 결제 금액과 같아 환불액이 0원이면 예외 없이 PG를 부르지 않고 환불도 남기지 않는다")
+	void zeroRefundNoPg() {
+		// given: 보증금 0원, 수수료 = 대여료 (현재 수수료율로는 생기지 않지만 cancel-fee.rate-percent는 100까지 허용)
+		Rental noDeposit = rentalRepository.save(Rental.createReserved(item.getId(), owner.getId(), renter.getId(),
+			START.plusDays(10), END.plusDays(10), 10_000, 0));
+		Payment payment = paymentFixture.createApproved(noDeposit);
+
+		// when
+		Optional<RefundTicket> ticket = rentalRefundPort.prepareCancelRefund(noDeposit.getId(), payment.getAmount());
+
+		// then
+		assertThat(ticket).isEmpty();
+		assertThat(paymentGateway.cancelCalls()).isZero();
+		Payment unchanged = reload(payment);
+		assertThat(unchanged.getStatus()).isEqualTo(PaymentStatus.APPROVED);
+		assertThat(unchanged.getDepositStatus()).isEqualTo(DepositStatus.NONE);
+		assertThat(unchanged.getRefundPendingAmount()).isNull();
+		assertThat(transactionRepository.findAll()).isEmpty();
 	}
 
 	private ResultActions cancel(Member member) throws Exception {
