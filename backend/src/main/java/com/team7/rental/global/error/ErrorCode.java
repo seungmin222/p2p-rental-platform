@@ -66,7 +66,11 @@ public enum ErrorCode {
 	RENTAL_CANCEL_AGREEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "취소 동의 요청을 찾을 수 없습니다."),
 	RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE(HttpStatus.FORBIDDEN, "본인이 보낸 취소 동의 요청에는 응답할 수 없습니다."),
 	RENTAL_CANCEL_AGREEMENT_CLOSED(HttpStatus.CONFLICT, "이미 응답했거나 만료된 취소 동의 요청입니다."),
-	RENTAL_HANDOVER_TOO_EARLY(HttpStatus.CONFLICT, "대여 시작일부터 인계를 확인할 수 있습니다.");
+	RENTAL_HANDOVER_TOO_EARLY(HttpStatus.CONFLICT, "대여 시작일부터 인계를 확인할 수 있습니다."),
+
+	// 결제
+	PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "결제 내역을 찾을 수 없습니다."),
+	PAYMENT_INVALID_STATUS(HttpStatus.CONFLICT, "현재 결제 상태에서는 처리할 수 없는 요청입니다.");
 
 	private final HttpStatus status;
 	private final String message;

@@ -45,7 +45,7 @@
 - 트리거: 상태 확인 NORMAL 또는 3일 자동 처리
 - 반환액 = deposit − overdueFee (`rental.md` REQ-023)
   - deposit = 0 → depositStatus NONE 그대로, PG 호출 없음
-  - 반환액 > 0 → 토스 부분 취소(cancelAmount = 반환액, 멱등성 키 = `deposit-refund:{rentalId}`) → depositStatus=REFUNDED, refundedAmount += 반환액, payment PARTIAL_CANCELED
+  - 반환액 > 0 → 토스 부분 취소(cancelAmount = 반환액, 멱등성 키 = `deposit-refund:{rentalId}`) → depositStatus=REFUNDED, refundedAmount += 반환액. 누적 취소가 결제 금액에 닿으면(대여료 0원 + 보증금 전액 반환) payment CANCELED, 아니면 PARTIAL_CANCELED (open-issues #32)
   - 반환액 = 0 (연체료가 보증금 전액) → PG 호출 없이 depositStatus=FORFEITED
 - 처리 완료 → rental COMPLETED, 정산 생성
 - PG 실패 → depositStatus=REFUND_FAILED, rental은 **RETURNED 유지**. 재시도 배치(10분, 최대 5회)가 성공시키면 COMPLETED. 5회 실패 → `needs_admin_check=true`

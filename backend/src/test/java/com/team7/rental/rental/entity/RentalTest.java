@@ -330,7 +330,7 @@ class RentalTest {
 
 	@ParameterizedTest
 	@EnumSource(value = CancelType.class, names = {"PAYMENT_EXPIRED", "AMOUNT_MISMATCH", "NO_HANDOVER"})
-	@DisplayName("시스템 취소 종류는 아직 지원하지 않는다")
+	@DisplayName("시스템 취소 종류는 cancel로 받지 않는다(전용 전이 메서드를 쓴다)")
 	void cancelSystemTypeNotSupported(CancelType type) {
 		// given
 		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
@@ -338,6 +338,74 @@ class RentalTest {
 		// then
 		assertThatThrownBy(() -> rental.cancel(null, type, CancelReason.OTHER, "시스템", 0, NOW))
 			.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	@DisplayName("결제 승인은 PENDING_PAYMENT → RESERVED, 다른 상태면 409다")
+	void confirmPayment() {
+		// given
+		Rental pending = Rental.createPendingPayment(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT, NOW);
+		Rental reserved = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+
+		// when
+		pending.confirmPayment();
+
+		// then
+		assertThat(pending.getStatus()).isEqualTo(RentalStatus.RESERVED);
+		assertThatThrownBy(reserved::confirmPayment).isInstanceOf(BusinessException.class)
+			.extracting("errorCode").isEqualTo(ErrorCode.RENTAL_INVALID_TRANSITION);
+	}
+
+	@Test
+	@DisplayName("결제 만료·금액 불일치는 시스템 취소(취소자 없음, 수수료 0)이고 PENDING_PAYMENT에서만 된다")
+	void systemCancelsFromPending() {
+		// given
+		Rental expired = Rental.createPendingPayment(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT, NOW);
+		Rental mismatch = Rental.createPendingPayment(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT, NOW);
+		Rental reserved = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+
+		// when
+		expired.expirePayment(NOW);
+		mismatch.cancelForAmountMismatch(NOW);
+
+		// then
+		assertThat(expired.getCancelType()).isEqualTo(CancelType.PAYMENT_EXPIRED);
+		assertThat(expired.getCanceledAt()).isEqualTo(NOW);
+		assertThat(expired.getCanceledBy()).isNull();
+		assertThat(expired.getCancelFee()).isZero();
+		assertThat(mismatch.getCancelType()).isEqualTo(CancelType.AMOUNT_MISMATCH);
+		assertThatThrownBy(() -> reserved.expirePayment(NOW)).isInstanceOf(BusinessException.class);
+		assertThatThrownBy(() -> reserved.cancelForAmountMismatch(NOW)).isInstanceOf(BusinessException.class);
+	}
+
+	@Test
+	@DisplayName("결제 만료 판정: 만료 시각과 같으면 만료, 1초 전이면 아니다")
+	void paymentExpiredBoundary() {
+		// given
+		Rental rental = Rental.createPendingPayment(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT, NOW);
+
+		// then
+		assertThat(rental.isPaymentExpired(NOW)).isTrue();
+		assertThat(rental.isPaymentExpired(NOW.minusSeconds(1))).isFalse();
+	}
+
+	@Test
+	@DisplayName("인계 없음 자동 취소: 오늘 > 시작일 + 3일이고 RESERVED일 때만 대상이고 CANCELED(NO_HANDOVER)가 된다")
+	void noHandoverCancel() {
+		// given
+		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
+
+		// then
+		assertThat(rental.isNoHandoverCancelDue(START.plusDays(3), 3)).isFalse();
+		assertThat(rental.isNoHandoverCancelDue(START.plusDays(4), 3)).isTrue();
+
+		// when
+		rental.cancelForNoHandover(NOW);
+
+		// then
+		assertThat(rental.getCancelType()).isEqualTo(CancelType.NO_HANDOVER);
+		assertThat(rental.isNoHandoverCancelDue(START.plusDays(4), 3)).isFalse();
+		assertThatThrownBy(() -> rental.cancelForNoHandover(NOW)).isInstanceOf(BusinessException.class);
 	}
 
 	@Test
