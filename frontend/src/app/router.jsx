@@ -10,6 +10,8 @@ import MyPage from '../pages/MyPage';
 import MyProfilePage from '../pages/MyProfilePage';
 import MyRentalsPage from '../pages/MyRentalsPage';
 import NotFoundPage from '../pages/NotFoundPage';
+import PaymentFailPage from '../pages/PaymentFailPage';
+import PaymentSuccessPage from '../pages/PaymentSuccessPage';
 import RegionPage from '../pages/RegionPage';
 import RentalDetailPage from '../pages/RentalDetailPage';
 import RentalReservePage from '../pages/RentalReservePage';
@@ -62,6 +64,8 @@ export const router = createBrowserRouter([
           { path: '/items/new', element: <ItemFormPage />, handle: hideTabBar }, // SCR-06
           { path: '/items/:id/edit', element: <ItemFormPage />, handle: hideTabBar }, // SCR-06
           { path: '/items/:id/reserve', element: <RentalReservePage />, handle: hideTabBar }, // SCR-07
+          { path: '/payments/success', element: <PaymentSuccessPage />, handle: hideTabBar }, // SCR-07
+          { path: '/payments/fail', element: <PaymentFailPage />, handle: hideTabBar }, // SCR-07
           { path: '/rentals/:id', element: <RentalDetailPage />, handle: hideTabBar }, // SCR-08
           // SCR-12
           { path: '/me', element: <MyPage /> },

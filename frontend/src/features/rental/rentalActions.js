@@ -6,7 +6,7 @@ import { formatDateTime, overdueDays } from './rentalData';
 
 /** 버튼 종류. 화면은 이 값으로 열 모달·시트를 고른다. */
 export const RENTAL_ACTION = {
-  PAY: 'PAY', // 결제하기(2순위, 지금은 버튼만)
+  PAY: 'PAY', // 결제하기(대여자만)
   CANCEL: 'CANCEL', // 단독 취소
   REQUEST_CANCEL_AGREEMENT: 'REQUEST_CANCEL_AGREEMENT', // 양측 동의 취소 요청
   CANCEL_AGREEMENT_PENDING: 'CANCEL_AGREEMENT_PENDING', // 내가 보낸 요청(항상 비활성)
@@ -46,7 +46,7 @@ export function getRentalActions(
       return {
         actions: [
           action(A.CANCEL, '예약 취소', 'secondary'),
-          ...(isPaymentEnabled ? [action(A.PAY, '결제하기', 'primary')] : []),
+          ...(isPaymentEnabled && !isOwner ? [action(A.PAY, '결제하기', 'primary')] : []),
         ],
         // 결제가 꺼져 있으면 결제할 수 없으므로 남은 시간도 세지 않는다
         notice: isPaymentEnabled

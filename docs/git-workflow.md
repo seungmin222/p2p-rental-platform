@@ -49,6 +49,7 @@
 | 브랜치 | REQ | 담당 |
 | --- | --- | --- |
 | `feat/payment-core` | 024, 025, 취소 시 환불(015 연계), 017 인계 없음 자동 취소, 결제 만료·환불 재시도·조정 배치 | A |
+| `feat/fe-payment` | SCR-07 결제(024: 토스 결제창, `/payments/success`·`/payments/fail`), SCR-08 결제하기, 취소 환불·보증금 반환 결과 표시(015, 025) | FE |
 
 `feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
 

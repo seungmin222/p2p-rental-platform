@@ -65,7 +65,7 @@ export function reissueMockSession() {
 
 /**
  * 보호 API 목의 인증: Authorization이 현재 AT면 회원, 아니면 null(401 AUTH_UNAUTHORIZED).
- * 보호 API 목(members/me)과 물품 상세의 isOwner가 쓴다. 대여 목은 아직 AT를 보지 않고 MOCK_ME 기준이다.
+ * 보호 API 목(members/me)과 물품 상세의 isOwner, 대여·결제 목의 "나"가 쓴다(대여 목은 AT가 없으면 MOCK_ME로 본다).
  */
 export function authenticateMockRequest(request) {
   const token = readBearerToken(request.headers.get('Authorization'));

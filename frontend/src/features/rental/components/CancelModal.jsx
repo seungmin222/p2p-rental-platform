@@ -13,7 +13,7 @@ import {
 } from '../constants';
 import { getErrorMessage } from '../errorMessages';
 import { useCancelRental, useRequestCancelAgreement } from '../queries';
-import { estimateCancelFee } from '../rentalData';
+import { estimateCancelFee, refundOnCancel } from '../rentalData';
 import { FormError } from './FormParts';
 
 // 서버 details[].field → 폼 필드
@@ -69,6 +69,12 @@ export default function CancelModal({ mode, rental, today, onClose }) {
         // 단독 취소의 확정 수수료는 응답 기준(결제가 꺼져 있으면 받지 않으므로 보여 주지 않는다)
         if (mode === 'cancel' && PAYMENT_ENABLED && result.cancelFee > 0) {
           toast.show({ message: `취소 수수료 ${formatPrice(result.cancelFee)}이 부과됐어요` });
+        }
+        // 대여 상세 응답에 환불액이 없어 취소하는 이 순간에만 안내한다
+        const refund =
+          PAYMENT_ENABLED && mode === 'cancel' ? refundOnCancel(rental.status, result) : 0;
+        if (refund > 0) {
+          toast.show({ message: `${formatPrice(refund)} 환불을 진행해요` });
         }
       },
       onError: handleError,

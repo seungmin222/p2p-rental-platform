@@ -22,11 +22,21 @@ import {
   readPathId,
   toPageResponse,
 } from './pageList';
+import { hasFrozenDeposit } from './paymentLogic';
+import { DEPOSIT_REFUND_FAILED, takeFailure } from './paymentScenario';
 import { fail, ok } from './response';
 import { minutesFromNow } from './rentalSeed';
-import { db, nowServer, occupiesPeriod } from './rentalStore';
+import { db, nowServer, occupiesPeriod, saveDb } from './rentalStore';
+import { authenticateMockRequest } from './session';
 
 const PAYMENT_ENABLED = import.meta.env.VITE_PAYMENT_ENABLED === 'true';
+
+// 이 요청을 보낸 회원. AT가 없거나 무효면 예전처럼 회원 1로 본다(대여 목은 401을 내지 않는다)
+let requestMemberId = MOCK_ME;
+
+export function currentMemberId() {
+  return requestMemberId;
+}
 
 // 정책 값(policies.md). 목은 서버 흉내라 화면 상수(features)를 가져오지 않고 따로 둔다.
 const POLICY = {
@@ -43,6 +53,7 @@ const POLICY = {
   CANCEL_FEE_FREE_UNTIL_DAYS_BEFORE: 3,
   CANCEL_FEE_RATE_PERCENT: 30,
   REVIEW_WRITE_DEADLINE_DAYS: 7,
+  PAYMENT_EXPIRE_BATCH_MINUTES: 1, // policies.md 배치 주기 "결제 만료"
 };
 
 // openapi.json 응답 예시의 메시지
@@ -68,6 +79,14 @@ const MESSAGES = {
   RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE: '본인이 보낸 취소 동의 요청에는 응답할 수 없습니다.',
   RENTAL_CANCEL_AGREEMENT_NOT_FOUND: '취소 동의 요청을 찾을 수 없습니다.',
   RENTAL_CANCEL_AGREEMENT_CLOSED: '이미 응답했거나 만료된 취소 동의 요청입니다.',
+  PAYMENT_NOT_FOUND: '결제 내역을 찾을 수 없습니다.',
+  PAYMENT_INVALID_STATUS: '현재 결제 상태에서는 처리할 수 없는 요청입니다.',
+  PAYMENT_RENTER_ONLY: '대여자만 결제할 수 있습니다.',
+  PAYMENT_EXPIRED: '결제 가능 시간이 지났습니다. 다시 예약해 주세요.',
+  PAYMENT_AMOUNT_MISMATCH: '결제 금액이 일치하지 않아 예약이 취소되었습니다.',
+  PAYMENT_APPROVAL_FAILED: '결제 승인에 실패했습니다. 다시 결제해 주세요.',
+  PAYMENT_RESULT_UNKNOWN: '결제 결과를 확인하고 있습니다. 잠시 후 다시 시도해 주세요.',
+  PAYMENT_CANCELED_AFTER_EXPIRY: '결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다.',
 };
 
 const STATUS_BY_CODE = {
@@ -84,6 +103,11 @@ const STATUS_BY_CODE = {
   RENTAL_NOT_FOUND: 404,
   RENTAL_CANCEL_AGREEMENT_NOT_FOUND: 404,
   COMMON_UNSUPPORTED_MEDIA_TYPE: 415,
+  PAYMENT_AMOUNT_MISMATCH: 400,
+  PAYMENT_APPROVAL_FAILED: 400,
+  PAYMENT_RENTER_ONLY: 403,
+  PAYMENT_NOT_FOUND: 404,
+  PAYMENT_RESULT_UNKNOWN: 503,
 };
 
 /** 검사에서 던지고 핸들러가 공통 실패 응답으로 바꾼다 */
@@ -95,21 +119,29 @@ class MockError extends Error {
   }
 }
 
-function reject(code, details) {
+export function reject(code, details) {
   throw new MockError(code, details);
 }
 
-function invalidInput(field, reason) {
+export function invalidInput(field, reason) {
   reject('COMMON_INVALID_INPUT', [{ field, reason }]);
 }
 
 /** 예외를 실패 응답으로. 지연을 조금 넣어 로딩·제출 중 상태를 볼 수 있게 한다. */
-function handle(resolver) {
+export function handle(resolver) {
   return async (info) => {
     await delay(400);
+    requestMemberId = authenticateMockRequest(info.request)?.memberId ?? MOCK_ME;
+    const hasExpired = expirePendingPayments();
     try {
-      return await resolver(info);
+      const response = await resolver(info);
+      if (hasExpired || info.request.method !== 'GET') {
+        saveDb();
+      }
+      return response;
     } catch (error) {
+      // 실패 응답에도 전이가 남는 경우가 있다(금액 불일치 → 취소)
+      saveDb();
       if (error instanceof MockError) {
         return fail(
           STATUS_BY_CODE[error.code] ?? 409,
@@ -128,10 +160,10 @@ function isOpen(agreement) {
 }
 
 function roleOf(rental) {
-  if (rental.renterId === MOCK_ME) {
+  if (rental.renterId === currentMemberId()) {
     return 'RENTER';
   }
-  return rental.ownerId === MOCK_ME ? 'OWNER' : null;
+  return rental.ownerId === currentMemberId() ? 'OWNER' : null;
 }
 
 /** 404 → 403(당사자) 순서로 대여를 찾는다 */
@@ -203,7 +235,7 @@ function toDetail(rental) {
           reason: agreement.reason,
           reasonText: agreement.reasonText,
           expiresAt: agreement.expiresAt,
-          requestedByMe: agreement.requesterId === MOCK_ME,
+          requestedByMe: agreement.requesterId === currentMemberId(),
         }
       : null,
   };
@@ -327,7 +359,7 @@ function validateCancelReason(body) {
   return { reason: body.reason, reasonText };
 }
 
-function cancel(rental, { cancelType, reason, reasonText, cancelFee }) {
+export function cancel(rental, { cancelType, reason, reasonText, cancelFee }) {
   Object.assign(rental, {
     status: 'CANCELED',
     canceledAt: nowServer(),
@@ -336,6 +368,28 @@ function cancel(rental, { cancelType, reason, reasonText, cancelFee }) {
     cancelReasonText: reasonText,
     cancelFee,
   });
+  // 결제 대기 취소는 주문을 닫고, 승인된 결제는 환불한 것으로 둔다(payment.md 취소 시 환불)
+  for (const order of db.payments.filter((o) => o.rentalId === rental.rentalId)) {
+    if (order.status === 'READY') {
+      order.status = 'FAILED';
+    } else if (order.status === 'APPROVED') {
+      const isFullRefund = cancelFee === 0;
+      order.status = isFullRefund ? 'CANCELED' : 'PARTIAL_CANCELED';
+      order.depositStatus = rental.deposit > 0 ? 'REFUNDED' : 'NONE';
+    }
+  }
+}
+
+/** 결제 만료 배치 흉내: 만료 시각이 배치 주기만큼 지난 결제 대기를 취소한다. 바뀐 게 있으면 true */
+function expirePendingPayments() {
+  const limit = minutesFromNow(-POLICY.PAYMENT_EXPIRE_BATCH_MINUTES);
+  const expired = db.rentals.filter(
+    (rental) => rental.status === 'PENDING_PAYMENT' && rental.paymentExpiresAt <= limit,
+  );
+  for (const rental of expired) {
+    cancel(rental, { cancelType: 'PAYMENT_EXPIRED', reason: null, reasonText: null, cancelFee: 0 });
+  }
+  return expired.length > 0;
 }
 
 /** multipart: request 파트는 application/json이어야 한다(아니면 415) */
@@ -437,7 +491,7 @@ export const rentalHandlers = [
         invalidInput('tab', '형식이 올바르지 않습니다.');
       }
       const page = requirePage(searchParams);
-      const rentals = listRentalHistory(db.rentals, MOCK_ME, tab).map(toHistoryItem);
+      const rentals = listRentalHistory(db.rentals, currentMemberId(), tab).map(toHistoryItem);
       return ok(toPageResponse(rentals, page));
     }),
   ),
@@ -454,7 +508,7 @@ export const rentalHandlers = [
       const page = requirePage(searchParams);
       const today = todayInSeoul();
       const now = nowServer();
-      const items = listMyItems(listMyMockItems(), db.rentals, tab).map((item) =>
+      const items = listMyItems(listMyMockItems(currentMemberId()), db.rentals, tab).map((item) =>
         toMyItemResponse(item, today, now),
       );
       return ok(toPageResponse(items, page));
@@ -472,7 +526,7 @@ export const rentalHandlers = [
       if (!item || item.isDeleted) {
         reject('ITEM_NOT_FOUND');
       }
-      if (item.ownerId !== MOCK_ME) {
+      if (item.ownerId !== currentMemberId()) {
         reject('ITEM_NOT_OWNER');
       }
       const rentals = listItemRentals(db.rentals, item.itemId).map(toItemRentalResponse);
@@ -517,7 +571,7 @@ export const rentalHandlers = [
       if (!item || item.isDeleted) {
         reject('ITEM_NOT_FOUND');
       }
-      if (item.ownerId === MOCK_ME) {
+      if (item.ownerId === currentMemberId()) {
         reject('RENTAL_OWN_ITEM');
       }
       const isInPeriod = item.availablePeriods.some(
@@ -542,7 +596,7 @@ export const rentalHandlers = [
         rentalId:
           Math.max(...db.rentals.filter((r) => r.rentalId < 900).map((r) => r.rentalId)) + 1,
         itemId: item.itemId,
-        renterId: MOCK_ME,
+        renterId: currentMemberId(),
         ownerId: item.ownerId,
         status: isPending ? 'PENDING_PAYMENT' : 'RESERVED',
         startDate,
@@ -624,7 +678,7 @@ export const rentalHandlers = [
       const agreement = {
         agreementId: Math.max(0, ...db.agreements.map((a) => a.agreementId)) + 1,
         rentalId: rental.rentalId,
-        requesterId: MOCK_ME,
+        requesterId: currentMemberId(),
         reason,
         reasonText,
         status: 'REQUESTED',
@@ -660,7 +714,7 @@ export const rentalHandlers = [
       if (!agreement) {
         reject('RENTAL_CANCEL_AGREEMENT_NOT_FOUND');
       }
-      if (agreement.requesterId === MOCK_ME) {
+      if (agreement.requesterId === currentMemberId()) {
         reject('RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE');
       }
       if (!isOpen(agreement)) {
@@ -793,10 +847,16 @@ export const rentalHandlers = [
         resultNote,
         resultImageUrls: toImageUrls(images),
       });
-      // 1순위(결제 꺼짐)는 ABNORMAL이어도 기록만 하고 완료. 결제가 켜지면 ABNORMAL은 RETURNED 유지(REQ-049)
-      if (result === 'NORMAL' || !PAYMENT_ENABLED) {
-        Object.assign(rental, { status: 'COMPLETED', completedAt: nowServer() });
+      const isFrozen = hasFrozenDeposit(rental, db.payments, PAYMENT_ENABLED);
+      // 동결 보증금이 있는 ABNORMAL은 RETURNED 유지(REQ-049), 없으면 처리할 금액이 없어 완료(백엔드와 같음)
+      if (result === 'ABNORMAL' && isFrozen) {
+        return ok(toDetail(rental));
       }
+      // 보증금 반환 실패는 200 + RETURNED(재시도 배치가 완료한다)
+      if (isFrozen && takeFailure([DEPOSIT_REFUND_FAILED])) {
+        return ok(toDetail(rental));
+      }
+      Object.assign(rental, { status: 'COMPLETED', completedAt: nowServer() });
       return ok(toDetail(rental));
     }),
   ),

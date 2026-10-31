@@ -1,5 +1,5 @@
 // 대여 목 시드. 날짜는 todayInSeoul() 기준 상대값(D+n = 오늘 + n일). 나 = 회원 1(동네주민).
-// 새로고침하면 처음 상태로 돌아간다(메모리 저장소).
+// 저장소는 rentalStore.js(sessionStorage). 초기화는 window.__mockPayment.reset().
 //
 // 대여자 쪽(제공자 캠핑조아·이웃)
 // | id | 상태 | 기간 | 경우 |

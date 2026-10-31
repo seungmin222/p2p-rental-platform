@@ -130,6 +130,13 @@ export const RENTAL_STATUS = {
 - 결제 금액·수수료·보증금 보관 안내는 `VITE_PAYMENT_ENABLED`가 true일 때만 보인다(1순위엔 받지 않음). 연체료·손상 등급·차감·AI 비교는 2순위라 표시하지 않는다.
 - 정책 수치는 `features/rental/constants.js`(`RENTAL_TEXT_MAX`·`CANCEL_FEE`·`RETURN_AUTO_CONFIRM_DAYS`·`PAYMENT_EXPIRE_MINUTES`·`CANCEL_AGREEMENT_EXPIRE_HOURS`).
 
+### 결제 화면 규칙 (SCR-07·08, `/payments/*`)
+- 결제창은 `features/payment/startPayment.js` `startPayment`(주문 생성 → 토스 결제창) 하나로 연다. SCR-07은 결제 대기가 되면 대여 상세로 replace한 뒤 부르고, SCR-08 "결제하기"(대여자만, 남은 시간 0이면 비활성)도 같은 함수를 쓴다. 창을 닫거나 주문을 못 만들면 대여는 결제 대기로 남고 SCR-08에서 다시 결제한다.
+- `rentalId`는 결제창에 다녀오는 동안 `sessionStorage`(`pendingPayment.js`)에 둔다. 토스 복귀 값에 없다.
+- `/payments/success`: 쿼리 검사(`parseSuccessParams`) → 승인 → 대여 상세로 replace. 같은 `orderId`의 진행 중 요청은 `runOnce`로 하나만 보내고, 그 뒤의 재호출은 서버가 멱등하게 처리한다. 실패 안내는 `getConfirmOutcome` 표 하나로 정하고, 결과를 모르면 "다시 확인"(같은 요청, 자동 재시도 없음)을 둔다.
+- `/payments/fail`: `code`가 구매자 취소면 취소 안내, 그 밖에는 토스 `message`를 일반 텍스트로 보여 준다. 승인을 부르지 않는다.
+- 보증금 결과는 `getDepositNotice`(기존 필드로 추정, TODO), 취소 환불액은 취소 순간의 토스트로만 보여 준다. 대여 상세 응답에 보증금 상태·환불액·연체료가 없어서다. 이 필드를 지어내지 않는다.
+
 ### 인증 화면 규칙 (SCR-01, `/me`)
 - 로그인 성공: `useLogin`이 `queryClient.clear()`(이전 사용자 캐시) → `setAccessToken`. 안전한 redirect가 있으면 그곳으로 replace, 없으면 `['members', 'me']`를 fetchQuery해 대표 동네가 없으면 `/regions`(state `{ fromLogin: true }`), 있으면 `/`(조회 실패도 `/`).
 - 이미 로그인한 사용자가 `/login`·`/signup`에 오면 redirect(없으면 `/`)로 보낸다. 로그인 여부는 **마운트할 때 한 번만** 본다(제출 성공으로 토큰이 생겨 다시 그려질 때 폼이 정한 이동보다 먼저 `/`로 가지 않게).
@@ -184,7 +191,7 @@ export const RENTAL_STATUS = {
 - **위치**: `navigator.geolocation` 권한 거부 시 안내 후 동네 검색으로 추가하게 한다(인증 안 된 상태로 추가 가능). 위치 버튼은 막지 않는다.
 
 ## 개발 방식
-- **목 로그인 계정**(`mocks/memberSeed.js`, 가짜 값): `user1@example.com`(동네주민, 대여·물품 목의 "나", 대표 동네 인증 유효 + 두 번째 동네 인증 만료) · `user3@example.com`(텐트초보, 동네 없음 → 로그인 후 `/regions`). 비밀번호는 모두 `rental123!`(그 밖에 user2·user4). 목 세션은 localStorage `mock.session`(RT 쿠키 흉내)이라 새로고침해도 로그인이 유지되고, 가입한 계정은 메모리에만 있어 새로고침하면 사라진다. 콘솔 `window.__mockAuth.expireAccessToken()`으로 AT만 무효화해 401 → 재발급 → 재시도를 볼 수 있다. 물품 상세 목은 토큰이 있으면 `isOwner`를 그 회원 기준으로 채우고, 대여 목은 아직 AT를 보지 않고 회원 1 기준이다.
+- **목 로그인 계정**(`mocks/memberSeed.js`, 가짜 값): `user1@example.com`(동네주민, 대여·물품 목의 "나", 대표 동네 인증 유효 + 두 번째 동네 인증 만료) · `user3@example.com`(텐트초보, 동네 없음 → 로그인 후 `/regions`). 비밀번호는 모두 `rental123!`(그 밖에 user2·user4). 목 세션은 localStorage `mock.session`(RT 쿠키 흉내)이라 새로고침해도 로그인이 유지되고, 가입한 계정은 메모리에만 있어 새로고침하면 사라진다. 콘솔 `window.__mockAuth.expireAccessToken()`으로 AT만 무효화해 401 → 재발급 → 재시도를 볼 수 있다. 물품 상세 목은 토큰이 있으면 `isOwner`를 그 회원 기준으로 채우고, 대여·결제 목도 AT의 회원을 "나"로 본다(AT가 없으면 회원 1). 제공자 단계는 같은 탭에서 계정을 바꿔 진행한다.
 - **목 동네**(`mocks/memberSeed.js` `MOCK_REGION_MASTER`, 인천 연수구 행정동 6개: 송도1동·송도2동·연수1동·동춘1동·옥련1동·청학동). 좌표 → 동네는 가장 가까운 시드 중심이 3km 안이면 그 동네, 아니면 404(`mocks/regionLogic.js`). 위치는 크롬 DevTools → More tools → Sensors → Location에서 바꾼다. 예: 송도1동 `37.3925, 126.639` · 연수1동 `37.418, 126.679` · 어느 동네도 아닌 곳(서울 강남역) `37.4979, 127.0276`. "현재 위치로 찾기"는 위치를 1분 동안 캐시하므로(maximumAge) 좌표를 바꾼 뒤 1분 안에 다시 찾으면 이전 위치가 쓰일 수 있다. 목록의 인증은 캐시하지 않아 바로 반영된다.
 - **목 물품·카테고리**(`mocks/item.js` 101~108 + `mocks/itemSeed.js` 201~): 행정동 시드의 regionId로 동네별로 나뉜다. 송도1동 30개(피드 2페이지 20 + 10, 같은 시각 등록이 여럿인 커서 경계, 무료·보증금 없음·대여 중 배지), 송도2동 7개(1페이지), 이미지 여러 장은 101(3장)·104(2장)·201(5장), 연수1동 12개, 동춘1동 5개, 옥련1동 3개, 청학동 0개(빈 피드). 카테고리는 `V3__insert_categories.sql` 8개 그대로. 피드·검색·카테고리 목은 `mocks/feed.js`, 계산(필터·정렬·커서·페이지·검증)은 `mocks/itemLogic.js` 순수 함수. 새로고침하면 시드로 돌아간다. 확인용 로그인: `user1`(송도1동 대표, 내 물품 103·104·107·108) · `user2`(연수1동 대표) · `user3`(동네 없음 → 홈 안내).
 - 백엔드가 컨트롤러·DTO를 먼저 머지하면 `docs/openapi.json`이 갱신된다. 그 스키마의 응답 형태 그대로 `mocks/` MSW 핸들러를 만들어 먼저 개발한다(공통 래퍼는 `mocks/response.js`의 `ok`·`fail` 헬퍼로). `VITE_USE_MOCK=true`로 전환.
@@ -195,4 +202,5 @@ export const RENTAL_STATUS = {
 - 포맷은 Prettier, 이름 규칙은 `docs/conventions.md` §5. 커밋 전 `npm run format`.
 - `npm run lint`, `npm run test`, `npm run build`가 통과해야 PR (CI도 같은 순서).
 - 작업 중에는 바꾼 부분의 테스트만 돌린다(`npx vitest run <파일>`). 전체 테스트는 PR 직전 한 번, 출력은 실패 요약만 본다(`npx vitest run --reporter=dot`). 빌드 로그를 통째로 읽지 않는다.
-- 1순위 단계에서는 결제 화면 대신 "예약 완료 → 대여 상세"로 바로 이동 (백엔드 `payment-enabled=false`와 맞춤). 플래그 `VITE_PAYMENT_ENABLED`.
+- 결제 플래그 `VITE_PAYMENT_ENABLED`는 백엔드 `payment-enabled`와 맞춘다. false면 결제 화면 없이 "예약 완료 → 대여 상세"로 바로 이동한다.
+- **결제 목**: 대여·결제 목은 `sessionStorage`(`mock.rentalDb`)에 저장해 결제창에 다녀와도 남는다. 콘솔 `window.__mockPayment.reset()`으로 시드로 되돌리고, `failNext(code)`로 다음 승인·반환 한 번을 실패시킨다(`mocks/paymentScenario.js`). 승인·환불은 토스를 부르지 않는 목 응답이고 결제창만 실제다.
