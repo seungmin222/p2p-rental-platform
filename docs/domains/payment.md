@@ -38,14 +38,16 @@
 - 환불액은 `policies.md` §2 취소 수수료 표대로 서버가 계산한다: `refund = (rentalFee − cancelFee) + deposit`
 - refund = 결제 금액 → 전액 취소(payment CANCELED). 그 외 → 부분 취소(payment PARTIAL_CANCELED)
 - 보증금은 항상 전액 반환 → depositStatus=REFUNDED (보증금 0원이면 NONE 유지)
-- 멱등성 키 = `cancel-refund:{rentalId}`. 실패 시 REFUND_FAILED + 재시도 배치
+- 멱등성 키 = `cancel-refund:{rentalId}`. 실패 시 REFUND_FAILED + 재시도 배치 (보증금 0원이면 NONE을 유지하고 `refund_pending_amount`로 재시도)
+- 결제 대기 취소는 PG를 부르지 않고 READY 주문을 FAILED로 닫는다. 승인 결과를 모르는 주문은 조정 배치가 처리한다
+- 인계 없음 자동 취소(REQ-017)도 같은 전액 환불이다
 - cancelFee > 0 → 정산 생성(REQ-039)
 
 ## REQ-025 보증금 반환 [2 필수]
 - 트리거: 상태 확인 NORMAL 또는 3일 자동 처리
 - 반환액 = deposit − overdueFee (`rental.md` REQ-023)
   - deposit = 0 → depositStatus NONE 그대로, PG 호출 없음
-  - 반환액 > 0 → 토스 부분 취소(cancelAmount = 반환액, 멱등성 키 = `deposit-refund:{rentalId}`) → depositStatus=REFUNDED, refundedAmount += 반환액, payment PARTIAL_CANCELED
+  - 반환액 > 0 → 토스 부분 취소(cancelAmount = 반환액, 멱등성 키 = `deposit-refund:{rentalId}`) → depositStatus=REFUNDED, refundedAmount += 반환액. 누적 취소가 결제 금액에 닿으면(대여료 0원 + 보증금 전액 반환) payment CANCELED, 아니면 PARTIAL_CANCELED (open-issues #32)
   - 반환액 = 0 (연체료가 보증금 전액) → PG 호출 없이 depositStatus=FORFEITED
 - 처리 완료 → rental COMPLETED, 정산 생성
 - PG 실패 → depositStatus=REFUND_FAILED, rental은 **RETURNED 유지**. 재시도 배치(10분, 최대 5회)가 성공시키면 COMPLETED. 5회 실패 → `needs_admin_check=true`
@@ -99,7 +101,7 @@
 | 차감 제안 자동 수락 | PROPOSED + 72시간 → AUTO_ACCEPTED → 확정 처리 |
 | 보류 7일 초과 표시 | HELD + 7일 → 관리자 확정 대상 목록에 노출 |
 | 정산 지급 | SCHEDULED → PAID |
-| 조정 | 최근 결제의 PG 조회 결과 ↔ 내부 상태 대조, 불일치 보정·로그 |
+| 조정 | 최근 결제(`reconciliation.lookback-hours`)의 PG 조회 결과 ↔ 내부 상태 대조. 승인 응답 유실 건은 확정 또는 전액 환불로 보정, 잔액 불일치는 고치지 않고 로그 + `needs_admin_check` |
 
 모든 배치는 ShedLock으로 단일 실행하고 멱등하게 만든다.
 

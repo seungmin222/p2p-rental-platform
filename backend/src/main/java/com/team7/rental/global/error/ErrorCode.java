@@ -66,7 +66,19 @@ public enum ErrorCode {
 	RENTAL_CANCEL_AGREEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "취소 동의 요청을 찾을 수 없습니다."),
 	RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE(HttpStatus.FORBIDDEN, "본인이 보낸 취소 동의 요청에는 응답할 수 없습니다."),
 	RENTAL_CANCEL_AGREEMENT_CLOSED(HttpStatus.CONFLICT, "이미 응답했거나 만료된 취소 동의 요청입니다."),
-	RENTAL_HANDOVER_TOO_EARLY(HttpStatus.CONFLICT, "대여 시작일부터 인계를 확인할 수 있습니다.");
+	RENTAL_HANDOVER_TOO_EARLY(HttpStatus.CONFLICT, "대여 시작일부터 인계를 확인할 수 있습니다."),
+
+	// 결제
+	PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "결제 내역을 찾을 수 없습니다."),
+	PAYMENT_INVALID_STATUS(HttpStatus.CONFLICT, "현재 결제 상태에서는 처리할 수 없는 요청입니다."),
+	PAYMENT_RENTER_ONLY(HttpStatus.FORBIDDEN, "대여자만 결제할 수 있습니다."),
+	PAYMENT_EXPIRED(HttpStatus.CONFLICT, "결제 가능 시간이 지났습니다. 다시 예약해 주세요."),
+	PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "결제 금액이 일치하지 않아 예약이 취소되었습니다."),
+	PAYMENT_APPROVAL_FAILED(HttpStatus.BAD_REQUEST, "결제 승인에 실패했습니다. 다시 결제해 주세요."),
+	/** PG 응답을 받지 못했다. 같은 요청을 다시 보내도 중복 승인되지 않는다 */
+	PAYMENT_RESULT_UNKNOWN(HttpStatus.SERVICE_UNAVAILABLE, "결제 결과를 확인하고 있습니다. 잠시 후 다시 시도해 주세요."),
+	/** 승인 직후 대여가 이미 만료·취소된 경합. 전액 취소를 진행한다 */
+	PAYMENT_CANCELED_AFTER_EXPIRY(HttpStatus.CONFLICT, "결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다.");
 
 	private final HttpStatus status;
 	private final String message;

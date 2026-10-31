@@ -38,6 +38,12 @@ public record PolicyProperties(
 	@Valid @NotNull
 	CancelAgreement cancelAgreement,
 	@Valid @NotNull
+	Handover handover,
+	@Valid @NotNull
+	Refund refund,
+	@Valid @NotNull
+	Reconciliation reconciliation,
+	@Valid @NotNull
 	Inspection inspection,
 	/** 키는 return.* 그대로. return이 Java 예약어라 컴포넌트 이름만 다르다 */
 	@Valid @NotNull @Name("return")
@@ -130,6 +136,35 @@ public record PolicyProperties(
 	public record CancelAgreement(
 		@Positive
 		int expireHours) {
+	}
+
+	/**
+	 * @param autoCancelDays 시작일 + 이 일수까지 인계 확인이 없으면 자동 취소, 전액 환불 (handover.auto-cancel-days)
+	 */
+	public record Handover(
+		@Positive
+		int autoCancelDays) {
+	}
+
+	/**
+	 * 환불 재시도 (refund.retry)
+	 *
+	 * @param maxRetry 최대 재시도 횟수. 다 실패하면 관리자 확인 대상
+	 * @param interval 재시도 간격
+	 */
+	public record Refund(
+		@Positive
+		int maxRetry,
+		@NotNull
+		Duration interval) {
+	}
+
+	/**
+	 * @param lookbackHours 조정 배치가 대조하는 최근 결제 범위 (reconciliation.lookback-hours)
+	 */
+	public record Reconciliation(
+		@Positive
+		int lookbackHours) {
 	}
 
 	/**

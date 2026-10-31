@@ -61,7 +61,9 @@ stateDiagram-v2
 
 보증금 반환이 실패하면(REFUND_FAILED) 대여는 RETURNED에 머물고, 재시도 배치가 성공시키는 시점에 COMPLETED로 바뀐다.
 
-> **1순위 단계(payment-enabled=false)**: 예약 시 바로 `RESERVED` 생성, 취소는 상태만 변경, `RETURNED → COMPLETED`에서 보증금 처리 생략.
+> **결제 없는 대여(payment-enabled=false로 만든 건, 무료 대여)**: 예약 시 바로 `RESERVED` 생성, 취소는 상태만 변경, `RETURNED → COMPLETED`에서 보증금 처리 생략. 상태 확인 '이상'도 동결된 보증금이 없으면 판정만 기록하고 COMPLETED다.
+>
+> **REQ-049 전까지**: 보증금이 FROZEN인 대여의 상태 확인 '이상'은 판정만 기록하고 RETURNED·FROZEN을 유지한다(자동 상태 확인 대상도 아니다). HELD 전이와 차감 흐름은 REQ-049가 이 상태에서 잇는다.
 
 ### UI 탭 매핑
 
@@ -103,6 +105,8 @@ stateDiagram-v2
     HELD --> REFUND_FAILED : PG 부분 취소 실패
     REFUND_FAILED --> REFUNDED : 배치 재시도(동일 멱등성 키)
 ```
+
+보증금 0원 결제의 취소 환불이 실패해도 depositStatus는 NONE을 유지한다. 재시도 대상은 `payments.refund_pending_amount`로 찾는다(`erd.md`).
 
 ## 3. 정산 상태 `SettlementStatus`
 

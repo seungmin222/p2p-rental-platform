@@ -63,6 +63,7 @@
 | `deduction.renter-response-hours` | **72시간** (차감 제안에 대여자 무응답 시 자동 수락) | 049 |
 | `deposit.hold-agreement-days` | 7일 (보류 시작 후 미합의 → 관리자 확정 대상) | 049 |
 | `refund.retry` | 10분 간격, 최대 5회. 초과 시 관리자 확인 플래그 | 025 |
+| `reconciliation.lookback-hours` | 24시간 (조정 배치가 대조하는 "최근 결제" 범위. **초기 가정**: 운영 데이터로 조정) | 024 |
 | `settlement.fee-rate` | 10% (원 미만 절사). 대여료·연장료·연체료·취소 수수료에 적용 | 039 |
 | `settlement.payout-delay` | 거래 완료일 기준 영업일 +2일 (주말만 제외, 공휴일 미반영) | 039 |
 | `payment-history.default-range` | 최근 3개월 | 033 |

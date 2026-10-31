@@ -1,5 +1,6 @@
 package com.team7.rental.rental.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -39,6 +40,8 @@ import lombok.extern.slf4j.Slf4j;
 public class RentalInspectionService {
 
 	private final RentalInspectionTxService rentalInspectionTxService;
+	private final RentalRefundPort rentalRefundPort;
+	private final RentalQueryService rentalQueryService;
 	private final ImageProcessor imageProcessor;
 	private final FileStorage fileStorage;
 	private final PolicyProperties policyProperties;
@@ -87,8 +90,28 @@ public class RentalInspectionService {
 		} else {
 			processed = processImages(images);
 		}
-		return withUploaded(processed, urls -> rentalInspectionTxService.confirmReturn(rentalId, memberId,
-			request.result(), request.normalizedResultNote(), urls));
+		// 판정·환불 기록을 커밋한 뒤 트랜잭션 밖에서 PG를 부른다. 반환이 실패하면 RETURNED로 남고 재시도 배치가 COMPLETED로 끝낸다(REQ-025)
+		withUploaded(processed, urls -> rentalInspectionTxService.confirmReturn(rentalId, memberId, request.result(),
+			request.normalizedResultNote(), urls)).ifPresent(rentalRefundPort::execute);
+		return rentalQueryService.getRental(rentalId, memberId);
+	}
+
+	/** 자동 상태 확인 배치 대상 id */
+	public List<Long> findAutoConfirmTargetIds(LocalDateTime now) {
+		return rentalInspectionTxService.findAutoConfirmTargetIds(now);
+	}
+
+	/**
+	 * 자동 상태 확인 한 건 (REQ-018). 보증금 반환까지 잇는다(REQ-025).
+	 *
+	 * @return 처리했으면 true, 이미 대상이 아니면 false
+	 */
+	public boolean autoConfirm(Long rentalId, LocalDateTime now) {
+		RentalInspectionTxService.AutoConfirmResult result = rentalInspectionTxService.autoConfirm(rentalId, now);
+		if (result.refund() != null) {
+			rentalRefundPort.execute(result.refund());
+		}
+		return result.confirmed();
 	}
 
 	/** inspection.images.min ~ max장을 검사하고 전부 처리한다. null은 0장 */

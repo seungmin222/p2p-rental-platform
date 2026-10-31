@@ -1,0 +1,67 @@
+package com.team7.rental.payment.service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import com.team7.rental.payment.client.PaymentGateway;
+import com.team7.rental.payment.client.PgResult;
+import com.team7.rental.payment.repository.RefundRetryTarget;
+import com.team7.rental.rental.service.RentalRefundPort;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * 환불 실행 (docs/domains/payment.md 원칙 3·8). 외부 API로 열지 않고 서버 안에서만 부른다. 트랜잭션을 열지 않고 PG를 부른다.
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class PaymentRefundService implements RentalRefundPort {
+
+	private final PaymentGateway paymentGateway;
+	private final PaymentRefundTxService paymentRefundTxService;
+
+	@Override
+	public Optional<RefundTicket> prepareCancelRefund(Long rentalId, int cancelFee) {
+		return paymentRefundTxService.prepareCancelRefund(rentalId, cancelFee);
+	}
+
+	@Override
+	public Optional<RefundTicket> prepareDepositReturn(Long rentalId, int overdueFee, Completion completion) {
+		return paymentRefundTxService.prepareDepositReturn(rentalId, overdueFee, completion);
+	}
+
+	@Override
+	public boolean hasFrozenDeposit(Long rentalId) {
+		return paymentRefundTxService.hasFrozenDeposit(rentalId);
+	}
+
+	/** 재시도 배치 대상 */
+	public List<RefundRetryTarget> findRetryTargets(LocalDateTime now) {
+		return paymentRefundTxService.findRetryTargets(now);
+	}
+
+	/** 재시도 한 건. 대상 조회 뒤 환불이 끝났으면 아무것도 하지 않는다 */
+	public void retry(RefundRetryTarget target) {
+		paymentRefundTxService.prepareRetry(target).ifPresent(this::execute);
+	}
+
+	@Override
+	public void execute(RefundTicket ticket) {
+		try {
+			PgResult result = paymentGateway.cancel(ticket.paymentKey(), ticket.amount(), ticket.cancelReason(),
+				ticket.idempotencyKey());
+			if (!(result instanceof PgResult.Success)) {
+				log.warn("Refund not completed: paymentId={}, result={}", ticket.paymentId(), result.toRecord());
+			}
+			paymentRefundTxService.applyResult(ticket, result);
+		} catch (RuntimeException e) {
+			// 업무(취소·상태 확인)는 이미 커밋됐다. 환불액이 남아 있어 재시도 배치가 같은 키로 처리한다
+			log.error("Refund execution failed: paymentId={}", ticket.paymentId(), e);
+		}
+	}
+}

@@ -46,7 +46,11 @@
 | `feat/fe-region` | SCR-02 (`feat/fe-auth-region`에서 분리, 머지 후 착수) | FE |
 
 ### 2순위 (착수 시 확정)
-`feat/payment-core`(024·025) · `feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
+| 브랜치 | REQ | 담당 |
+| --- | --- | --- |
+| `feat/payment-core` | 024, 025, 취소 시 환불(015 연계), 017 인계 없음 자동 취소, 결제 만료·환불 재시도·조정 배치 | A |
+
+`feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
 
 ## 3. 작업 한 사이클
 

@@ -90,7 +90,7 @@ public class RentalController {
 	@Operation(summary = "대여 단독 취소 (REQ-015)", description = "대여자·제공자가 결제 대기(PENDING_PAYMENT) 또는 시작일 전의 대여 예정(RESERVED)을 취소한다. "
 		+ "시작일이 지난 대여 예정은 409 RENTAL_CANCEL_NOT_ALLOWED이며 양측 동의 취소를 쓴다. "
 		+ "대여자가 시작일 직전에 취소하면 cancelFee가 생긴다(policies.md cancel-fee.rate-percent, cancel-fee.free-until-days-before). "
-		+ "1순위 단계는 수수료를 기록만 하고 환불하지 않는다. reason=OTHER면 reasonText 필수(cancel.reason-text-max). 응답은 대여 상세와 같다.")
+		+ "승인된 결제가 있으면 대여료 − 수수료 + 보증금을 환불한다. 환불이 실패해도 대여는 CANCELED이고 재시도 배치가 끝낸다. 결제가 없으면 수수료를 기록만 한다. reason=OTHER면 reasonText 필수(cancel.reason-text-max). 응답은 대여 상세와 같다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_PARTICIPANT, RENTAL_NOT_FOUND,
 		RENTAL_INVALID_TRANSITION, RENTAL_CANCEL_NOT_ALLOWED})
@@ -185,18 +185,19 @@ public class RentalController {
 	}
 
 	@Operation(summary = "제공자 상태 확인 (REQ-018)", description = "제공자가 반납된 물품을 정상(NORMAL) 또는 이상(ABNORMAL)으로 판정한다. 판정은 한 번만 할 수 있다. "
-		+ "1순위 단계는 보증금 처리가 없어 두 경우 모두 거래 완료(COMPLETED)가 되고 판정은 기록만 한다. "
+		+ "NORMAL은 보증금을 반환하고 거래 완료(COMPLETED)가 된다. 반환이 실패했거나 PG 결과를 알 수 없으면(타임아웃) 200에 status RETURNED로 답하고 재시도 배치가 완료한다. "
+		+ "ABNORMAL은 동결된 보증금이 있으면 RETURNED로 남고(차감은 REQ-049), 없으면 판정만 기록하고 COMPLETED가 된다. "
 		+ "반납 요청 후 policies.md return.auto-confirm-days가 지나도록 판정하지 않으면 자동으로 정상 처리된다. "
 		+ "multipart: request part(Content-Type application/json, 필수) { result, resultNote } + images 파일들. "
 		+ "ABNORMAL이면 resultNote(최대 inspection.abnormal-note-max자)와 사진(inspection.images.min~max장) 필수, NORMAL이면 resultNote 선택이고 사진을 보내면 400. "
 		+ "검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → "
 		+ "404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION(반납 완료 아님·이미 판정) → "
 		+ "사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). "
-		+ "다른 요청(자동 확인 포함)이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.")
+		+ "다른 요청(자동 확인 포함)이 먼저 판정했으면 409 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, COMMON_UNSUPPORTED_MEDIA_TYPE, AUTH_UNAUTHORIZED, RENTAL_NOT_FOUND,
 		RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY, RENTAL_INVALID_TRANSITION, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE,
-		IMAGE_SIZE_EXCEEDED, COMMON_CONCURRENT_UPDATE})
+		IMAGE_SIZE_EXCEEDED})
 	@PatchMapping(value = "/{rentalId}/return", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ApiResponse<RentalDetailResponse> confirmReturn(@LoginMember
 	Long memberId, @PathVariable

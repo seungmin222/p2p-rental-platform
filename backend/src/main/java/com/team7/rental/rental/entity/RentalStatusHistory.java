@@ -35,6 +35,16 @@ public class RentalStatusHistory extends BaseTimeEntity {
 	public static final String REASON_RETURN_CONFIRM_ABNORMAL = "RETURN_CONFIRM_ABNORMAL";
 	/** 자동 상태 확인 배치 (REQ-018). changedBy = null */
 	public static final String REASON_RETURN_AUTO_CONFIRM_BATCH = "RETURN_AUTO_CONFIRM_BATCH";
+	/** 결제 승인 (REQ-024). changedBy = null */
+	public static final String REASON_PAYMENT_APPROVED = "PAYMENT_APPROVED";
+	/** 결제 만료 (REQ-024). 만료 배치와 승인 직후 만료 경합 모두. changedBy = null */
+	public static final String REASON_PAYMENT_EXPIRED = "PAYMENT_EXPIRED";
+	/** 결제 금액 불일치 (REQ-024). changedBy = null */
+	public static final String REASON_AMOUNT_MISMATCH = "AMOUNT_MISMATCH";
+	/** 인계 없음 자동 취소 배치 (REQ-017). changedBy = null */
+	public static final String REASON_NO_HANDOVER_BATCH = "NO_HANDOVER_BATCH";
+	/** 보증금 반환 재시도 성공으로 완료 (REQ-025). changedBy = null */
+	public static final String REASON_REFUND_RETRY_BATCH = "REFUND_RETRY_BATCH";
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

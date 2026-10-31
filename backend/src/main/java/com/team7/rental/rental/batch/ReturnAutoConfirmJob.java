@@ -4,30 +4,29 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 
-import com.team7.rental.rental.service.RentalInspectionTxService;
+import com.team7.rental.rental.service.RentalInspectionService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * 자동 상태 확인 (REQ-018, policies.md 배치 주기 1시간). 반납 요청 후 return.auto-confirm-days가 지나도록 제공자가 판정하지 않은 대여를
- * 정상으로 처리한다(1순위는 바로 COMPLETED).
+ * 정상으로 처리하고 보증금을 반환한다(REQ-025).
  * <p>
  * 건마다 전이와 이력이 필요해 벌크 UPDATE 대신 건별 트랜잭션으로 처리한다. 한 건이 실패해도 나머지는 계속하고, 실패한 건은 다음 회차에 다시
- * 대상이 된다(조건을 다시 보므로 멱등). 제공자 확인과 겹친 낙관적 락 충돌은 제공자가 이긴 것이라 건너뛴다.
+ * 대상이 된다(조건을 다시 보므로 멱등). 제공자 확인과 겹치면 대여 행 락에서 기다린 뒤 조건을 다시 보고 건너뛴다.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ReturnAutoConfirmJob {
 
-	private final RentalInspectionTxService rentalInspectionTxService;
+	private final RentalInspectionService rentalInspectionService;
 	private final Clock clock;
 
 	@Scheduled(cron = "${app.batch.return-auto-confirm-cron}")
@@ -42,15 +41,13 @@ public class ReturnAutoConfirmJob {
 	 * @return 처리한 건수
 	 */
 	public int confirmDue(LocalDateTime now) {
-		List<Long> targetIds = rentalInspectionTxService.findAutoConfirmTargetIds(now);
+		List<Long> targetIds = rentalInspectionService.findAutoConfirmTargetIds(now);
 		int confirmed = 0;
 		for (Long rentalId : targetIds) {
 			try {
-				if (rentalInspectionTxService.autoConfirm(rentalId, now)) {
+				if (rentalInspectionService.autoConfirm(rentalId, now)) {
 					confirmed++;
 				}
-			} catch (ObjectOptimisticLockingFailureException e) {
-				log.info("Return auto-confirm skipped by concurrent update: rentalId={}", rentalId);
 			} catch (RuntimeException e) {
 				log.error("Return auto-confirm failed: rentalId={}", rentalId, e);
 			}

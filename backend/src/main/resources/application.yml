@@ -29,6 +29,13 @@ app:
   feature:
     # 1순위 단계는 false (docs/architecture.md §9)
     payment-enabled: ${APP_FEATURE_PAYMENT_ENABLED:false}
+  payment:
+    toss:
+      base-url: https://api.tosspayments.com
+      secret-key: ${TOSS_SECRET_KEY:}
+      connect-timeout: 3s
+      # 토스 문서에 일반 승인·취소의 권장값이 없다 (docs/prompts/feat/payment-core/notes.md)
+      read-timeout: 30s
   jwt:
     # 32바이트(256bit) 미만이면 기동 실패 (JwtProvider)
     secret: ${JWT_SECRET}
@@ -44,6 +51,14 @@ app:
     cancel-agreement-expire-cron: "0 */10 * * * *"
     # 자동 상태 확인(반납 요청 후 return.auto-confirm-days): 1시간 (REQ-018)
     return-auto-confirm-cron: "0 0 * * * *"
+    # 결제 만료: 1분 (REQ-024)
+    payment-expire-cron: "0 * * * * *"
+    # 인계 없음 자동 취소: 매일 09:00 (REQ-017)
+    no-handover-cancel-cron: "0 0 9 * * *"
+    # 환불 재시도: 10분 (REQ-025)
+    refund-retry-cron: "0 */10 * * * *"
+    # PG 조정: 1시간 (REQ-024)
+    payment-reconcile-cron: "0 30 * * * *"
   policy:
     # docs/policies.md 수치. 바꾸면 policies.md도 함께 수정 (PolicyProperties)
     image:
@@ -76,6 +91,16 @@ app:
     cancel-agreement:
       # cancel-agreement.expire-hours: 양측 동의 취소 요청이 상대 무응답으로 만료되는 시간 (REQ-015)
       expire-hours: 48
+    handover:
+      # handover.auto-cancel-days: 시작일 + 3일까지 인계 확인이 없으면 자동 취소, 전액 환불 (REQ-017, REQ-015)
+      auto-cancel-days: 3
+    refund:
+      # refund.retry: 10분 간격, 최대 5회. 다 실패하면 관리자 확인 플래그 (REQ-025)
+      max-retry: 5
+      interval: 10m
+    reconciliation:
+      # reconciliation.lookback-hours: 조정 배치가 대조하는 최근 결제 범위. 초기 가정 (REQ-024)
+      lookback-hours: 24
     inspection:
       images:
         # inspection.images.min / max / max-file-size: 인계·반납·판정 사진 1~5장, 장당 10MB (REQ-017, REQ-018)

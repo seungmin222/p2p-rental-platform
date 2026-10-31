@@ -23,7 +23,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 대여 건. 물품·회원은 ID로만 참조한다. 1순위 전이(취소·인계·반납·판정·완료)가 있고, 결제 승인·만료(024)·연체(023)·
+ * 대여 건. 물품·회원은 ID로만 참조한다. 1순위 전이(취소·인계·반납·판정·완료)가 있고, 결제 승인·만료·금액 불일치(024)와 인계 없음 자동 취소(017)도 있다. 연체(023)·
  * 미반납 신고(018 2순위)·연장(038)은 각 브랜치에서 추가한다. 전이 메서드는 상태 가드만 보고, 권한(당사자·역할)과 이력 저장은 서비스가 한다.
  * <p>
  * 생성 팩토리는 프로그래밍 오류를 막는 불변식(기간 null·뒤집힘, 결제 대기의 만료 시각 null)만 검사하고 위반 시
@@ -267,6 +267,70 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
+	 * PENDING_PAYMENT → RESERVED (REQ-024 결제 승인).
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION
+	 */
+	public void confirmPayment() {
+		requirePendingPayment();
+		this.status = RentalStatus.RESERVED;
+	}
+
+	/** 결제 만료 시각이 지났는지. 정확히 같은 시각이면 만료({@link #isOccupyingPeriod}와 같은 기준) */
+	public boolean isPaymentExpired(LocalDateTime now) {
+		return status == RentalStatus.PENDING_PAYMENT && !paymentExpiresAt.isAfter(now);
+	}
+
+	/**
+	 * PENDING_PAYMENT → CANCELED(PAYMENT_EXPIRED) (REQ-024 결제 만료).
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION
+	 */
+	public void expirePayment(LocalDateTime now) {
+		requirePendingPayment();
+		cancelBySystem(CancelType.PAYMENT_EXPIRED, now);
+	}
+
+	/**
+	 * PENDING_PAYMENT → CANCELED(AMOUNT_MISMATCH) (REQ-024 금액 불일치).
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION
+	 */
+	public void cancelForAmountMismatch(LocalDateTime now) {
+		requirePendingPayment();
+		cancelBySystem(CancelType.AMOUNT_MISMATCH, now);
+	}
+
+	/** 인계 없음 자동 취소 대상인지: RESERVED이고 오늘 &gt; 시작일 + autoCancelDays (REQ-017) */
+	public boolean isNoHandoverCancelDue(LocalDate today, int autoCancelDays) {
+		return status == RentalStatus.RESERVED && today.isAfter(startDate.plusDays(autoCancelDays));
+	}
+
+	/**
+	 * RESERVED → CANCELED(NO_HANDOVER) (REQ-017 인계 없음 자동 취소). 수수료 없음.
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION
+	 */
+	public void cancelForNoHandover(LocalDateTime now) {
+		if (status != RentalStatus.RESERVED) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+		cancelBySystem(CancelType.NO_HANDOVER, now);
+	}
+
+	private void requirePendingPayment() {
+		if (status != RentalStatus.PENDING_PAYMENT) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+	}
+
+	private void cancelBySystem(CancelType type, LocalDateTime now) {
+		this.status = RentalStatus.CANCELED;
+		this.canceledAt = now;
+		this.cancelType = type;
+	}
+
+	/**
 	 * RESERVED → RENTING (REQ-017 인계 확인).
 	 *
 	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RESERVED 아님), RENTAL_HANDOVER_TOO_EARLY(오늘 &lt; startDate)
@@ -314,8 +378,7 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
-	 * 상태 확인 '정상' (REQ-018, 제공자 또는 자동 확인 배치). 1순위는 보증금 처리 없이 바로 {@link #complete}.
-	 * REQ-025에서 보증금 반환 뒤 완료로 바뀐다.
+	 * 상태 확인 '정상'에서 보증금 반환에 PG가 필요 없을 때 (REQ-018, 제공자 또는 자동 확인 배치). PG가 필요하면 반환이 끝난 뒤 {@link #complete}.
 	 *
 	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RETURNED 아님)
 	 */
@@ -324,8 +387,8 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
-	 * 상태 확인 '이상' (REQ-018). RETURNED를 유지한다. 1순위는 상태 변화가 없어 서비스가 이어서 {@link #complete}를 부른다.
-	 * REQ-049에서 보증금 HELD로 바뀐다(RETURNED → RETURNED 이력).
+	 * 상태 확인 '이상' (REQ-018). RETURNED를 유지한다. 동결된 보증금이 없으면 서비스가 이어서 {@link #complete}를 부른다.
+	 * 보증금이 동결돼 있으면 RETURNED·FROZEN으로 남고, REQ-049에서 HELD로 바뀐다(RETURNED → RETURNED 이력).
 	 *
 	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RETURNED 아님)
 	 */

@@ -21,7 +21,7 @@ class CancelFeeCalculatorTest {
 
 	private final CancelFeeCalculator calculator = new CancelFeeCalculator(
 		new PolicyProperties(null, null, null, null, null, null, new PolicyProperties.CancelFee(30, 3), null, null,
-			null, null, null, null, null));
+			null, null, null, null, null, null, null, null));
 
 	@Test
 	@DisplayName("대여자가 시작일 3일 전까지 취소하면 수수료가 없다")

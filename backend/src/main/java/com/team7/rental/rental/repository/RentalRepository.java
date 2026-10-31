@@ -44,6 +44,26 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, RentalSea
 	List<Long> findAutoConfirmTargetIds(@Param("threshold")
 	LocalDateTime threshold);
 
+	/** 인계 없음 자동 취소(REQ-017) 대상 id: RESERVED이고 startDate &lt; threshold(= 오늘 - handover.auto-cancel-days). id 순 */
+	@Query("""
+		select r.id from Rental r
+		where r.status = com.team7.rental.rental.entity.RentalStatus.RESERVED
+			and r.startDate < :threshold
+		order by r.id
+		""")
+	List<Long> findNoHandoverCancelIds(@Param("threshold")
+	LocalDate threshold);
+
+	/** 결제 만료(REQ-024) 대상 id: PENDING_PAYMENT이고 paymentExpiresAt ≤ now. id 순 */
+	@Query("""
+		select r.id from Rental r
+		where r.status = com.team7.rental.rental.entity.RentalStatus.PENDING_PAYMENT
+			and r.paymentExpiresAt <= :now
+		order by r.id
+		""")
+	List<Long> findPaymentExpiredIds(@Param("now")
+	LocalDateTime now);
+
 	/**
 	 * [from, to]와 겹치는(양 끝 포함) 기간 점유 대여. 상태는 {@link RentalStatus#ACTIVE_FOR_PERIOD}를 넘기고,
 	 * PENDING_PAYMENT는 paymentExpiresAt > now인 것만 점유한다({@link Rental#isOccupyingPeriod}와 같은 조건).
