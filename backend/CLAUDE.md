@@ -1,6 +1,6 @@
 # backend/CLAUDE.md — Spring Boot 규칙
 
-루트 `CLAUDE.md`와 `docs/`를 먼저 읽는다. 이 파일은 백엔드 코드 작성 규칙만 다룬다.
+루트 `CLAUDE.md`의 문서 지도를 따라 작업에 필요한 문서를 먼저 읽는다(`docs/` 전체나 `docs/reference/`를 미리 읽지 않는다). 이 파일은 백엔드 코드 작성 규칙만 다룬다.
 
 ## 스택
 Java 21 · **Spring Boot 4.1.x** · Gradle · Spring Data JPA + **QueryDSL**(OpenFeign 포크) · Spring Security(JWT) · Flyway · Redisson · Spring AMQP / STOMP relay · Spring Scheduling + **ShedLock** · **springdoc-openapi** · JUnit5 + Testcontainers

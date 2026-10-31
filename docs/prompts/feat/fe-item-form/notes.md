@@ -11,6 +11,7 @@
 - **가능 기간 입력**: `TextField type="date"` 행 추가·삭제. 공용 Calendar는 대여 기준이라 쓰지 않고 수정하지 않았다.
 - **동네 인증 안내**: `primaryRegion.isVerified`가 false면 등록 진입 때도 안내와 `/regions` 버튼을 보여 준다. 입력은 막지 않고, 제출 시 `REGION_NOT_VERIFIED` 처리도 둔다.
 - **목 파일 분리**: 쓰기 계산은 `itemLogic.js`가 아니라 `itemWriteLogic.js`에 뒀다(한 파일이 커져서). 권장 보증금 내림은 명세에 없어 임시 값이다.
+- backend/CLAUDE.md의 문서 읽기 범위를 루트 문서 지도 기준으로 좁힘. docs/ 전체 읽기를 막기 위해서이고, frontend/CLAUDE.md와 implement-req.md는 작고 자주 필요한 핵심 문서라 통째로 읽는 방식을 유지함.
 
 ## 브라우저 확인 결과 (2026-10-31, 목 모드)
 전 항목 통과. 찾은 버그 1건(새 대표 사진 수정 뒤 캐러셀이 이전 사진에 멈춤)은 위 무효화 키 항목대로 고쳤다.
