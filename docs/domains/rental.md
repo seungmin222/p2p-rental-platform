@@ -91,7 +91,7 @@ try {
 ## REQ-017 물품 인계 확인 [1]
 `PATCH /api/rentals/{id}/handover` (multipart: images 1~5장, memo ≤300자) — 사진 저장과 상태 전이를 한 요청으로 처리. 사진 형식·장수·용량은 policies.md `inspection.images.*`
 - 제공자만(대여자 403 `RENTAL_OWNER_ONLY`, 제3자 403 `RENTAL_NOT_PARTICIPANT`), RESERVED만(409 `RENTAL_INVALID_TRANSITION`), 오늘 ≥ startDate(409 `RENTAL_HANDOVER_TOO_EARLY`), 사진 장수 위반 400 `IMAGE_COUNT_INVALID`
-- multipart의 request part는 `application/json`(아니면 415 `COMMON_UNSUPPORTED_MEDIA_TYPE`). 동시에 다른 요청이 대여를 바꿨으면 409 `COMMON_CONCURRENT_UPDATE`(인계·반납 요청·상태 확인 공통)
+- multipart의 request part는 `application/json`(아니면 415 `COMMON_UNSUPPORTED_MEDIA_TYPE`). 동시에 다른 요청이 대여를 바꿨으면 409 `COMMON_CONCURRENT_UPDATE`(인계·반납 요청 공통. 상태 확인은 대여 행 락으로 한 줄로 서므로 늦은 쪽이 409 `RENTAL_INVALID_TRANSITION`)
 - item_inspections(phase=HANDOVER) 저장 — **이후 수정 불가**
 - → RENTING, `handed_over_at=now`, 대여자 알림
 - 대여자는 대여 상세에서 인계 사진 확인, 이의는 채팅으로
@@ -117,7 +117,7 @@ try {
 - 입력: result(`NORMAL`/`ABNORMAL`), ABNORMAL이면 내용(500자)·사진 필수. NORMAL에 사진을 보내면 400 `IMAGE_COUNT_INVALID`
 - 가드: 제공자만(대여자 403 `RENTAL_OWNER_ONLY`), RETURNED이고 반납 기록이 판정 전일 때만(아니면 409 `RENTAL_INVALID_TRANSITION`)
 - 화면에 인계 사진 / 반납 사진 / 체크리스트(false 항목 강조) / AI 결과 / 연체료를 나란히 (조회는 `GET /inspections`)
-- NORMAL → 보증금 처리(REQ-025: 연체료 차감 후 남은 금액 반환) 완료 후 COMPLETED(`completed_at=now`) → 정산 생성(REQ-039)
+- NORMAL → 보증금 처리(REQ-025: 연체료 차감 후 남은 금액 반환) 완료 후 COMPLETED(`completed_at=now`) → 정산 생성(REQ-039). 반환이 실패했거나 PG 결과를 알 수 없으면(타임아웃) 200에 RETURNED로 답하고 재시도 배치가 완료한다
 - ABNORMAL → RETURNED 유지, depositStatus=HELD, 정산 보류 → `payment.md` REQ-049 흐름
 - **자동 처리 배치**: `RETURNED AND returned_at + 3일 <= now AND 판정 없음 AND 미반납 신고 아님` → NORMAL로 처리
 - 1순위: 보증금 처리 없이 판정 기록 후 COMPLETED (ABNORMAL이어도 기록만 하고 COMPLETED — 1순위에는 차감 흐름이 없음)
