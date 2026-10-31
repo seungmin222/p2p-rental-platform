@@ -10,6 +10,12 @@ export const LOCATE_GEOLOCATION_OPTIONS = {
 // 인증(목록의 인증하기·다시 인증): 캐시를 쓰지 않는다. 불일치 뒤 그 동네로 옮겨 1분 안에 다시 인증하면
 // 이전 위치가 돌아와 또 실패해서(헤드리스에서 발견)
 export const VERIFY_GEOLOCATION_OPTIONS = { ...LOCATE_GEOLOCATION_OPTIONS, maximumAge: 0 };
+// 물품 거래 장소: 행정동 판정과 달리 좌표가 그대로 장소로 공개되어 고정밀로, 캐시 없이 받는다
+export const TRADE_PLACE_GEOLOCATION_OPTIONS = {
+  ...LOCATE_GEOLOCATION_OPTIONS,
+  enableHighAccuracy: true,
+  maximumAge: 0,
+};
 
 // 위치 실패의 프론트 전용 코드(CLIENT_* 규칙). 문구는 errorMessages.js
 export const LOCATION_ERROR = {

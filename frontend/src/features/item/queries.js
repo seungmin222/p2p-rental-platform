@@ -169,7 +169,7 @@ export function useCreateItem() {
  * REQ-007 수정. 응답이 ItemEditResponse라 상세 모양이 아니다: 수정 키만 setQueryData, 캘린더(기간)·목록은 무효화.
  * 상세(exact)는 reset한다: 무효화만 하면 이전 내용이 먼저 그려져 새 대표 사진이 앞에 낄 때 캐러셀 스냅이 이전 사진을 따라가고,
  * remove는 마운트된 관찰자(저장 중 뒤로 간 상세)를 갱신하지 않아 이전 내용에 멈춘다.
- * 화면을 벗어나도 빠지지 않도록 mutate() 콜백이 아니라 훅 옵션에 둔다.
+ * 화면을 벗어나도 빠지지 않도록 mutate() 콜백이 아니라 훅 옵션에 둔다. 대여 화면의 물품 정보를 위해 대여도 무효화한다.
  */
 export function updateItemMutationOptions(queryClient, itemId) {
   return {
@@ -180,6 +180,7 @@ export function updateItemMutationOptions(queryClient, itemId) {
       queryClient.resetQueries({ queryKey: itemKeys.detail(itemId), exact: true });
       queryClient.invalidateQueries({ queryKey: itemKeys.calendar(itemId) });
       invalidateItemLists(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
     },
   };
 }
@@ -190,31 +191,35 @@ export function useUpdateItem(itemId) {
 }
 
 /**
- * REQ-008 삭제. variables는 itemId.
- * 상세 화면에서 지울 때는 onDeleted로 먼저 이동해야 한다: 상세가 떠 있는 채로 캐시를 지우면 다시 받아 404가 잠깐 보인다.
- * 훅 옵션(화면을 벗어나도 실행)이라 정리가 빠지지 않는다. 과거 대여의 "삭제된 물품" 표시를 위해 대여도 무효화한다.
- * 이미 지워진 물품(404)이면 내 물품 목록만 다시 받는다.
+ * REQ-008 삭제. variables는 itemId, 결과는 { alreadyDeleted }.
+ * 이미 지워진 물품(404)도 결과는 같으므로 성공으로 돌린다(문구만 호출부가 alreadyDeleted로 바꾼다).
+ * 캐시 정리는 훅 옵션(화면을 벗어나도 실행), 이동은 mutate() 콜백(화면을 벗어났으면 부르지 않음)에 둔다.
+ * 과거 대여의 "삭제된 물품" 표시를 위해 대여도 무효화한다.
  */
-export function deleteItemMutationOptions(queryClient, { onDeleted } = {}) {
+export function deleteItemMutationOptions(queryClient) {
   return {
-    mutationFn: deleteItem,
+    mutationFn: async (itemId) => {
+      try {
+        await deleteItem(itemId);
+        return { alreadyDeleted: false };
+      } catch (error) {
+        if (error?.code === 'ITEM_NOT_FOUND') {
+          return { alreadyDeleted: true };
+        }
+        throw error;
+      }
+    },
     onSuccess: (_, itemId) => {
-      onDeleted?.(itemId);
       queryClient.removeQueries({ queryKey: itemKeys.detail(itemId) });
       invalidateItemLists(queryClient);
       queryClient.invalidateQueries({ queryKey: ['rentals'] });
     },
-    onError: (error) => {
-      if (error?.code === 'ITEM_NOT_FOUND') {
-        queryClient.invalidateQueries({ queryKey: itemKeys.mine() });
-      }
-    },
   };
 }
 
-export function useDeleteItem(options) {
+export function useDeleteItem() {
   const queryClient = useQueryClient();
-  return useMutation(deleteItemMutationOptions(queryClient, options));
+  return useMutation(deleteItemMutationOptions(queryClient));
 }
 
 // 모듈 함수라 참조가 바뀌지 않아, 데이터가 그대로면 이전 결과를 돌려준다

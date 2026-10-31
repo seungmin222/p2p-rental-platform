@@ -7,7 +7,7 @@ import PageHeader from '../app/layout/PageHeader';
 import DeleteItemModal from '../features/item/components/DeleteItemModal';
 import ItemImageCarousel from '../features/item/components/ItemImageCarousel';
 import { ItemOwnerRow, ItemSummary, ItemTradePlace } from '../features/item/components/ItemInfo';
-import { getErrorMessage } from '../features/item/errorMessages';
+import { getDeletedMessage, getErrorMessage } from '../features/item/errorMessages';
 import { getPriceParts, getDepositText } from '../features/item/itemDisplay';
 import { parseItemId } from '../features/item/itemId';
 import { useItemDetail } from '../features/item/queries';
@@ -63,14 +63,14 @@ function ItemCalendar({ itemId }) {
   );
 }
 
-/** 내 물품의 수정·삭제. 삭제하면 내 물품 관리로 먼저 옮긴 뒤 캐시를 지운다(상세가 다시 받아 404가 보이지 않게) */
+/** 내 물품의 수정·삭제. 삭제하면 내 물품 관리로 옮긴다(삭제 중 이 화면을 떠났으면 옮기지 않는다) */
 function OwnerActions({ item }) {
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  function handleDeleted() {
+  function handleDeleted(result) {
     navigate('/me/items', { replace: true, flushSync: true });
-    toast.show({ message: '물품을 삭제했어요' });
+    toast.show({ message: getDeletedMessage(result) });
   }
 
   return (

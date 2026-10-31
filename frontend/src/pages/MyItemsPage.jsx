@@ -6,6 +6,7 @@ import DeleteItemModal from '../features/item/components/DeleteItemModal';
 import { MY_ITEM_TABS } from '../features/item/constants';
 import { useMyItems } from '../features/item/queries';
 import ItemRentalsSheet from '../features/rental/components/ItemRentalsSheet';
+import { getDeletedMessage } from '../features/item/errorMessages';
 import { getErrorMessage } from '../features/rental/errorMessages';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { useTabParam } from '../shared/hooks/useTabParam';
@@ -147,9 +148,9 @@ export default function MyItemsPage() {
   const [sheetItem, setSheetItem] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
 
-  function handleDeleted() {
+  function handleDeleted(result) {
     setDeletingItem(null);
-    toast.show({ message: '물품을 삭제했어요' });
+    toast.show({ message: getDeletedMessage(result) });
   }
 
   return (

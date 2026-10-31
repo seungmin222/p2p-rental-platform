@@ -23,6 +23,34 @@ describe('applyFieldErrors', () => {
     ]);
   });
 
+  it('인덱스·점이 붙은 키는 상위 필드에 붙이고, 정확히 맞는 키가 있으면 그것을 먼저 쓴다', () => {
+    const setError = vi.fn();
+    const result = applyFieldErrors(
+      invalid([
+        { field: 'availablePeriods[0].startDate', reason: '기간 오류' },
+        { field: 'imageOrder[1]', reason: '순서 오류' },
+        { field: 'place.address', reason: '주소 오류' },
+        { field: 'checklist.A', reason: '정확히 맞음' },
+        { field: 'unknown[0].x', reason: '무시' },
+      ]),
+      setError,
+      {
+        availablePeriods: 'availablePeriods',
+        imageOrder: 'images',
+        place: 'address',
+        checklist: 'checklist.ALL',
+        'checklist.A': 'checklistA',
+      },
+    );
+    expect(result).toBe('availablePeriods');
+    expect(setError.mock.calls.map(([name]) => name)).toEqual([
+      'availablePeriods',
+      'images',
+      'address',
+      'checklistA',
+    ]);
+  });
+
   it('붙일 필드가 없거나 COMMON_INVALID_INPUT이 아니면 null', () => {
     const setError = vi.fn();
     expect(applyFieldErrors(invalid([{ field: 'x', reason: 'y' }]), setError, {})).toBeNull();

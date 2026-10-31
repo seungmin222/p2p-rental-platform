@@ -1,7 +1,9 @@
 // 물품 등록·수정 폼의 순수 함수(기본값·검증·요청 변환). 금액 칸은 문자열로 들고 있다가 제출할 때 숫자로 바꾼다.
 import { countCodePoints } from '../../shared/lib/validators';
+import { getCurrentCoords, TRADE_PLACE_GEOLOCATION_OPTIONS } from '../region/geolocation';
 import {
   ITEM_DEPOSIT,
+  ITEM_IMAGE_MAX_MB,
   ITEM_IMAGES,
   ITEM_MIN_PAID_AMOUNT,
   ITEM_PRICE,
@@ -35,6 +37,34 @@ export function parseAmount(text) {
     .replaceAll(',', '')
     .trim();
   return /^\d+$/.test(digits) ? Number(digits) : null;
+}
+
+/** 금액 칸 안내. zeroLabel은 0원의 뜻(무료·보증금 없음) */
+export function getPaidAmountHint(zeroLabel) {
+  return `0원(${zeroLabel}) 또는 ${ITEM_MIN_PAID_AMOUNT.toLocaleString()}원 이상`;
+}
+
+export const ITEM_IMAGE_HINT = `첫 장이 대표 사진이에요. jpg·png, 장당 ${ITEM_IMAGE_MAX_MB}MB`;
+
+/** 거래 장소 좌표. geolocation은 테스트에서 바꿔 넣는다 */
+export function getTradePlaceCoords(geolocation) {
+  return getCurrentCoords(TRADE_PLACE_GEOLOCATION_OPTIONS, geolocation);
+}
+
+/**
+ * 카테고리 칸 상태. 이미 받은 목록이 있으면 재조회가 실패해도 칩을 그대로 둔다.
+ * @returns {'ready' | 'loading' | 'error'}
+ */
+export function getCategoryStatus({ data, isPending, isFetching }) {
+  if (data) {
+    return 'ready';
+  }
+  return isPending || isFetching ? 'loading' : 'error';
+}
+
+/** 값이 곧 바뀔 수 있는 동안(카테고리 로딩·위치 가져오는 중)은 제출하지 않는다 */
+export function isSubmitBlocked({ categoryStatus, isLocating }) {
+  return categoryStatus === 'loading' || isLocating;
 }
 
 // ── 검증(react-hook-form validate 모양: 통과 true, 실패 문구) ──────────────────────

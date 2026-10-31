@@ -33,14 +33,14 @@ src/
 ├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review)
 │   ├── auth/           로그인·가입·로그아웃(api·queries·constants·errorMessages, components/)
 │   ├── region/         동네(api·queries·constants·errorMessages·geolocation·guestRegionStore·myRegions·regionStatus, components/)
-│   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay·itemId, components/)
+│   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay·itemId·itemForm, components/)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
 │       ├── queries.js      useQuery/useMutation 훅 + queryKey
 │       ├── components/
 │       └── constants.js    상태 라벨·탭 매핑
 ├── shared/
-│   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화, 토큰 재발급, authStore(AT)
+│   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화, 토큰 재발급, authStore(AT), multipart(toMultipart)
 │   ├── ws/         STOMP 클라이언트 싱글톤
 │   ├── ui/         Button, ButtonLink, Badge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Tabs, Thumbnail, InfiniteListFooter, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
 │   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), listParams(페이지·탭 쿼리), queryState(조회 실패 표시), validators(회원 입력, 글자 수는 코드 포인트), formErrors(오류 문구 함수·필드 오류 붙이기)
@@ -85,7 +85,7 @@ src/
 - **분기는 `error.code`로** (예: `RENTAL_PERIOD_CONFLICT` → "이미 예약된 기간입니다" 토스트 + 캘린더 refetch). HTTP 메시지 문자열로 분기하지 않는다.
 - 폼 제출 실패는 `shared/hooks/useSubmitErrorHandler`(onError로 사용): `details[]`는 `fieldMap`, 특정 code(예: 409 중복)는 `codeFields`로 필드에 붙이고 비활성이 풀린 뒤 첫 오류 필드로 포커스, 나머지는 `root.server`. 문구는 도메인별 `features/*/errorMessages.js`(`createErrorMessageGetter(MESSAGES)`, `shared/lib/formErrors.js`).
 - 폼은 react-hook-form. 제출할 때 검증하고 첫 오류 필드로 포커스(`shouldFocusError`). 값 구독은 `watch` 대신 `useWatch`(React Compiler가 `watch`가 있는 컴포넌트를 건너뛴다). 제출 중에는 Modal·BottomSheet `dismissible={false}`, 버튼 비활성.
-- **multipart**(사진 + JSON): `request` 파트는 `new Blob([JSON.stringify(body)], { type: 'application/json' })`(Content-Type이 없거나 text/plain이면 415 `COMMON_UNSUPPORTED_MEDIA_TYPE`), 사진은 `images` 파트를 장마다 반복 append. ImageUploader value에서 `file`만 꺼낸다(`features/rental/api.js` `toMultipart`).
+- **multipart**(사진 + JSON): `request` 파트는 `new Blob([JSON.stringify(body)], { type: 'application/json' })`(Content-Type이 없거나 text/plain이면 415 `COMMON_UNSUPPORTED_MEDIA_TYPE`), 사진은 `images` 파트를 장마다 반복 append. ImageUploader value에서 `file`만 꺼낸다(`shared/api/multipart.js` `toMultipart`).
 - Access Token은 **메모리(Zustand)에만**. localStorage 저장 금지. Refresh Token은 HttpOnly 쿠키라 JS가 만지지 않는다(`withCredentials: true`).
 - **401 처리**: 재발급 요청을 **단일 비행(single-flight)**으로 — 동시에 401이 여러 개 와도 `/api/auth/reissue`는 한 번만 호출하고 나머지는 대기 후 재시도. 원 요청은 1회만 재시도. 재발급 실패 → 상태 초기화 후 `/login?redirect=<현재 경로>`.
   - 재발급 호출은 **인터셉터를 타지 않는 별도 호출**(무한 루프 방지).
@@ -150,7 +150,7 @@ export const RENTAL_STATUS = {
 ### 동네 화면 규칙 (SCR-02, `/regions`)
 - 로그인하면 `MyRegionManager`(내 동네 목록 `MyRegionList` + 추가), 아니면 `GuestRegionPicker`(임시 동네 하나). 검색·현재 위치로 찾기는 둘이 `RegionFinder`를 같이 쓴다.
 - **사용자의 현재 위치 좌표는 TanStack Query 캐시·state·Zustand·로그에 두지 않는다.** (물품 거래 장소 좌표는 상세 API로 공개되는 값이라 이 규칙 밖이다. 다만 등록·수정 뮤테이션과 수정 조회는 `gcTime: 0`.) 위치 뮤테이션 variables에는 좌표를 돌려주는 함수(`locate`)만 넣고 mutationFn 안에서 부른다(`features/region/queries.js`, `queries.test.js`가 MutationCache·QueryCache를 훑어 확인). 현재 위치로 찾은 좌표는 `RegionFinder`의 좌표 칸(`coordsSlot.js` `createCoordsSlot`, 찾기 호출마다 토큰 — 늦게 온 응답은 좌표·결과 표시 모두 버림)에만 두고, 새 검색 입력·검색 결과 선택·찾은 결과로 추가를 시도한 직후·언마운트 때 비운다. 추가 직후 인증은 그 좌표로 하고, 좌표가 없으면 인증을 부르지 않는다.
-- 위치는 `features/region/geolocation.js` `getCurrentCoords(options)`. 옵션은 용도별: "현재 위치로 찾기" `LOCATE_GEOLOCATION_OPTIONS`(`{ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }`), 목록의 인증 `VERIFY_GEOLOCATION_OPTIONS`(같고 `maximumAge: 0` — 불일치 뒤 바로 다시 인증할 때 이전 위치가 돌아오지 않게). 실패는 `LocationError`(`CLIENT_LOCATION_*`, ApiError가 아님). 권한 거부여도 버튼을 막지 않고 누를 때마다 다시 시도하며 안내한다(브라우저 설정에서 다시 켤 수 있어서). 거부 문구는 회원(인증 불가 + 검색으로 추가)·비회원(검색으로 고르기) 두 가지.
+- 위치는 `features/region/geolocation.js` `getCurrentCoords(options)`. 옵션은 용도별: "현재 위치로 찾기" `LOCATE_GEOLOCATION_OPTIONS`(`{ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }`), 목록의 인증 `VERIFY_GEOLOCATION_OPTIONS`(같고 `maximumAge: 0` — 불일치 뒤 바로 다시 인증할 때 이전 위치가 돌아오지 않게), 물품 거래 장소 `TRADE_PLACE_GEOLOCATION_OPTIONS`(고정밀, `maximumAge: 0`). 실패는 `LocationError`(`CLIENT_LOCATION_*`, ApiError가 아님). 권한 거부여도 버튼을 막지 않고 누를 때마다 다시 시도하며 안내한다(브라우저 설정에서 다시 켤 수 있어서). 거부 문구는 회원(인증 불가 + 검색으로 추가)·비회원(검색으로 고르기) 두 가지.
 - 목록 갱신: 인증 응답은 그 항목만 `setQueryData`, 추가·삭제는 목록 무효화, 대표 변경 응답(목록 전체)은 `setQueryData`. 셋 다 끝나면 `['members', 'me']` 무효화, 대표가 바뀌면 `['items', 'feed']`도. 뮤테이션은 목록 갱신까지 끝나야 끝나고(실패로 목록이 어긋난 경우의 재조회 포함), 동네 뮤테이션이 하나라도 진행 중이면 목록 버튼 전체를 막는다(`useRegionMutating`).
 - 인증 판정은 서버 `isVerified`를 그대로 쓴다(`regionStatus.js` `getVerifyStatus`). 최대 개수는 `features/region/constants.js` `REGION_MAX_PER_MEMBER`.
 

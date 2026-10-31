@@ -2,17 +2,24 @@ import { useEffect, useRef, useState } from 'react';
 import { Controller } from 'react-hook-form';
 
 import { Button, TextField } from '../../../shared/ui';
-import { getCurrentCoords } from '../../region/geolocation';
 import { getErrorMessage } from '../errorMessages';
-import { validateAddress } from '../itemForm';
+import { getTradePlaceCoords, validateAddress } from '../itemForm';
 
 /**
  * 거래 장소(REQ-006·REQ-030 좌표 입력만): 주소 직접 입력 + "현재 위치로 가져오기". 지도·주소 검색은 REQ-030(2순위).
  * 좌표는 폼 값에만 두고 화면에 숫자로 보이지 않는다. 주소와 좌표를 맞춰 보는 수단이 없어 어긋날 수 있다.
  * 권한 거부여도 버튼을 막지 않는다(브라우저 설정에서 다시 켤 수 있어서).
  */
-export default function TradePlaceField({ control, register, setValue, error, isEdit, disabled }) {
-  const [isLocating, setIsLocating] = useState(false);
+export default function TradePlaceField({
+  control,
+  register,
+  setValue,
+  error,
+  isEdit,
+  disabled,
+  isLocating,
+  onLocatingChange,
+}) {
   const [isFreshLocation, setIsFreshLocation] = useState(false);
   const [locationError, setLocationError] = useState(null);
   // 화면을 벗어난 뒤 온 응답은 버린다
@@ -25,10 +32,10 @@ export default function TradePlaceField({ control, register, setValue, error, is
   }, []);
 
   async function handleLocate() {
-    setIsLocating(true);
+    onLocatingChange(true);
     setLocationError(null);
     try {
-      const { lat, lng } = await getCurrentCoords();
+      const { lat, lng } = await getTradePlaceCoords();
       if (isMounted.current) {
         setValue('longitude', lng);
         setValue('latitude', lat, { shouldValidate: true });
@@ -40,7 +47,7 @@ export default function TradePlaceField({ control, register, setValue, error, is
       }
     } finally {
       if (isMounted.current) {
-        setIsLocating(false);
+        onLocatingChange(false);
       }
     }
   }
@@ -85,11 +92,10 @@ export default function TradePlaceField({ control, register, setValue, error, is
                   현재 위치로 가져오기
                 </Button>
               </div>
-              {!isEdit && (
-                <p className="text-xs text-ink-muted">
-                  거래할 장소에서 눌러 주세요. 좌표는 화면에 보이지 않아요.
-                </p>
-              )}
+              <p className="text-xs text-ink-muted">
+                {!isEdit && '거래할 장소에서 눌러 주세요. '}
+                가져온 위치는 거래 장소로 다른 사람에게 공개돼요.
+              </p>
               {message && (
                 <p role="alert" className="text-xs text-danger">
                   {message}

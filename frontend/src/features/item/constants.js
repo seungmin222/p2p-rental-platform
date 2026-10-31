@@ -20,6 +20,8 @@ export const ITEM_IMAGES = {
   MAX_FILE_SIZE: 10 * 1024 * 1024,
   ACCEPT: ['image/jpeg', 'image/png'],
 };
+// 안내 문구용 장당 용량(MB)
+export const ITEM_IMAGE_MAX_MB = ITEM_IMAGES.MAX_FILE_SIZE / (1024 * 1024);
 
 /** REQ-020 내 물품 관리 탭(키 = API tab 값). state-machines.md "UI 탭 매핑". HIDDEN 탭은 숨기기(REQ-044, 3순위)와 함께 */
 export const MY_ITEM_TABS = {
