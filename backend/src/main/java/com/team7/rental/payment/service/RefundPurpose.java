@@ -17,4 +17,9 @@ public enum RefundPurpose {
 	public String keyOf(Long rentalId) {
 		return keyPrefix + rentalId;
 	}
+
+	/** 저장된 멱등성 키로 환불 종류를 찾는다 */
+	public static RefundPurpose ofKey(String idempotencyKey) {
+		return idempotencyKey.startsWith(DEPOSIT.keyPrefix) ? DEPOSIT : CANCEL;
+	}
 }

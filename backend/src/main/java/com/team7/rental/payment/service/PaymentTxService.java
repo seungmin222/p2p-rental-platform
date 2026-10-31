@@ -152,7 +152,8 @@ public class PaymentTxService {
 		if (rental.status() == RentalStatus.PENDING_PAYMENT) {
 			rentalPaymentTxService.expirePayment(rentalId, now);
 		}
-		RefundTicket refund = paymentRefundTxService.prepare(payment, payment.getAmount(), RefundPurpose.CANCEL);
+		RefundTicket refund = paymentRefundTxService.prepare(payment, payment.getAmount(), RefundPurpose.CANCEL,
+			null);
 		return new ConfirmOutcome(PaymentConfirmResponse.of(payment), refund);
 	}
 

@@ -55,6 +55,8 @@ app:
     payment-expire-cron: "0 * * * * *"
     # 인계 없음 자동 취소: 매일 09:00 (REQ-017)
     no-handover-cancel-cron: "0 0 9 * * *"
+    # 환불 재시도: 10분 (REQ-025)
+    refund-retry-cron: "0 */10 * * * *"
   policy:
     # docs/policies.md 수치. 바꾸면 policies.md도 함께 수정 (PolicyProperties)
     image:

@@ -1,11 +1,14 @@
 package com.team7.rental.payment.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import com.team7.rental.payment.client.PaymentGateway;
 import com.team7.rental.payment.client.PgResult;
+import com.team7.rental.payment.repository.RefundRetryTarget;
 import com.team7.rental.rental.service.RentalRefundPort;
 
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,26 @@ public class PaymentRefundService implements RentalRefundPort {
 	@Override
 	public Optional<RefundTicket> prepareCancelRefund(Long rentalId, int cancelFee) {
 		return paymentRefundTxService.prepareCancelRefund(rentalId, cancelFee);
+	}
+
+	@Override
+	public Optional<RefundTicket> prepareDepositReturn(Long rentalId, int overdueFee, Completion completion) {
+		return paymentRefundTxService.prepareDepositReturn(rentalId, overdueFee, completion);
+	}
+
+	@Override
+	public boolean hasFrozenDeposit(Long rentalId) {
+		return paymentRefundTxService.hasFrozenDeposit(rentalId);
+	}
+
+	/** 재시도 배치 대상 */
+	public List<RefundRetryTarget> findRetryTargets(LocalDateTime now) {
+		return paymentRefundTxService.findRetryTargets(now);
+	}
+
+	/** 재시도 한 건. 대상 조회 뒤 환불이 끝났으면 아무것도 하지 않는다 */
+	public void retry(RefundRetryTarget target) {
+		paymentRefundTxService.prepareRetry(target).ifPresent(this::execute);
 	}
 
 	@Override

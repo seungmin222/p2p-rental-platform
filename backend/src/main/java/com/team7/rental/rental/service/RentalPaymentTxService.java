@@ -70,6 +70,15 @@ public class RentalPaymentTxService {
 		saveHistory(rental, from, RentalStatusHistory.REASON_AMOUNT_MISMATCH, now);
 	}
 
+	/** 보증금 반환 완료: RETURNED → COMPLETED (REQ-025) */
+	public void completeAfterDepositReturn(Long rentalId, RentalRefundPort.Completion completion, LocalDateTime now) {
+		Rental rental = getForUpdate(rentalId);
+		RentalStatus from = rental.getStatus();
+		rental.complete(now);
+		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(),
+			completion.changedBy(), completion.reason(), now));
+	}
+
 	private Rental getForUpdate(Long rentalId) {
 		return rentalRepository.findByIdForUpdate(rentalId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_NOT_FOUND));

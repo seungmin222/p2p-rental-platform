@@ -16,6 +16,7 @@ app:
     return-auto-confirm-cron: "-"
     payment-expire-cron: "-"
     no-handover-cancel-cron: "-"
+    refund-retry-cron: "-"
   storage:
     local:
       root-dir: build/test-uploads

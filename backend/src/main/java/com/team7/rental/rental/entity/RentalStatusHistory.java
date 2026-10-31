@@ -43,6 +43,8 @@ public class RentalStatusHistory extends BaseTimeEntity {
 	public static final String REASON_AMOUNT_MISMATCH = "AMOUNT_MISMATCH";
 	/** 인계 없음 자동 취소 배치 (REQ-017). changedBy = null */
 	public static final String REASON_NO_HANDOVER_BATCH = "NO_HANDOVER_BATCH";
+	/** 보증금 반환 재시도 성공으로 완료 (REQ-025). changedBy = null */
+	public static final String REASON_REFUND_RETRY_BATCH = "REFUND_RETRY_BATCH";
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

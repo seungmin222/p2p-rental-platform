@@ -378,8 +378,7 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
-	 * 상태 확인 '정상' (REQ-018, 제공자 또는 자동 확인 배치). 1순위는 보증금 처리 없이 바로 {@link #complete}.
-	 * REQ-025에서 보증금 반환 뒤 완료로 바뀐다.
+	 * 상태 확인 '정상'에서 보증금 반환에 PG가 필요 없을 때 (REQ-018, 제공자 또는 자동 확인 배치). PG가 필요하면 반환이 끝난 뒤 {@link #complete}.
 	 *
 	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RETURNED 아님)
 	 */
@@ -388,8 +387,8 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
-	 * 상태 확인 '이상' (REQ-018). RETURNED를 유지한다. 1순위는 상태 변화가 없어 서비스가 이어서 {@link #complete}를 부른다.
-	 * REQ-049에서 보증금 HELD로 바뀐다(RETURNED → RETURNED 이력).
+	 * 상태 확인 '이상' (REQ-018). RETURNED를 유지한다. 동결된 보증금이 없으면 서비스가 이어서 {@link #complete}를 부른다.
+	 * 보증금이 동결돼 있으면 RETURNED·FROZEN으로 남고, REQ-049에서 HELD로 바뀐다(RETURNED → RETURNED 이력).
 	 *
 	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RETURNED 아님)
 	 */
