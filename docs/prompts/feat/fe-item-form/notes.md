@@ -5,11 +5,20 @@
 - **좌표 규칙 범위**: openapi `ItemDetailResponse`에 latitude·longitude가 있고 공개 API임을 확인해, frontend/CLAUDE.md 규칙을 "사용자의 현재 위치"로 좁혔다. 등록·수정 뮤테이션과 수정 조회는 그래도 `gcTime: 0`.
 - **바뀐 필드**: notes의 `dirtyFields` 대신 `toUpdatePayload`가 처음 값과 비교한다(File·기간 배열을 정확히 비교하고 테스트하기 쉬워서). 바뀐 것이 없으면 요청하지 않는다.
 - **imageOrder**: 기존 `{ imageId }`, 새 `{ newImageIndex }`, 사진이 그대로면 imageOrder·images 모두 생략. 최소 장수는 등록과 사진을 바꾼 수정에서만 본다(사진 없는 물품도 가격을 고칠 수 있게).
-- **무효화 키**: 등록 → feed·search·mine. 수정 → edit `setQueryData`, detail(exact), calendar, feed·search·mine. 삭제 → 이동 후 `['items', id]` 제거, feed·search·mine·`['rentals']`. fe-item-pages notes에 calendar·rentals를 더했다(기간 변경과 "삭제된 물품" 표시 때문).
+- **무효화 키**: 등록 → feed·search·mine. 수정 → edit `setQueryData`, detail(exact) 제거, calendar·feed·search·mine 무효화(무효화만 하면 이전 사진이 먼저 그려져, 새 대표 사진이 앞에 낄 때 캐러셀 스냅이 이전 사진을 따라가서 바꿨다). 삭제 → 이동 후 `['items', id]` 제거, feed·search·mine·`['rentals']`. fe-item-pages notes에 calendar·rentals를 더했다(기간 변경과 "삭제된 물품" 표시 때문).
 - **삭제 후 이동**: fe-item-pages notes의 "상세에서는 홈"을 바꿨다(사용자 결정): 상세 → `/me/items` replace, `/me/items` → 그 자리 + 토스트.
 - **가능 기간 입력**: `TextField type="date"` 행 추가·삭제. 공용 Calendar는 대여 기준이라 쓰지 않고 수정하지 않았다.
 - **동네 인증 안내**: `primaryRegion.isVerified`가 false면 등록 진입 때도 안내와 `/regions` 버튼을 보여 준다. 입력은 막지 않고, 제출 시 `REGION_NOT_VERIFIED` 처리도 둔다.
 - **목 파일 분리**: 쓰기 계산은 `itemLogic.js`가 아니라 `itemWriteLogic.js`에 뒀다(한 파일이 커져서). 권장 보증금 내림은 명세에 없어 임시 값이다.
+
+## 브라우저 확인 결과 (2026-10-31, 목 모드)
+전 항목 통과. 찾은 버그 1건(새 대표 사진 수정 뒤 캐러셀이 이전 사진에 멈춤)은 위 무효화 키 항목대로 고쳤다.
+- 등록: `request`는 application/json, `images`는 선택 순서대로 반복, 기간 2행·좌표 포함 → 201.
+- 수정: 순서 변경+1장 삭제는 imageOrder만, 새 파일은 `newImageIndex`와 images 파트, 가격만은 그 필드만, 주소만은 기존 좌표 동반+안내 문구, 변경 없음은 요청 없이 이동.
+- 삭제: 상세는 `/me/items` replace, 카드는 토스트, 진행 중인 대여는 409와 사유 표시. 수정·삭제 뒤 상세·피드·검색·`/me/items` 모두 최신.
+- 권한·입력: deposit-guide 200과 권장 보증금 표시, user3·4 안내와 403 `REGION_NOT_VERIFIED`와 `/regions` 이동, user2 403 안내, 위치 거부 안내·재시도·제출 차단, `abc`·`1e3` id는 요청 없이 안내.
+- 360px: 등록·수정 폼과 삭제 모달에 가로 넘침 없음.
+- 확인 방법의 한계: 위치는 `getCurrentPosition` 스텁, 파일은 DataTransfer, 계정 전환은 `mock.session`으로 했다. 실제 권한 팝업·파일 선택창·서버 multipart 처리는 확인하지 않았다.
 
 ## 다음 브랜치에서 이어받을 것
 - 실제 서버 연동 확인은 `feat/item-crud` 머지 후.
