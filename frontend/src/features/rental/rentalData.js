@@ -61,6 +61,11 @@ export function calcTotalAmount(pricePerDay, rentalDays, deposit) {
   return pricePerDay * rentalDays + deposit;
 }
 
+/** 결제가 필요한 물품인가. 일 대여료와 보증금이 모두 0원이면 무료 대여다(policies.md) */
+export function requiresPayment(pricePerDay, deposit) {
+  return pricePerDay > 0 || deposit > 0;
+}
+
 /** 결제 대기이고 만료 시각이 지났는가(now는 밀리초) */
 export function isPaymentExpired(rental, now) {
   if (rental.status !== 'PENDING_PAYMENT') {

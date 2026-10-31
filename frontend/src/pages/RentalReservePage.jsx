@@ -6,7 +6,7 @@ import BottomActionBar from '../app/layout/BottomActionBar';
 import PageHeader from '../app/layout/PageHeader';
 import { parseItemId } from '../features/item/itemId';
 import { useItemSummary } from '../features/item/queries';
-import { handleStartPaymentError, startPayment } from '../features/payment/startPayment';
+import { startPayment } from '../features/payment/startPayment';
 import AmountSummary from '../features/rental/components/AmountSummary';
 import {
   CANCEL_FEE,
@@ -17,7 +17,7 @@ import {
 } from '../features/rental/constants';
 import { getErrorMessage } from '../features/rental/errorMessages';
 import { rentalKeys, useCalendarDays, useCreateRental } from '../features/rental/queries';
-import { calcTotalAmount } from '../features/rental/rentalData';
+import { calcTotalAmount, requiresPayment } from '../features/rental/rentalData';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { countDaysInclusive, monthOf, todayInSeoul } from '../shared/lib/date';
 import { formatPrice } from '../shared/lib/format';
@@ -116,9 +116,7 @@ export default function RentalReservePage() {
           navigate(`/rentals/${rental.rentalId}`, { replace: true });
           // 무료 대여는 바로 RESERVED라 결제가 없다
           if (PAYMENT_ENABLED && rental.status === 'PENDING_PAYMENT') {
-            startPayment(rental.rentalId).catch((error) =>
-              handleStartPaymentError(queryClient, rental.rentalId, error),
-            );
+            startPayment(queryClient, rental.rentalId);
           }
         },
         onError: (error) => {
@@ -188,6 +186,8 @@ export default function RentalReservePage() {
   }
 
   const canSubmit = Boolean(item && value?.endDate);
+  // 무료 대여는 결제 없이 바로 RESERVED다(물품을 불러오기 전에는 결제가 있는 쪽으로 그린다)
+  const isPayable = PAYMENT_ENABLED && (!item || requiresPayment(item.pricePerDay, item.deposit));
 
   return (
     <>
@@ -253,7 +253,7 @@ export default function RentalReservePage() {
         </p>
       </div>
 
-      {PAYMENT_ENABLED ? (
+      {isPayable ? (
         <BottomActionBar className="flex flex-col gap-2">
           <p className="text-center text-xs text-ink-muted">
             예약 후 <b className="text-danger">{PAYMENT_EXPIRE_MINUTES}분 안에</b> 결제하지 않으면

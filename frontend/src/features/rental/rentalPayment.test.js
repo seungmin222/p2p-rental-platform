@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDepositNotice, isPaymentExpired, refundOnCancel } from './rentalData';
+import { getDepositNotice, isPaymentExpired, refundOnCancel, requiresPayment } from './rentalData';
+
+describe('requiresPayment', () => {
+  it.each([
+    [0, 0, false],
+    [5000, 0, true],
+    [0, 50000, true],
+    [5000, 50000, true],
+  ])('일 대여료 %i, 보증금 %i → %s', (pricePerDay, deposit, expected) => {
+    expect(requiresPayment(pricePerDay, deposit)).toBe(expected);
+  });
+});
 
 describe('getDepositNotice', () => {
   const rental = (status, deposit = 50000) => ({ status, deposit });

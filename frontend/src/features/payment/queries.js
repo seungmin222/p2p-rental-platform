@@ -1,18 +1,14 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { rentalKeys } from '../rental/queries';
 
 import { confirmPayment } from './api';
 import { runOnce } from './paymentResult';
-import { handleStartPaymentError, startPayment } from './startPayment';
+import { paymentKeys } from './startPayment';
 
-/** 대여 상세의 결제하기 */
-export function usePayRental(rentalId) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => startPayment(rentalId),
-    onError: (error) => handleStartPaymentError(queryClient, rentalId, error),
-  });
+/** 이 대여의 주문 생성·결제창이 진행 중인가(어느 화면에서 시작했든) */
+export function useIsPaymentStarting(rentalId) {
+  return useIsMutating({ mutationKey: paymentKeys.start(rentalId) }) > 0;
 }
 
 /** variables: { paymentKey, orderId, amount }. paymentKey가 캐시에 오래 남지 않게 gcTime 0 */

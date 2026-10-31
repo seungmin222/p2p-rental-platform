@@ -131,7 +131,8 @@ export const RENTAL_STATUS = {
 - 정책 수치는 `features/rental/constants.js`(`RENTAL_TEXT_MAX`·`CANCEL_FEE`·`RETURN_AUTO_CONFIRM_DAYS`·`PAYMENT_EXPIRE_MINUTES`·`CANCEL_AGREEMENT_EXPIRE_HOURS`).
 
 ### 결제 화면 규칙 (SCR-07·08, `/payments/*`)
-- 결제창은 `features/payment/startPayment.js` `startPayment`(주문 생성 → 토스 결제창) 하나로 연다. SCR-07은 결제 대기가 되면 대여 상세로 replace한 뒤 부르고, SCR-08 "결제하기"(대여자만, 남은 시간 0이면 비활성)도 같은 함수를 쓴다. 창을 닫거나 주문을 못 만들면 대여는 결제 대기로 남고 SCR-08에서 다시 결제한다.
+- 결제창은 `features/payment/startPayment.js` `startPayment`(주문 생성 → 토스 결제창) 하나로 연다. SCR-07은 결제 대기가 되면 대여 상세로 replace한 뒤 부르고, SCR-08 "결제하기"(대여자만, 남은 시간 0이면 비활성)도 같은 함수를 쓴다. 뮤테이션 캐시에서 실행해 진행 중 재호출은 무시하고, SCR-08은 `useIsPaymentStarting`으로 `결제하기` 로딩·`예약 취소` 비활성을 정한다. bfcache 복원(`pageshow` persisted)이면 진행 상태를 푼다. 창을 닫거나 주문을 못 만들면 대여는 결제 대기로 남고 SCR-08에서 다시 결제한다.
+- 무료 대여(`requiresPayment` false)는 결제가 켜져 있어도 SCR-07에서 `예약하기`로 보여 주고 결제 안내를 빼며, 금액 줄은 "합계"다.
 - `rentalId`는 결제창에 다녀오는 동안 `sessionStorage`(`pendingPayment.js`)에 둔다. 토스 복귀 값에 없다.
 - `/payments/success`: 쿼리 검사(`parseSuccessParams`) → 승인 → 대여 상세로 replace. 같은 `orderId`의 진행 중 요청은 `runOnce`로 하나만 보내고, 그 뒤의 재호출은 서버가 멱등하게 처리한다. 실패 안내는 `getConfirmOutcome` 표 하나로 정하고, 결과를 모르면 "다시 확인"(같은 요청, 자동 재시도 없음)을 둔다.
 - `/payments/fail`: `code`가 구매자 취소면 취소 안내, 그 밖에는 토스 `message`를 일반 텍스트로 보여 준다. 승인을 부르지 않는다.

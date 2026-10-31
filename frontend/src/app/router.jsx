@@ -18,6 +18,7 @@ import RentalReservePage from '../pages/RentalReservePage';
 import SearchPage from '../pages/SearchPage';
 import SignupPage from '../pages/SignupPage';
 import { clearLocalSession } from '../features/auth/queries';
+import { watchPageRestore } from '../features/payment/startPayment';
 import { setUnauthorizedHandler } from '../shared/api';
 import { queryClient } from './queryClient';
 import AppLayout from './layout/AppLayout';
@@ -44,7 +45,7 @@ const devRoutes = import.meta.env.DEV
     ]
   : [];
 
-// 1순위 라우트만 등록한다(frontend/CLAUDE.md "화면 ↔ 라우트"). 2순위 탭(채팅·알림)은 "준비 중"으로 연결.
+// 구현한 화면만 등록한다(frontend/CLAUDE.md "화면 ↔ 라우트"). 아직 없는 2순위 탭(채팅·알림)은 "준비 중"으로 연결.
 export const router = createBrowserRouter([
   // SCR-01
   { path: '/login', element: <LoginPage /> },
@@ -79,6 +80,8 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+
+watchPageRestore(queryClient);
 
 // 재발급 실패 시 새로고침 없이 로그인 화면으로 보내고, 돌아올 경로를 넘긴다.
 // 로그아웃과 같이 캐시도 지운다 — 남겨 두면 비회원으로 돌아온 화면에 이전 사용자의 isOwner·내 정보가 보인다

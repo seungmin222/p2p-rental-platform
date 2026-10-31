@@ -1,9 +1,11 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
 
 import BottomActionBar from '../../../app/layout/BottomActionBar';
 import { parseServerDateTime } from '../../../shared/lib/format';
 import { Button, ConfirmModal, toast } from '../../../shared/ui';
-import { usePayRental } from '../../payment/queries';
+import { useIsPaymentStarting } from '../../payment/queries';
+import { startPayment } from '../../payment/startPayment';
 import { PAYMENT_ENABLED } from '../constants';
 import { getErrorMessage } from '../errorMessages';
 import { useConfirmReturn, useRespondCancelAgreement } from '../queries';
@@ -166,7 +168,9 @@ export default function RentalActionBar({ rental, returnInspection, today }) {
   const reasonId = useId();
   const [openType, setOpenType] = useState(null);
   const { actions, notice } = getRentalActions(rental, returnInspection, today);
-  const payMutation = usePayRental(rental.rentalId);
+  const queryClient = useQueryClient();
+  // SCR-07에서 시작한 결제창도 여기서 기다린다
+  const isPaymentStarting = useIsPaymentStarting(rental.rentalId);
   const secondsLeft = usePaymentSecondsLeft(notice?.paymentExpiresAt);
 
   // 열어 둔 액션이 표에서 사라졌으면(다시 불러온 상태가 바뀜) 그 모달은 그대로 두고 닫힐 때까지 기다린다
@@ -199,13 +203,15 @@ export default function RentalActionBar({ rental, returnInspection, today }) {
                 variant={action.variant}
                 className="min-w-0 flex-1 px-3"
                 disabled={
-                  action.disabledReason != null || (action.type === A.PAY && secondsLeft === 0)
+                  action.disabledReason != null ||
+                  (action.type === A.PAY && secondsLeft === 0) ||
+                  (action.type === A.CANCEL && isPaymentStarting)
                 }
-                isLoading={action.type === A.PAY && payMutation.isPending}
+                isLoading={action.type === A.PAY && isPaymentStarting}
                 aria-describedby={action.disabledReason ? reasonId : undefined}
                 onClick={
                   action.type === A.PAY
-                    ? () => payMutation.mutate()
+                    ? () => startPayment(queryClient, rental.rentalId)
                     : () => setOpenType(action.type)
                 }
               >
