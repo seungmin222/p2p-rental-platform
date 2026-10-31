@@ -84,9 +84,8 @@ public class PaymentTxService {
 		if (rental.paymentExpired()) {
 			throw new BusinessException(ErrorCode.PAYMENT_EXPIRED);
 		}
-		Payment payment = paymentRepository.findAllByRentalIdForUpdate(rentalId, PaymentType.RENTAL).stream()
-			.filter(existing -> existing.getStatus() == PaymentStatus.READY)
-			.findFirst()
+		Payment payment = paymentRepository
+			.findFirstByRentalIdAndTypeAndStatusOrderByIdDesc(rentalId, PaymentType.RENTAL, PaymentStatus.READY)
 			.orElseGet(() -> paymentRepository.save(Payment.createForRental(rentalId, UUID.randomUUID().toString(),
 				UUID.randomUUID().toString(), rental.rentalFee(), rental.deposit())));
 		return new OrderResult(payment.getOrderId(), payment.getAmount(), rental.itemId());

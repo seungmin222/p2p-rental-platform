@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.team7.rental.payment.entity.Payment;
+import com.team7.rental.payment.entity.PaymentStatus;
 import com.team7.rental.payment.entity.PaymentType;
 
 import jakarta.persistence.LockModeType;
@@ -57,6 +58,13 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	@Query("select p from Payment p where p.id = :id")
 	Optional<Payment> findByIdForUpdate(@Param("id")
 	Long id);
+
+	/**
+	 * 주문 생성용 일반 읽기. 대여 행 락을 잡은 뒤 부른다(같은 대여의 요청은 이미 한 줄로 서 있다). 잠금 읽기로 바꾸지 않는다. 행이 없으면 FOR UPDATE가 인덱스 갭 락을 잡아,
+	 * 다른 대여의 주문 INSERT와 교착된다.
+	 */
+	Optional<Payment> findFirstByRentalIdAndTypeAndStatusOrderByIdDesc(Long rentalId, PaymentType type,
+		PaymentStatus status);
 
 	/** 대여의 결제 행들, 최신 순. 같은 대여에 FAILED 뒤 새 주문이 있을 수 있다 */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
