@@ -87,8 +87,8 @@
 
 | 순위 | Method | Path | 설명 | 인증 | REQ |
 | --- | --- | --- | --- | --- | --- |
-| 2 | POST | /api/payments | 주문 생성(rentalId 또는 extensionId) → orderId, amount | O | 024 |
-| 2 | POST | /api/payments/confirm | 승인(paymentKey, orderId, amount) | O | 024 |
+| 2 | POST | /api/payments | 주문 생성. 지금은 대여 건만, 연장 건은 038에서 추가 | O | 024 |
+| 2 | POST | /api/payments/confirm | 결제 승인 | O | 024 |
 | — | — | ~~/api/payments/{id}/cancel~~ | **외부 API 없음.** 원 명세에 있던 경로지만, 회원이 직접 환불을 호출할 수 있어 제거. 취소·환불은 대여 취소(015), 보증금 처리(025·049) 안에서 서버가 내부적으로만 PG를 호출 | — | 015, 025 |
 | 2 | PATCH | /api/rentals/{id}/deposit | 보증금: 차감 제안 / 수락 / 거절 (`action` 필드) | O | 049 |
 | 2 | GET | /api/rentals/{id}/deposit/policy?grade= | 등급별 차감 상한 계산 | O | 049 |

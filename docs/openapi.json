@@ -12,6 +12,10 @@
   ],
   "tags": [
     {
+      "description": "결제·보증금",
+      "name": "Payment"
+    },
+    {
       "description": "예약·대여·반납",
       "name": "Rental"
     },
@@ -2576,6 +2580,355 @@
         ]
       }
     },
+    "/api/payments": {
+      "post": {
+        "description": "결제 대기(PENDING_PAYMENT)이고 만료 전인 대여의 주문을 만든다. 금액은 서버가 계산한다. 진행 중인 주문이 있으면 같은 주문을 돌려주고, 승인에 실패한 뒤에는 새 주문을 만든다. 무료 대여는 결제 없이 바로 RESERVED라 이 API를 쓰지 않는다.",
+        "operationId": "createOrder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePaymentOrderResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PAYMENT_RENTER_ONLY": {
+                    "summary": "대여자만 결제할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_RENTER_ONLY",
+                        "details": [],
+                        "message": "대여자만 결제할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "PAYMENT_RENTER_ONLY"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PAYMENT_EXPIRED": {
+                    "summary": "결제 가능 시간이 지났습니다. 다시 예약해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_EXPIRED",
+                        "details": [],
+                        "message": "결제 가능 시간이 지났습니다. 다시 예약해 주세요."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "PAYMENT_EXPIRED, RENTAL_INVALID_TRANSITION"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "결제 주문 생성 (REQ-024)",
+        "tags": [
+          "Payment"
+        ]
+      }
+    },
+    "/api/payments/confirm": {
+      "post": {
+        "description": "토스 결제창 성공 후 호출한다. 승인되면 대여가 RESERVED, 보증금이 FROZEN(0원이면 NONE)이 된다. 이미 처리한 orderId는 기존 결과를 돌려준다. 금액이 다르면 400과 함께 대여가 취소된다. PAYMENT_APPROVAL_FAILED는 대여가 결제 대기로 남아 새 주문으로 다시 결제할 수 있다. PAYMENT_RESULT_UNKNOWN은 같은 요청을 다시 보내도 중복 승인되지 않는다. PAYMENT_CANCELED_AFTER_EXPIRY는 승인 직후 대여가 만료된 경우로, 전액 환불을 진행한다.",
+        "operationId": "confirm",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePaymentConfirmResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "PAYMENT_AMOUNT_MISMATCH": {
+                    "summary": "결제 금액이 일치하지 않아 예약이 취소되었습니다.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_AMOUNT_MISMATCH",
+                        "details": [],
+                        "message": "결제 금액이 일치하지 않아 예약이 취소되었습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "PAYMENT_APPROVAL_FAILED": {
+                    "summary": "결제 승인에 실패했습니다. 다시 결제해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_APPROVAL_FAILED",
+                        "details": [],
+                        "message": "결제 승인에 실패했습니다. 다시 결제해 주세요."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, PAYMENT_AMOUNT_MISMATCH, PAYMENT_APPROVAL_FAILED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PAYMENT_RENTER_ONLY": {
+                    "summary": "대여자만 결제할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_RENTER_ONLY",
+                        "details": [],
+                        "message": "대여자만 결제할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "PAYMENT_RENTER_ONLY"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PAYMENT_NOT_FOUND": {
+                    "summary": "결제 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_NOT_FOUND",
+                        "details": [],
+                        "message": "결제 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "PAYMENT_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PAYMENT_CANCELED_AFTER_EXPIRY": {
+                    "summary": "결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_CANCELED_AFTER_EXPIRY",
+                        "details": [],
+                        "message": "결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "PAYMENT_EXPIRED": {
+                    "summary": "결제 가능 시간이 지났습니다. 다시 예약해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_EXPIRED",
+                        "details": [],
+                        "message": "결제 가능 시간이 지났습니다. 다시 예약해 주세요."
+                      },
+                      "success": false
+                    }
+                  },
+                  "PAYMENT_INVALID_STATUS": {
+                    "summary": "현재 결제 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_INVALID_STATUS",
+                        "details": [],
+                        "message": "현재 결제 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "PAYMENT_CANCELED_AFTER_EXPIRY, PAYMENT_EXPIRED, PAYMENT_INVALID_STATUS"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PAYMENT_RESULT_UNKNOWN": {
+                    "summary": "결제 결과를 확인하고 있습니다. 잠시 후 다시 시도해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "PAYMENT_RESULT_UNKNOWN",
+                        "details": [],
+                        "message": "결제 결과를 확인하고 있습니다. 잠시 후 다시 시도해 주세요."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "PAYMENT_RESULT_UNKNOWN"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "결제 승인 (REQ-024)",
+        "tags": [
+          "Payment"
+        ]
+      }
+    },
     "/api/regions": {
       "get": {
         "description": "미구현: 응답 형태만 확정. 행정동 이름에 keyword가 들어간 행정동. 결과가 없으면 빈 배열.",
@@ -3026,7 +3379,7 @@
     },
     "/api/rentals/{rentalId}/cancel": {
       "patch": {
-        "description": "대여자·제공자가 결제 대기(PENDING_PAYMENT) 또는 시작일 전의 대여 예정(RESERVED)을 취소한다. 시작일이 지난 대여 예정은 409 RENTAL_CANCEL_NOT_ALLOWED이며 양측 동의 취소를 쓴다. 대여자가 시작일 직전에 취소하면 cancelFee가 생긴다(policies.md cancel-fee.rate-percent, cancel-fee.free-until-days-before). 1순위 단계는 수수료를 기록만 하고 환불하지 않는다. reason\u003dOTHER면 reasonText 필수(cancel.reason-text-max). 응답은 대여 상세와 같다.",
+        "description": "대여자·제공자가 결제 대기(PENDING_PAYMENT) 또는 시작일 전의 대여 예정(RESERVED)을 취소한다. 시작일이 지난 대여 예정은 409 RENTAL_CANCEL_NOT_ALLOWED이며 양측 동의 취소를 쓴다. 대여자가 시작일 직전에 취소하면 cancelFee가 생긴다(policies.md cancel-fee.rate-percent, cancel-fee.free-until-days-before). 승인된 결제가 있으면 대여료 − 수수료 + 보증금을 환불한다. 환불이 실패해도 대여는 CANCELED이고 재시도 배치가 끝낸다. 결제가 없으면 수수료를 기록만 한다. reason\u003dOTHER면 reasonText 필수(cancel.reason-text-max). 응답은 대여 상세와 같다.",
         "operationId": "cancelRental",
         "parameters": [
           {
@@ -3908,7 +4261,7 @@
     },
     "/api/rentals/{rentalId}/return": {
       "patch": {
-        "description": "제공자가 반납된 물품을 정상(NORMAL) 또는 이상(ABNORMAL)으로 판정한다. 판정은 한 번만 할 수 있다. 1순위 단계는 보증금 처리가 없어 두 경우 모두 거래 완료(COMPLETED)가 되고 판정은 기록만 한다. 반납 요청 후 policies.md return.auto-confirm-days가 지나도록 판정하지 않으면 자동으로 정상 처리된다. multipart: request part(Content-Type application/json, 필수) { result, resultNote } + images 파일들. ABNORMAL이면 resultNote(최대 inspection.abnormal-note-max자)와 사진(inspection.images.min~max장) 필수, NORMAL이면 resultNote 선택이고 사진을 보내면 400. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION(반납 완료 아님·이미 판정) → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 다른 요청(자동 확인 포함)이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.",
+        "description": "제공자가 반납된 물품을 정상(NORMAL) 또는 이상(ABNORMAL)으로 판정한다. 판정은 한 번만 할 수 있다. NORMAL은 보증금을 반환하고 거래 완료(COMPLETED)가 된다. 반환이 실패하면 200에 status RETURNED로 답하고 재시도 배치가 완료한다. ABNORMAL은 동결된 보증금이 있으면 RETURNED로 남고(차감은 REQ-049), 없으면 판정만 기록하고 COMPLETED가 된다. 반납 요청 후 policies.md return.auto-confirm-days가 지나도록 판정하지 않으면 자동으로 정상 처리된다. multipart: request part(Content-Type application/json, 필수) { result, resultNote } + images 파일들. ABNORMAL이면 resultNote(최대 inspection.abnormal-note-max자)와 사진(inspection.images.min~max장) 필수, NORMAL이면 resultNote 선택이고 사진을 보내면 400. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION(반납 완료 아님·이미 판정) → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 다른 요청(자동 확인 포함)이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.",
         "operationId": "confirmReturn",
         "parameters": [
           {
@@ -4661,6 +5014,34 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/PageResponseRentalHistoryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponsePaymentConfirmResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PaymentConfirmResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponsePaymentOrderResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PaymentOrderResponse"
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -5927,6 +6308,121 @@
             "format": "int64",
             "description": "전체 항목 수",
             "example": 21
+          }
+        }
+      },
+      "PaymentConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "결제 금액",
+            "example": 35000
+          },
+          "orderId": {
+            "type": "string",
+            "description": "주문번호",
+            "example": "3f2b8a2e-7c1d-4a55-9f0a-0d6c1c1e2b11",
+            "maxLength": 64,
+            "minLength": 0
+          },
+          "paymentKey": {
+            "type": "string",
+            "description": "토스 paymentKey",
+            "example": "tviva20240101000000abcde",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "amount",
+          "orderId",
+          "paymentKey"
+        ]
+      },
+      "PaymentConfirmResponse": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "결제 금액",
+            "example": 35000
+          },
+          "depositStatus": {
+            "type": "string",
+            "description": "보증금 상태",
+            "enum": [
+              "NONE",
+              "FROZEN",
+              "HELD",
+              "REFUNDED",
+              "FORFEITED",
+              "REFUND_FAILED"
+            ]
+          },
+          "orderId": {
+            "type": "string",
+            "description": "주문번호",
+            "example": "3f2b8a2e-7c1d-4a55-9f0a-0d6c1c1e2b11"
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID",
+            "example": 1
+          },
+          "status": {
+            "type": "string",
+            "description": "결제 상태",
+            "enum": [
+              "READY",
+              "APPROVED",
+              "CANCELED",
+              "PARTIAL_CANCELED",
+              "FAILED"
+            ]
+          }
+        }
+      },
+      "PaymentCreateRequest": {
+        "type": "object",
+        "properties": {
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID",
+            "example": 1
+          }
+        },
+        "required": [
+          "rentalId"
+        ]
+      },
+      "PaymentOrderResponse": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "결제 금액(대여료 + 보증금, 서버 계산)",
+            "example": 35000
+          },
+          "customerKey": {
+            "type": "string",
+            "description": "토스 결제창에 넘길 구매자 키",
+            "example": "9a1b3c1e-6f0a-3d2e-8c4b-1a2b3c4d5e6f"
+          },
+          "orderId": {
+            "type": "string",
+            "description": "토스 결제창에 넘길 주문번호",
+            "example": "3f2b8a2e-7c1d-4a55-9f0a-0d6c1c1e2b11"
+          },
+          "orderName": {
+            "type": "string",
+            "description": "주문명(물품 이름)",
+            "example": "캠핑 텐트"
           }
         }
       },

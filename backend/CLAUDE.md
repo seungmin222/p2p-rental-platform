@@ -184,7 +184,7 @@ rental/
 - local 프로필: 파일 저장은 `LocalFileStorage`(디스크 `./uploads`, `/files/**`로 서빙), 메일은 Mailpit(`localhost:1025`, 웹 UI 8025). AWS 키 없이 전체 기능이 동작해야 한다.
 - 쿠키: Refresh Token 쿠키 속성은 `policies.md` `auth.refresh-cookie`. local 프로필에서만 `Secure=false`.
 - CORS: 기본 차단. 로컬은 Vite 프록시, 운영은 Nginx 같은 도메인 서빙이라 필요 없다(`docs/architecture.md` §4).
-- `app.feature.payment-enabled`: 1순위 단계 false (`docs/architecture.md` §9).
+- `app.feature.payment-enabled`: 기본 false, prod는 REQ-049 머지 전까지 false (`docs/architecture.md` §9).
 
 ## 작업 체크리스트 (REQ 하나 구현할 때)
 1. 도메인 문서의 해당 REQ, `state-machines.md`, `policies.md` 확인
