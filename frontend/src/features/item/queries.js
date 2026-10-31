@@ -167,7 +167,9 @@ export function useCreateItem() {
 
 /**
  * REQ-007 수정. 응답이 ItemEditResponse라 상세 모양이 아니다: 수정 키만 setQueryData, 캘린더(기간)·목록은 무효화.
- * 상세(exact)는 지운다: 무효화만 하면 돌아왔을 때 이전 내용이 먼저 그려지고, 새 대표 사진이 앞에 끼면 캐러셀 스냅이 이전 사진을 따라간다.
+ * 상세(exact)는 reset한다: 무효화만 하면 이전 내용이 먼저 그려져 새 대표 사진이 앞에 낄 때 캐러셀 스냅이 이전 사진을 따라가고,
+ * remove는 마운트된 관찰자(저장 중 뒤로 간 상세)를 갱신하지 않아 이전 내용에 멈춘다.
+ * 화면을 벗어나도 빠지지 않도록 mutate() 콜백이 아니라 훅 옵션에 둔다.
  */
 export function updateItemMutationOptions(queryClient, itemId) {
   return {
@@ -175,7 +177,7 @@ export function updateItemMutationOptions(queryClient, itemId) {
     gcTime: 0,
     onSuccess: (data) => {
       queryClient.setQueryData(itemKeys.edit(itemId), data);
-      queryClient.removeQueries({ queryKey: itemKeys.detail(itemId), exact: true });
+      queryClient.resetQueries({ queryKey: itemKeys.detail(itemId), exact: true });
       queryClient.invalidateQueries({ queryKey: itemKeys.calendar(itemId) });
       invalidateItemLists(queryClient);
     },

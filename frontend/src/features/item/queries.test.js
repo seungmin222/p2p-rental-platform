@@ -1,4 +1,4 @@
-import { MutationObserver, QueryClient } from '@tanstack/query-core';
+import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/query-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createItem, deleteItem, updateItem } from './api';
@@ -67,7 +67,29 @@ describe('물품 쓰기 뮤테이션', () => {
     ).not.toContain(String(LATITUDE));
   });
 
-  it('수정: 수정 키에만 응답을 넣고 상세만 지운 뒤 캘린더·목록을 무효화한다', async () => {
+  it('수정: 상세가 마운트돼 있으면 이전 값을 다시 그리지 않고 새로 받는다', async () => {
+    updateItem.mockResolvedValue({ itemId: 7 });
+    const fetchDetail = vi.fn().mockResolvedValueOnce('이전 이름').mockResolvedValue('새 이름');
+    const detail = new QueryObserver(queryClient, {
+      queryKey: itemKeys.detail(7),
+      queryFn: fetchDetail,
+      staleTime: 10_000,
+    });
+    const seen = [];
+    const unsubscribe = detail.subscribe((result) => seen.push(result.data));
+    await vi.waitFor(() => expect(detail.getCurrentResult().data).toBe('이전 이름'));
+    seen.length = 0;
+    const observer = new MutationObserver(queryClient, updateItemMutationOptions(queryClient, 7));
+
+    await observer.mutate({ request: {}, images: [] });
+
+    await vi.waitFor(() => expect(detail.getCurrentResult().data).toBe('새 이름'));
+    expect(fetchDetail).toHaveBeenCalledTimes(2);
+    expect(seen).not.toContain('이전 이름');
+    unsubscribe();
+  });
+
+  it('수정: 수정 키에만 응답을 넣고 상세만 비운 뒤 캘린더·목록을 무효화한다', async () => {
     const response = { itemId: 7, name: '새 이름' };
     updateItem.mockResolvedValue(response);
     queryClient.setQueryData(itemKeys.detail(7), { itemId: 7, name: '이전 이름' });
