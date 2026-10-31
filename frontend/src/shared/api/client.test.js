@@ -108,6 +108,27 @@ describe('2xx 응답 검사', () => {
       status: 200,
     });
     expect(reissueCount).toBe(0);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBe('old-token');
+  });
+
+  it('재발급 후 재시도가 200 HTML이면 거부하고 새 토큰을 유지한다', async () => {
+    server.use(
+      http.get(`${API}/a`, ({ request }) =>
+        request.headers.get('Authorization') === 'Bearer new-token'
+          ? HttpResponse.html('<html></html>')
+          : fail(401, 'AUTH_UNAUTHORIZED', '로그인이 필요합니다.'),
+      ),
+    );
+
+    await expect(apiClient.get('/a')).rejects.toMatchObject({
+      code: CLIENT_INVALID_RESPONSE,
+      status: 200,
+    });
+
+    expect(reissueCount).toBe(1);
+    expect(onUnauthorized).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBe('new-token');
   });
 
   it('실패 응답의 비정상 본문과 같은 모양의 오류를 만든다', async () => {
