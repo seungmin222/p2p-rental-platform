@@ -1,5 +1,11 @@
 # fix/fe-api-response-guard 결정 기록
 
+## 요약
+- open-issues #30 해결: `apiClient`가 2xx에서 `success === true`만 통과시키고 나머지는 `CLIENT_INVALID_RESPONSE`로 거부한다. 새 API 없음(프론트만).
+- 바꾼 파일: `frontend/src/shared/api/client.js`, `ApiError.js`(`createInvalidResponseError`), `client.test.js`. 새 파일은 이 notes.md뿐이다.
+- 남은 일: open-issues #31(일시적 응답 이상에도 로그아웃할지 결정), 실제 백엔드·프록시 응답 확인.
+- 다음 브랜치: 204 등 본문 없는 성공 응답 API를 만들면 이 인터셉터가 거부하므로 함께 고친다.
+
 ## 결정
 
 - **2xx `success: false`**: 본문의 코드를 쓰지 않고 `CLIENT_INVALID_RESPONSE`로 거부한다. 백엔드 실패 응답은 `ErrorCode`의 상태 코드로만 나가므로(4xx·5xx) 2xx 실패 본문은 규약 위반이고, 우리 서버 응답이라고 믿고 화면 분기를 태우지 않는다.
