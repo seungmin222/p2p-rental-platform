@@ -33,7 +33,7 @@ import com.team7.rental.global.security.JwtProvider;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import({TestClockConfig.class, DataCleaner.class, MemberItemFixture.class, RentalFixture.class,
-	FakePaymentGateway.class})
+	FakePaymentGateway.class, PaymentFixture.class})
 public abstract class IntegrationTestSupport {
 
 	// 이미지 버전은 infra/docker-compose.local.yml과 같게
@@ -70,6 +70,9 @@ public abstract class IntegrationTestSupport {
 
 	@Autowired
 	protected FakePaymentGateway paymentGateway;
+
+	@Autowired
+	protected PaymentFixture paymentFixture;
 
 	@Autowired
 	private DataCleaner dataCleaner;

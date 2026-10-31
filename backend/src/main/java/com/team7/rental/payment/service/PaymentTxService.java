@@ -16,7 +16,6 @@ import com.team7.rental.payment.entity.Payment;
 import com.team7.rental.payment.entity.PaymentStatus;
 import com.team7.rental.payment.entity.PaymentTransaction;
 import com.team7.rental.payment.entity.PaymentTransactionAction;
-import com.team7.rental.payment.entity.PaymentTransactionResult;
 import com.team7.rental.payment.entity.PaymentType;
 import com.team7.rental.payment.repository.PaymentRepository;
 import com.team7.rental.payment.repository.PaymentTransactionRepository;
@@ -184,20 +183,8 @@ public class PaymentTxService {
 			return false;
 		}
 		rentalPaymentTxService.expirePayment(rentalId, now);
-		closeReadyOrders(rentalId);
+		paymentRefundTxService.closeReadyOrders(rentalId);
 		return true;
-	}
-
-	/**
-	 * 대여가 결제 없이 끝났을 때 READY 주문을 FAILED로 닫는다. 승인 결과를 모르는(시도 PENDING) 주문은 PG에 승인됐을 수 있어 조정 배치가 보도록 남긴다.
-	 * 호출하는 쪽이 대여 행 락을 잡은 트랜잭션 안에서 부른다.
-	 */
-	public void closeReadyOrders(Long rentalId) {
-		paymentRepository.findAllByRentalIdForUpdate(rentalId, PaymentType.RENTAL).stream()
-			.filter(payment -> payment.getStatus() == PaymentStatus.READY)
-			.filter(payment -> !paymentTransactionRepository.existsByPaymentIdAndActionAndResult(payment.getId(),
-				PaymentTransactionAction.APPROVE, PaymentTransactionResult.PENDING))
-			.forEach(Payment::fail);
 	}
 
 	private PaymentTransaction transactionOf(Long transactionId) {

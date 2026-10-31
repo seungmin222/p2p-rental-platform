@@ -1,5 +1,7 @@
 package com.team7.rental.payment.service;
 
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 
 import com.team7.rental.payment.client.PaymentGateway;
@@ -21,12 +23,22 @@ public class PaymentRefundService implements RentalRefundPort {
 	private final PaymentRefundTxService paymentRefundTxService;
 
 	@Override
+	public Optional<RefundTicket> prepareCancelRefund(Long rentalId, int cancelFee) {
+		return paymentRefundTxService.prepareCancelRefund(rentalId, cancelFee);
+	}
+
+	@Override
 	public void execute(RefundTicket ticket) {
-		PgResult result = paymentGateway.cancel(ticket.paymentKey(), ticket.amount(), ticket.cancelReason(),
-			ticket.idempotencyKey());
-		if (!(result instanceof PgResult.Success)) {
-			log.warn("Refund not completed: paymentId={}, result={}", ticket.paymentId(), result.toRecord());
+		try {
+			PgResult result = paymentGateway.cancel(ticket.paymentKey(), ticket.amount(), ticket.cancelReason(),
+				ticket.idempotencyKey());
+			if (!(result instanceof PgResult.Success)) {
+				log.warn("Refund not completed: paymentId={}, result={}", ticket.paymentId(), result.toRecord());
+			}
+			paymentRefundTxService.applyResult(ticket, result);
+		} catch (RuntimeException e) {
+			// 업무(취소·상태 확인)는 이미 커밋됐다. 환불액이 남아 있어 재시도 배치가 같은 키로 처리한다
+			log.error("Refund execution failed: paymentId={}", ticket.paymentId(), e);
 		}
-		paymentRefundTxService.applyResult(ticket, result);
 	}
 }

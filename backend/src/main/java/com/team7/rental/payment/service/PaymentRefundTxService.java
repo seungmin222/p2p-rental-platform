@@ -1,12 +1,18 @@
 package com.team7.rental.payment.service;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.payment.client.PgResult;
 import com.team7.rental.payment.entity.Payment;
+import com.team7.rental.payment.entity.PaymentStatus;
 import com.team7.rental.payment.entity.PaymentTransaction;
 import com.team7.rental.payment.entity.PaymentTransactionAction;
+import com.team7.rental.payment.entity.PaymentTransactionResult;
+import com.team7.rental.payment.entity.PaymentType;
 import com.team7.rental.payment.repository.PaymentRepository;
 import com.team7.rental.payment.repository.PaymentTransactionRepository;
 import com.team7.rental.rental.service.RentalPaymentTxService;
@@ -31,6 +37,35 @@ public class PaymentRefundTxService {
 			PaymentTransactionAction.CANCEL, amount, purpose.keyOf(payment.getRentalId())));
 		return new RefundTicket(payment.getRentalId(), payment.getId(), transaction.getId(), payment.getPaymentKey(),
 			amount, purpose.getCancelReason(), transaction.getIdempotencyKey());
+	}
+
+	/**
+	 * 취소 환불 TX1. 호출하는 쪽이 대여 행 락을 잡은 트랜잭션 안에서 부른다. 보증금은 항상 전액 반환이다(policies.md §2).
+	 * cancelFee &gt; 0이면 제공자 정산(REQ-039)을 여기서 만들 자리다.
+	 */
+	public Optional<RefundTicket> prepareCancelRefund(Long rentalId, int cancelFee) {
+		List<Payment> payments = paymentRepository.findAllByRentalIdForUpdate(rentalId, PaymentType.RENTAL);
+		closeReadyOrders(payments);
+		return payments.stream()
+			.filter(payment -> payment.getStatus() == PaymentStatus.APPROVED)
+			.findFirst()
+			.map(payment -> prepare(payment, payment.getAmount() - cancelFee, RefundPurpose.CANCEL));
+	}
+
+	/**
+	 * 대여가 결제 없이 끝났을 때 READY 주문을 FAILED로 닫는다. 승인 결과를 모르는(시도 PENDING) 주문은 PG에 승인됐을 수 있어 조정 배치가 보도록 남긴다.
+	 * 호출하는 쪽이 대여 행 락을 잡은 트랜잭션 안에서 부른다.
+	 */
+	public void closeReadyOrders(Long rentalId) {
+		closeReadyOrders(paymentRepository.findAllByRentalIdForUpdate(rentalId, PaymentType.RENTAL));
+	}
+
+	private void closeReadyOrders(List<Payment> payments) {
+		payments.stream()
+			.filter(payment -> payment.getStatus() == PaymentStatus.READY)
+			.filter(payment -> !paymentTransactionRepository.existsByPaymentIdAndActionAndResult(payment.getId(),
+				PaymentTransactionAction.APPROVE, PaymentTransactionResult.PENDING))
+			.forEach(Payment::fail);
 	}
 
 	/**
