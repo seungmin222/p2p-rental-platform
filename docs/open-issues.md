@@ -34,6 +34,8 @@
 | 26 | ✅ | 회원 | 비밀번호 "특수문자"의 범위·공백·한글 허용 여부 | 공백 없는 ASCII 출력 문자(`!`~`~`)만 허용, 영문·숫자·ASCII 기호(영문·숫자가 아닌 ASCII 출력 문자)를 각각 1개 이상. policies.md `member.password` |
 | 27 | ✅ | 물품 | 물품 삭제 검사(진행 중 대여)와 동시 예약의 경합 | 삭제도 `lock:item:{itemId}` 안에서 검사·삭제. 락 대기 실패는 409 `RENTAL_LOCK_TIMEOUT`(backend/CLAUDE.md 락 대상에 추가) |
 | 28 | ✅ | 검색 | minPrice > maxPrice, keyword 길이 | minPrice > maxPrice면 400 `COMMON_INVALID_INPUT`(details minPrice). keyword 길이는 제한하지 않는다 |
+| 29 | ⬜ | 물품 | REQ-030 명세는 지도 UI가 없을 때 주소 검색 결과 좌표로 대체하라고 하는데, 등록·수정 화면은 현재 위치만 지원한다. 거래 장소에 가서 눌러야 하고 주소와 좌표가 어긋날 수 있어 피드 거리 필터(동네 반경)에 영향을 준다 | (제안) 지금은 현재 위치를 유지하고, 주소 검색은 REQ-030 지도 작업 때 함께 넣는다 |
+| 30 | ⬜ | 프론트 공통 | `shared/api/client.js`의 응답 인터셉터(`response.data?.data`)가 2xx 응답의 공통 래퍼를 검사하지 않아, `CLIENT_INVALID_RESPONSE`는 실패 응답에서만 나온다. 프록시·폴백의 200 HTML은 `undefined`로 통과한다. 영향: 조회는 "data is undefined" 원문이 화면에 보이고, 쓰기 요청은 처리되지 않았어도 **성공으로 처리될 수 있다** | (제안) 2xx에서도 래퍼를 검사해 `CLIENT_INVALID_RESPONSE`로 바꾼다. 주의: `{ success: true, data: null }`은 정상 응답이므로 data 유무가 아니라 `success` 값으로 판정한다 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

@@ -20,6 +20,8 @@ export const ITEM_IMAGES = {
   MAX_FILE_SIZE: 10 * 1024 * 1024,
   ACCEPT: ['image/jpeg', 'image/png'],
 };
+// 안내 문구용 장당 용량(MB)
+export const ITEM_IMAGE_MAX_MB = ITEM_IMAGES.MAX_FILE_SIZE / (1024 * 1024);
 
 /** REQ-020 내 물품 관리 탭(키 = API tab 값). state-machines.md "UI 탭 매핑". HIDDEN 탭은 숨기기(REQ-044, 3순위)와 함께 */
 export const MY_ITEM_TABS = {
@@ -39,6 +41,10 @@ export const ITEM_PRICE = { MAX: 10_000_000 };
 export const ITEM_TEXT_MAX = { NAME: 50, DESCRIPTION: 2000, ADDRESS: 200 };
 // 권장 보증금 조회: 물품 가격을 치는 동안 요청하지 않게 기다리는 시간(UI 조절값)
 export const DEPOSIT_GUIDE_DEBOUNCE_MS = 400;
+// 거래 장소 위치 요청의 자체 상한(UI 조절값). geolocation timeout은 권한 창 대기를 포함하지 않아 따로 둔다
+export const TRADE_PLACE_LOCATE_DEADLINE_MS = 15 * 1000;
+// 상한을 넘어 끝난 위치 요청의 프론트 전용 코드(LocationError). 거래 장소에서만 쓴다
+export const LOCATION_NO_RESPONSE = 'CLIENT_LOCATION_NO_RESPONSE';
 
 /** REQ-010 정렬(openapi GET /api/items sort). 기본 ACCURACY */
 export const ITEM_SORT = {

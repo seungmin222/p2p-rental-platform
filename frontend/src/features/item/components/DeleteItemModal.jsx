@@ -6,17 +6,17 @@ import { useDeleteItem } from '../queries';
  * 물품 삭제 확인(REQ-008). 모달이 top layer라 실패 문구(진행 중인 대여 한 건씩 포함)는 모달 안에 보인다.
  * 열린 동안만 렌더해 이전 실패가 남지 않게 한다.
  * @param {{ itemId: number, name: string }} props.item
- * @param {(itemId: number) => void} props.onDeleted 캐시를 지우기 전에 부른다. 상세 화면은 여기서 먼저 이동한다
+ * @param {(result: { alreadyDeleted: boolean }) => void} props.onDeleted 삭제 중 화면을 떠났으면 부르지 않는다(이동·토스트 없음)
  */
 export default function DeleteItemModal({ item, onClose, onDeleted }) {
-  const mutation = useDeleteItem({ onDeleted });
+  const mutation = useDeleteItem();
   const reasons = getErrorReasons(mutation.error);
 
   return (
     <ConfirmModal
       open
       onClose={onClose}
-      onConfirm={() => mutation.mutate(item.itemId)}
+      onConfirm={() => mutation.mutate(item.itemId, { onSuccess: onDeleted })}
       title="물품을 삭제할까요?"
       confirmLabel="삭제"
       danger

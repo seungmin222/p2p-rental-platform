@@ -1,6 +1,7 @@
 // 브라우저 현재 위치(REQ-004). 좌표는 이 함수의 반환값으로만 넘기고 어디에도 보관하지 않는다(queries.js 좌표 규칙).
 
-// 데스크톱에서 고정밀은 느리거나 실패하고 행정동 판정에는 일반 정확도면 충분하다(두 용도 공통)
+// 세 용도: 동네 위치(찾기)·동네 인증·거래 장소.
+// 동네 위치·인증은 일반 정확도: 데스크톱에서 고정밀은 느리거나 실패하고 행정동 판정에는 일반 정확도면 충분하다
 // "현재 위치로 찾기": 1분 안의 캐시 위치를 그대로 받아 다시 누를 때 빠르게
 export const LOCATE_GEOLOCATION_OPTIONS = {
   enableHighAccuracy: false,
@@ -10,6 +11,12 @@ export const LOCATE_GEOLOCATION_OPTIONS = {
 // 인증(목록의 인증하기·다시 인증): 캐시를 쓰지 않는다. 불일치 뒤 그 동네로 옮겨 1분 안에 다시 인증하면
 // 이전 위치가 돌아와 또 실패해서(헤드리스에서 발견)
 export const VERIFY_GEOLOCATION_OPTIONS = { ...LOCATE_GEOLOCATION_OPTIONS, maximumAge: 0 };
+// 거래 장소(물품 등록·수정): 행정동 판정과 달리 좌표가 그대로 장소로 공개되어 고정밀로, 캐시 없이 받는다
+export const TRADE_PLACE_GEOLOCATION_OPTIONS = {
+  ...LOCATE_GEOLOCATION_OPTIONS,
+  enableHighAccuracy: true,
+  maximumAge: 0,
+};
 
 // 위치 실패의 프론트 전용 코드(CLIENT_* 규칙). 문구는 errorMessages.js
 export const LOCATION_ERROR = {
@@ -40,7 +47,7 @@ export class LocationError extends Error {
 
 /**
  * 현재 좌표 { lat, lng }. 실패는 LocationError(권한 거부·위치 없음·시간 초과·미지원).
- * options는 용도별 상수(LOCATE_·VERIFY_GEOLOCATION_OPTIONS), geolocation은 테스트에서 바꿔 넣는다.
+ * options는 용도별 상수(동네 위치 LOCATE_·동네 인증 VERIFY_·거래 장소 TRADE_PLACE_GEOLOCATION_OPTIONS), geolocation은 테스트에서 바꿔 넣는다.
  * 보안 컨텍스트가 아니면(https·localhost가 아님) navigator.geolocation이 없어 미지원이다.
  */
 export function getCurrentCoords(

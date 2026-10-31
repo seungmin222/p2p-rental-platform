@@ -106,26 +106,11 @@ describe('물품 쓰기 뮤테이션', () => {
       { queryKey: itemKeys.feed() },
       { queryKey: itemKeys.search() },
       { queryKey: itemKeys.mine() },
+      { queryKey: ['rentals'] },
     ]);
   });
 
-  it('삭제: 이동을 먼저 부른 뒤 물품 캐시를 지우고 목록·대여를 무효화한다', async () => {
-    deleteItem.mockResolvedValue(null);
-    queryClient.setQueryData(itemKeys.detail(7), { itemId: 7 });
-    queryClient.setQueryData(itemKeys.calendar(7), { days: [] });
-    let cachedWhenDeleted;
-    const onDeleted = vi.fn(() => {
-      cachedWhenDeleted = queryClient.getQueryData(itemKeys.detail(7));
-    });
-    const observer = new MutationObserver(
-      queryClient,
-      deleteItemMutationOptions(queryClient, { onDeleted }),
-    );
-
-    await observer.mutate(7);
-
-    expect(onDeleted).toHaveBeenCalledWith(7);
-    expect(cachedWhenDeleted).toEqual({ itemId: 7 });
+  function expectDeleteCleanup() {
     expect(queryClient.getQueryData(itemKeys.detail(7))).toBeUndefined();
     expect(queryClient.getQueryData(itemKeys.calendar(7))).toBeUndefined();
     expect(invalidatedKeys(invalidate)).toEqual([
@@ -134,20 +119,74 @@ describe('물품 쓰기 뮤테이션', () => {
       { queryKey: itemKeys.mine() },
       { queryKey: ['rentals'] },
     ]);
+  }
+
+  function deleteObserver() {
+    queryClient.setQueryData(itemKeys.detail(7), { itemId: 7 });
+    queryClient.setQueryData(itemKeys.calendar(7), { days: [] });
+    return new MutationObserver(queryClient, deleteItemMutationOptions(queryClient));
+  }
+
+  it('삭제: 물품 캐시를 지우고 목록·대여를 무효화한 뒤 mutate 콜백을 부른다', async () => {
+    deleteItem.mockResolvedValue(null);
+    const observer = deleteObserver();
+    const unsubscribe = observer.subscribe(() => {});
+    let cachedWhenDeleted = 'not called';
+    const onSuccess = vi.fn(() => {
+      cachedWhenDeleted = queryClient.getQueryData(itemKeys.detail(7));
+    });
+
+    await observer.mutate(7, { onSuccess });
+
+    expect(onSuccess.mock.calls[0][0]).toEqual({ alreadyDeleted: false });
+    expect(cachedWhenDeleted).toBeUndefined();
+    expectDeleteCleanup();
+    unsubscribe();
   });
 
-  it('삭제 실패: 진행 중인 대여면 캐시를 지우지 않는다', async () => {
+  it('삭제 404: 성공과 같이 정리하고 콜백에 alreadyDeleted를 넘긴다', async () => {
+    deleteItem.mockRejectedValue({ code: 'ITEM_NOT_FOUND' });
+    const observer = deleteObserver();
+    const unsubscribe = observer.subscribe(() => {});
+    const onSuccess = vi.fn();
+
+    await observer.mutate(7, { onSuccess });
+
+    expect(onSuccess.mock.calls[0][0]).toEqual({ alreadyDeleted: true });
+    expect(observer.getCurrentResult().error).toBeNull();
+    expectDeleteCleanup();
+    unsubscribe();
+  });
+
+  it('삭제 중 화면을 떠나면(구독 해제) 콜백은 부르지 않고 캐시는 정리한다', async () => {
+    let finishDelete;
+    deleteItem.mockReturnValue(new Promise((resolve) => (finishDelete = resolve)));
+    const observer = deleteObserver();
+    const unsubscribe = observer.subscribe(() => {});
+    const onSuccess = vi.fn();
+
+    const pending = observer.mutate(7, { onSuccess });
+    await vi.waitFor(() => expect(deleteItem).toHaveBeenCalled());
+    unsubscribe();
+    finishDelete(null);
+    await pending;
+
+    expect(onSuccess).not.toHaveBeenCalled();
+    expectDeleteCleanup();
+  });
+
+  it('삭제 실패: 진행 중인 대여면 캐시를 지우지 않고 콜백을 부르지 않는다', async () => {
     deleteItem.mockRejectedValue({ code: 'ITEM_HAS_ACTIVE_RENTAL' });
-    queryClient.setQueryData(itemKeys.detail(7), { itemId: 7 });
-    const onDeleted = vi.fn();
-    const observer = new MutationObserver(
-      queryClient,
-      deleteItemMutationOptions(queryClient, { onDeleted }),
-    );
+    const observer = deleteObserver();
+    const unsubscribe = observer.subscribe(() => {});
+    const onSuccess = vi.fn();
 
-    await expect(observer.mutate(7)).rejects.toMatchObject({ code: 'ITEM_HAS_ACTIVE_RENTAL' });
+    await expect(observer.mutate(7, { onSuccess })).rejects.toMatchObject({
+      code: 'ITEM_HAS_ACTIVE_RENTAL',
+    });
 
-    expect(onDeleted).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
     expect(queryClient.getQueryData(itemKeys.detail(7))).toEqual({ itemId: 7 });
+    unsubscribe();
   });
 });

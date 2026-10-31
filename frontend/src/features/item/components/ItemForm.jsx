@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 
 import BottomActionBar from '../../../app/layout/BottomActionBar';
@@ -14,6 +14,10 @@ import {
 } from '../constants';
 import { getErrorMessage, getErrorReasons } from '../errorMessages';
 import {
+  getCategoryStatus,
+  getPaidAmountHint,
+  isSubmitBlocked,
+  ITEM_IMAGE_HINT,
   parseAmount,
   validateDeposit,
   validateDescription,
@@ -57,8 +61,11 @@ function FieldError({ message }) {
   ) : null;
 }
 
-/** 칩 하나 고르기(카테고리·상태). 오류 시 이 영역으로 포커스가 오도록 ref를 단다 */
-function ChipGroupField({ control, name, label, options, validateMessage, disabled }) {
+/**
+ * 칩 하나 고르기(카테고리·상태). 오류 시 이 영역으로 포커스가 오도록 ref를 단다.
+ * placeholder가 있으면 칩 대신 그린다(검증은 그대로 걸린다).
+ */
+function ChipGroupField({ control, name, label, options, validateMessage, disabled, placeholder }) {
   return (
     <Controller
       name={name}
@@ -78,17 +85,19 @@ function ChipGroupField({ control, name, label, options, validateMessage, disabl
               *
             </span>
           </legend>
-          <div className="flex flex-wrap gap-x-2 gap-y-2.5">
-            {options.map((option) => (
-              <Chip
-                key={option.value}
-                selected={field.value === option.value}
-                onClick={() => field.onChange(option.value)}
-              >
-                {option.label}
-              </Chip>
-            ))}
-          </div>
+          {placeholder ?? (
+            <div className="flex flex-wrap gap-x-2 gap-y-2.5">
+              {options.map((option) => (
+                <Chip
+                  key={option.value}
+                  selected={field.value === option.value}
+                  onClick={() => field.onChange(option.value)}
+                >
+                  {option.label}
+                </Chip>
+              ))}
+            </div>
+          )}
           <FieldError message={fieldState.error?.message} />
         </fieldset>
       )}
@@ -101,13 +110,14 @@ const CONDITION_OPTIONS = Object.entries(ITEM_CONDITION).map(([value, { label }]
   label,
 }));
 
-function CategoryField({ control, disabled }) {
-  const query = useCategories();
-  if (query.isPending) {
-    return <Skeleton className="h-20 w-full" />;
-  }
-  if (query.isError) {
-    return (
+/** 로딩·실패에도 필드를 마운트해 둔다. 빠지면 categoryId 검증이 등록되지 않아 없는 값으로 제출된다 */
+export function CategoryField({ control, query, disabled }) {
+  const status = getCategoryStatus(query);
+  let placeholder;
+  if (status === 'loading') {
+    placeholder = <Skeleton className="h-20 w-full" />;
+  } else if (status === 'error') {
+    placeholder = (
       <ErrorState
         title="카테고리를 불러오지 못했어요"
         message={getErrorMessage(query.error)}
@@ -122,7 +132,8 @@ function CategoryField({ control, disabled }) {
       label="카테고리"
       validateMessage="카테고리를 선택해 주세요"
       disabled={disabled}
-      options={query.data.map((category) => ({
+      placeholder={placeholder}
+      options={(query.data ?? []).map((category) => ({
         value: category.categoryId,
         label: category.name,
       }))}
@@ -138,7 +149,7 @@ function useDepositHint(control) {
   const itemPrice = validateItemPrice(debouncedText) === true ? parseAmount(debouncedText) : null;
   const { data } = useDepositGuide({ categoryId, itemPrice });
   if (!data || itemPrice == null) {
-    return '0원(보증금 없음) 또는 1,000원 이상';
+    return getPaidAmountHint('보증금 없음');
   }
   const range =
     data.minDeposit === data.maxDeposit
@@ -187,6 +198,12 @@ export default function ItemForm({
   const nameLength = countCodePoints(useWatch({ control, name: 'name' }));
   const descriptionLength = countCodePoints(useWatch({ control, name: 'description' }));
   const depositHint = useDepositHint(control);
+  const categories = useCategories();
+  const [isLocating, setIsLocating] = useState(false);
+  const submitBlocked = isSubmitBlocked({
+    categoryStatus: getCategoryStatus(categories),
+    isLocating,
+  });
 
   function onError(error) {
     if (onServerError?.(error)) {
@@ -210,7 +227,14 @@ export default function ItemForm({
       <form
         id={formId}
         noValidate
-        onSubmit={handleSubmit((values) => onSave(values, onError))}
+        onSubmit={(event) => {
+          // 버튼 비활성과 별개로 엔터 제출도 막는다
+          if (submitBlocked) {
+            event.preventDefault();
+            return;
+          }
+          handleSubmit((values) => onSave(values, onError))(event);
+        }}
         className="flex flex-col gap-6 pt-2 pb-8"
       >
         <Controller
@@ -230,7 +254,7 @@ export default function ItemForm({
                   maxFileSize={ITEM_IMAGES.MAX_FILE_SIZE}
                   accept={ITEM_IMAGES.ACCEPT}
                   label="사진"
-                  hint="첫 장이 대표 사진이에요. jpg·png, 장당 10MB"
+                  hint={ITEM_IMAGE_HINT}
                 />
               </fieldset>
               <FieldError message={fieldState.error?.message} />
@@ -246,7 +270,7 @@ export default function ItemForm({
           error={errors.name?.message}
           {...register('name', { validate: validateName })}
         />
-        <CategoryField control={control} disabled={isPending} />
+        <CategoryField control={control} query={categories} disabled={isPending} />
         <ChipGroupField
           control={control}
           name="condition"
@@ -271,7 +295,7 @@ export default function ItemForm({
           required
           inputMode="numeric"
           placeholder="0"
-          hint="0원(무료) 또는 1,000원 이상"
+          hint={getPaidAmountHint('무료')}
           disabled={isPending}
           error={errors.pricePerDay?.message}
           {...register('pricePerDay', { validate: validatePricePerDay })}
@@ -304,11 +328,19 @@ export default function ItemForm({
           error={errors.address?.message}
           isEdit={isEdit}
           disabled={isPending}
+          isLocating={isLocating}
+          onLocatingChange={setIsLocating}
         />
         <FieldError message={errors.root?.server?.message} />
       </form>
       <BottomActionBar>
-        <Button type="submit" form={formId} fullWidth isLoading={isPending}>
+        <Button
+          type="submit"
+          form={formId}
+          fullWidth
+          isLoading={isPending}
+          disabled={submitBlocked}
+        >
           {submitLabel}
         </Button>
       </BottomActionBar>
