@@ -166,7 +166,8 @@ export function useCreateItem() {
 }
 
 /**
- * REQ-007 수정. 응답이 ItemEditResponse라 상세 모양이 아니다: 수정 키만 setQueryData, 상세(exact)·캘린더(기간)·목록은 무효화.
+ * REQ-007 수정. 응답이 ItemEditResponse라 상세 모양이 아니다: 수정 키만 setQueryData, 캘린더(기간)·목록은 무효화.
+ * 상세(exact)는 지운다: 무효화만 하면 돌아왔을 때 이전 내용이 먼저 그려지고, 새 대표 사진이 앞에 끼면 캐러셀 스냅이 이전 사진을 따라간다.
  */
 export function updateItemMutationOptions(queryClient, itemId) {
   return {
@@ -174,7 +175,7 @@ export function updateItemMutationOptions(queryClient, itemId) {
     gcTime: 0,
     onSuccess: (data) => {
       queryClient.setQueryData(itemKeys.edit(itemId), data);
-      queryClient.invalidateQueries({ queryKey: itemKeys.detail(itemId), exact: true });
+      queryClient.removeQueries({ queryKey: itemKeys.detail(itemId), exact: true });
       queryClient.invalidateQueries({ queryKey: itemKeys.calendar(itemId) });
       invalidateItemLists(queryClient);
     },

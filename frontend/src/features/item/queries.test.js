@@ -67,17 +67,19 @@ describe('물품 쓰기 뮤테이션', () => {
     ).not.toContain(String(LATITUDE));
   });
 
-  it('수정: 수정 키에만 응답을 넣고 상세는 exact로 무효화한다', async () => {
+  it('수정: 수정 키에만 응답을 넣고 상세만 지운 뒤 캘린더·목록을 무효화한다', async () => {
     const response = { itemId: 7, name: '새 이름' };
     updateItem.mockResolvedValue(response);
+    queryClient.setQueryData(itemKeys.detail(7), { itemId: 7, name: '이전 이름' });
+    queryClient.setQueryData(itemKeys.calendar(7), { days: [] });
     const observer = new MutationObserver(queryClient, updateItemMutationOptions(queryClient, 7));
 
     await observer.mutate({ request: {}, images: [] });
 
     expect(queryClient.getQueryData(itemKeys.edit(7))).toEqual(response);
     expect(queryClient.getQueryData(itemKeys.detail(7))).toBeUndefined();
+    expect(queryClient.getQueryData(itemKeys.calendar(7))).toEqual({ days: [] });
     expect(invalidatedKeys(invalidate)).toEqual([
-      { queryKey: itemKeys.detail(7), exact: true },
       { queryKey: itemKeys.calendar(7) },
       { queryKey: itemKeys.feed() },
       { queryKey: itemKeys.search() },
