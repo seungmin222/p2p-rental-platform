@@ -3,6 +3,7 @@ package com.team7.rental.rental.service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -129,6 +130,33 @@ public class RentalCancelTxService {
 	@Transactional
 	public int expireOverdue(LocalDateTime now) {
 		return rentalCancelAgreementRepository.expireOverdue(now);
+	}
+
+	/** 인계 없음 자동 취소 배치 대상 id */
+	public List<Long> findNoHandoverCancelIds(LocalDate today) {
+		return rentalRepository.findNoHandoverCancelIds(today.minusDays(policyProperties.handover().autoCancelDays()));
+	}
+
+	/**
+	 * 인계 없음 자동 취소 한 건 (REQ-017). 전액 환불, 이력 changedBy = null. 대상 조회 뒤 인계됐을 수 있어 조건을 다시 본다.
+	 *
+	 * @return canceled: 처리했는지, refund: 커밋 뒤 실행할 환불(결제 없으면 null)
+	 */
+	@Transactional
+	public NoHandoverCancelResult cancelForNoHandover(Long rentalId, LocalDateTime now) {
+		Rental rental = rentalRepository.findByIdForUpdate(rentalId).orElse(null);
+		if (rental == null
+			|| !rental.isNoHandoverCancelDue(now.toLocalDate(), policyProperties.handover().autoCancelDays())) {
+			return new NoHandoverCancelResult(false, null);
+		}
+		RentalStatus from = rental.getStatus();
+		rental.cancelForNoHandover(now);
+		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(), null,
+			RentalStatusHistory.REASON_NO_HANDOVER_BATCH, now));
+		return new NoHandoverCancelResult(true, rentalRefundPort.prepareCancelRefund(rentalId, 0).orElse(null));
+	}
+
+	public record NoHandoverCancelResult(boolean canceled, RefundTicket refund) {
 	}
 
 	private Rental getParticipantRentalForUpdate(Long rentalId, Long memberId) {

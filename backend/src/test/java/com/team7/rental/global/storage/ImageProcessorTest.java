@@ -23,7 +23,7 @@ class ImageProcessorTest {
 
 	private final ImageProcessor imageProcessor = new ImageProcessor(
 		new PolicyProperties(new PolicyProperties.Image(1600, 400, MAX_PIXELS), null, null, null, null, null, null,
-			null, null, null, null, null, null, null));
+			null, null, null, null, null, null, null, null, null, null));
 
 	@Test
 	@DisplayName("픽셀 수가 60MP를 넘으면 디코딩하기 전에 IMAGE_SIZE_EXCEEDED다")

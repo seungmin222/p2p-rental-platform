@@ -44,6 +44,16 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, RentalSea
 	List<Long> findAutoConfirmTargetIds(@Param("threshold")
 	LocalDateTime threshold);
 
+	/** 인계 없음 자동 취소(REQ-017) 대상 id: RESERVED이고 startDate &lt; threshold(= 오늘 - handover.auto-cancel-days). id 순 */
+	@Query("""
+		select r.id from Rental r
+		where r.status = com.team7.rental.rental.entity.RentalStatus.RESERVED
+			and r.startDate < :threshold
+		order by r.id
+		""")
+	List<Long> findNoHandoverCancelIds(@Param("threshold")
+	LocalDate threshold);
+
 	/** 결제 만료(REQ-024) 대상 id: PENDING_PAYMENT이고 paymentExpiresAt ≤ now. id 순 */
 	@Query("""
 		select r.id from Rental r

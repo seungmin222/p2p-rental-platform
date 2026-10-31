@@ -1,6 +1,8 @@
 package com.team7.rental.rental.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
@@ -66,5 +68,23 @@ public class RentalCancelService {
 	 */
 	public int expireOverdue(LocalDateTime now) {
 		return rentalCancelTxService.expireOverdue(now);
+	}
+
+	/** 인계 없음 자동 취소 배치 대상 id */
+	public List<Long> findNoHandoverCancelIds(LocalDate today) {
+		return rentalCancelTxService.findNoHandoverCancelIds(today);
+	}
+
+	/**
+	 * 인계 없음 자동 취소 한 건 (REQ-017). 전액 환불.
+	 *
+	 * @return 처리했으면 true, 이미 대상이 아니면 false
+	 */
+	public boolean cancelForNoHandover(Long rentalId, LocalDateTime now) {
+		RentalCancelTxService.NoHandoverCancelResult result = rentalCancelTxService.cancelForNoHandover(rentalId, now);
+		if (result.refund() != null) {
+			rentalRefundPort.execute(result.refund());
+		}
+		return result.canceled();
 	}
 }

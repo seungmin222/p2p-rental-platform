@@ -37,7 +37,8 @@ class RentalReservationTxServiceTest {
 	private final RentalStatusHistoryRepository historyRepository = mock(RentalStatusHistoryRepository.class);
 	private final RentalOccupancyReader occupancyReader = mock(RentalOccupancyReader.class);
 	private final PolicyProperties policyProperties = new PolicyProperties(null, null, null, null,
-		new PolicyProperties.Payment(EXPIRE_MINUTES), null, null, null, null, null, null, null, null, null);
+		new PolicyProperties.Payment(EXPIRE_MINUTES), null, null, null, null, null, null, null, null, null, null, null,
+		null);
 
 	@BeforeEach
 	void setUp() {

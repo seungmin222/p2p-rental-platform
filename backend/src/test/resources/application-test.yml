@@ -15,6 +15,7 @@ app:
     cancel-agreement-expire-cron: "-"
     return-auto-confirm-cron: "-"
     payment-expire-cron: "-"
+    no-handover-cancel-cron: "-"
   storage:
     local:
       root-dir: build/test-uploads
