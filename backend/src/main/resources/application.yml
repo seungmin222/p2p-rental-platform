@@ -60,6 +60,9 @@ app:
     # PG 조정: 1시간 (REQ-024)
     payment-reconcile-cron: "0 30 * * * *"
   policy:
+    profile:
+      # docs/policies.md profile.image: 5MB
+      image-max-size: 5MB
     # docs/policies.md 수치. 바꾸면 policies.md도 함께 수정 (PolicyProperties)
     image:
       original-max-long-side: 1600
@@ -67,6 +70,7 @@ app:
       # 60MP
       max-pixels: 60000000
     region:
+      max-per-member: 2
       # region.verify-valid-days: 인증 후 30일이 지나면 만료 (REQ-004)
       verify-valid-days: 30
     trust:

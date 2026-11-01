@@ -58,11 +58,16 @@ public class JwtProvider {
 	}
 
 	public String createAccessToken(Long memberId, String role) {
+		return createAccessToken(memberId, role, null);
+	}
+
+	public String createAccessToken(Long memberId, String role, String familyId) {
 		Instant now = clock.instant();
 		return Jwts.builder()
 			.subject(memberId.toString())
 			.claim(TYPE_CLAIM, ACCESS_TYPE)
 			.claim(ROLE_CLAIM, role)
+			.claim(FAMILY_ID_CLAIM, familyId)
 			.issuedAt(Date.from(now))
 			.expiration(Date.from(now.plus(properties.accessTokenTtl())))
 			.signWith(key)
@@ -97,7 +102,7 @@ public class JwtProvider {
 		if (!ACCESS_TYPE.equals(claims.get(TYPE_CLAIM, String.class)) || role == null) {
 			throw new BusinessException(ErrorCode.AUTH_UNAUTHORIZED);
 		}
-		return new AccessTokenClaims(toMemberId(claims), role);
+		return new AccessTokenClaims(toMemberId(claims), role, claims.get(FAMILY_ID_CLAIM, String.class));
 	}
 
 	/**

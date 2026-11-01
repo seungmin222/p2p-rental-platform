@@ -1,5 +1,7 @@
 package com.team7.rental.member.service;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -7,9 +9,15 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.team7.rental.global.error.BusinessException;
+import com.team7.rental.global.error.ErrorCode;
+import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.member.dto.MemberResponse;
 import com.team7.rental.member.entity.Member;
+import com.team7.rental.member.entity.MemberStatus;
+import com.team7.rental.member.repository.MemberRegionRepository;
 import com.team7.rental.member.repository.MemberRepository;
+import com.team7.rental.member.repository.RegionRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +30,10 @@ import lombok.RequiredArgsConstructor;
 public class MemberQueryService {
 
 	private final MemberRepository memberRepository;
+	private final MemberRegionRepository memberRegionRepository;
+	private final RegionRepository regionRepository;
+	private final PolicyProperties policyProperties;
+	private final Clock clock;
 
 	/**
 	 * @throws IllegalStateException 회원이 없을 때. 호출하는 쪽이 FK로 참조한 회원이라 데이터 오류다
@@ -47,6 +59,20 @@ public class MemberQueryService {
 
 	/** 내 정보 (REQ-005). 대표 동네 요약 포함 */
 	public MemberResponse getMe(Long memberId) {
-		throw new UnsupportedOperationException("미구현: feat/member-region");
+		Member member = memberRepository.findById(memberId)
+			.filter(value -> value.getStatus() != MemberStatus.WITHDRAWN)
+			.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_UNAUTHORIZED));
+		int days = policyProperties.region().verifyValidDays();
+		MemberResponse.PrimaryRegion primary = memberRegionRepository
+			.findFirstByMemberIdAndIsPrimaryTrue(memberId)
+			.map(mr -> {
+				var region = regionRepository.findById(mr.getRegionId())
+					.orElseThrow(() -> new IllegalStateException("대표 동네 참조 오류"));
+				var expiresAt = mr.getVerifiedAt() == null ? null : mr.getVerifiedAt().plusDays(days);
+				return new MemberResponse.PrimaryRegion(mr.getId(), region.getId(), region.getName(),
+					mr.isVerified(LocalDateTime.now(clock), days), mr.getVerifiedAt(), expiresAt);
+			}).orElse(null);
+		return new MemberResponse(member.getId(), member.getEmail(), member.getNickname(),
+			member.getProfileImageUrl(), member.getRole(), primary, member.getCreatedAt());
 	}
 }

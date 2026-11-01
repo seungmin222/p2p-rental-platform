@@ -1,5 +1,9 @@
 package com.team7.rental.global.error;
 
+import java.util.List;
+
+import com.team7.rental.global.response.FieldErrorDetail;
+
 import lombok.Getter;
 
 /**
@@ -9,9 +13,15 @@ import lombok.Getter;
 public class BusinessException extends RuntimeException {
 
 	private final ErrorCode errorCode;
+	private final List<FieldErrorDetail> details;
 
 	public BusinessException(ErrorCode errorCode) {
+		this(errorCode, List.of());
+	}
+
+	public BusinessException(ErrorCode errorCode, List<FieldErrorDetail> details) {
 		super(errorCode.getMessage());
 		this.errorCode = errorCode;
+		this.details = List.copyOf(details);
 	}
 }

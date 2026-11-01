@@ -31,7 +31,7 @@
   "paths": {
     "/api/auth/login": {
       "post": {
-        "description": "미구현: 응답 형태만 확정. 성공 시 바디에 Access Token, Set-Cookie로 Refresh Token. Refresh Token은 응답 바디에 없고 HttpOnly 쿠키 refreshToken(Path\u003d/api/auth, SameSite\u003dLax, local 외 Secure, 만료 policies.md auth.refresh-token-ttl)로만 주고받는다. 브라우저가 자동으로 보내므로 프론트는 쿠키를 다루지 않는다(같은 출처 + withCredentials). 로그인할 때마다 새 토큰 묶음(family)이 생겨 기기마다 따로 유지된다. 이메일·비밀번호 중 무엇이 틀렸는지 구분하지 않고, 탈퇴 회원도 같은 401 AUTH_INVALID_CREDENTIALS다.",
+        "description": "성공 시 바디에 Access Token, Set-Cookie로 Refresh Token. Refresh Token은 응답 바디에 없고 HttpOnly 쿠키 refreshToken(Path\u003d/api/auth, SameSite\u003dLax, local 외 Secure, 만료 policies.md auth.refresh-token-ttl)로만 주고받는다. 브라우저가 자동으로 보내므로 프론트는 쿠키를 다루지 않는다(같은 출처 + withCredentials). 로그인할 때마다 새 토큰 묶음(family)이 생겨 기기마다 따로 유지된다. 이메일·비밀번호 중 무엇이 틀렸는지 구분하지 않고, 탈퇴 회원도 같은 401 AUTH_INVALID_CREDENTIALS다.",
         "operationId": "login",
         "requestBody": {
           "content": {
@@ -112,7 +112,7 @@
     },
     "/api/auth/logout": {
       "post": {
-        "description": "미구현: 응답 형태만 확정. Refresh Token 쿠키의 family만 무효화하고 쿠키를 만료시킨다(Set-Cookie Max-Age\u003d0). 다른 기기는 로그인 상태가 유지된다. 쿠키가 없거나 이미 무효여도 성공(data null)이고, Access Token은 필요 없다.",
+        "description": "Refresh Token 쿠키의 family만 무효화하고 쿠키를 만료시킨다(Set-Cookie Max-Age\u003d0). 다른 기기는 로그인 상태가 유지된다. 쿠키가 없거나 이미 무효여도 성공(data null)이고, Access Token은 필요 없다.",
         "operationId": "logout",
         "responses": {
           "200": {
@@ -143,7 +143,7 @@
     },
     "/api/auth/reissue": {
       "post": {
-        "description": "미구현: 응답 형태만 확정. Refresh Token 쿠키로 Access Token과 Refresh Token을 모두 새로 발급한다(Rotation, Set-Cookie로 교체). Refresh Token은 응답 바디에 없고 HttpOnly 쿠키 refreshToken(Path\u003d/api/auth, SameSite\u003dLax, local 외 Secure, 만료 policies.md auth.refresh-token-ttl)로만 주고받는다. 브라우저가 자동으로 보내므로 프론트는 쿠키를 다루지 않는다(같은 출처 + withCredentials). 401 AUTH_REFRESH_TOKEN_INVALID: 쿠키 없음, 서명 오류·만료, 로그아웃·강제 무효화된 family, 이미 교체된 RT 재사용(탈취로 보고 그 family만 무효화, 다른 기기는 유지). 401이면 프론트는 로그인 화면으로 간다.",
+        "description": "Refresh Token 쿠키로 Access Token과 Refresh Token을 모두 새로 발급한다(Rotation, Set-Cookie로 교체). Refresh Token은 응답 바디에 없고 HttpOnly 쿠키 refreshToken(Path\u003d/api/auth, SameSite\u003dLax, local 외 Secure, 만료 policies.md auth.refresh-token-ttl)로만 주고받는다. 브라우저가 자동으로 보내므로 프론트는 쿠키를 다루지 않는다(같은 출처 + withCredentials). 401 AUTH_REFRESH_TOKEN_INVALID: 쿠키 없음, 서명 오류·만료, 로그아웃·강제 무효화된 family, 이미 교체된 RT 재사용(탈취로 보고 그 family만 무효화, 다른 기기는 유지). 401이면 프론트는 로그인 화면으로 간다.",
         "operationId": "reissue",
         "responses": {
           "200": {
@@ -1420,7 +1420,7 @@
     },
     "/api/members": {
       "post": {
-        "description": "미구현: 응답 형태만 확정. 글자 수 규칙은 policies.md member.email.max·member.password·member.nickname, 비밀번호는 공백 없는 ASCII 출력 문자만, 영문·숫자·기호를 각각 1개 이상 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 가입 후 로그인 화면으로 이동한다.",
+        "description": "글자 수 규칙은 policies.md member.email.max·member.password·member.nickname, 비밀번호는 공백 없는 ASCII 출력 문자만, 영문·숫자·기호를 각각 1개 이상 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 가입 후 로그인 화면으로 이동한다.",
         "operationId": "signup",
         "requestBody": {
           "content": {
@@ -1503,7 +1503,7 @@
     },
     "/api/members/me": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 대표 동네 요약(인증 여부·만료 시각)을 포함한다.",
+        "description": "대표 동네 요약(인증 여부·만료 시각)을 포함한다.",
         "operationId": "getMe",
         "responses": {
           "200": {
@@ -1548,7 +1548,7 @@
         ]
       },
       "patch": {
-        "description": "미구현: 응답 형태만 확정. 보낸 항목만 바꾼다. multipart: request part(Content-Type application/json, 생략 가능) { nickname } + profileImage 파일(생략 가능). 이미지는 jpg/png, 용량 policies.md profile.image. 닉네임 글자 수 member.nickname. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415) → 409 MEMBER_NICKNAME_DUPLICATED → 이미지 400(IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 응답은 내 정보와 같다.",
+        "description": "보낸 항목만 바꾼다. multipart: request part(Content-Type application/json, 생략 가능) { nickname } + profileImage 파일(생략 가능). 이미지는 jpg/png, 용량 policies.md profile.image. 닉네임 글자 수 member.nickname. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415) → 409 MEMBER_NICKNAME_DUPLICATED → 이미지 400(IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 응답은 내 정보와 같다.",
         "operationId": "updateProfile",
         "requestBody": {
           "content": {
@@ -1913,7 +1913,7 @@
     },
     "/api/members/me/password": {
       "patch": {
-        "description": "미구현: 응답 형태만 확정. 현재 비밀번호가 틀리면 400 MEMBER_PASSWORD_MISMATCH. 새 비밀번호 규칙은 가입과 같다. 변경하면 현재 기기를 뺀 다른 기기는 로그아웃된다.",
+        "description": "현재 비밀번호가 틀리면 400 MEMBER_PASSWORD_MISMATCH. 새 비밀번호 규칙은 가입과 같다. 변경하면 현재 기기를 뺀 다른 기기는 로그아웃된다.",
         "operationId": "changePassword",
         "requestBody": {
           "content": {
@@ -2001,7 +2001,7 @@
     },
     "/api/members/me/regions": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 대표 동네 먼저. 최대 개수는 policies.md region.max-per-member.",
+        "description": "대표 동네 먼저. 최대 개수는 policies.md region.max-per-member.",
         "operationId": "getMyRegions",
         "responses": {
           "200": {
@@ -2046,7 +2046,7 @@
         ]
       },
       "post": {
-        "description": "미구현: 응답 형태만 확정. 인증 전 상태로 추가된다(인증은 verify). 첫 동네면 자동으로 대표 동네. 개수가 policies.md region.max-per-member를 넘으면 409 REGION_LIMIT_EXCEEDED, 이미 추가한 동네면 409 REGION_ALREADY_ADDED, 요청 바디의 regionId가 없는 행정동이면 400 COMMON_INVALID_INPUT(details regionId). 404는 경로 id가 없을 때만 쓴다.",
+        "description": "인증 전 상태로 추가된다(인증은 verify). 첫 동네면 자동으로 대표 동네. 개수가 policies.md region.max-per-member를 넘으면 409 REGION_LIMIT_EXCEEDED, 이미 추가한 동네면 409 REGION_ALREADY_ADDED, 요청 바디의 regionId가 없는 행정동이면 400 COMMON_INVALID_INPUT(details regionId). 404는 경로 id가 없을 때만 쓴다.",
         "operationId": "addRegion",
         "requestBody": {
           "content": {
@@ -2154,7 +2154,7 @@
     },
     "/api/members/me/regions/{memberRegionId}": {
       "delete": {
-        "description": "미구현: 응답 형태만 확정. 대표 동네를 지우면 남은 동네가 대표가 된다. data는 null.",
+        "description": "대표 동네를 지우면 남은 동네가 대표가 된다. data는 null.",
         "operationId": "deleteRegion",
         "parameters": [
           {
@@ -2252,7 +2252,7 @@
     },
     "/api/members/me/regions/{memberRegionId}/primary": {
       "patch": {
-        "description": "미구현: 응답 형태만 확정. 두 동네의 isPrimary가 함께 바뀌므로 바뀐 뒤의 내 동네 목록 전체를 돌려준다(대표 동네 먼저).",
+        "description": "두 동네의 isPrimary가 함께 바뀌므로 바뀐 뒤의 내 동네 목록 전체를 돌려준다(대표 동네 먼저).",
         "operationId": "changePrimaryRegion",
         "parameters": [
           {
@@ -2350,7 +2350,7 @@
     },
     "/api/members/me/regions/{memberRegionId}/verify": {
       "patch": {
-        "description": "미구현: 응답 형태만 확정. 브라우저 현재 좌표의 행정동이 이 동네와 같으면 인증된다(verifiedAt \u003d 지금, 유효기간 policies.md region.verify-valid-days). 좌표는 저장하지 않는다. 다르면 400 REGION_VERIFY_MISMATCH. 위치 권한이 없으면 프론트가 이 API를 부르지 않고 미인증 상태로 둔다.",
+        "description": "브라우저 현재 좌표의 행정동이 이 동네와 같으면 인증된다(verifiedAt \u003d 지금, 유효기간 policies.md region.verify-valid-days). 좌표는 저장하지 않는다. 다르거나 행정동(H) 항목이 없으면 400 REGION_VERIFY_MISMATCH. 위치 권한이 없으면 프론트가 이 API를 부르지 않고 미인증 상태로 둔다.",
         "operationId": "verifyRegion",
         "parameters": [
           {
@@ -2931,7 +2931,7 @@
     },
     "/api/regions": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 행정동 이름에 keyword가 들어간 행정동. 결과가 없으면 빈 배열.",
+        "description": "행정동 이름에 keyword가 들어간 행정동. 결과가 없으면 빈 배열.",
         "operationId": "searchRegions",
         "parameters": [
           {
@@ -2986,7 +2986,7 @@
     },
     "/api/regions/by-coord": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 브라우저 현재 위치를 행정동으로 바꾼다(서버가 카카오 로컬 API 호출). 좌표는 저장하지 않는다. 해당 행정동이 없으면 404 COMMON_NOT_FOUND.",
+        "description": "브라우저 현재 위치를 행정동으로 바꾼다(서버가 카카오 로컬 API 호출). 좌표는 저장하지 않는다. 해당 행정동이 없으면 404 COMMON_NOT_FOUND.",
         "operationId": "getRegionByCoord",
         "parameters": [
           {

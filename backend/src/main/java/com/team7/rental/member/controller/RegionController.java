@@ -32,7 +32,7 @@ public class RegionController {
 
 	private final RegionService regionService;
 
-	@Operation(summary = "동네 검색 (REQ-004)", description = "미구현: 응답 형태만 확정. 행정동 이름에 keyword가 들어간 행정동. 결과가 없으면 빈 배열.")
+	@Operation(summary = "동네 검색 (REQ-004)", description = "행정동 이름에 keyword가 들어간 행정동. 결과가 없으면 빈 배열.")
 	@ApiErrorCodes({COMMON_INVALID_INPUT})
 	@GetMapping
 	public ApiResponse<List<RegionResponse>> searchRegions(
@@ -41,7 +41,7 @@ public class RegionController {
 		return ApiResponse.ok(regionService.search(keyword));
 	}
 
-	@Operation(summary = "좌표로 행정동 찾기 (REQ-004)", description = "미구현: 응답 형태만 확정. 브라우저 현재 위치를 행정동으로 바꾼다(서버가 카카오 로컬 API 호출). "
+	@Operation(summary = "좌표로 행정동 찾기 (REQ-004)", description = "브라우저 현재 위치를 행정동으로 바꾼다(서버가 카카오 로컬 API 호출). "
 		+ "좌표는 저장하지 않는다. 해당 행정동이 없으면 404 COMMON_NOT_FOUND.")
 	@ApiErrorCodes({COMMON_INVALID_INPUT, COMMON_NOT_FOUND})
 	@GetMapping("/by-coord")

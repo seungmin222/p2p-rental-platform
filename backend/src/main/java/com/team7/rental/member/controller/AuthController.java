@@ -48,7 +48,7 @@ public class AuthController {
 
 	private final AuthService authService;
 
-	@Operation(summary = "로그인 (REQ-002)", description = "미구현: 응답 형태만 확정. 성공 시 바디에 Access Token, Set-Cookie로 Refresh Token. "
+	@Operation(summary = "로그인 (REQ-002)", description = "성공 시 바디에 Access Token, Set-Cookie로 Refresh Token. "
 		+ COOKIE_NOTE + "로그인할 때마다 새 토큰 묶음(family)이 생겨 기기마다 따로 유지된다. "
 		+ "이메일·비밀번호 중 무엇이 틀렸는지 구분하지 않고, 탈퇴 회원도 같은 401 AUTH_INVALID_CREDENTIALS다.")
 	@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공", headers = @Header(name = HttpHeaders.SET_COOKIE, description = SET_COOKIE_ISSUE, schema = @Schema(type = "string")))
@@ -59,7 +59,7 @@ public class AuthController {
 		return ApiResponse.ok(authService.login(request, response));
 	}
 
-	@Operation(summary = "로그아웃 (REQ-002)", description = "미구현: 응답 형태만 확정. Refresh Token 쿠키의 family만 무효화하고 쿠키를 만료시킨다(Set-Cookie Max-Age=0). "
+	@Operation(summary = "로그아웃 (REQ-002)", description = "Refresh Token 쿠키의 family만 무효화하고 쿠키를 만료시킨다(Set-Cookie Max-Age=0). "
 		+ "다른 기기는 로그인 상태가 유지된다. 쿠키가 없거나 이미 무효여도 성공(data null)이고, Access Token은 필요 없다.")
 	@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공", headers = @Header(name = HttpHeaders.SET_COOKIE, description = SET_COOKIE_EXPIRE, schema = @Schema(type = "string")))
 	@ApiErrorCodes({})
@@ -71,7 +71,7 @@ public class AuthController {
 		return ApiResponse.ok();
 	}
 
-	@Operation(summary = "토큰 재발급 (REQ-003)", description = "미구현: 응답 형태만 확정. Refresh Token 쿠키로 Access Token과 Refresh Token을 모두 새로 발급한다(Rotation, Set-Cookie로 교체). "
+	@Operation(summary = "토큰 재발급 (REQ-003)", description = "Refresh Token 쿠키로 Access Token과 Refresh Token을 모두 새로 발급한다(Rotation, Set-Cookie로 교체). "
 		+ COOKIE_NOTE + "401 AUTH_REFRESH_TOKEN_INVALID: 쿠키 없음, 서명 오류·만료, 로그아웃·강제 무효화된 family, "
 		+ "이미 교체된 RT 재사용(탈취로 보고 그 family만 무효화, 다른 기기는 유지). 401이면 프론트는 로그인 화면으로 간다.")
 	@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공", headers = @Header(name = HttpHeaders.SET_COOKIE, description = SET_COOKIE_ISSUE, schema = @Schema(type = "string")))
