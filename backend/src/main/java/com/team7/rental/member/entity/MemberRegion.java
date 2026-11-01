@@ -63,4 +63,12 @@ public class MemberRegion extends BaseTimeEntity {
 	public boolean isVerified(LocalDateTime now, int validDays) {
 		return verifiedAt != null && verifiedAt.plusDays(validDays).isAfter(now);
 	}
+
+	public void verify(LocalDateTime verifiedAt) {
+		this.verifiedAt = verifiedAt;
+	}
+
+	public void changePrimary(boolean primary) {
+		this.isPrimary = primary;
+	}
 }

@@ -50,7 +50,7 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e) {
 		log.info("BusinessException: {}", e.getErrorCode().getCode());
-		return toResponse(e.getErrorCode(), List.of());
+		return toResponse(e.getErrorCode(), e.getDetails());
 	}
 
 	/** 낙관적 락(@Version) 충돌. 같은 행을 다른 요청이 먼저 바꿨다 */

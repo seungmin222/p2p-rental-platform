@@ -41,7 +41,7 @@ public class MemberRegionController {
 	private final MemberRegionService memberRegionService;
 	private final MemberRegionQueryService memberRegionQueryService;
 
-	@Operation(summary = "내 동네 목록 (REQ-004)", description = "미구현: 응답 형태만 확정. 대표 동네 먼저. 최대 개수는 policies.md region.max-per-member.")
+	@Operation(summary = "내 동네 목록 (REQ-004)", description = "대표 동네 먼저. 최대 개수는 policies.md region.max-per-member.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({AUTH_UNAUTHORIZED})
 	@GetMapping
@@ -50,7 +50,7 @@ public class MemberRegionController {
 		return ApiResponse.ok(memberRegionQueryService.getMyRegions(memberId));
 	}
 
-	@Operation(summary = "동네 추가 (REQ-004)", description = "미구현: 응답 형태만 확정. 인증 전 상태로 추가된다(인증은 verify). 첫 동네면 자동으로 대표 동네. "
+	@Operation(summary = "동네 추가 (REQ-004)", description = "인증 전 상태로 추가된다(인증은 verify). 첫 동네면 자동으로 대표 동네. "
 		+ "개수가 policies.md region.max-per-member를 넘으면 409 REGION_LIMIT_EXCEEDED, 이미 추가한 동네면 409 REGION_ALREADY_ADDED, "
 		+ "요청 바디의 regionId가 없는 행정동이면 400 COMMON_INVALID_INPUT(details regionId). 404는 경로 id가 없을 때만 쓴다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
@@ -64,7 +64,7 @@ public class MemberRegionController {
 		return ApiResponse.ok(memberRegionService.add(memberId, request));
 	}
 
-	@Operation(summary = "동네 인증 (REQ-004)", description = "미구현: 응답 형태만 확정. 브라우저 현재 좌표의 행정동이 이 동네와 같으면 인증된다(verifiedAt = 지금, "
+	@Operation(summary = "동네 인증 (REQ-004)", description = "브라우저 현재 좌표의 행정동이 이 동네와 같으면 인증된다(verifiedAt = 지금, "
 		+ "유효기간 policies.md region.verify-valid-days). 좌표는 저장하지 않는다. 다르면 400 REGION_VERIFY_MISMATCH. "
 		+ "위치 권한이 없으면 프론트가 이 API를 부르지 않고 미인증 상태로 둔다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
@@ -78,7 +78,7 @@ public class MemberRegionController {
 		return ApiResponse.ok(memberRegionService.verify(memberId, memberRegionId, request));
 	}
 
-	@Operation(summary = "대표 동네 설정 (REQ-004)", description = "미구현: 응답 형태만 확정. 두 동네의 isPrimary가 함께 바뀌므로 바뀐 뒤의 내 동네 목록 전체를 돌려준다(대표 동네 먼저).")
+	@Operation(summary = "대표 동네 설정 (REQ-004)", description = "두 동네의 isPrimary가 함께 바뀌므로 바뀐 뒤의 내 동네 목록 전체를 돌려준다(대표 동네 먼저).")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, COMMON_NOT_FOUND})
 	@PatchMapping("/{memberRegionId}/primary")
@@ -88,7 +88,7 @@ public class MemberRegionController {
 		return ApiResponse.ok(memberRegionService.changePrimary(memberId, memberRegionId));
 	}
 
-	@Operation(summary = "동네 삭제 (REQ-004)", description = "미구현: 응답 형태만 확정. 대표 동네를 지우면 남은 동네가 대표가 된다. data는 null.")
+	@Operation(summary = "동네 삭제 (REQ-004)", description = "대표 동네를 지우면 남은 동네가 대표가 된다. data는 null.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, COMMON_NOT_FOUND})
 	@DeleteMapping("/{memberRegionId}")

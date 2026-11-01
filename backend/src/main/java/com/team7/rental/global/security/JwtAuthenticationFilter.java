@@ -70,6 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		AccessTokenClaims claims = jwtProvider.parseAccessToken(header.substring(BEARER_PREFIX.length()));
 		var authentication = UsernamePasswordAuthenticationToken.authenticated(claims.memberId(), null,
 			List.of(new SimpleGrantedAuthority("ROLE_" + claims.role())));
+		authentication.setDetails(claims);
 		SecurityContextHolder.getContext().setAuthentication(authentication);
 	}
 }

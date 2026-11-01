@@ -73,4 +73,17 @@ public class Member extends BaseTimeEntity {
 		member.status = MemberStatus.ACTIVE;
 		return member;
 	}
+
+	public void updateProfile(String nickname, String imageUrl) {
+		if (nickname != null) {
+			this.nickname = nickname;
+		}
+		if (imageUrl != null) {
+			this.profileImageUrl = imageUrl;
+		}
+	}
+
+	public void changePassword(String encodedPassword) {
+		this.password = encodedPassword;
+	}
 }
