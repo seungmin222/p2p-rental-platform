@@ -65,7 +65,7 @@ public class MemberRegionController {
 	}
 
 	@Operation(summary = "동네 인증 (REQ-004)", description = "브라우저 현재 좌표의 행정동이 이 동네와 같으면 인증된다(verifiedAt = 지금, "
-		+ "유효기간 policies.md region.verify-valid-days). 좌표는 저장하지 않는다. 다르면 400 REGION_VERIFY_MISMATCH. "
+		+ "유효기간 policies.md region.verify-valid-days). 좌표는 저장하지 않는다. 다르거나 행정동(H) 항목이 없으면 400 REGION_VERIFY_MISMATCH. "
 		+ "위치 권한이 없으면 프론트가 이 API를 부르지 않고 미인증 상태로 둔다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, COMMON_NOT_FOUND, REGION_VERIFY_MISMATCH})

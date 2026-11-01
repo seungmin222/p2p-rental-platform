@@ -64,7 +64,17 @@ public class MemberRegionService {
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public MemberRegionResponse verify(Long memberId, Long memberRegionId, RegionCoordRequest coord) {
 		owned(memberId, memberRegionId);
-		String code = regionLookupClient.findAdministrativeCode(coord);
+		String code;
+		try {
+			code = regionLookupClient.findAdministrativeCode(coord);
+		} catch (BusinessException e) {
+			// 좌표에 행정동(H)이 없는 경우만 인증 불일치로 처리한다.
+			// 소유권 조회와 DB 저장의 404는 이 catch 바깥에 둔다.
+			if (e.getErrorCode() == ErrorCode.COMMON_NOT_FOUND) {
+				throw new BusinessException(ErrorCode.REGION_VERIFY_MISMATCH);
+			}
+			throw e;
+		}
 		return verificationWriter.verify(memberId, memberRegionId, code);
 	}
 

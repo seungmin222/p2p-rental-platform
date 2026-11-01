@@ -32,6 +32,7 @@
 - 현재 위치: 브라우저 Geolocation → `GET /api/regions/by-coord` (서버가 카카오 로컬 API 좌표→행정구역 변환을 호출하고, 응답 중 `region_type = "H"`(행정동) 항목의 코드로 regions를 찾는다)
 - 추가: `POST /api/members/me/regions` (최대 개수 `policies.md` `region.max-per-member`, 넘으면 409 `REGION_LIMIT_EXCEEDED` "기존 동네를 삭제하세요", 이미 추가한 동네 409 `REGION_ALREADY_ADDED`)
 - 인증: `PATCH /api/members/me/regions/{id}/verify` body `{lat, lng}` → 서버가 좌표의 행정동 == 해당 region이면 `verified_at=now`. **좌표는 저장하지 않는다.**
+- 카카오 응답에 행정동(`H`) 항목이 없으면: 인증(`verify`)은 400 `REGION_VERIFY_MISMATCH`, 좌표 조회(`by-coord`)는 404 `COMMON_NOT_FOUND`. 인증 경로 id가 없거나 다른 회원의 동네인 경우는 계속 404 `COMMON_NOT_FOUND` (PR #33 리뷰 결정).
 - 유효기간 30일. 대표 동네 1개가 피드·검색 기준.
 - **물품 등록·예약은 대표 동네가 인증(유효기간 내)된 경우에만** → 아니면 403 `REGION_NOT_VERIFIED`
 - 예외: 위치 권한 거부 → 프론트에서 안내 후 검색만 허용(인증 미완료 상태로 저장 가능), 불일치 → 400 `REGION_VERIFY_MISMATCH`
