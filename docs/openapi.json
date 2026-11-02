@@ -194,7 +194,7 @@
     },
     "/api/categories": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 활성 카테고리만 sortOrder 순.",
+        "description": "활성 카테고리만 sortOrder 순.",
         "operationId": "getCategories",
         "responses": {
           "200": {
@@ -406,7 +406,7 @@
         ]
       },
       "post": {
-        "description": "미구현: 응답 형태만 확정. 대표 동네가 인증된(유효기간 내) 회원만 등록할 수 있다(403 REGION_NOT_VERIFIED). 물품 동네 \u003d 대표 동네, status \u003d AVAILABLE. multipart: request part(Content-Type application/json, 필수) ItemCreateRequest + images 파일들(순서 \u003d sortOrder, 0번이 대표). 사진 장수·형식·용량 policies.md item.images. 비활성·없는 카테고리는 400 COMMON_INVALID_INPUT(details categoryId). 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 403 REGION_NOT_VERIFIED → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED).",
+        "description": "대표 동네가 인증된(유효기간 내) 회원만 등록할 수 있다(403 REGION_NOT_VERIFIED). 물품 동네 \u003d 대표 동네, status \u003d AVAILABLE. multipart: request part(Content-Type application/json, 필수) ItemCreateRequest + images 파일들(순서 \u003d sortOrder, 0번이 대표). 사진 장수·형식·용량 policies.md item.images. 비활성·없는 카테고리는 400 COMMON_INVALID_INPUT(details categoryId). 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 403 REGION_NOT_VERIFIED → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED).",
         "operationId": "createItem",
         "requestBody": {
           "content": {
@@ -570,7 +570,7 @@
     },
     "/api/items/deposit-guide": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 물품 가격 × 카테고리별 권장 비율(policies.md §4). 안내만 하고, 범위를 벗어난 보증금도 등록할 수 있다. 없는 카테고리는 400 COMMON_INVALID_INPUT(details categoryId).",
+        "description": "물품 가격 × 카테고리별 권장 비율(policies.md §4), 원 미만 절사. 안내만 하고, 범위를 벗어난 보증금도 등록할 수 있다. 없는 카테고리는 400 COMMON_INVALID_INPUT(details categoryId).",
         "operationId": "getDepositGuide",
         "parameters": [
           {
@@ -665,7 +665,7 @@
     },
     "/api/items/feed": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. regionId를 생략하면 로그인 회원의 대표 동네를 쓰고, 비회원이거나 대표 동네가 없으면 400 COMMON_INVALID_INPUT(details regionId). range는 받지만 동네 범위 설정(REQ-042) 전에는 NORMAL로 처리한다(거리 policies.md region.range). 물품 거래 장소 좌표가 기준 동네 중심에서 범위 안인 AVAILABLE 물품만(HIDDEN·DELETED 제외). 정렬 bumpedAt 내림차순, id 내림차순. 커서 기반이고 한 번에 policies.md feed.page건. 결과가 없으면 빈 목록. 로그인하지 않아도 되며, 토큰을 보내면 대표 동네 기본값에 쓴다.",
+        "description": "regionId를 생략하면 로그인 회원의 대표 동네를 쓰고, 비회원이거나 대표 동네가 없으면 400 COMMON_INVALID_INPUT(details regionId). range는 받지만 동네 범위 설정(REQ-042) 전에는 NORMAL로 처리한다(거리 policies.md region.range). 물품 거래 장소 좌표가 기준 동네 중심에서 범위 안인 AVAILABLE 물품만(HIDDEN·DELETED 제외). 정렬 bumpedAt 내림차순, id 내림차순. 커서 기반이고 한 번에 policies.md feed.page건. 결과가 없으면 빈 목록. 로그인하지 않아도 되며, 토큰을 보내면 대표 동네 기본값에 쓴다.",
         "operationId": "getFeed",
         "parameters": [
           {
@@ -909,7 +909,7 @@
         ]
       },
       "get": {
-        "description": "미구현: 응답 형태만 확정. 비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). 조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 관심 기능(REQ-022) 전에는 항상 false.",
+        "description": "비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). 조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 관심 기능(REQ-022) 전에는 항상 false.",
         "operationId": "getItem",
         "parameters": [
           {
@@ -1289,7 +1289,7 @@
     },
     "/api/items/{itemId}/rentals": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 제공자 전용. 해당 물품의 대여 건 전부(CANCELED 포함). 정렬: 다가오는·진행 중 건(PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED)을 시작일 오름차순으로 먼저, 완료·취소 건(COMPLETED·CANCELED)을 시작일 내림차순으로 뒤에(같은 시작일은 id 순). 페이지 크기는 policies.md item-rentals.page로 고정(size를 받지 않음). 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 ITEM_NOT_OWNER.",
+        "description": "제공자 전용. 해당 물품의 대여 건 전부(CANCELED 포함). 정렬: 다가오는·진행 중 건(PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED)을 시작일 오름차순으로 먼저, 완료·취소 건(COMPLETED·CANCELED)을 시작일 내림차순으로 뒤에(같은 시작일은 id 순). 페이지 크기는 policies.md item-rentals.page로 고정(size를 받지 않음). 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 ITEM_NOT_OWNER.",
         "operationId": "getItemRentals",
         "parameters": [
           {
@@ -1695,7 +1695,7 @@
     },
     "/api/members/me/items": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 탭: RENTING \u003d RENTING·OVERDUE 대여가 있는 물품, AVAILABLE \u003d 그 외 공개 물품, HIDDEN \u003d 숨김 물품(숨기기 REQ-044 전에는 항상 빈 목록). 삭제된 물품은 없다. 정렬은 최근 등록(itemId 내림차순). 페이지 크기는 policies.md my-items.page로 고정(size를 받지 않음).",
+        "description": "탭: RENTING \u003d RENTING·OVERDUE 대여가 있는 물품, AVAILABLE \u003d 그 외 공개 물품, HIDDEN \u003d 숨김 물품(숨기기 REQ-044 전에는 항상 빈 목록). 삭제된 물품은 없다. 정렬은 최근 등록(itemId 내림차순). 페이지 크기는 policies.md my-items.page로 고정(size를 받지 않음).",
         "operationId": "getMyItems",
         "parameters": [
           {

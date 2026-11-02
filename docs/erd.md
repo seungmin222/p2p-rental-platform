@@ -13,8 +13,8 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V5 | `V5__create_rental_cancel_agreements.sql` | `feat/rental-cancel` (#12) | 머지 |
 | V6 | `V6__create_item_inspections.sql` | `feat/rental-return` | 머지 |
 | V7 | `V7__create_payment_tables.sql` | `feat/payment-core` | 머지 |
-| V8 | `V8__create_damage_policies.sql` | `feat/item-crud` | 작업 중 |
-| V9 | `V9__insert_regions.sql` | `feat/item-crud` | 작업 중 |
+| V8 | `V8__create_damage_policies.sql` | `feat/item-crud` | 머지 |
+| V9 | `V9__insert_regions.sql` | `feat/item-crud` | 머지 |
 
 ## 규칙
 

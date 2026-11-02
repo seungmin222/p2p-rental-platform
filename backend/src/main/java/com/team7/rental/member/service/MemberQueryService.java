@@ -57,6 +57,30 @@ public class MemberQueryService {
 			.collect(Collectors.toMap(Member::getId, Member::getNickname));
 	}
 
+	/** 회원 탈퇴 후에도 기존 물품·거래의 공개 요약을 조회할 수 있다. */
+	public com.team7.rental.member.dto.MemberPublicSummary getPublicSummary(Long memberId) {
+		var member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new IllegalStateException("회원 참조 오류"));
+		String regionName = memberRegionRepository.findFirstByMemberIdAndIsPrimaryTrue(memberId)
+			.flatMap(mr -> regionRepository.findById(mr.getRegionId()))
+			.map(com.team7.rental.member.entity.Region::getName).orElse(null);
+		return new com.team7.rental.member.dto.MemberPublicSummary(member.getId(), member.getNickname(),
+			member.getProfileImageUrl(), regionName);
+	}
+
+	/** 물품 등록과 대표 동네 변경을 같은 회원 락으로 직렬화한다. 호출자의 쓰기 트랜잭션에 참여한다. */
+	@Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+	public Long lockVerifiedPrimaryRegion(Long memberId) {
+		memberRepository.findForUpdate(memberId)
+			.filter(value -> value.getStatus() != MemberStatus.WITHDRAWN)
+			.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_UNAUTHORIZED));
+		var region = getMe(memberId).primaryRegion();
+		if (region == null || !region.isVerified()) {
+			throw new BusinessException(ErrorCode.REGION_NOT_VERIFIED);
+		}
+		return region.regionId();
+	}
+
 	/** 내 정보 (REQ-005). 대표 동네 요약 포함 */
 	public MemberResponse getMe(Long memberId) {
 		Member member = memberRepository.findById(memberId)

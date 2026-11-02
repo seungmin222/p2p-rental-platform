@@ -64,7 +64,7 @@
 ## REQ-011 물품 상세 조회 [1]
 `GET /api/items/{itemId}` — 비회원 가능
 - 반환: 이미지들, 이름, 설명, 카테고리, condition, pricePerDay, deposit, 거래 장소(주소·좌표), bumpedAt, viewCount, wishCount, chatCount, 제공자 요약(id, 닉네임, 동네명, 신뢰 점수[054 이후]), `isOwner`, `isWished`
-- 조회수: Redis `view:{itemId}:{memberId|ip}` 24시간 1회 → `viewcount:{itemId}` 증가 → 주기적 DB 반영
+- 조회수: Redis `view:{itemId}:{memberId|ip}` 24시간 1회 → `viewcount:{itemId}` 증가 → 5분마다 DB 반영(누적 스냅샷을 더 큰 값일 때만 갱신하여 재시도 중복 방지)
 - 로그인 회원 조회 → item_view_logs 기록(REQ-035 구현 시)
 - 예외: 없음/DELETED 404, HIDDEN은 소유자만(그 외 404)
 - 본인 물품이면 프론트는 예약 대신 수정·관리 버튼

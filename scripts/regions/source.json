@@ -1,0 +1,12 @@
+{
+  "publisher": "행정안전부",
+  "publicationDate": "2026-10-30",
+  "file": "jscode20261026.zip",
+  "sha256": "cce7299a01bfb29edc234884dbd4afa87b4a3a899ae3aefb9d6e4d0fe7b82509",
+  "entry": "jscode20261026/KIKcd_H.20261026",
+  "encoding": "CP949",
+  "recordBytes": 300,
+  "rows": 3630,
+  "filter": "읍면동명 존재 및 말소일자 없음. 출장소 포함. 시도/시군구 집계행 제외.",
+  "url": "https://www.mois.go.kr/frt/bbs/type001/commonSelectBoardArticle.do?bbsId=BBSMSTR_000000000052&nttId=130674"
+}

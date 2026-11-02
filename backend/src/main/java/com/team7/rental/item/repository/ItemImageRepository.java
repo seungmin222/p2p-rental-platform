@@ -12,6 +12,8 @@ import com.team7.rental.item.entity.ItemImage;
 
 public interface ItemImageRepository extends JpaRepository<ItemImage, Long> {
 
+	List<ItemImage> findAllByItemIdOrderBySortOrderAscIdAsc(Long itemId);
+
 	/** 대표 이미지(첫 장) */
 	Optional<ItemImage> findFirstByItemIdOrderBySortOrder(Long itemId);
 

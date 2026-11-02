@@ -9,6 +9,7 @@ import com.team7.rental.rental.entity.RentalStatus;
 
 /** 대여 동적 목록 조회 (QueryDSL, 조회 전용). 구현은 RentalSearchRepositoryImpl */
 public interface RentalSearchRepository {
+	Page<ItemRentalRow> findItemHistory(Long itemId, Pageable pageable);
 
 	/**
 	 * 빌린 내역(REQ-019): renterId가 빌린 대여 중 statuses에 속하는 것. OVERDUE 먼저, 그다음 startDate DESC, id DESC.

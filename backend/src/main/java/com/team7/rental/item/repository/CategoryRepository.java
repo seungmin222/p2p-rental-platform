@@ -4,4 +4,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.team7.rental.item.entity.Category;
 
-public interface CategoryRepository extends JpaRepository<Category, Long> {}
+public interface CategoryRepository extends JpaRepository<Category, Long> {
+	java.util.List<Category> findByIsActiveTrueOrderBySortOrderAscIdAsc();
+}

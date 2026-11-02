@@ -44,17 +44,62 @@ import lombok.RequiredArgsConstructor;
 public class ItemQueryService {
 
 	private final ItemRepository itemRepository;
+	private final CategoryService categoryService;
+	private final com.team7.rental.payment.service.DamagePolicyQueryService damagePolicies;
+	private final jakarta.validation.Validator validator;
+	private final java.time.Clock clock;
+	@org.springframework.beans.factory.annotation.Value("${app.policy.feed.page}")
+	private int feedPage;
+	@org.springframework.beans.factory.annotation.Value("${app.policy.my-items.page}")
+	private int myItemsPage;
+	@org.springframework.beans.factory.annotation.Value("${app.policy.region.range.normal-meters}")
+	private double normalMeters;
+	private final com.team7.rental.member.service.MemberQueryService members;
+	private final com.team7.rental.member.service.RegionService regions;
+	private final com.team7.rental.item.repository.CategoryRepository categories;
+	private final com.team7.rental.item.repository.ItemViewRepository views;
 	private final ItemAvailablePeriodRepository itemAvailablePeriodRepository;
 	private final ItemImageRepository itemImageRepository;
 
 	/** 권장 보증금 범위 (REQ-006) */
 	public ItemDepositGuideResponse getDepositGuide(ItemDepositGuideRequest request) {
-		throw new UnsupportedOperationException("미구현: feat/item-crud");
+		var violations = validator.validate(request);
+		if (!violations.isEmpty()) {
+			throw new BusinessException(ErrorCode.COMMON_INVALID_INPUT, violations.stream()
+				.map(v -> new com.team7.rental.global.response.FieldErrorDetail(v.getPropertyPath().toString(),
+					v.getMessage()))
+				.toList());
+		}
+		categoryService.requireActive(request.categoryId());
+		var result = damagePolicies.recommend(request.categoryId(), request.itemPrice());
+		return new ItemDepositGuideResponse(result.minDeposit(), result.maxDeposit());
 	}
 
 	/** 동네 피드 (REQ-009). regionId가 없으면 회원의 대표 동네 */
 	public CursorResponse<ItemSummaryResponse> getFeed(ItemFeedRequest request, Long memberId) {
-		throw new UnsupportedOperationException("미구현: feat/item-feed-search");
+		Long regionId = request.regionId();
+		if (regionId == null && memberId != null) {
+			var primary = members.getMe(memberId).primaryRegion();
+			regionId = primary == null ? null : primary.regionId();
+		}
+		if (regionId == null) {
+			throw new BusinessException(ErrorCode.COMMON_INVALID_INPUT,
+				List.of(new com.team7.rental.global.response.FieldErrorDetail("regionId", "기준 동네를 선택해 주세요.")));
+		}
+		var cursor = com.team7.rental.item.repository.ItemFeedCursor.decode(request.cursor());
+		var rows = itemRepository.findFeed(regions.getCenter(regionId), normalMeters, request.categoryId(),
+			cursor, feedPage + 1, java.time.LocalDateTime.now(clock));
+		boolean hasNext = rows.size() > feedPage;
+		var page = rows.subList(0, Math.min(rows.size(), feedPage));
+		var names = regions
+			.getNames(page.stream().map(com.team7.rental.item.repository.ItemListRow::regionId).distinct().toList());
+		var thumbnails = thumbnails(page);
+		var content = page.stream().map(row -> new ItemSummaryResponse(row.itemId(), row.name(),
+			thumbnails.get(row.itemId()), names.get(row.regionId()), row.pricePerDay(), row.deposit(),
+			row.wishCount(), row.chatCount(), row.renting(), row.bumpedAt())).toList();
+		String next = hasNext ? new com.team7.rental.item.repository.ItemFeedCursor(page.getLast().bumpedAt(),
+			page.getLast().itemId()).encode() : null;
+		return new CursorResponse<>(content, next, hasNext);
 	}
 
 	/** 필터링 검색 (REQ-010). regionId가 없으면 회원의 대표 동네 */
@@ -63,8 +108,24 @@ public class ItemQueryService {
 	}
 
 	/** 상세 (REQ-011). memberId는 비회원이면 null */
-	public ItemDetailResponse getDetail(Long itemId, Long memberId) {
-		throw new UnsupportedOperationException("미구현: feat/item-crud");
+	public ItemDetailResponse getDetail(Long itemId, Long memberId, String remoteAddress) {
+		Item item = getVisibleItem(itemId, memberId);
+		var category = categories.findById(item.getCategoryId())
+			.orElseThrow(() -> new IllegalStateException("카테고리 참조 오류"));
+		var owner = members.getPublicSummary(item.getOwnerId());
+		String regionName = regions.getName(item.getRegionId());
+		var images = itemImageRepository.findAllByItemIdOrderBySortOrderAscIdAsc(itemId).stream()
+			.map(image -> new com.team7.rental.item.dto.ItemImageResponse(image.getId(), image.getUrl(),
+				image.getThumbnailUrl()))
+			.toList();
+		int viewCount = views.record(itemId, memberId, remoteAddress, item.getViewCount());
+		return new ItemDetailResponse(item.getId(), item.getName(), item.getDescription(), images,
+			new ItemDetailResponse.Category(category.getId(), category.getName()), item.getItemCondition(),
+			item.getPricePerDay(), item.getDeposit(), regionName, item.getAddress(), item.getLatitude(),
+			item.getLongitude(), item.getStatus(), item.getBumpedAt(), viewCount, item.getWishCount(),
+			item.getChatCount(), new ItemDetailResponse.Owner(owner.memberId(), owner.nickname(),
+				owner.profileImageUrl(), owner.regionName()),
+			memberId != null && item.isOwnedBy(memberId), false);
 	}
 
 	/** 소유자 수정 화면 (REQ-007). itemPrice 포함 */
@@ -74,7 +135,35 @@ public class ItemQueryService {
 
 	/** 내 물품 관리 (REQ-020) */
 	public PageResponse<MyItemResponse> getMyItems(Long memberId, MyItemRequest request) {
-		throw new UnsupportedOperationException("미구현: feat/item-feed-search");
+		var rows = itemRepository.findMyItems(memberId, request.tab(),
+			org.springframework.data.domain.PageRequest.of(request.page(), myItemsPage),
+			java.time.LocalDateTime.now(clock));
+		var names = regions
+			.getNames(rows.stream().map(com.team7.rental.item.repository.ItemListRow::regionId).distinct().toList());
+		var thumbnails = thumbnails(rows.getContent());
+		return PageResponse.of(rows, row -> new MyItemResponse(row.itemId(), row.name(), thumbnails.get(row.itemId()),
+			names.get(row.regionId()), row.pricePerDay(), row.deposit(), row.status(), row.viewCount(), row.wishCount(),
+			row.chatCount(), Math.toIntExact(row.upcomingCount()), row.renting(), row.bumpedAt()));
+	}
+
+	private Map<Long, String> thumbnails(List<com.team7.rental.item.repository.ItemListRow> rows) {
+		Map<Long, String> result = new HashMap<>();
+		if (!rows.isEmpty()) {
+			for (var image : itemImageRepository
+				.findMainImages(rows.stream().map(com.team7.rental.item.repository.ItemListRow::itemId).toList())) {
+				result.putIfAbsent(image.getItemId(), image.getThumbnailUrl());
+			}
+		}
+		return result;
+	}
+
+	/** 소유자 전용 목록은 숨김 물품도 허용한다. 없는 물품/삭제는 404, 타인 소유는 403. */
+	public void validateOwner(Long itemId, Long memberId) {
+		var item = itemRepository.findById(itemId).filter(value -> value.getStatus() != ItemStatus.DELETED)
+			.orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
+		if (!item.isOwnedBy(memberId)) {
+			throw new BusinessException(ErrorCode.ITEM_NOT_OWNER);
+		}
 	}
 
 	/**
