@@ -23,7 +23,7 @@ public class CategoryController {
 
 	private final CategoryService categoryService;
 
-	@Operation(summary = "카테고리 목록 (REQ-006)", description = "미구현: 응답 형태만 확정. 활성 카테고리만 sortOrder 순.")
+	@Operation(summary = "카테고리 목록 (REQ-006)", description = "활성 카테고리만 sortOrder 순.")
 	@ApiErrorCodes({})
 	@GetMapping
 	public ApiResponse<List<CategoryResponse>> getCategories() {

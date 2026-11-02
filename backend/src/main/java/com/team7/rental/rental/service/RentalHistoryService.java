@@ -81,6 +81,13 @@ public class RentalHistoryService {
 	 * 페이지 크기 policies.md item-rentals.page.
 	 */
 	public PageResponse<ItemRentalResponse> getItemRentals(Long itemId, Long memberId, int page) {
-		throw new UnsupportedOperationException("미구현: feat/item-feed-search");
+		itemQueryService.validateOwner(itemId, memberId);
+		var rows = rentalRepository.findItemHistory(itemId,
+			PageRequest.of(page, policyProperties.itemRentals().page()));
+		var nicknames = memberQueryService.getNicknames(rows.stream()
+			.map(com.team7.rental.rental.repository.ItemRentalRow::renterId).distinct().toList());
+		return PageResponse.of(rows, row -> new ItemRentalResponse(row.rentalId(), row.status(),
+			row.startDate(), row.endDate(),
+			new ItemRentalResponse.Renter(row.renterId(), nicknames.get(row.renterId()))));
 	}
 }

@@ -13,6 +13,8 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V5 | `V5__create_rental_cancel_agreements.sql` | `feat/rental-cancel` (#12) | 머지 |
 | V6 | `V6__create_item_inspections.sql` | `feat/rental-return` | 머지 |
 | V7 | `V7__create_payment_tables.sql` | `feat/payment-core` | 머지 |
+| V8 | `V8__create_damage_policies.sql` | `feat/item-crud` | 머지 |
+| V9 | `V9__insert_regions.sql` | `feat/item-crud` | 머지 |
 
 ## 규칙
 
@@ -210,7 +212,8 @@ erDiagram
 | `rt-families:{memberId}` | 회원의 family 목록 Set (전체 기기 로그아웃용) | 14일 |
 | `lock:item:{itemId}` | 예약·연장·기간 수정·물품 삭제 분산 락 | 임대 시간 미지정(watchdog 자동 연장) |
 | `view:{itemId}:{memberId or ip}` | 조회수 중복 방지 | 24시간 |
-| `viewcount:{itemId}` | 조회수 증분(주기적 DB 반영) | — |
+| `viewcount:{itemId}` | DB 기준값으로 초기화한 조회수 누적값(5분마다 DB에 단조 증가 반영, 재시도 멱등) | — |
+| `viewcount:dirty` | DB 반영 대기 물품 ID 집합. 반영 중 새 조회가 생기면 다음 회차에 유지 | — |
 | `search:popular` | 인기 검색어 Sorted Set | — |
 | `search:recent:{memberId}` | 최근 검색어 List | — |
 | `recommend:{memberId}` | 추천 결과 | 1시간 |

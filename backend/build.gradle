@@ -113,6 +113,7 @@ openApi {
 		workingDir.set(projectDir)
 		args.set(['--spring.profiles.active=local'])
 	}
+	waitTimeInSeconds.set(120)
 }
 
 // 네이버 핵데이 Java 컨벤션. 설정 원본: github.com/naver/hackday-conventions-java (rule-config/)

@@ -57,7 +57,7 @@ public class ItemController {
 	private final ItemService itemService;
 	private final ItemQueryService itemQueryService;
 
-	@Operation(summary = "물품 등록 (REQ-006)", description = "미구현: 응답 형태만 확정. 대표 동네가 인증된(유효기간 내) 회원만 등록할 수 있다(403 REGION_NOT_VERIFIED). "
+	@Operation(summary = "물품 등록 (REQ-006)", description = "대표 동네가 인증된(유효기간 내) 회원만 등록할 수 있다(403 REGION_NOT_VERIFIED). "
 		+ "물품 동네 = 대표 동네, status = AVAILABLE. "
 		+ "multipart: request part(Content-Type application/json, 필수) ItemCreateRequest + images 파일들(순서 = sortOrder, 0번이 대표). "
 		+ "사진 장수·형식·용량 policies.md item.images. 비활성·없는 카테고리는 400 COMMON_INVALID_INPUT(details categoryId). "
@@ -77,7 +77,7 @@ public class ItemController {
 		return ApiResponse.ok(itemService.create(memberId, request, images));
 	}
 
-	@Operation(summary = "권장 보증금 범위 (REQ-006)", description = "미구현: 응답 형태만 확정. 물품 가격 × 카테고리별 권장 비율(policies.md §4). "
+	@Operation(summary = "권장 보증금 범위 (REQ-006)", description = "물품 가격 × 카테고리별 권장 비율(policies.md §4), 원 미만 절사. "
 		+ "안내만 하고, 범위를 벗어난 보증금도 등록할 수 있다. 없는 카테고리는 400 COMMON_INVALID_INPUT(details categoryId).")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED})
@@ -126,7 +126,7 @@ public class ItemController {
 		return ApiResponse.ok();
 	}
 
-	@Operation(summary = "동네 피드 (REQ-009)", description = "미구현: 응답 형태만 확정. " + REGION_NOTE
+	@Operation(summary = "동네 피드 (REQ-009)", description = "" + REGION_NOTE
 		+ "정렬 bumpedAt 내림차순, id 내림차순. 커서 기반이고 한 번에 policies.md feed.page건. 결과가 없으면 빈 목록. "
 		+ "로그인하지 않아도 되며, 토큰을 보내면 대표 동네 기본값에 쓴다.")
 	@ApiErrorCodes({COMMON_INVALID_INPUT})
@@ -149,13 +149,13 @@ public class ItemController {
 		return ApiResponse.ok(itemQueryService.search(request, memberId));
 	}
 
-	@Operation(summary = "물품 상세 (REQ-011)", description = "미구현: 응답 형태만 확정. 비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). "
+	@Operation(summary = "물품 상세 (REQ-011)", description = "비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). "
 		+ "조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 관심 기능(REQ-022) 전에는 항상 false.")
 	@ApiErrorCodes({COMMON_INVALID_INPUT, ITEM_NOT_FOUND})
 	@GetMapping("/{itemId}")
 	public ApiResponse<ItemDetailResponse> getItem(@LoginMember(required = false)
 	Long memberId, @PathVariable
-	Long itemId) {
-		return ApiResponse.ok(itemQueryService.getDetail(itemId, memberId));
+	Long itemId, jakarta.servlet.http.HttpServletRequest request) {
+		return ApiResponse.ok(itemQueryService.getDetail(itemId, memberId, request.getRemoteAddr()));
 	}
 }

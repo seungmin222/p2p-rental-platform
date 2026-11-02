@@ -1,6 +1,7 @@
 package com.team7.rental.support;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -21,7 +22,7 @@ import com.team7.rental.global.security.JwtProvider;
  * <ul>
  *   <li>컨테이너: JVM당 한 번만 띄워 모든 테스트 클래스가 같이 쓴다(싱글턴 컨테이너). 종료는 Testcontainers(Ryuk)가 한다.</li>
  *   <li>시각 고정: {@link #testClock}{@code .fixAt(...)}. 각 테스트가 끝나면 실제 시각으로 돌아온다.</li>
- *   <li>데이터 정리: 각 테스트가 끝나면 {@link DataCleaner}가 MySQL 테이블과 Redis를 비운다.</li>
+ *   <li>데이터 정리: 각 테스트가 시작하기 전에 {@link DataCleaner}가 MySQL 테이블과 Redis를 비운다.</li>
  *   <li>테스트 데이터: {@link #fixture}로 회원·인증된 대표 동네·물품+가능 기간을, {@link #rentalFixture}로 지정한 상태의 대여를 만든다.</li>
  *   <li>인증: {@link #bearerToken}으로 만든 값을 Authorization 헤더에 넣는다. 실제 JWT 필터를 타므로 401·403까지 검증된다.</li>
  * </ul>
@@ -85,10 +86,15 @@ public abstract class IntegrationTestSupport {
 		return "Bearer " + jwtProvider.createAccessToken(memberId, "USER");
 	}
 
+	/** 최초 테스트도 Flyway 행정동 시드와 테스트용 코드가 충돌하지 않도록 정리한다. */
+	@BeforeEach
+	void prepareIntegrationTest() {
+		dataCleaner.clean();
+	}
+
 	@AfterEach
 	void cleanUpIntegrationTest() {
 		testClock.reset();
 		paymentGateway.reset();
-		dataCleaner.clean();
 	}
 }

@@ -36,7 +36,7 @@ public class MyItemController {
 	private final ItemQueryService itemQueryService;
 
 	@Tag(name = "Rental", description = "예약·대여·반납")
-	@Operation(summary = "내 물품 관리 (REQ-020)", description = "미구현: 응답 형태만 확정. 탭: RENTING = RENTING·OVERDUE 대여가 있는 물품, AVAILABLE = 그 외 공개 물품, "
+	@Operation(summary = "내 물품 관리 (REQ-020)", description = "탭: RENTING = RENTING·OVERDUE 대여가 있는 물품, AVAILABLE = 그 외 공개 물품, "
 		+ "HIDDEN = 숨김 물품(숨기기 REQ-044 전에는 항상 빈 목록). 삭제된 물품은 없다. 정렬은 최근 등록(itemId 내림차순). "
 		+ "페이지 크기는 policies.md my-items.page로 고정(size를 받지 않음).")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)

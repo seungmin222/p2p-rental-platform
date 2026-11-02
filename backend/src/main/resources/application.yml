@@ -20,12 +20,23 @@ spring:
       max-request-size: 110MB
 
 server:
+  forward-headers-strategy: native
   tomcat:
+    remoteip:
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+      # 미설정 시 어떤 프록시도 신뢰하지 않는다. 실제 Nginx 접속 IP만 정규식으로 지정.
+      internal-proxies: '${TRUSTED_PROXY_REGEX:(?!)}'
+      trusted-proxies: '(?!)'
     # 한도 초과 요청 본문을 Tomcat이 이만큼은 읽고 버린 뒤 400 JSON을 보낸다. 기본값(2MB)이면 15MB 사진 한 장에도
     # 응답 전에 연결이 끊긴다. max-request-size와 같게 (docs/policies.md upload 행)
     max-swallow-size: 110MB
 
 app:
+  redis:
+    command-timeout: 1s
+    connect-timeout: 1s
+    retry-attempts: 0
   feature:
     # 1순위 단계는 false (docs/architecture.md §9)
     payment-enabled: ${APP_FEATURE_PAYMENT_ENABLED:false}
@@ -46,6 +57,7 @@ app:
     # Swagger 경로 공개 여부. local 프로필에서만 true
     permit-swagger: false
   batch:
+    item-view-count-cron: "0 */5 * * * *"
     # 배치 주기 (docs/policies.md 배치 주기). test 프로필은 "-"로 끈다
     # 양측 동의 취소 요청 만료: 10분 (REQ-015)
     cancel-agreement-expire-cron: "0 */10 * * * *"
@@ -60,6 +72,14 @@ app:
     # PG 조정: 1시간 (REQ-024)
     payment-reconcile-cron: "0 30 * * * *"
   policy:
+    feed:
+      page: 20
+    my-items:
+      page: 20
+    item-rentals:
+      page: 20
+    view-count:
+      dedupe-hours: 24
     profile:
       # docs/policies.md profile.image: 5MB
       image-max-size: 5MB
@@ -70,6 +90,8 @@ app:
       # 60MP
       max-pixels: 60000000
     region:
+      range:
+        normal-meters: 3000
       max-per-member: 2
       # region.verify-valid-days: 인증 후 30일이 지나면 만료 (REQ-004)
       verify-valid-days: 30
@@ -139,6 +161,10 @@ app:
         min: 2
         max: 10
     item:
+      images:
+        min: 1
+        max: 10
+        max-file-size: 10MB
       # item.name.max / item.description.max: 50자 / 2,000자 (REQ-006)
       name-max: 50
       description-max: 2000

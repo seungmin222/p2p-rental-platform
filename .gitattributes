@@ -6,3 +6,6 @@
 *.jar binary
 *.png binary
 *.woff2 binary
+
+# Reproducible region provenance checksum on Windows and Linux
+docs/data/regions/*.jsonl text eol=lf

@@ -42,6 +42,24 @@ public class RentalSearchRepositoryImpl implements RentalSearchRepository {
 			() -> queryFactory.select(rental.count()).from(rental).where(conditions).fetchOne());
 	}
 
+	@Override
+	public Page<ItemRentalRow> findItemHistory(Long itemId, Pageable pageable) {
+		var active = rental.status.in(RentalStatus.PENDING_PAYMENT, RentalStatus.RESERVED,
+			RentalStatus.RENTING, RentalStatus.OVERDUE, RentalStatus.RETURNED);
+		var groupOrder = new CaseBuilder().when(active).then(0).otherwise(1);
+		var activeDate = new CaseBuilder().when(active).then(rental.startDate)
+			.otherwise(com.querydsl.core.types.dsl.Expressions.nullExpression(java.time.LocalDate.class));
+		var pastDate = new CaseBuilder().when(active.not()).then(rental.startDate)
+			.otherwise(com.querydsl.core.types.dsl.Expressions.nullExpression(java.time.LocalDate.class));
+		var content = queryFactory.select(Projections.constructor(ItemRentalRow.class,
+			rental.id, rental.status, rental.renterId, rental.startDate, rental.endDate))
+			.from(rental).where(rental.itemId.eq(itemId))
+			.orderBy(groupOrder.asc(), activeDate.asc(), pastDate.desc(), rental.id.asc())
+			.offset(pageable.getOffset()).limit(pageable.getPageSize()).fetch();
+		return PageableExecutionUtils.getPage(content, pageable,
+			() -> queryFactory.select(rental.count()).from(rental).where(rental.itemId.eq(itemId)).fetchOne());
+	}
+
 	/** 연체 건을 목록 최상단에 (rental.md REQ-019). 모든 탭에 같은 정렬을 쓴다 */
 	private OrderSpecifier<Integer> overdueFirst() {
 		return new CaseBuilder()

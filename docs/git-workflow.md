@@ -32,8 +32,9 @@
 | `chore/member-item-api-contract` | 001–011·020 API 계약만: 컨트롤러·요청·응답 DTO·Swagger·ErrorCode·서비스 껍데기(`UnsupportedOperationException`). 프론트가 openapi.json으로 목을 만들 수 있게 먼저 머지. 로직은 아래 4개 브랜치가 채운다 | A(B와 합의) |
 | `feat/member-auth` | 001–003 (엔티티는 `feat/member-item-entity`에 있음) | B |
 | `feat/member-region` | 004, 005 (엔티티는 `feat/member-item-entity`에 있음) | B |
-| `feat/item-crud` | 006–008, 011 (엔티티는 `feat/member-item-entity`에 있음) | B |
-| `feat/item-feed-search` | 009, 010, 020 | B |
+| `feat/item-crud` | 데모 범위: 006, 009, 011, 020 + 행정동·보증금 정책 시드 | B |
+| `feat/item-edit-delete` | 후속 물품 수정·삭제: 007, 008 | B |
+| `feat/item-feed-search` | 후속 필터링 검색: 010 (009·020은 feat/item-crud에서 구현) | B |
 | `feat/rental-reserve` | 012–014, 016(생성·상세) | A |
 | `feat/rental-cancel` | 015 (단독·양측 동의 취소, `feat/rental-reserve` 머지 후) | A |
 | `feat/rental-return` | 016(1순위 전이 완성), 017, 018 | A |
