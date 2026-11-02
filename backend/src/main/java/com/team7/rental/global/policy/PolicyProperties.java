@@ -55,7 +55,23 @@ public record PolicyProperties(
 	@Valid @NotNull
 	Member member,
 	@Valid @NotNull
-	Item item) {
+	Item item,
+	@Valid @NotNull
+	PageSize feed,
+	@Valid @NotNull
+	PageSize myItems,
+	@Valid @NotNull
+	PageSize itemRentals,
+	@Valid @NotNull
+	ViewCount viewCount) {
+
+	public record PageSize(@Positive
+	int page) {
+	}
+
+	public record ViewCount(@Positive
+	long dedupeHours) {
+	}
 
 	/**
 	 * @param originalMaxLongSide 원본 재인코딩 시 긴 변 최대 픽셀 (image.original-max-long-side)
@@ -76,7 +92,12 @@ public record PolicyProperties(
 	 */
 	public record Region(
 		@Positive
-		int verifyValidDays) {
+		int verifyValidDays,
+		@Valid @NotNull
+		Range range) {
+		public record Range(@Positive
+		double normalMeters) {
+		}
 	}
 
 	/**
@@ -262,7 +283,15 @@ public record PolicyProperties(
 		@Valid @NotNull
 		Amount deposit,
 		@Positive
-		int itemPriceMax) {
+		int itemPriceMax,
+		@Valid @NotNull
+		Images images) {
+
+		public record Images(@Positive
+		int min, @Positive
+		int max, @NotNull
+		DataSize maxFileSize) {
+		}
 
 		/**
 		 * 0원 또는 [min, max] 원. 1~(min-1)원을 막는 이유는 policies.md §1 물품 표 아래 참고

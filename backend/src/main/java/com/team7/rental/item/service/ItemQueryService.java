@@ -38,6 +38,7 @@ import lombok.RequiredArgsConstructor;
  * 다른 도메인(rental 등)이 물품 정보를 읽는 창구(대여 예약·캘린더·상세·빌린 내역 REQ-012·013·016·019)를 겸한다.
  * 엔티티 대신 item/dto의 record를 반환한다.
  */
+@lombok.extern.slf4j.Slf4j
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -48,12 +49,7 @@ public class ItemQueryService {
 	private final com.team7.rental.payment.service.DamagePolicyQueryService damagePolicies;
 	private final jakarta.validation.Validator validator;
 	private final java.time.Clock clock;
-	@org.springframework.beans.factory.annotation.Value("${app.policy.feed.page}")
-	private int feedPage;
-	@org.springframework.beans.factory.annotation.Value("${app.policy.my-items.page}")
-	private int myItemsPage;
-	@org.springframework.beans.factory.annotation.Value("${app.policy.region.range.normal-meters}")
-	private double normalMeters;
+	private final com.team7.rental.global.policy.PolicyProperties policies;
 	private final com.team7.rental.member.service.MemberQueryService members;
 	private final com.team7.rental.member.service.RegionService regions;
 	private final com.team7.rental.item.repository.CategoryRepository categories;
@@ -87,10 +83,11 @@ public class ItemQueryService {
 				List.of(new com.team7.rental.global.response.FieldErrorDetail("regionId", "기준 동네를 선택해 주세요.")));
 		}
 		var cursor = com.team7.rental.item.repository.ItemFeedCursor.decode(request.cursor());
-		var rows = itemRepository.findFeed(regions.getCenter(regionId), normalMeters, request.categoryId(),
-			cursor, feedPage + 1, java.time.LocalDateTime.now(clock));
-		boolean hasNext = rows.size() > feedPage;
-		var page = rows.subList(0, Math.min(rows.size(), feedPage));
+		var rows = itemRepository.findFeed(regions.getCenter(regionId), policies.region().range().normalMeters(),
+			request.categoryId(),
+			cursor, policies.feed().page() + 1, java.time.LocalDateTime.now(clock));
+		boolean hasNext = rows.size() > policies.feed().page();
+		var page = rows.subList(0, Math.min(rows.size(), policies.feed().page()));
 		var names = regions
 			.getNames(page.stream().map(com.team7.rental.item.repository.ItemListRow::regionId).distinct().toList());
 		var thumbnails = thumbnails(page);
@@ -118,7 +115,13 @@ public class ItemQueryService {
 			.map(image -> new com.team7.rental.item.dto.ItemImageResponse(image.getId(), image.getUrl(),
 				image.getThumbnailUrl()))
 			.toList();
-		int viewCount = views.record(itemId, memberId, remoteAddress, item.getViewCount());
+		int viewCount = item.getViewCount();
+		try {
+			viewCount = views.record(itemId, memberId, remoteAddress, viewCount);
+		} catch (org.springframework.dao.DataAccessException | org.redisson.client.RedisException failure) {
+			// 부가 집계 장애가 상세 조회를 막지 않게 한다. IP/회원 정보는 로그에 남기지 않는다.
+			log.warn("조회수 Redis 집계 실패: itemId={}, cause={}", itemId, failure.getClass().getSimpleName());
+		}
 		return new ItemDetailResponse(item.getId(), item.getName(), item.getDescription(), images,
 			new ItemDetailResponse.Category(category.getId(), category.getName()), item.getItemCondition(),
 			item.getPricePerDay(), item.getDeposit(), regionName, item.getAddress(), item.getLatitude(),
@@ -136,7 +139,7 @@ public class ItemQueryService {
 	/** 내 물품 관리 (REQ-020) */
 	public PageResponse<MyItemResponse> getMyItems(Long memberId, MyItemRequest request) {
 		var rows = itemRepository.findMyItems(memberId, request.tab(),
-			org.springframework.data.domain.PageRequest.of(request.page(), myItemsPage),
+			org.springframework.data.domain.PageRequest.of(request.page(), policies.myItems().page()),
 			java.time.LocalDateTime.now(clock));
 		var names = regions
 			.getNames(rows.stream().map(com.team7.rental.item.repository.ItemListRow::regionId).distinct().toList());

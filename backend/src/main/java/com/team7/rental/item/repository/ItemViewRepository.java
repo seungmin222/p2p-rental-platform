@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -22,8 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class ItemViewRepository {
 	private static final String DIRTY = "viewcount:dirty";
 	private final StringRedisTemplate redis;
-	@Value("${app.policy.view-count.dedupe-hours}")
-	private long dedupeHours;
+	private final com.team7.rental.global.policy.PolicyProperties policies;
 
 	private static final DefaultRedisScript<Long> RECORD = new DefaultRedisScript<>("""
 		local current = tonumber(redis.call('GET', KEYS[2]) or ARGV[1])
@@ -46,8 +44,8 @@ public class ItemViewRepository {
 	public int record(Long itemId, Long memberId, String remoteAddress, int databaseCount) {
 		Long count = redis.execute(RECORD,
 			List.of(dedupeKey(itemId, memberId, remoteAddress), "viewcount:" + itemId, DIRTY),
-			Integer.toString(databaseCount), Long.toString(Duration.ofHours(dedupeHours).toMillis()),
-			itemId.toString());
+			Integer.toString(databaseCount),
+			Long.toString(Duration.ofHours(policies.viewCount().dedupeHours()).toMillis()), itemId.toString());
 		if (count == null) {
 			throw new IllegalStateException("조회수 집계 응답 없음");
 		}

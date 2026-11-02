@@ -37,8 +37,6 @@ public class RentalHistoryService {
 	private final MemberQueryService memberQueryService;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
-	@org.springframework.beans.factory.annotation.Value("${app.policy.item-rentals.page}")
-	private int itemRentalsPage;
 
 	/**
 	 * 빌린 내역(REQ-019). 본인이 대여자인 건만. 물품·제공자 닉네임은 페이지 단위로 한 번씩 일괄 조회해 쿼리 수가 항목 수와 상관없다
@@ -84,7 +82,8 @@ public class RentalHistoryService {
 	 */
 	public PageResponse<ItemRentalResponse> getItemRentals(Long itemId, Long memberId, int page) {
 		itemQueryService.validateOwner(itemId, memberId);
-		var rows = rentalRepository.findItemHistory(itemId, PageRequest.of(page, itemRentalsPage));
+		var rows = rentalRepository.findItemHistory(itemId,
+			PageRequest.of(page, policyProperties.itemRentals().page()));
 		var nicknames = memberQueryService.getNicknames(rows.stream()
 			.map(com.team7.rental.rental.repository.ItemRentalRow::renterId).distinct().toList());
 		return PageResponse.of(rows, row -> new ItemRentalResponse(row.rentalId(), row.status(),

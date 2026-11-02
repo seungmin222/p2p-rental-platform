@@ -2,7 +2,7 @@
 -- 3565 exact-code matches; 65 unresolved branch offices are NOT seeded.
 -- Coverage and sources: docs/data/regions/README.md.
 -- Preserve existing region IDs and created_at so member/item references remain valid.
--- Resolved JSONL SHA-256: e540e47a45c0ba2829f12f5b381eed1ef8b9078810ba7c954fbb044bdc8d21da
+-- Resolved JSONL SHA-256: 545e49abb1b93e100a81224f425c333b10c31749be4f3af037fbced620dc45ee
 -- Further additions/corrections MUST use a new Flyway version.
 
 INSERT INTO regions (code, name, sido, sigungu, center_lat, center_lng, created_at, updated_at) VALUES

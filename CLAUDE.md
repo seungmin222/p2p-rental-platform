@@ -72,9 +72,11 @@
 ├── README.md            ← 사람용 소개·설치 안내 (에이전트 규칙은 여기 쓰지 않는다)
 ├── AGENTS.md            ← 다른 에이전트용 안내. CLAUDE.md를 가리키기만 함 (규칙 복사 금지)
 ├── docs/                ← 설계 문서 (단일 진실 공급원)
+│   └── data/            ← 시드 출처·수집 결과·미해결 목록·이용 조건
 ├── backend/             ← Spring Boot (Java 21, Gradle)
 ├── frontend/            ← React + Vite + Tailwind (JavaScript)
 ├── infra/               ← docker-compose, nginx, 배포 스크립트
+├── scripts/             ← 행정동 좌표 수집·시드 재현 도구
 ├── .github/             ← PR 템플릿 (CI 워크플로 추가 예정)
 └── .claude/commands/    ← 팀 공용 슬래시 커맨드
 ```

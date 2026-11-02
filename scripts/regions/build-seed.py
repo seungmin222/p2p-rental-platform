@@ -49,7 +49,7 @@ def render(resolved_path, unresolved_path):
         f'-- {len(records)} exact-code matches; {len(missing)} unresolved branch offices are NOT seeded.',
         '-- Coverage and sources: docs/data/regions/README.md.',
         '-- Preserve existing region IDs and created_at so member/item references remain valid.',
-        '-- Resolved JSONL SHA-256: ' + hashlib.sha256(resolved_path.read_bytes()).hexdigest(),
+        '-- Resolved JSONL SHA-256: ' + hashlib.sha256(resolved_path.read_bytes().replace(b'\r\n', b'\n')).hexdigest(),
         '-- Further additions/corrections MUST use a new Flyway version.', '']
     ordered = sorted(records.values(), key=lambda r: r['code'])
     for start in range(0, len(ordered), 250):

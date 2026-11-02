@@ -3,11 +3,9 @@ package com.team7.rental.item.service;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.team7.rental.global.error.BusinessException;
@@ -41,13 +39,7 @@ public class ItemService {
 	private final FileStorage storage;
 	private final ItemCreateWriter writer;
 	private final Validator validator;
-
-	@Value("${app.policy.item.images.min}")
-	private int imageMin;
-	@Value("${app.policy.item.images.max}")
-	private int imageMax;
-	@Value("${app.policy.item.images.max-file-size}")
-	private String imageMaxSize;
+	private final com.team7.rental.global.policy.PolicyProperties policies;
 
 	/** 대표 동네 인증 필요 */
 	// 외부 호출(이미지 업로드) 후 별도 트랜잭션에서 저장
@@ -62,7 +54,8 @@ public class ItemService {
 		if (primary == null || !primary.isVerified()) {
 			throw new BusinessException(ErrorCode.REGION_NOT_VERIFIED);
 		}
-		if (images == null || images.size() < imageMin || images.size() > imageMax) {
+		if (images == null || images.size() < policies.item().images().min()
+			|| images.size() > policies.item().images().max()) {
 			throw new BusinessException(ErrorCode.IMAGE_COUNT_INVALID);
 		}
 		categories.requireActive(request.categoryId());
@@ -70,7 +63,7 @@ public class ItemService {
 		List<ItemCreateWriter.UploadedImage> uploaded = new ArrayList<>();
 		try {
 			for (MultipartFile file : images) {
-				var image = imageProcessor.process(file, DataSize.parse(imageMaxSize));
+				var image = imageProcessor.process(file, policies.item().images().maxFileSize());
 				var original = storage.upload("items", image.format().getExtension(),
 					image.format().getContentType(), image.original());
 				stored.add(original);

@@ -10,8 +10,9 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.util.unit.DataSize;
 
+import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.global.storage.FileStorage;
 import com.team7.rental.global.storage.ImageFormat;
 import com.team7.rental.global.storage.ImageProcessor;
@@ -37,10 +38,11 @@ class ItemCreateCleanupTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new ItemService(members, categories, processor, storage, writer, validator);
-		ReflectionTestUtils.setField(service, "imageMin", 1);
-		ReflectionTestUtils.setField(service, "imageMax", 10);
-		ReflectionTestUtils.setField(service, "imageMaxSize", "10MB");
+		var policies = mock(PolicyProperties.class);
+		when(policies.item()).thenReturn(new PolicyProperties.Item(50, 2000,
+			new PolicyProperties.Item.Amount(1000, 1000000), new PolicyProperties.Item.Amount(1000, 3000000),
+			10000000, new PolicyProperties.Item.Images(1, 10, DataSize.ofMegabytes(10))));
+		service = new ItemService(members, categories, processor, storage, writer, validator, policies);
 		when(validator.validate(request)).thenReturn(Set.of());
 		when(members.getMe(1L)).thenReturn(new MemberResponse(1L, "", "", null, null,
 			new MemberResponse.PrimaryRegion(1L, 1L, "동네", true, null, null), null));
