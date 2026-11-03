@@ -1,8 +1,9 @@
 // 물품 화면의 오류 문구는 이 파일 한 곳에서 code로 고른다.
-// 키는 docs/openapi.json 물품 API 응답 예시의 코드 + 위치 실패(LocationError, 프론트 전용 코드).
+// 키는 docs/openapi.json 물품 API 응답 예시의 코드 + 위치·장소 검색 실패(LocationError·PlaceError, 프론트 전용 코드).
 import { createErrorMessageGetter } from '../../shared/lib/formErrors';
 import { LOCATION_ERROR } from '../region/geolocation';
 import { ITEM_IMAGE_MAX_MB, ITEM_IMAGES, LOCATION_NO_RESPONSE } from './constants';
+import { PLACE_ERROR } from './kakaoPlace';
 
 const MESSAGES = {
   COMMON_INVALID_INPUT: '요청을 처리하지 못했어요. 다시 시도해 주세요',
@@ -22,6 +23,8 @@ const MESSAGES = {
   [LOCATION_ERROR.TIMEOUT]: '위치를 확인하는 데 시간이 오래 걸려요. 다시 시도해 주세요',
   [LOCATION_ERROR.UNSUPPORTED]: '이 브라우저에서는 현재 위치를 쓸 수 없어요',
   [LOCATION_NO_RESPONSE]: '위치를 가져오지 못했어요. 위치 권한 창을 확인하고 다시 시도해 주세요',
+  [PLACE_ERROR.SEARCH_FAILED]: '장소를 찾지 못했어요. 잠시 후 다시 시도해 주세요',
+  [PLACE_ERROR.ADDRESS_NOT_FOUND]: '이 위치의 주소를 찾지 못했어요. 다른 곳을 골라 주세요',
 };
 
 export const getErrorMessage = createErrorMessageGetter(MESSAGES);

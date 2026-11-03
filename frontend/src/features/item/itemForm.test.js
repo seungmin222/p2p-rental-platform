@@ -237,6 +237,15 @@ describe('toUpdatePayload', () => {
     });
   });
 
+  it('지도에서 다른 장소를 고르면(주소·좌표 함께 바뀜) 셋을 함께 보낸다', () => {
+    const picked = {
+      address: '인천 연수구 컨벤시아대로 165',
+      latitude: 37.3891,
+      longitude: 126.6444,
+    };
+    expect(toUpdatePayload(initial, { ...initial, ...picked }).request).toEqual(picked);
+  });
+
   it('위치만 다시 가져오면 좌표 둘 다 보낸다', () => {
     expect(toUpdatePayload(initial, { ...initial, latitude: 37.5 }).request).toEqual({
       latitude: 37.5,

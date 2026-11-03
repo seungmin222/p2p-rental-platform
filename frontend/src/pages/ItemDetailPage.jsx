@@ -166,7 +166,11 @@ export default function ItemDetailPage() {
       <div className="flex flex-col gap-6 pb-8">
         <ItemSummary item={item} />
         <ItemCalendar itemId={item.itemId} />
-        <ItemTradePlace address={item.address} />
+        <ItemTradePlace
+          address={item.address}
+          latitude={item.latitude}
+          longitude={item.longitude}
+        />
       </div>
       <DetailBar item={item} />
     </>

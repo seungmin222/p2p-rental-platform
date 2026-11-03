@@ -37,7 +37,7 @@ export function toItemCard(item) {
   };
 }
 
-/** 상세 화면(openapi.json ItemDetailResponse 기준, 화면이 쓰는 필드만). 조회·관심·채팅 수, 좌표는 쓰지 않는다 */
+/** 상세 화면(openapi.json ItemDetailResponse 기준, 화면이 쓰는 필드만). 조회·관심·채팅 수는 쓰지 않는다. 좌표는 지도용(REQ-030) */
 export function toItemDetail(item) {
   return {
     itemId: item.itemId,
@@ -49,6 +49,8 @@ export function toItemDetail(item) {
     pricePerDay: item.pricePerDay,
     deposit: item.deposit,
     address: item.address ?? '',
+    latitude: item.latitude ?? null,
+    longitude: item.longitude ?? null,
     regionName: item.regionName ?? '',
     bumpedAt: item.bumpedAt,
     owner: {

@@ -33,7 +33,7 @@ src/
 ├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review)
 │   ├── auth/           로그인·가입·로그아웃(api·queries·constants·errorMessages, components/)
 │   ├── region/         동네(api·queries·constants·errorMessages·geolocation·guestRegionStore·myRegions·regionStatus, components/)
-│   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay·itemId·itemForm, components/)
+│   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay·itemId·itemForm·kakaoPlace, components/)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
 │       ├── queries.js      useQuery/useMutation 훅 + queryKey
@@ -151,7 +151,7 @@ export const RENTAL_STATUS = {
 - **홈 카테고리 칩은 URL `?category=`**(`readCategoryParam`), 검색 조건(`q`·`category`·`sort`·`minPrice`·`maxPrice`·`startDate`·`endDate`·`availableOnly`)은 전부 URL 쿼리에 둔다(`features/item/searchParams.js`: 읽을 때마다 걸러 틀린 값은 없는 것으로, 기본값은 주소에 넣지 않음). 없는 카테고리(`?category=9999`)는 카테고리 목록을 받은 뒤 "전체"로 본다(`useCategoryFilter`, 목록을 받는 동안은 요청하지 않음). 바꿀 때는 replace. 같은 값이 queryKey가 된다. 키워드는 제출(엔터·검색 버튼)할 때만 반영하고, 키워드·카테고리·가격·기간·대여 가능만 중 하나도 없으면 조회하지 않는다(정렬만으로는 조회하지 않음).
 - 검색 필터(정렬·일 대여료·대여 희망 기간·대여 가능한 물품만)는 "필터" 버튼 → BottomSheet 하나(`SearchFilterSheet`)에 모으고, 카테고리는 칩. 가격 한도는 `features/item/constants.js` `ITEM_PRICE_PER_DAY`(policies `item.price-per-day`), 기간은 기존 `Calendar`(범위 선택, 최대 `RENTAL_PERIOD.MAX_DAYS`)에 `buildFilterDaysInRange`(넘겨 볼 수 있는 달 전체, 오늘부터 선택 가능)를 넘긴다.
 - 카드 표시(`itemDisplay.js`): 일 대여료 0원 → "무료"(policies `item.price-per-day`: 0원 등록 허용), 보증금 0원 → 보증금 줄을 그리지 않음, "대여 중" 배지(`isRenting`)는 카드에만(`Badge tone="green"`). 관심·채팅 수, 신뢰 점수·거래 횟수, 지도, "이런 물품은 어때요?", 알림 아이콘은 2·3순위라 그리지 않는다.
-- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 주소 텍스트. 내 물품(`isOwner`)이면 예약하기 대신 수정·삭제 버튼. 없는·삭제된 물품과 잘못된 id는 ErrorState + 홈(`features/item/itemId.js` `parseItemId`: 양의 안전한 정수가 아니면 요청하지 않음). 이미지는 스와이프, 키보드 화살표, 이전·다음 버튼(터치 기기에서는 숨김)으로 넘긴다.
+- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 카카오맵(보기 전용, 저장된 위경도에 마커) + 주소 텍스트, 지도를 못 불러오거나 좌표가 없으면 주소 텍스트만(REQ-030). 내 물품(`isOwner`)이면 예약하기 대신 수정·삭제 버튼. 없는·삭제된 물품과 잘못된 id는 ErrorState + 홈(`features/item/itemId.js` `parseItemId`: 양의 안전한 정수가 아니면 요청하지 않음). 이미지는 스와이프, 키보드 화살표, 이전·다음 버튼(터치 기기에서는 숨김)으로 넘긴다.
 - 로그인·로그아웃은 `queryClient.clear()`로 이전 사용자의 `['items', id]`(isOwner)를 지운다. 단, 로그아웃은 홈으로 먼저 이동한 뒤 AT를 지우므로 홈이 내 정보를 다시 부르면 서버가 이미 세션을 끝낸 경우 401 → 로그인 화면으로 가 버린다. 그래서 홈·검색은 `useMe({ enabled: 로그인 여부, refetchOnMount: refetchIfInvalidated })`로 이미 받은 내 정보를 **무효화됐을 때만** 다시 받는다(대표 동네를 바꾸면 무효화되고, `/regions`에는 구독자가 없어 홈에 들어올 때 받는다. 받는 동안은 이전 동네 대신 로딩). 로그아웃 경로는 무효화를 거치지 않는다. 로그아웃 직후에는 이전 내 정보가 남아 있어도 `resolveFeedRegion`이 로그인 여부(AT)가 false면 보지 않는다.
 - 오류 문구는 `features/item/errorMessages.js` 한 곳(code → 문구).
 
@@ -187,7 +187,7 @@ export const RENTAL_STATUS = {
 - 운영은 Nginx가 정적 파일과 `/api`, `/ws`를 같은 도메인에서 서빙하므로 같은 코드가 그대로 동작한다.
 
 ## 외부 SDK
-- **카카오맵**: 앱 키는 `VITE_KAKAO_MAP_KEY`. 스크립트 동적 로드 래퍼 훅(`useKakaoMap`). 로드 실패 시 주소 텍스트만 표시(REQ-030 예외).
+- **카카오맵**: 앱 키는 `VITE_KAKAO_MAP_KEY`. `shared/lib/kakaoMapLoader.js`가 SDK를 한 번만 붙이고(`autoload=false`, `libraries=services`), `shared/hooks/useKakaoMap`이 `loading`·`ready`·`error`를 돌려준다. 키가 비었거나 스크립트·`kakao.maps.load`가 실패·상한(`KAKAO_MAP_LOAD_TIMEOUT_MS`)을 넘으면 `error` → 상세는 주소 텍스트만, 등록·수정은 주소 직접 입력 + 현재 위치(REQ-030 예외). 검색·좌표→주소 결과 변환은 `features/item/kakaoPlace.js`(x = 경도, y = 위도, 문자열 → Number. 저장 주소는 도로명, 없으면 지번이고 장소 이름은 저장하지 않는다). 테스트는 실제 카카오를 부르지 않는다(가짜 document·services, `vi.stubEnv`). 지도가 안 뜨면 카카오 콘솔의 JavaScript SDK 도메인(`http://localhost:5173`)과 카카오맵 사용 설정을 먼저 확인한다.
 - **토스페이먼츠**: `VITE_TOSS_CLIENT_KEY`(테스트, **API 개별 연동 키** — 결제위젯 키와 다름). 카드 결제창 → successUrl `/payments/success?paymentKey&orderId&amount` → 이 값을 서버 `/api/payments/confirm`으로 전달. **금액 검증은 서버가 한다.**
 - **위치**: `navigator.geolocation` 권한 거부 시 안내 후 동네 검색으로 추가하게 한다(인증 안 된 상태로 추가 가능). 위치 버튼은 막지 않는다.
 

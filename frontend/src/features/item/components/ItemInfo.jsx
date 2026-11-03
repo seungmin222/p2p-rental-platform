@@ -1,5 +1,8 @@
+import { useKakaoMap } from '../../../shared/hooks/useKakaoMap';
 import { formatElapsed } from '../../../shared/lib/format';
+import { Skeleton } from '../../../shared/ui';
 import { ITEM_CONDITION } from '../constants';
+import KakaoPlaceMap from './KakaoPlaceMap';
 
 function MemberAvatar({ url }) {
   if (url) {
@@ -61,11 +64,27 @@ function PinIcon() {
   );
 }
 
-/** 거래 장소(주소 텍스트. 지도는 REQ-030, 2순위) */
-export function ItemTradePlace({ address }) {
+function hasCoords(latitude, longitude) {
+  return Number.isFinite(latitude) && Number.isFinite(longitude);
+}
+
+/** 거래 장소(REQ-030): 지도를 불러오면 저장된 위치에 마커 + 주소, 못 불러오거나 좌표가 없으면 주소 텍스트만 */
+export function ItemTradePlace({ address, latitude, longitude }) {
+  const { status, kakao } = useKakaoMap();
+  const showMap = status !== 'error' && hasCoords(latitude, longitude);
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-price">거래 장소</h2>
+      {showMap &&
+        (kakao ? (
+          <KakaoPlaceMap
+            kakao={kakao}
+            point={{ lat: latitude, lng: longitude }}
+            label={`거래 장소 지도: ${address}`}
+          />
+        ) : (
+          <Skeleton className="h-48 rounded-xl" />
+        ))}
       <div className="flex items-center gap-3 rounded-xl bg-primary-soft px-4 py-5">
         <PinIcon />
         <span className="text-body break-words">{address}</span>
