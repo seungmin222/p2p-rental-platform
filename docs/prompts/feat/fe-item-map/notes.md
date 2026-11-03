@@ -1,5 +1,11 @@
 # feat/fe-item-map 결정 기록
 
+## 요약
+- REQ-030 프론트만: 새 API 없음. 기존 `POST /api/items`·`PATCH /api/items/{itemId}`의 address·latitude·longitude를 지도로 채우고, `GET /api/items/{itemId}`의 좌표로 상세 지도를 그린다.
+- 새 파일: `shared/lib/kakaoMapLoader.js`(SDK 한 번 로드·상한), `shared/hooks/useKakaoMap.js`, `features/item/kakaoPlace.js`(검색·좌표→주소 변환, 도로명 → 지번, x = 경도·y = 위도), `features/item/components/KakaoPlaceMap.jsx`. `TradePlaceField`는 지도 방식과 기존 직접 입력(실패 경로)으로 나뉜다.
+- 지도 방식은 주소·좌표를 항상 함께 바꾸고 주소 칸은 읽기 전용이다. 지도를 못 불러오면 기존 흐름 그대로이며, 이때만 주소·좌표가 어긋날 수 있다(open-issues #29 ✅).
+- 남은 일: 수정 화면 실서버 확인은 백엔드 REQ-007(수정 조회) 머지 후. SDK 중복 로드의 드문 경우는 알려진 한계로 남겼다.
+
 REQ-030 거래 장소 지도(SCR-06 등록·수정, SCR-05 상세). 백엔드·API 필드 변경 없음(address·latitude·longitude는 REQ-006·007 그대로).
 
 - **두 방식**: `useKakaoMap`이 `error`(키 없음·스크립트 실패·`kakao.maps.load` 상한 초과)면 기존 주소 직접 입력 + "현재 위치로 가져오기"(`ManualTradePlace`, fe-item-form의 좌표 유지 규칙·안내 그대로). 그 밖에는 지도 방식(`MapTradePlace`). 불러오는 중에는 지도 방식의 스켈레톤을 그려 주소·좌표 검증이 계속 걸리게 했다(방식이 중간에 바뀌며 입력이 사라지지 않게).
