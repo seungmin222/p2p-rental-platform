@@ -195,7 +195,7 @@ describe('toItemDetail', () => {
     isOwner: false,
   };
 
-  it('화면이 쓰는 필드만 옮긴다 — 좌표·조회·관심·채팅 수는 쓰지 않는다', () => {
+  it('화면이 쓰는 필드만 옮긴다 — 조회·관심·채팅 수는 쓰지 않고 좌표는 지도용으로 옮긴다', () => {
     const result = toItemDetail(detail);
     expect(result).toEqual({
       itemId: 101,
@@ -210,6 +210,8 @@ describe('toItemDetail', () => {
       pricePerDay: 15000,
       deposit: 50000,
       address: '인천 연수구 연수동 청능대로 105',
+      latitude: 37.4,
+      longitude: 126.6,
       regionName: '연수1동',
       bumpedAt: '2026-10-27T10:00:00',
       owner: { memberId: 2, nickname: '캠핑조아', profileImageUrl: null, regionName: '연수1동' },
