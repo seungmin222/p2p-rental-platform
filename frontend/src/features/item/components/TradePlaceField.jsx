@@ -219,7 +219,7 @@ function MapTradePlace({
                 size="sm"
                 className="shrink-0"
                 isLoading={locatingKind === 'locate'}
-                disabled={disabled || !kakao}
+                disabled={disabled || !kakao || isLocating}
                 onClick={handleLocate}
               >
                 현재 위치로 가져오기

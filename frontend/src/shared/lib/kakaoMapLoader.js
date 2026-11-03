@@ -2,7 +2,8 @@
 // 키가 비었거나 스크립트·kakao.maps.load가 실패하면 실패로 끝내고 다음 호출에서 다시 시도한다.
 
 const SDK_URL = 'https://dapi.kakao.com/v2/maps/sdk.js';
-// 스크립트가 붙은 뒤 kakao.maps.load가 응답하지 않을 때의 상한(UI 조절값). 넘으면 주소 텍스트로 돌아간다
+// 스크립트가 붙은 뒤 kakao.maps.load가 응답하지 않을 때의 상한(UI 조절값).
+// 넘으면 상세는 주소 텍스트, 등록·수정은 주소 직접 입력으로 돌아간다
 export const KAKAO_MAP_LOAD_TIMEOUT_MS = 10 * 1000;
 
 export class KakaoMapLoadError extends Error {

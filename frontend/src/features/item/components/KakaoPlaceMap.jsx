@@ -21,23 +21,14 @@ export default function KakaoPlaceMap({ kakao, point, onPick, label, className =
     pointRef.current = point;
   });
 
-  // 지도·마커는 한 번만 만든다
+  // 지도·마커는 한 번만 만든다. 편집 가능 여부(interactive)가 바뀌어도 다시 만들지 않고 아래 effect가 setter로 바꾼다
   useEffect(() => {
     const { maps } = kakao;
     const center = new maps.LatLng(point.lat, point.lng);
-    const map = new maps.Map(containerRef.current, {
-      center,
-      level: MAP_LEVEL,
-      draggable: interactive,
-      scrollwheel: interactive,
-      disableDoubleClickZoom: !interactive,
-    });
-    const marker = new maps.Marker({ position: center, map, draggable: interactive });
+    const map = new maps.Map(containerRef.current, { center, level: MAP_LEVEL });
+    const marker = new maps.Marker({ position: center, map });
     mapRef.current = map;
     markerRef.current = marker;
-    if (!interactive) {
-      return undefined;
-    }
     // 거절되면(onPick이 false) 마커를 지금 point로 되돌린다
     const pick = async (latLng) => {
       const accepted = await onPickRef.current?.({ lat: latLng.getLat(), lng: latLng.getLng() });
@@ -46,7 +37,11 @@ export default function KakaoPlaceMap({ kakao, point, onPick, label, className =
         marker.setPosition(new maps.LatLng(lat, lng));
       }
     };
+    // 보기 전용(onPick 없음)일 때 클릭은 무시한다. 끌기는 setDraggable(false)라 일어나지 않는다
     const handleClick = (mouseEvent) => {
+      if (!onPickRef.current) {
+        return;
+      }
       marker.setPosition(mouseEvent.latLng);
       pick(mouseEvent.latLng);
     };
@@ -57,9 +52,18 @@ export default function KakaoPlaceMap({ kakao, point, onPick, label, className =
       maps.event.removeListener(map, 'click', handleClick);
       maps.event.removeListener(marker, 'dragend', handleDragEnd);
       marker.setMap(null);
+      mapRef.current = null;
+      markerRef.current = null;
     };
     // point는 아래 effect가 따라간다
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kakao]);
+
+  // 끌기·확대는 편집할 수 있을 때만
+  useEffect(() => {
+    mapRef.current?.setDraggable(interactive);
+    mapRef.current?.setZoomable(interactive);
+    markerRef.current?.setDraggable(interactive);
   }, [kakao, interactive]);
 
   useEffect(() => {

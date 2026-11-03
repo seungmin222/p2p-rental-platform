@@ -97,4 +97,23 @@ describe('createKakaoMapLoader', () => {
     vi.advanceTimersByTime(1000);
     await expect(pending).rejects.toMatchObject({ reason: 'timeout' });
   });
+
+  it('시간 초과 뒤에 load가 늦게 와도 실패 그대로이고, 붙인 스크립트는 지운다', async () => {
+    vi.useFakeTimers();
+    const doc = createFakeDocument();
+    const win = {};
+    const load = createKakaoMapLoader({ getAppKey: () => 'k', doc, win, timeoutMs: 1000 });
+    const pending = load();
+    const outcome = pending.then(
+      () => 'resolved',
+      (error) => error.reason,
+    );
+    let lateCallback = null;
+    win.kakao = { maps: { load: (callback) => (lateCallback = callback), services: {} } };
+    doc.scripts[0].onload();
+    vi.advanceTimersByTime(1000);
+    expect(doc.scripts[0].removed).toBe(true);
+    lateCallback();
+    await expect(outcome).resolves.toBe('timeout');
+  });
 });
