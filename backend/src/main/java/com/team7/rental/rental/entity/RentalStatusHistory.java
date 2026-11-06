@@ -45,6 +45,8 @@ public class RentalStatusHistory extends BaseTimeEntity {
 	public static final String REASON_NO_HANDOVER_BATCH = "NO_HANDOVER_BATCH";
 	/** 보증금 반환 재시도 성공으로 완료 (REQ-025). changedBy = null */
 	public static final String REASON_REFUND_RETRY_BATCH = "REFUND_RETRY_BATCH";
+	/** 연체 배치 RENTING → OVERDUE (REQ-023). changedBy = null */
+	public static final String REASON_OVERDUE_BATCH = "OVERDUE_BATCH";
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
