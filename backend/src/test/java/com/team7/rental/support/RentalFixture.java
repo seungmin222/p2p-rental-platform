@@ -61,7 +61,7 @@ public class RentalFixture {
 		Rental rental = Rental.createReserved(item.getId(), item.getOwnerId(), renter.getId(), start, end,
 			item.getPricePerDay(), item.getDeposit());
 		ReflectionTestUtils.setField(rental, "status", RentalStatus.RENTING);
-		rental.requestReturn(returnedAt);
+		rental.requestReturn(returnedAt, 0);
 		Rental saved = rentalRepository.save(rental);
 		itemInspectionRepository.save(ItemInspection.returned(saved.getId(), renter.getId(),
 			List.of("/files/inspections/fixture.jpg"), allChecked(), null));

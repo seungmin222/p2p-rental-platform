@@ -32,7 +32,7 @@ public interface RentalRefundPort {
 	/**
 	 * 보증금 반환을 준비한다 (REQ-025). 반환액 = 보증금 − 연체료. 0원이면 PG 없이 FORFEITED로 끝낸다.
 	 *
-	 * @param overdueFee rentals.overdue_fee. REQ-023 전에는 0이다
+	 * @param overdueFee rentals.overdue_fee. 반납 요청 때 확정된다(REQ-023)
 	 * @param completion 반환이 끝날 때 대여 완료 이력에 남길 정보
 	 * @return 비어 있으면 PG가 필요 없어 호출하는 쪽이 바로 COMPLETED로 바꾼다(결제 없음·보증금 0원·반환액 0원). 있으면 대여는 RETURNED로 두고
 	 *     {@link #execute}가 끝낸다

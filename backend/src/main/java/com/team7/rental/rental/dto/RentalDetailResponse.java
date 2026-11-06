@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * 대여 상세 (REQ-016, SCR-08). 스텝바와 상태 × 역할별 버튼을 그릴 만큼만 담는다.
- * 인계·반납 기록은 GET /api/rentals/{id}/inspections로 따로 본다. 결제, 연체료는 해당 REQ에서 추가한다.
+ * 인계·반납 기록은 GET /api/rentals/{id}/inspections로 따로 본다. 결제 정보는 해당 REQ에서 추가한다.
  */
 public record RentalDetailResponse(
 	@Schema(description = "대여 ID", example = "1")
@@ -80,6 +80,10 @@ public record RentalDetailResponse(
 	@Schema(description = "취소 수수료", example = "0")
 	int cancelFee,
 
+	@Schema(description = "연체료 (REQ-023). 연체(OVERDUE)이거나 대여 중(RENTING)인데 반납 예정일이 지났으면 오늘 기준 현재까지 연체료(미확정)다. "
+		+ "그 외 상태는 반납 요청 때 확정된 값이고, 반납 전이면 0이다. 계산: min(연체 일수 × floor(일 대여료 × 1.5), 보증금), 보증금 0원이면 0", example = "15000")
+	int overdueFee,
+
 	@Schema(description = "예약 시각")
 	LocalDateTime createdAt,
 
@@ -88,9 +92,10 @@ public record RentalDetailResponse(
 
 	/**
 	 * @param activeCancelAgreement 진행 중인 동의 취소 요청. 없으면 null
+	 * @param overdueFee 현재까지 또는 확정 연체료 (OverdueFeeCalculator#displayFee)
 	 */
 	public static RentalDetailResponse of(Rental rental, RentalRole myRole, ItemSummary item, Long counterpartId,
-		String counterpartNickname, RentalCancelAgreement activeCancelAgreement, Long memberId) {
+		String counterpartNickname, RentalCancelAgreement activeCancelAgreement, Long memberId, int overdueFee) {
 		return new RentalDetailResponse(
 			rental.getId(),
 			rental.getStatus(),
@@ -113,6 +118,7 @@ public record RentalDetailResponse(
 			rental.getCancelReason(),
 			rental.getCancelReasonText(),
 			rental.getCancelFee(),
+			overdueFee,
 			rental.getCreatedAt(),
 			activeCancelAgreement == null ? null : ActiveCancelAgreement.of(activeCancelAgreement, memberId));
 	}

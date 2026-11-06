@@ -41,6 +41,7 @@ public class RentalQueryService {
 	private final RentalOccupancyReader rentalOccupancyReader;
 	private final ItemQueryService itemQueryService;
 	private final MemberQueryService memberQueryService;
+	private final OverdueFeeCalculator overdueFeeCalculator;
 	private final Clock clock;
 
 	/**
@@ -65,7 +66,8 @@ public class RentalQueryService {
 			.filter(agreement -> rental.getStatus() == RentalStatus.RESERVED)
 			.orElse(null);
 		return RentalDetailResponse.of(rental, rental.roleOf(memberId), item, counterpartId,
-			memberQueryService.getNickname(counterpartId), activeCancelAgreement, memberId);
+			memberQueryService.getNickname(counterpartId), activeCancelAgreement, memberId,
+			overdueFeeCalculator.displayFee(rental, LocalDate.now(clock)));
 	}
 
 	/**

@@ -306,7 +306,7 @@ class DepositReturnIntegrationTest extends IntegrationTestSupport {
 	}
 
 	private void setOverdueFee(int overdueFee) {
-		// REQ-023 전이라 값을 넣는 API가 없다
+		// 반납 요청 없이 확정된 연체료만 넣는다(반납 요청 경로는 OverdueReturnIntegrationTest)
 		ReflectionTestUtils.setField(rental, "overdueFee", overdueFee);
 		rental = rentalRepository.save(rental);
 	}

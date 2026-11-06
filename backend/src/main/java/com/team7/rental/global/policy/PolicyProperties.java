@@ -63,7 +63,9 @@ public record PolicyProperties(
 	@Valid @NotNull
 	PageSize itemRentals,
 	@Valid @NotNull
-	ViewCount viewCount) {
+	ViewCount viewCount,
+	@Valid @NotNull
+	OverdueFee overdueFee) {
 
 	public record PageSize(@Positive
 	int page) {
@@ -128,6 +130,16 @@ public record PolicyProperties(
 	public record Payment(
 		@Positive
 		int expireMinutes) {
+	}
+
+	/**
+	 * 연체료 (REQ-023, policies.md overdue-fee.rate·§4 계산 규칙)
+	 *
+	 * @param ratePercent 연체 1일당 일 대여료 대비 비율 % (overdue-fee.rate). 1일 연체료 = floor(일 대여료 × ratePercent / 100)
+	 */
+	public record OverdueFee(
+		@Positive
+		int ratePercent) {
 	}
 
 	/**

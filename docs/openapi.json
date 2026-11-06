@@ -6685,6 +6685,12 @@
               "OWNER"
             ]
           },
+          "overdueFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "연체료 (REQ-023). 연체(OVERDUE)이거나 대여 중(RENTING)인데 반납 예정일이 지났으면 오늘 기준 현재까지 연체료(미확정)다. 그 외 상태는 반납 요청 때 확정된 값이고, 반납 전이면 0이다. 계산: min(연체 일수 × floor(일 대여료 × 1.5), 보증금), 보증금 0원이면 0",
+            "example": 15000
+          },
           "paymentExpiresAt": {
             "type": "string",
             "format": "date-time",

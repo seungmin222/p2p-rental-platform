@@ -52,6 +52,7 @@ public class RentalInspectionTxService {
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
 	private final RentalQueryService rentalQueryService;
 	private final RentalRefundPort rentalRefundPort;
+	private final OverdueFeeCalculator overdueFeeCalculator;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
@@ -99,7 +100,7 @@ public class RentalInspectionTxService {
 
 	/**
 	 * 반납 요청: RENTING·OVERDUE → RETURNED + RETURN 기록 + 이력. 제공자가 부르면 대리 접수(기록 작성자·이력 changedBy = 제공자).
-	 * 연체료(overdueFee)는 건드리지 않는다(REQ-023).
+	 * 연체료는 반납 요청일 기준으로 계산해 확정한다(REQ-023).
 	 *
 	 * @param checklist 검증된 체크리스트(모든 항목 true/false)
 	 * @param note 정규화된 메모. 없으면 null
@@ -112,7 +113,7 @@ public class RentalInspectionTxService {
 		LocalDateTime now = LocalDateTime.now(clock);
 		Rental rental = getParticipantRental(rentalId, memberId);
 		RentalStatus from = rental.getStatus();
-		rental.requestReturn(now);
+		rental.requestReturn(now, overdueFeeCalculator.calculate(rental, now.toLocalDate()));
 		// 버전 검사를 기록 INSERT보다 먼저 (클래스 주석)
 		rentalRepository.flush();
 		itemInspectionRepository.save(ItemInspection.returned(rentalId, memberId, imageUrls, checklist, note));
@@ -201,7 +202,7 @@ public class RentalInspectionTxService {
 		if (result == InspectionResult.NORMAL) {
 			reason = changedBy == null ? RentalStatusHistory.REASON_RETURN_AUTO_CONFIRM_BATCH
 				: RentalStatusHistory.REASON_RETURN_CONFIRM_NORMAL;
-			// 연체료 확정(REQ-023) 전이라 overdueFee는 0이다
+			// 반납 요청 때 확정한 연체료를 먼저 차감한다(REQ-023). 반환액 0원이면 FORFEITED
 			Optional<RefundTicket> refund = rentalRefundPort.prepareDepositReturn(rental.getId(),
 				rental.getOverdueFee(), new Completion(changedBy, reason));
 			if (refund.isPresent()) {

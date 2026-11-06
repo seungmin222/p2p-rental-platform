@@ -23,8 +23,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 대여 건. 물품·회원은 ID로만 참조한다. 1순위 전이(취소·인계·반납·판정·완료)가 있고, 결제 승인·만료·금액 불일치(024)와 인계 없음 자동 취소(017)도 있다. 연체(023)·
- * 미반납 신고(018 2순위)·연장(038)은 각 브랜치에서 추가한다. 전이 메서드는 상태 가드만 보고, 권한(당사자·역할)과 이력 저장은 서비스가 한다.
+ * 대여 건. 물품·회원은 ID로만 참조한다. 1순위 전이(취소·인계·반납·판정·완료)가 있고, 결제 승인·만료·금액 불일치(024), 인계 없음 자동 취소(017),
+ * 연체(023)도 있다. 미반납 신고(018 2순위)·연장(038)은 각 브랜치에서 추가한다. 전이 메서드는 상태 가드만 보고, 권한(당사자·역할)과 이력 저장은 서비스가 한다.
  * <p>
  * 생성 팩토리는 프로그래밍 오류를 막는 불변식(기간 null·뒤집힘, 결제 대기의 만료 시각 null)만 검사하고 위반 시
  * IllegalArgumentException·NullPointerException을 던진다. 사용자 입력 검증(오늘 이후 시작, 일수 rental.min-days ~ rental.max-days, 400 응답)은
@@ -355,15 +355,34 @@ public class Rental extends BaseTimeEntity {
 		}
 	}
 
+	/** 연체 배치 대상인지: RENTING이고 endDate &lt; 오늘 (REQ-023, state-machines.md §1) */
+	public boolean isOverdueDue(LocalDate today) {
+		return status == RentalStatus.RENTING && endDate.isBefore(today);
+	}
+
 	/**
-	 * RENTING·OVERDUE → RETURNED (REQ-018 반납 요청, 제공자 대리 접수 포함). 연체료(overdueFee) 확정은 REQ-023에서 추가한다.
+	 * RENTING → OVERDUE (REQ-023 연체 배치).
 	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RENTING이 아니거나 아직 endDate &lt; 오늘이 아닐 때)
+	 */
+	public void markOverdue(LocalDate today) {
+		if (!isOverdueDue(today)) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+		this.status = RentalStatus.OVERDUE;
+	}
+
+	/**
+	 * RENTING·OVERDUE → RETURNED (REQ-018 반납 요청, 제공자 대리 접수 포함). 연체료를 확정해 저장한다(REQ-023).
+	 *
+	 * @param overdueFee OverdueFeeCalculator가 반납 요청일 기준으로 계산한 연체료. 보증금 처리(REQ-025)에서 먼저 차감한다
 	 * @throws BusinessException RENTAL_INVALID_TRANSITION
 	 */
-	public void requestReturn(LocalDateTime now) {
+	public void requestReturn(LocalDateTime now, int overdueFee) {
 		validateReturnRequest();
 		this.status = RentalStatus.RETURNED;
 		this.returnedAt = now;
+		this.overdueFee = overdueFee;
 	}
 
 	/**

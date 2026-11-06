@@ -19,6 +19,9 @@ app:
     no-handover-cancel-cron: "-"
     refund-retry-cron: "-"
     payment-reconcile-cron: "-"
+    overdue-detect-cron: "-"
+    overdue-recheck-cron: "-"
+    return-reminder-cron: "-"
   storage:
     local:
       root-dir: build/test-uploads
