@@ -147,7 +147,8 @@ try {
 - **반납 리마인더**: 매일 09:00, `RENTING AND end_date = 내일` → 대여자 `RETURN_REMINDER` (event_id `RETURN_REMINDER:{rentalId}:{endDate}` — 연장으로 end_date가 바뀌면 다시 보낼 수 있게)
 - **연체료**: 연체일수 = (반납 요청일 또는 미반납 신고일) − end_date. 연체료 = min(연체일수 × floor(pricePerDay × 1.5), deposit). 반납 시점에 `rentals.overdue_fee`로 확정해 저장하고, 보증금 처리(REQ-025)에서 먼저 차감. 대여 상세에는 OVERDUE 동안 "현재까지 연체료"를 계산해 보여 준다
 - 연체 일수는 신뢰 점수에도 반영(REQ-054)
-- 1순위·무료 대여(보증금 0원): 연체료를 계산·기록만 하고 징수하지 않음
+- 1순위(결제 끔): 연체료를 계산·기록만 하고 징수하지 않음
+- 무료 대여(보증금 0원): 연체료 0원으로 기록, 연체는 신뢰 점수에만 반영 (policies.md "무료 대여")
 
 ## REQ-038 대여 연장 [2]
 `POST /api/rentals/{id}/extensions { newEndDate }`

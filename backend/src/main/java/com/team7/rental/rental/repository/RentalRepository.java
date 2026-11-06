@@ -54,6 +54,19 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, RentalSea
 	List<Long> findNoHandoverCancelIds(@Param("threshold")
 	LocalDate threshold);
 
+	/** 연체 배치(REQ-023) 대상 id: RENTING이고 endDate &lt; today. id 순. 인덱스 (status, end_date) */
+	@Query("""
+		select r.id from Rental r
+		where r.status = com.team7.rental.rental.entity.RentalStatus.RENTING
+			and r.endDate < :today
+		order by r.id
+		""")
+	List<Long> findOverdueTargetIds(@Param("today")
+	LocalDate today);
+
+	/** 반납 리마인더(REQ-031) 대상: status이고 endDate가 그날인 대여. id 순. 인덱스 (status, end_date) */
+	List<Rental> findAllByStatusAndEndDateOrderById(RentalStatus status, LocalDate endDate);
+
 	/** 결제 만료(REQ-024) 대상 id: PENDING_PAYMENT이고 paymentExpiresAt ≤ now. id 순 */
 	@Query("""
 		select r.id from Rental r

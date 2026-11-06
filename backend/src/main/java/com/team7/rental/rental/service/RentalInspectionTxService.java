@@ -36,10 +36,11 @@ import lombok.RequiredArgsConstructor;
  * validate* 는 사진을 처리하기 전에 거절될 요청을 걸러 내는 최적화일 뿐이다. 쓰기 메서드는 트랜잭션 안에서 대여를 다시 읽고 404·403·409를 전부
  * 다시 검사한다(사전 검사와 쓰기 사이에 상태가 바뀔 수 있다).
  * <p>
- * 인계·반납 요청은 행 락을 잡지 않는다(사진 처리 동안 행을 잠그지 않으려고 업로드를 밖으로 뺐고, 쓰기 트랜잭션은 짧다). 동시 변경은 Rental @Version이 막는다.
- * 상태 확인은 결제 행도 건드려 대여 행 락 → 결제 행 락 순서로 잡는다.
- * 전이 직후 rental을 flush해 버전 검사 UPDATE(rentals 행 X 락)를 기록 INSERT보다 먼저 보낸다. 늦은 요청은 그 락을 기다렸다가 버전 충돌(409)로
- * 끝난다. flush가 없으면 IDENTITY 키라 INSERT가 먼저 나가고, 기록의 FK 검사가 rentals 행에 S 락을 잡은 채 UK를 기다리다 앞선 요청의
+ * 인계는 행 락을 잡지 않고 동시 변경을 Rental @Version으로 막는다. 반납 요청은 대여 행 락만 잡는다(REQ-023): 연체 배치와 겹치면 배치 커밋을 기다린 뒤
+ * OVERDUE에서 반납되게 해 대여자 요청이 409로 끝나지 않게 한다. 사진 업로드는 트랜잭션 밖에서 끝나므로 락을 잡는 쓰기 트랜잭션은 짧다.
+ * 상태 확인은 결제 행도 건드려 대여 행 락 → 결제 행 락 순서로 잡는다. 반납 요청과 연체 배치는 대여 행 락 하나만 잡으므로 락 순서 문제가 없다.
+ * 인계는 전이 직후 rental을 flush해 버전 검사 UPDATE(rentals 행 X 락)를 기록 INSERT보다 먼저 보낸다. 늦은 요청은 그 락을 기다렸다가 버전 충돌(409)로
+ * 끝난다(반납 요청은 처음부터 X 락을 잡아 이 문제가 없지만 같은 순서를 유지한다). flush가 없으면 IDENTITY 키라 INSERT가 먼저 나가고, 기록의 FK 검사가 rentals 행에 S 락을 잡은 채 UK를 기다리다 앞선 요청의
  * UPDATE와 데드락(500)이 난다. 확인 결과는 docs/prompts/feat/rental-return/notes.md
  */
 @Service
@@ -52,6 +53,7 @@ public class RentalInspectionTxService {
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
 	private final RentalQueryService rentalQueryService;
 	private final RentalRefundPort rentalRefundPort;
+	private final OverdueFeeCalculator overdueFeeCalculator;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
@@ -99,7 +101,8 @@ public class RentalInspectionTxService {
 
 	/**
 	 * 반납 요청: RENTING·OVERDUE → RETURNED + RETURN 기록 + 이력. 제공자가 부르면 대리 접수(기록 작성자·이력 changedBy = 제공자).
-	 * 연체료(overdueFee)는 건드리지 않는다(REQ-023).
+	 * 연체료는 반납 요청일 기준으로 계산해 확정한다(REQ-023). 대여 행 락을 잡아 연체 배치·다른 반납 요청과 한 줄로 선다(늦은 반납 요청은 RETURNED를 보고
+	 * RENTAL_INVALID_TRANSITION). 시각은 락을 잡은 뒤에 구한다.
 	 *
 	 * @param checklist 검증된 체크리스트(모든 항목 true/false)
 	 * @param note 정규화된 메모. 없으면 null
@@ -109,10 +112,10 @@ public class RentalInspectionTxService {
 	@Transactional
 	public RentalDetailResponse requestReturn(Long rentalId, Long memberId, Map<ReturnChecklistItem, Boolean> checklist,
 		String note, List<String> imageUrls) {
+		Rental rental = getParticipantRentalForUpdate(rentalId, memberId);
 		LocalDateTime now = LocalDateTime.now(clock);
-		Rental rental = getParticipantRental(rentalId, memberId);
 		RentalStatus from = rental.getStatus();
-		rental.requestReturn(now);
+		rental.requestReturn(now, overdueFeeCalculator.calculate(rental, now.toLocalDate()));
 		// 버전 검사를 기록 INSERT보다 먼저 (클래스 주석)
 		rentalRepository.flush();
 		itemInspectionRepository.save(ItemInspection.returned(rentalId, memberId, imageUrls, checklist, note));
@@ -201,7 +204,7 @@ public class RentalInspectionTxService {
 		if (result == InspectionResult.NORMAL) {
 			reason = changedBy == null ? RentalStatusHistory.REASON_RETURN_AUTO_CONFIRM_BATCH
 				: RentalStatusHistory.REASON_RETURN_CONFIRM_NORMAL;
-			// 연체료 확정(REQ-023) 전이라 overdueFee는 0이다
+			// 반납 요청 때 확정한 연체료를 먼저 차감한다(REQ-023). 반환액 0원이면 FORFEITED
 			Optional<RefundTicket> refund = rentalRefundPort.prepareDepositReturn(rental.getId(),
 				rental.getOverdueFee(), new Completion(changedBy, reason));
 			if (refund.isPresent()) {
@@ -229,6 +232,15 @@ public class RentalInspectionTxService {
 
 	private Rental getParticipantRental(Long rentalId, Long memberId) {
 		Rental rental = rentalRepository.findById(rentalId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_NOT_FOUND));
+		if (!rental.isParticipant(memberId)) {
+			throw new BusinessException(ErrorCode.RENTAL_NOT_PARTICIPANT);
+		}
+		return rental;
+	}
+
+	private Rental getParticipantRentalForUpdate(Long rentalId, Long memberId) {
+		Rental rental = rentalRepository.findByIdForUpdate(rentalId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_NOT_FOUND));
 		if (!rental.isParticipant(memberId)) {
 			throw new BusinessException(ErrorCode.RENTAL_NOT_PARTICIPANT);

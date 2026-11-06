@@ -67,6 +67,11 @@ app:
     payment-expire-cron: "0 * * * * *"
     # 인계 없음 자동 취소: 매일 09:00 (REQ-017)
     no-handover-cancel-cron: "0 0 9 * * *"
+    # 연체 감지: 매일 00:05 + 매시 정각 재검사 (REQ-023)
+    overdue-detect-cron: "0 5 0 * * *"
+    overdue-recheck-cron: "0 0 * * * *"
+    # 반납 리마인더: 매일 09:00 (REQ-031)
+    return-reminder-cron: "0 0 9 * * *"
     # 환불 재시도: 10분 (REQ-025)
     refund-retry-cron: "0 */10 * * * *"
     # PG 조정: 1시간 (REQ-024)
@@ -114,6 +119,9 @@ app:
       # cancel-fee.rate-percent / free-until-days-before: 대여자 단독 취소 수수료. 시작일 3일 전까지 무료, 그 뒤 대여료의 30% (REQ-015)
       rate-percent: 30
       free-until-days-before: 3
+    overdue-fee:
+      # overdue-fee.rate: 연체 1일당 일 대여료 × 150%, 보증금 한도 (REQ-023)
+      rate-percent: 150
     cancel-agreement:
       # cancel-agreement.expire-hours: 양측 동의 취소 요청이 상대 무응답으로 만료되는 시간 (REQ-015)
       expire-hours: 48

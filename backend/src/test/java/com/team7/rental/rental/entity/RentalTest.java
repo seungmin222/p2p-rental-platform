@@ -466,19 +466,50 @@ class RentalTest {
 
 	@ParameterizedTest
 	@EnumSource(value = RentalStatus.class, names = {"RENTING", "OVERDUE"})
-	@DisplayName("대여 중·연체에서 반납 요청하면 RETURNED가 되고 반납 시각이 기록되며 연체료는 그대로다")
+	@DisplayName("대여 중·연체에서 반납 요청하면 RETURNED가 되고 반납 시각과 넘긴 연체료가 기록된다")
 	void requestReturn(RentalStatus status) {
 		// given
 		Rental rental = withStatus(status);
-		LocalDateTime now = END.atTime(18, 0);
+		LocalDateTime now = END.plusDays(1).atTime(18, 0);
 
 		// when
-		rental.requestReturn(now);
+		rental.requestReturn(now, 15_000);
 
 		// then
 		assertThat(rental.getStatus()).isEqualTo(RentalStatus.RETURNED);
 		assertThat(rental.getReturnedAt()).isEqualTo(now);
-		assertThat(rental.getOverdueFee()).isZero();
+		assertThat(rental.getOverdueFee()).isEqualTo(15_000);
+	}
+
+	@Test
+	@DisplayName("대여 중이고 반납 예정일이 지났으면 OVERDUE가 된다. 예정일 당일은 대상이 아니다")
+	void markOverdue() {
+		// given
+		Rental rental = withStatus(RentalStatus.RENTING);
+
+		// then
+		assertThat(rental.isOverdueDue(END)).isFalse();
+		assertTransitionFails(() -> rental.markOverdue(END), ErrorCode.RENTAL_INVALID_TRANSITION);
+		assertThat(rental.isOverdueDue(END.plusDays(1))).isTrue();
+
+		// when
+		rental.markOverdue(END.plusDays(1));
+
+		// then
+		assertThat(rental.getStatus()).isEqualTo(RentalStatus.OVERDUE);
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = RentalStatus.class, names = {"RENTING"}, mode = EnumSource.Mode.EXCLUDE)
+	@DisplayName("대여 중이 아니면 예정일이 지나도 연체 전환은 409 RENTAL_INVALID_TRANSITION이다")
+	void markOverdueInvalidStatus(RentalStatus status) {
+		// given
+		Rental rental = withStatus(status);
+
+		// then
+		assertThat(rental.isOverdueDue(END.plusDays(1))).isFalse();
+		assertTransitionFails(() -> rental.markOverdue(END.plusDays(1)), ErrorCode.RENTAL_INVALID_TRANSITION);
+		assertThat(rental.getStatus()).isEqualTo(status);
 	}
 
 	@ParameterizedTest
@@ -490,7 +521,7 @@ class RentalTest {
 		Rental rental = withStatus(status);
 
 		// then
-		assertTransitionFails(() -> rental.requestReturn(NOW), ErrorCode.RENTAL_INVALID_TRANSITION);
+		assertTransitionFails(() -> rental.requestReturn(NOW, 0), ErrorCode.RENTAL_INVALID_TRANSITION);
 		assertThat(rental.getStatus()).isEqualTo(status);
 		assertThat(rental.getReturnedAt()).isNull();
 	}
@@ -557,7 +588,7 @@ class RentalTest {
 
 		// when
 		rental.handover(handedOverAt);
-		rental.requestReturn(returnedAt);
+		rental.requestReturn(returnedAt, 0);
 		rental.confirmNormal(completedAt);
 
 		// then
@@ -574,7 +605,7 @@ class RentalTest {
 		// given
 		Rental rental = withStatus(RentalStatus.RENTING);
 		LocalDateTime returnedAt = END.atTime(18, 0);
-		rental.requestReturn(returnedAt);
+		rental.requestReturn(returnedAt, 0);
 
 		// then
 		assertThat(rental.isAutoConfirmDue(returnedAt.plusDays(3).minusSeconds(1), 3)).isFalse();
@@ -620,7 +651,7 @@ class RentalTest {
 		// given: 인계 → 반납 요청 → 정상 확인(완료) 경로로 COMPLETED
 		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, PRICE_PER_DAY, DEPOSIT);
 		rental.handover(START.atTime(10, 0));
-		rental.requestReturn(END.atTime(18, 0));
+		rental.requestReturn(END.atTime(18, 0), 0);
 		LocalDateTime completedAt = END.atTime(20, 0);
 		rental.confirmNormal(completedAt);
 
