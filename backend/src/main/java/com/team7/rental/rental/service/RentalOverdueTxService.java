@@ -31,7 +31,7 @@ public class RentalOverdueTxService {
 
 	/**
 	 * RENTING → OVERDUE 한 건 + 이력(changedBy = null, OVERDUE_BATCH). 대상 조회 뒤 반납됐을 수 있어 행 락을 잡고 조건을 다시 본다.
-	 * 반납 요청은 행 락 없이 @Version으로 막으므로, 이 전환이 먼저 커밋되면 겹친 반납 요청은 버전 충돌(409)로 끝나고 다시 시도하면 OVERDUE에서 반납된다.
+	 * 반납 요청도 같은 대여 행 락을 잡는다: 배치가 먼저면 반납 요청이 이 커밋을 기다린 뒤 OVERDUE에서 반납하고, 반납이 먼저면 여기서 RETURNED를 보고 건너뛴다.
 	 *
 	 * @return 전환했으면 알림 받을 당사자. 이미 대상이 아니면 비어 있다
 	 */
