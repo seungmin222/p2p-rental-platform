@@ -108,9 +108,11 @@ try {
 
 ### 미반납 신고 `POST /api/rentals/{id}/lost-report { note }` [2]
 - 제공자만, OVERDUE이고 오늘 > endDate + 7일
-- 반납 사진 없이 item_inspections(phase=RETURN, note, lost_reported=true) 기록 → RETURNED, `returned_at=now`, depositStatus=HELD
+- 반납 사진 없이 item_inspections(phase=RETURN, note(선택, `return.note-max`), lost_reported=true) 기록 → RETURNED, `returned_at=now`, depositStatus=HELD. 이력 OVERDUE → RETURNED(reason `LOST_REPORT`, changedBy 제공자)
+- 동결된 보증금이 없으면(결제 없음·보증금 0원) 처리할 금액이 없어 이어서 COMPLETED(이력 2건, open-issues #39)
+- 가드: 제공자만(대여자 403 `RENTAL_OWNER_ONLY`), OVERDUE만(409 `RENTAL_INVALID_TRANSITION`), 오늘 ≤ endDate + `lost-report.after-days`면 409 `RENTAL_LOST_REPORT_TOO_EARLY`
 - 제공자는 이어서 D 등급 차감을 제안한다(`payment.md` REQ-049). 대여자에게 `LOST_REPORTED` 알림
-- 이후 대여자가 물건을 돌려주면 제공자가 상태 확인(정상/이상)으로 처리
+- 이후 대여자가 물건을 돌려줘도 **상태 확인(정상/이상)을 하지 않는다**(409 `RENTAL_INVALID_TRANSITION`). 보류된 보증금은 차감 확정으로만 끝나므로(state-machines §2) D 등급·0원 이상 제안 → 수락/자동 수락/관리자 확정으로 끝낸다(정상 반환 경로 없음, open-issues #41)
 - 연체료 계산 기준일은 신고일
 
 ### 제공자 상태 확인 `PATCH /api/rentals/{id}/return`
@@ -118,7 +120,7 @@ try {
 - 가드: 제공자만(대여자 403 `RENTAL_OWNER_ONLY`), RETURNED이고 반납 기록이 판정 전일 때만(아니면 409 `RENTAL_INVALID_TRANSITION`)
 - 화면에 인계 사진 / 반납 사진 / 체크리스트(false 항목 강조) / AI 결과 / 연체료를 나란히 (조회는 `GET /inspections`)
 - NORMAL → 보증금 처리(REQ-025: 연체료 차감 후 남은 금액 반환) 완료 후 COMPLETED(`completed_at=now`) → 정산 생성(REQ-039). 반환이 실패했거나 PG 결과를 알 수 없으면(타임아웃) 200에 RETURNED로 답하고 재시도 배치가 완료한다
-- ABNORMAL → RETURNED 유지, depositStatus=HELD, 정산 보류 → `payment.md` REQ-049 흐름
+- ABNORMAL → RETURNED 유지, depositStatus=HELD(이력 RETURNED → RETURNED, reason `RETURN_CONFIRM_ABNORMAL`), 정산 보류, 대여자 `DEPOSIT_HELD` → `payment.md` REQ-049 흐름. 동결된 보증금이 없으면 판정만 기록하고 COMPLETED
 - **자동 처리 배치**: `RETURNED AND returned_at + 3일 <= now AND 판정 없음 AND 미반납 신고 아님` → NORMAL로 처리
 - 1순위: 보증금 처리 없이 판정 기록 후 COMPLETED (ABNORMAL이어도 기록만 하고 COMPLETED — 1순위에는 차감 흐름이 없음)
 

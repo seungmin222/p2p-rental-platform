@@ -139,4 +139,4 @@ app:
 
 플래그는 예약 생성의 초기 상태만 정한다. 취소 환불·보증금 처리는 플래그가 아니라 **승인된 결제 행이 있는지**로 갈린다. 플래그를 나중에 꺼도 이미 받은 돈은 돌려주기 위해서다.
 
-값: 기본 `false`, local은 `infra/.env`의 `APP_FEATURE_PAYMENT_ENABLED`, test는 `false`(켜야 하는 테스트만 `@TestPropertySource`). **prod는 REQ-049가 머지될 때까지 `false`로 둔다.** 그 전에는 상태 확인 '이상' 건의 동결 보증금을 처리할 방법이 없다.
+값: 기본 `false`, local은 `infra/.env`의 `APP_FEATURE_PAYMENT_ENABLED`, test는 `false`(켜야 하는 테스트만 `@TestPropertySource`). **prod는 open-issues #33(같은 멱등성 키 재시도에 토스가 실패 응답을 재생하는지)을 실제 토스로 확인할 때까지 `false`로 둔다.** 상태 확인 '이상'·미반납 신고 건의 보증금 처리(REQ-049)는 `feat/payment-deposit`에서 생겼다.

@@ -26,9 +26,294 @@
     {
       "description": "회원·인증·동네",
       "name": "Member"
+    },
+    {
+      "description": "관리자",
+      "name": "Admin"
     }
   ],
   "paths": {
+    "/api/admin/deposits/held": {
+      "get": {
+        "description": "보증금 보류(HELD) 후 policies.md deposit.hold-agreement-days가 지나도록 합의하지 못한 건, 보류가 오래된 순. 반환이 진행 중인 건은 빠진다. 페이지 없이 전체를 돌려준다(관리자 목록 페이지 크기 정책이 없다).",
+        "operationId": "findHeld",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListHeldDepositResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_FORBIDDEN": {
+                    "summary": "접근 권한이 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_FORBIDDEN",
+                        "details": [],
+                        "message": "접근 권한이 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_FORBIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "보류 기한 초과 보증금 목록 (REQ-049, REQ-057)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/rentals/{rentalId}/deposit": {
+      "patch": {
+        "description": "보류 후 policies.md deposit.hold-agreement-days가 지난 건의 차감액을 관리자가 확정한다. 상한 검사는 제공자 제안과 같다(A 불가, 미반납 신고 건은 D만, 0 ≤ amount ≤ min(상한, 남은 보증금)). 제안 이력에 ADMIN_DECIDED로 남는다. 남은 보증금 − 차감액을 부분 취소로 돌려주고(0원이면 FORFEITED) 거래 완료(COMPLETED), 양측에 DEDUCTION_ACCEPTED. 대여자 응답을 기다리는 제안이 있으면 409 DEDUCTION_PROPOSAL_IN_PROGRESS(그 결과를 기다린다). 검사 순서: 400 COMMON_INVALID_INPUT → 404 RENTAL_NOT_FOUND → 409 RENTAL_INVALID_TRANSITION → 409 DEPOSIT_NOT_HELD → 409 DEPOSIT_ADMIN_DECISION_TOO_EARLY → 409 DEDUCTION_PROPOSAL_IN_PROGRESS → 400 DEDUCTION_GRADE_NOT_ALLOWED → 400 DEDUCTION_EXCEEDS_DEPOSIT → 400 DEDUCTION_EXCEEDS_CAP. 응답은 확정 뒤 보증금 정보다.",
+        "operationId": "decide",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminDepositDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDepositInfo"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEDUCTION_EXCEEDS_CAP": {
+                    "summary": "차감액이 등급별 차감 상한을 넘습니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_EXCEEDS_CAP",
+                        "details": [],
+                        "message": "차감액이 등급별 차감 상한을 넘습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEDUCTION_EXCEEDS_DEPOSIT": {
+                    "summary": "차감액이 남은 보증금보다 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_EXCEEDS_DEPOSIT",
+                        "details": [],
+                        "message": "차감액이 남은 보증금보다 큽니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEDUCTION_GRADE_NOT_ALLOWED": {
+                    "summary": "선택할 수 없는 손상 등급입니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_GRADE_NOT_ALLOWED",
+                        "details": [],
+                        "message": "선택할 수 없는 손상 등급입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, DEDUCTION_EXCEEDS_CAP, DEDUCTION_EXCEEDS_DEPOSIT, DEDUCTION_GRADE_NOT_ALLOWED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_FORBIDDEN": {
+                    "summary": "접근 권한이 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_FORBIDDEN",
+                        "details": [],
+                        "message": "접근 권한이 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DEDUCTION_PROPOSAL_IN_PROGRESS": {
+                    "summary": "대여자 응답을 기다리는 차감 제안이 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_PROPOSAL_IN_PROGRESS",
+                        "details": [],
+                        "message": "대여자 응답을 기다리는 차감 제안이 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEPOSIT_ADMIN_DECISION_TOO_EARLY": {
+                    "summary": "보증금 보류 후 정해진 기간이 지나야 관리자가 확정할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEPOSIT_ADMIN_DECISION_TOO_EARLY",
+                        "details": [],
+                        "message": "보증금 보류 후 정해진 기간이 지나야 관리자가 확정할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEPOSIT_NOT_HELD": {
+                    "summary": "보류 중인 보증금이 없거나 반환이 진행 중입니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEPOSIT_NOT_HELD",
+                        "details": [],
+                        "message": "보류 중인 보증금이 없거나 반환이 진행 중입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "DEDUCTION_PROPOSAL_IN_PROGRESS, DEPOSIT_ADMIN_DECISION_TOO_EARLY, DEPOSIT_NOT_HELD, RENTAL_INVALID_TRANSITION"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "보증금 차감 관리자 확정 (REQ-049, REQ-057)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
     "/api/auth/login": {
       "post": {
         "description": "성공 시 바디에 Access Token, Set-Cookie로 Refresh Token. Refresh Token은 응답 바디에 없고 HttpOnly 쿠키 refreshToken(Path\u003d/api/auth, SameSite\u003dLax, local 외 Secure, 만료 policies.md auth.refresh-token-ttl)로만 주고받는다. 브라우저가 자동으로 보내므로 프론트는 쿠키를 다루지 않는다(같은 출처 + withCredentials). 로그인할 때마다 새 토큰 묶음(family)이 생겨 기기마다 따로 유지된다. 이메일·비밀번호 중 무엇이 틀렸는지 구분하지 않고, 탈퇴 회원도 같은 401 AUTH_INVALID_CREDENTIALS다.",
@@ -3896,6 +4181,481 @@
         ]
       }
     },
+    "/api/rentals/{rentalId}/deposit": {
+      "patch": {
+        "description": "상태 확인 \u0027이상\u0027 또는 미반납 신고로 보증금이 보류(HELD)된 반납 완료(RETURNED) 건의 차감을 협의한다. multipart: request part(Content-Type application/json, 필수) { action, proposalId, grade, amount, reason } + evidenceImages·receiptImages 파일들. PROPOSE(제공자): grade·amount·reason 필수(사유 최대 policies.md deduction.reason.max자). A 등급 불가, 미반납 신고 건은 D만. amount는 0 이상 GET .../deposit/policy의 maxAmount 이하(남은 보증금 \u003d 보증금 − 연체료). evidenceImages(손상 사진)는 필수(미반납 신고 건은 선택), receiptImages(견적서·영수증·구매 내역)는 정책이 ACTUAL(C 전부, 공구 B)이면 필수다. 장수 inspection.images.min~max, 장당 inspection.images.max-file-size, jpg/png. 대여자에게 DEDUCTION_PROPOSED. ACCEPT·REJECT(대여자): proposalId 필수, 사진을 보내면 400. 제안 후 policies.md deduction.renter-response-hours가 지나면 응답할 수 없고 자동 수락된다. ACCEPT면 남은 보증금 − 차감액을 부분 취소로 돌려주고(0원이면 FORFEITED) 거래 완료(COMPLETED), 양측에 DEDUCTION_ACCEPTED. 반환이 실패했거나 PG 결과를 알 수 없으면 200에 status RETURNED로 답하고 재시도 배치가 완료한다. REJECT면 보류가 이어지고 제공자에게 DEDUCTION_REJECTED, 제공자는 다시 제안할 수 있다. 보류 후 policies.md deposit.hold-agreement-days가 지나도록 합의하지 못하면 관리자가 확정한다. 검사 순서: request part 400 COMMON_INVALID_INPUT → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY·RENTAL_RENTER_ONLY → 409 RENTAL_INVALID_TRANSITION(반납 완료 아님) → 409 DEPOSIT_NOT_HELD → PROPOSE: 409 DEDUCTION_PROPOSAL_IN_PROGRESS → 400 DEDUCTION_GRADE_NOT_ALLOWED → 400 DEDUCTION_EXCEEDS_DEPOSIT → 400 DEDUCTION_EXCEEDS_CAP(details maxAmount) → 400 DEDUCTION_EVIDENCE_REQUIRED·IMAGE_*; ACCEPT·REJECT: 404 DEDUCTION_PROPOSAL_NOT_FOUND → 409 DEDUCTION_PROPOSAL_CLOSED. 응답은 대여 상세와 같다.",
+        "operationId": "act",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "evidenceImages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "receiptImages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/DepositActionRequest"
+                  }
+                },
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEDUCTION_EVIDENCE_REQUIRED": {
+                    "summary": "증빙 자료가 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_EVIDENCE_REQUIRED",
+                        "details": [],
+                        "message": "증빙 자료가 필요합니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEDUCTION_EXCEEDS_CAP": {
+                    "summary": "차감액이 등급별 차감 상한을 넘습니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_EXCEEDS_CAP",
+                        "details": [],
+                        "message": "차감액이 등급별 차감 상한을 넘습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEDUCTION_EXCEEDS_DEPOSIT": {
+                    "summary": "차감액이 남은 보증금보다 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_EXCEEDS_DEPOSIT",
+                        "details": [],
+                        "message": "차감액이 남은 보증금보다 큽니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEDUCTION_GRADE_NOT_ALLOWED": {
+                    "summary": "선택할 수 없는 손상 등급입니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_GRADE_NOT_ALLOWED",
+                        "details": [],
+                        "message": "선택할 수 없는 손상 등급입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_COUNT_INVALID": {
+                    "summary": "이미지 장수가 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_COUNT_INVALID",
+                        "details": [],
+                        "message": "이미지 장수가 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_INVALID_TYPE": {
+                    "summary": "jpg 또는 png 이미지만 업로드할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_INVALID_TYPE",
+                        "details": [],
+                        "message": "jpg 또는 png 이미지만 업로드할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_SIZE_EXCEEDED": {
+                    "summary": "이미지 용량이 너무 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_SIZE_EXCEEDED",
+                        "details": [],
+                        "message": "이미지 용량이 너무 큽니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, DEDUCTION_EVIDENCE_REQUIRED, DEDUCTION_EXCEEDS_CAP, DEDUCTION_EXCEEDS_DEPOSIT, DEDUCTION_GRADE_NOT_ALLOWED, IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_OWNER_ONLY": {
+                    "summary": "물품 제공자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_OWNER_ONLY",
+                        "details": [],
+                        "message": "물품 제공자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_RENTER_ONLY": {
+                    "summary": "대여자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_RENTER_ONLY",
+                        "details": [],
+                        "message": "대여자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY, RENTAL_RENTER_ONLY"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DEDUCTION_PROPOSAL_NOT_FOUND": {
+                    "summary": "응답할 차감 제안이 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_PROPOSAL_NOT_FOUND",
+                        "details": [],
+                        "message": "응답할 차감 제안이 없습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "DEDUCTION_PROPOSAL_NOT_FOUND, RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "DEDUCTION_PROPOSAL_CLOSED": {
+                    "summary": "이미 응답했거나 응답 기한이 지난 차감 제안입니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_PROPOSAL_CLOSED",
+                        "details": [],
+                        "message": "이미 응답했거나 응답 기한이 지난 차감 제안입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEDUCTION_PROPOSAL_IN_PROGRESS": {
+                    "summary": "대여자 응답을 기다리는 차감 제안이 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_PROPOSAL_IN_PROGRESS",
+                        "details": [],
+                        "message": "대여자 응답을 기다리는 차감 제안이 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEPOSIT_NOT_HELD": {
+                    "summary": "보류 중인 보증금이 없거나 반환이 진행 중입니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEPOSIT_NOT_HELD",
+                        "details": [],
+                        "message": "보류 중인 보증금이 없거나 반환이 진행 중입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "DEDUCTION_PROPOSAL_CLOSED, DEDUCTION_PROPOSAL_IN_PROGRESS, DEPOSIT_NOT_HELD, RENTAL_INVALID_TRANSITION"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "지원하지 않는 요청 형식입니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_UNSUPPORTED_MEDIA_TYPE",
+                        "details": [],
+                        "message": "지원하지 않는 요청 형식입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_UNSUPPORTED_MEDIA_TYPE"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "보증금 차감 제안·수락·거절 (REQ-049)",
+        "tags": [
+          "Payment"
+        ]
+      }
+    },
+    "/api/rentals/{rentalId}/deposit/policy": {
+      "get": {
+        "description": "policies.md §4 계산 규칙: 남은 보증금 \u003d 보증금 − 연체료, 상한 B \u003d 카테고리 정액(공구는 실비 → 남은 보증금), C \u003d floor(보증금 × 카테고리 상한율), D \u003d 남은 보증금. maxAmount \u003d min(상한, 남은 보증금). 상한은 물품의 현재 카테고리 정책으로 계산한다. 당사자만. A 등급은 차감할 수 없고, 미반납 신고 건은 D만(400 DEDUCTION_GRADE_NOT_ALLOWED).",
+        "operationId": "getPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "in": "query",
+            "name": "grade",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "A",
+                "B",
+                "C",
+                "D"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeductionPolicyResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "DEDUCTION_GRADE_NOT_ALLOWED": {
+                    "summary": "선택할 수 없는 손상 등급입니다.",
+                    "value": {
+                      "error": {
+                        "code": "DEDUCTION_GRADE_NOT_ALLOWED",
+                        "details": [],
+                        "message": "선택할 수 없는 손상 등급입니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, DEDUCTION_GRADE_NOT_ALLOWED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "등급별 차감 상한 (REQ-049)",
+        "tags": [
+          "Payment"
+        ]
+      }
+    },
     "/api/rentals/{rentalId}/handover": {
       "patch": {
         "description": "제공자가 인계 사진과 메모를 올리면 대여 예정(RESERVED)이 대여 중(RENTING)이 된다. 대여 시작일 당일부터 할 수 있고, 기록은 수정할 수 없다. multipart: request part(Content-Type application/json, 생략 가능) { memo } + images 파일들. 사진 장수 policies.md inspection.images.min~max, 장당 inspection.images.max-file-size, jpg/png. 메모 최대 글자 수 inspection.handover-memo-max. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION → 409 RENTAL_HANDOVER_TOO_EARLY → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 다른 요청이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.",
@@ -4259,9 +5019,178 @@
         ]
       }
     },
+    "/api/rentals/{rentalId}/lost-report": {
+      "post": {
+        "description": "반납 예정일 + policies.md lost-report.after-days가 지난 연체(OVERDUE) 건을 제공자가 미반납으로 신고한다. 반납 사진 없이 반납 완료(RETURNED)가 되고 연체료는 신고일 기준으로 확정된다. 동결된 보증금이 있으면 보류(HELD)되고 제공자는 이어서 D 등급 차감을 제안한다(PATCH /api/rentals/{id}/deposit). 동결된 보증금이 없으면(결제 없음·보증금 0원) 처리할 금액이 없어 바로 거래 완료(COMPLETED)다. 신고 건은 물건이 돌아와도 상태 확인을 하지 않고 차감 흐름(D 등급, 0원 이상)으로 끝낸다. 대여자에게 LOST_REPORTED 알림. 본문은 선택이고 note 최대 글자 수는 policies.md return.note-max. 검사 순서: 400 COMMON_INVALID_INPUT → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION(연체 아님) → 409 RENTAL_LOST_REPORT_TOO_EARLY. 응답은 대여 상세와 같다.",
+        "operationId": "reportLost",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RentalLostReportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_OWNER_ONLY": {
+                    "summary": "물품 제공자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_OWNER_ONLY",
+                        "details": [],
+                        "message": "물품 제공자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_LOST_REPORT_TOO_EARLY": {
+                    "summary": "반납 예정일로부터 정해진 기간이 지난 연체 건만 미반납 신고할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_LOST_REPORT_TOO_EARLY",
+                        "details": [],
+                        "message": "반납 예정일로부터 정해진 기간이 지난 연체 건만 미반납 신고할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_INVALID_TRANSITION, RENTAL_LOST_REPORT_TOO_EARLY"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "미반납 신고 (REQ-018, REQ-049)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
     "/api/rentals/{rentalId}/return": {
       "patch": {
-        "description": "제공자가 반납된 물품을 정상(NORMAL) 또는 이상(ABNORMAL)으로 판정한다. 판정은 한 번만 할 수 있다. NORMAL은 보증금을 반환하고 거래 완료(COMPLETED)가 된다. 반환이 실패했거나 PG 결과를 알 수 없으면(타임아웃) 200에 status RETURNED로 답하고 재시도 배치가 완료한다. ABNORMAL은 동결된 보증금이 있으면 RETURNED로 남고(차감은 REQ-049), 없으면 판정만 기록하고 COMPLETED가 된다. 반납 요청 후 policies.md return.auto-confirm-days가 지나도록 판정하지 않으면 자동으로 정상 처리된다. multipart: request part(Content-Type application/json, 필수) { result, resultNote } + images 파일들. ABNORMAL이면 resultNote(최대 inspection.abnormal-note-max자)와 사진(inspection.images.min~max장) 필수, NORMAL이면 resultNote 선택이고 사진을 보내면 400. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION(반납 완료 아님·이미 판정) → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 다른 요청(자동 확인 포함)이 먼저 판정했으면 409 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.",
+        "description": "제공자가 반납된 물품을 정상(NORMAL) 또는 이상(ABNORMAL)으로 판정한다. 판정은 한 번만 할 수 있다. NORMAL은 보증금을 반환하고 거래 완료(COMPLETED)가 된다. 반환이 실패했거나 PG 결과를 알 수 없으면(타임아웃) 200에 status RETURNED로 답하고 재시도 배치가 완료한다. ABNORMAL은 동결된 보증금이 있으면 보류(HELD)하고 RETURNED로 남아 차감 흐름(REQ-049)으로 이어지며 대여자에게 DEPOSIT_HELD 알림, 없으면 판정만 기록하고 COMPLETED가 된다. 미반납 신고 건은 판정할 수 없다(409 RENTAL_INVALID_TRANSITION, 차감 흐름으로 끝낸다). 반납 요청 후 policies.md return.auto-confirm-days가 지나도록 판정하지 않으면 자동으로 정상 처리된다. multipart: request part(Content-Type application/json, 필수) { result, resultNote } + images 파일들. ABNORMAL이면 resultNote(최대 inspection.abnormal-note-max자)와 사진(inspection.images.min~max장) 필수, NORMAL이면 resultNote 선택이고 사진을 보내면 400. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION(반납 완료 아님·이미 판정) → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 다른 요청(자동 확인 포함)이 먼저 판정했으면 409 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.",
         "operationId": "confirmReturn",
         "parameters": [
           {
@@ -4748,6 +5677,33 @@
           }
         }
       },
+      "AdminDepositDecisionRequest": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "차감액(원, 필수). 0 이상, 상한은 제공자 제안과 같다(policies.md §4)",
+            "example": 30000,
+            "minimum": 0
+          },
+          "grade": {
+            "type": "string",
+            "description": "손상 등급 (필수). A는 차감할 수 없고, 미반납 신고 건은 D만",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "확정 사유 (필수). 최대 글자 수는 policies.md deduction.reason.max",
+            "example": "증빙 검토 결과 C 등급 수리비 인정"
+          }
+        }
+      },
       "ApiResponseAuthTokenResponse": {
         "type": "object",
         "properties": {
@@ -4781,6 +5737,20 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/CursorResponseItemSummaryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseDeductionPolicyResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DeductionPolicyResponse"
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -4853,6 +5823,23 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CategoryResponse"
+            }
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseListHeldDepositResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HeldDepositResponse"
             }
           },
           "error": {
@@ -5068,6 +6055,20 @@
           }
         }
       },
+      "ApiResponseRentalDepositInfo": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RentalDepositInfo"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseRentalDetailResponse": {
         "type": "object",
         "properties": {
@@ -5270,6 +6271,131 @@
           }
         }
       },
+      "Deduction": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "차감액(원)",
+            "example": 30000
+          },
+          "grade": {
+            "type": "string",
+            "description": "손상 등급 (DamageGrade)",
+            "enum": [
+              "B",
+              "C",
+              "D"
+            ],
+            "example": "C"
+          },
+          "reason": {
+            "type": "string",
+            "description": "차감 사유",
+            "example": "렌즈 흠집 수리비"
+          }
+        }
+      },
+      "DeductionPolicyResponse": {
+        "type": "object",
+        "properties": {
+          "deductionType": {
+            "type": "string",
+            "description": "차감 방식. FIXED(정액), ACTUAL(실비), FULL(전액)",
+            "enum": [
+              "NONE",
+              "FIXED",
+              "ACTUAL",
+              "FULL"
+            ]
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금 (예약 시점)",
+            "example": 100000
+          },
+          "grade": {
+            "type": "string",
+            "description": "손상 등급",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ]
+          },
+          "maxAmount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "제안할 수 있는 최대 금액 \u003d min(등급별 상한, 남은 보증금)",
+            "example": 50000
+          },
+          "overdueFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "확정된 연체료. 보증금에서 먼저 뺀다",
+            "example": 15000
+          },
+          "receiptRequired": {
+            "type": "boolean",
+            "description": "견적서·영수증·구매 내역 사진(receiptImages)이 필요한지. ACTUAL이면 true",
+            "example": true
+          },
+          "remainingDeposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "남은 보증금 \u003d 보증금 − 연체료",
+            "example": 85000
+          }
+        }
+      },
+      "DepositActionRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "description": "동작. PROPOSE(제공자 제안), ACCEPT·REJECT(대여자 응답)",
+            "enum": [
+              "PROPOSE",
+              "ACCEPT",
+              "REJECT"
+            ]
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "차감액(원, PROPOSE 필수). 0 이상, 상한은 GET /api/rentals/{id}/deposit/policy의 maxAmount",
+            "example": 30000,
+            "minimum": 0
+          },
+          "grade": {
+            "type": "string",
+            "description": "손상 등급 (PROPOSE 필수). A는 차감할 수 없고, 미반납 신고 건은 D만",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ]
+          },
+          "proposalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "응답할 차감 제안 ID (ACCEPT·REJECT 필수)",
+            "example": 1
+          },
+          "reason": {
+            "type": "string",
+            "description": "차감 사유 (PROPOSE 필수). 최대 글자 수는 policies.md deduction.reason.max",
+            "example": "렌즈 흠집 수리비"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -5295,6 +6421,67 @@
           },
           "reason": {
             "type": "string"
+          }
+        }
+      },
+      "HeldDepositResponse": {
+        "type": "object",
+        "properties": {
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금 (예약 시점)",
+            "example": 100000
+          },
+          "heldAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "보증금 보류 시작 시각"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 1
+          },
+          "latestProposal": {
+            "$ref": "#/components/schemas/Proposal",
+            "description": "가장 최근 차감 제안. 없으면 null"
+          },
+          "lostReported": {
+            "type": "boolean",
+            "description": "미반납 신고 건인지. 신고 건은 D 등급만 확정할 수 있다",
+            "example": false
+          },
+          "overdueFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "확정된 연체료",
+            "example": 15000
+          },
+          "ownerId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "제공자 회원 ID",
+            "example": 2
+          },
+          "remainingDeposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "남은 보증금 \u003d 보증금 − 연체료",
+            "example": 85000
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID",
+            "example": 1
+          },
+          "renterId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여자 회원 ID",
+            "example": 3
           }
         }
       },
@@ -6470,6 +7657,79 @@
           }
         }
       },
+      "Proposal": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "차감액(원)",
+            "example": 30000
+          },
+          "evidenceImageUrls": {
+            "type": "array",
+            "description": "손상 증빙 사진 URL. 미반납 신고 건·관리자 확정은 빈 목록일 수 있다",
+            "items": {
+              "type": "string"
+            }
+          },
+          "grade": {
+            "type": "string",
+            "description": "손상 등급 (DamageGrade)",
+            "enum": [
+              "B",
+              "C",
+              "D"
+            ],
+            "example": "C"
+          },
+          "proposalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "차감 제안 ID. 수락·거절 때 보낸다",
+            "example": 1
+          },
+          "proposedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "제안(관리자 확정) 시각"
+          },
+          "reason": {
+            "type": "string",
+            "description": "차감 사유",
+            "example": "렌즈 흠집 수리비"
+          },
+          "receiptImageUrls": {
+            "type": "array",
+            "description": "견적서·영수증·구매 내역 사진 URL. 없으면 빈 목록",
+            "items": {
+              "type": "string"
+            }
+          },
+          "respondDeadline": {
+            "type": "string",
+            "format": "date-time",
+            "description": "대여자 응답 기한(제안 + policies.md deduction.renter-response-hours). 지나면 자동 수락된다"
+          },
+          "respondedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "응답(수락·거절·자동 수락·관리자 확정) 시각. 응답 전이면 null"
+          },
+          "status": {
+            "type": "string",
+            "description": "제안 상태 (DeductionProposalStatus)",
+            "enum": [
+              "PROPOSED",
+              "ACCEPTED",
+              "REJECTED",
+              "AUTO_ACCEPTED",
+              "ADMIN_DECIDED"
+            ],
+            "example": "PROPOSED"
+          }
+        }
+      },
       "RegionCoordRequest": {
         "type": "object",
         "properties": {
@@ -6599,6 +7859,48 @@
           "startDate"
         ]
       },
+      "RentalDepositInfo": {
+        "type": "object",
+        "properties": {
+          "deduction": {
+            "$ref": "#/components/schemas/Deduction",
+            "description": "확정된 차감. 확정 전이면 null"
+          },
+          "depositStatus": {
+            "type": "string",
+            "description": "보증금 상태 (state-machines.md §2 DepositStatus)",
+            "enum": [
+              "NONE",
+              "FROZEN",
+              "HELD",
+              "REFUNDED",
+              "FORFEITED",
+              "REFUND_FAILED"
+            ],
+            "example": "HELD"
+          },
+          "heldAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "보증금 보류 시작 시각. 보류된 적이 없으면 null"
+          },
+          "latestProposal": {
+            "$ref": "#/components/schemas/Proposal",
+            "description": "가장 최근 차감 제안(상태 무관). 없으면 null"
+          },
+          "refundPending": {
+            "type": "boolean",
+            "description": "아직 끝나지 않은 환불이 있는지(반환 처리 중·재시도 대기)",
+            "example": false
+          },
+          "refundedAmount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "누적 취소 금액(원). 취소 환불·보증금 반환을 모두 더한 값",
+            "example": 0
+          }
+        }
+      },
       "RentalDetailResponse": {
         "type": "object",
         "properties": {
@@ -6657,11 +7959,38 @@
             "format": "date-time",
             "description": "예약 시각"
           },
+          "deduction": {
+            "$ref": "#/components/schemas/Deduction",
+            "description": "확정된 보증금 차감 (REQ-049). 확정 전이면 null"
+          },
           "deposit": {
             "type": "integer",
             "format": "int32",
             "description": "보증금 (예약 시점)",
             "example": 50000
+          },
+          "depositHeldAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "보증금 보류(HELD) 시작 시각. 보류된 적이 없으면 null. + policies.md deposit.hold-agreement-days가 지나면 관리자 확정 대상"
+          },
+          "depositRefundPending": {
+            "type": "boolean",
+            "description": "아직 끝나지 않은 환불이 있는지(보증금 반환 처리 중·재시도 대기). 승인된 결제가 없으면 false",
+            "example": false
+          },
+          "depositStatus": {
+            "type": "string",
+            "description": "보증금 상태 (state-machines.md §2 DepositStatus). 승인된 결제가 없으면(결제 없음·결제 대기·무료 대여) null",
+            "enum": [
+              "NONE",
+              "FROZEN",
+              "HELD",
+              "REFUNDED",
+              "FORFEITED",
+              "REFUND_FAILED"
+            ],
+            "example": "FROZEN"
           },
           "endDate": {
             "type": "string",
@@ -6676,6 +8005,10 @@
           },
           "item": {
             "$ref": "#/components/schemas/RentalItem"
+          },
+          "latestDeductionProposal": {
+            "$ref": "#/components/schemas/Proposal",
+            "description": "가장 최근 차감 제안(상태 무관, REQ-049). 대여자는 status PROPOSED이고 respondDeadline 전이면 proposalId로 수락·거절한다. 없으면 null"
           },
           "myRole": {
             "type": "string",
@@ -6701,6 +8034,12 @@
             "format": "int32",
             "description": "일 대여료 (예약 시점)",
             "example": 10000
+          },
+          "refundedAmount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "누적 환불액(원). 취소 환불·보증금 반환을 더한 값, 승인된 결제가 없으면 0",
+            "example": 0
           },
           "rentalDays": {
             "type": "integer",
@@ -6907,6 +8246,16 @@
           "thumbnailUrl": {
             "type": "string",
             "description": "대표 이미지 썸네일 URL. 이미지가 없으면 null"
+          }
+        }
+      },
+      "RentalLostReportRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "신고 메모(선택). 최대 글자 수는 policies.md return.note-max",
+            "example": "연락이 닿지 않고 물건을 돌려받지 못했어요"
           }
         }
       },
