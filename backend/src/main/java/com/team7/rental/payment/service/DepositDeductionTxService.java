@@ -174,12 +174,13 @@ public class DepositDeductionTxService {
 	 */
 	public Optional<Settlement> autoAccept(DeductionAutoAcceptTarget target, LocalDateTime now) {
 		RentalDepositView view = rentalPaymentTxService.lockForDeposit(target.rentalId());
+		List<Payment> payments = lockPayments(target.rentalId());
 		DeductionProposal proposal = deductionProposalRepository.findById(target.proposalId()).orElse(null);
 		if (proposal == null || !proposal.isAutoAcceptDue(now, renterResponseHours())
 			|| view.status() != RentalStatus.RETURNED) {
 			return Optional.empty();
 		}
-		Optional<Payment> payment = lockPayments(target.rentalId()).stream()
+		Optional<Payment> payment = payments.stream()
 			.filter(Payment::isDepositSettleable)
 			.findFirst();
 		if (payment.isEmpty()) {
