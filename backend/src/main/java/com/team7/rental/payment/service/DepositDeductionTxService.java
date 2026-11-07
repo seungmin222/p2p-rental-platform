@@ -35,6 +35,7 @@ import com.team7.rental.rental.service.RentalRefundPort.Completion;
 import com.team7.rental.rental.service.RentalRefundPort.RefundTicket;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 보증금 보류·차감의 트랜잭션 부분 (REQ-049). PG 호출·사진 업로드·알림은 {@link DepositDeductionService}가 트랜잭션 밖에서 한다.
@@ -47,6 +48,7 @@ import lombok.RequiredArgsConstructor;
  * <p>
  * 상한은 대여 시점이 아니라 현재 물품 카테고리의 damage_policies로 계산한다(대여에 카테고리 스냅샷이 없다).
  */
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -184,6 +186,9 @@ public class DepositDeductionTxService {
 			.filter(Payment::isDepositSettleable)
 			.findFirst();
 		if (payment.isEmpty()) {
+			// 제안이 PROPOSED로 남았는데 보류(HELD)가 아니거나 환불이 진행 중이다. 정상 흐름에서는 생기지 않는다
+			log.warn("Deduction auto-accept skipped, deposit not settleable: rentalId={}, proposalId={}",
+				target.rentalId(), target.proposalId());
 			return Optional.empty();
 		}
 		proposal.autoAccept(now, renterResponseHours());
