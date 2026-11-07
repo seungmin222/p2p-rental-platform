@@ -15,7 +15,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V7 | `V7__create_payment_tables.sql` | `feat/payment-core` | 머지 |
 | V8 | `V8__create_damage_policies.sql` | `feat/item-crud` | 머지 |
 | V9 | `V9__insert_regions.sql` | `feat/item-crud` | 머지 |
-| V10 | `V10__create_deduction_proposals.sql` | `feat/payment-deposit` | 작업 중 |
+| V10 | `V10__create_deduction_proposals.sql` | `feat/payment-deposit` | 머지 |
 
 ## 규칙
 
