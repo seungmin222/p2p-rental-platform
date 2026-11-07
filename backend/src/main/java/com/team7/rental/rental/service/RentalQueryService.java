@@ -42,6 +42,7 @@ public class RentalQueryService {
 	private final ItemQueryService itemQueryService;
 	private final MemberQueryService memberQueryService;
 	private final OverdueFeeCalculator overdueFeeCalculator;
+	private final RentalDepositQueryPort rentalDepositQueryPort;
 	private final Clock clock;
 
 	/**
@@ -67,7 +68,8 @@ public class RentalQueryService {
 			.orElse(null);
 		return RentalDetailResponse.of(rental, rental.roleOf(memberId), item, counterpartId,
 			memberQueryService.getNickname(counterpartId), activeCancelAgreement, memberId,
-			overdueFeeCalculator.displayFee(rental, LocalDate.now(clock)));
+			overdueFeeCalculator.displayFee(rental, LocalDate.now(clock)),
+			rentalDepositQueryPort.findDepositInfo(rentalId).orElse(null));
 	}
 
 	/**

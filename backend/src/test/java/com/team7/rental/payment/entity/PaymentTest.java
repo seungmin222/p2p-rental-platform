@@ -149,4 +149,51 @@ class PaymentTest {
 		assertThat(payment.getDepositStatus()).isEqualTo(DepositStatus.FORFEITED);
 		assertThatThrownBy(payment::forfeitDeposit).isInstanceOf(BusinessException.class);
 	}
+
+	@Test
+	@DisplayName("보류는 FROZEN에서만 HELD로 바꾸고 보류 시각을 남긴다")
+	void holdDeposit() {
+		Payment payment = approved(10_000, 50_000);
+
+		payment.holdDeposit(NOW);
+
+		assertThat(payment.getDepositStatus()).isEqualTo(DepositStatus.HELD);
+		assertThat(payment.getHeldAt()).isEqualTo(NOW);
+		assertThat(payment.isDepositSettleable()).isTrue();
+		assertThatThrownBy(() -> payment.holdDeposit(NOW)).isInstanceOf(BusinessException.class)
+			.extracting("errorCode").isEqualTo(ErrorCode.PAYMENT_INVALID_STATUS);
+		assertThatThrownBy(() -> approved(10_000, 0).holdDeposit(NOW)).isInstanceOf(BusinessException.class);
+	}
+
+	@Test
+	@DisplayName("차감 결과는 보류 중이고 환불이 없을 때 한 번만 남고, 확정 뒤 반환을 시작하면 더 협의할 수 없다")
+	void recordDeductionOnce() {
+		Payment payment = approved(10_000, 50_000);
+		assertThatThrownBy(() -> payment.recordDeduction(DamageGrade.C, 20_000, "수리비"))
+			.isInstanceOf(BusinessException.class);
+		payment.holdDeposit(NOW);
+
+		payment.recordDeduction(DamageGrade.C, 20_000, "수리비");
+		payment.requestRefund(30_000, NOW);
+
+		assertThat(payment.getDamageGrade()).isEqualTo(DamageGrade.C);
+		assertThat(payment.getDeductionAmount()).isEqualTo(20_000);
+		assertThat(payment.getDeductionReason()).isEqualTo("수리비");
+		assertThat(payment.isDepositSettleable()).isFalse();
+		assertThatThrownBy(() -> payment.recordDeduction(DamageGrade.D, 50_000, "전손"))
+			.isInstanceOf(BusinessException.class);
+		payment.applyRefund();
+		assertThat(payment.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
+	}
+
+	@Test
+	@DisplayName("보류된 보증금도 반환액 0원이면 FORFEITED다")
+	void forfeitHeld() {
+		Payment payment = approved(10_000, 50_000);
+		payment.holdDeposit(NOW);
+
+		payment.forfeitDeposit();
+
+		assertThat(payment.getDepositStatus()).isEqualTo(DepositStatus.FORFEITED);
+	}
 }

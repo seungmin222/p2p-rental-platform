@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * 대여 상세 (REQ-016, SCR-08). 스텝바와 상태 × 역할별 버튼을 그릴 만큼만 담는다.
- * 인계·반납 기록은 GET /api/rentals/{id}/inspections로 따로 본다. 결제 정보는 해당 REQ에서 추가한다.
+ * 인계·반납 기록은 GET /api/rentals/{id}/inspections로 따로 본다. 보증금 상태·누적 환불액·차감은 승인된 결제가 있을 때 채운다(REQ-025·049).
  */
 public record RentalDetailResponse(
 	@Schema(description = "대여 ID", example = "1")
@@ -89,14 +89,35 @@ public record RentalDetailResponse(
 	LocalDateTime createdAt,
 
 	@Schema(description = "진행 중인 양측 동의 취소 요청(REQUESTED이고 만료 전). 대여 예정(RESERVED)일 때만 채우고, 그 외 상태나 요청이 없으면 null")
-	ActiveCancelAgreement activeCancelAgreement) {
+	ActiveCancelAgreement activeCancelAgreement,
+
+	@Schema(description = "보증금 상태 (state-machines.md §2 DepositStatus). 승인된 결제가 없으면(결제 없음·결제 대기·무료 대여) null", allowableValues = {
+		"NONE", "FROZEN", "HELD", "REFUNDED", "FORFEITED", "REFUND_FAILED"}, example = "FROZEN")
+	String depositStatus,
+
+	@Schema(description = "누적 환불액(원). 취소 환불·보증금 반환을 더한 값, 승인된 결제가 없으면 0", example = "0")
+	int refundedAmount,
+
+	@Schema(description = "아직 끝나지 않은 환불이 있는지(보증금 반환 처리 중·재시도 대기). 승인된 결제가 없으면 false", example = "false")
+	boolean depositRefundPending,
+
+	@Schema(description = "보증금 보류(HELD) 시작 시각. 보류된 적이 없으면 null. + policies.md deposit.hold-agreement-days가 지나면 관리자 확정 대상")
+	LocalDateTime depositHeldAt,
+
+	@Schema(description = "확정된 보증금 차감 (REQ-049). 확정 전이면 null")
+	RentalDepositInfo.Deduction deduction,
+
+	@Schema(description = "가장 최근 차감 제안(상태 무관, REQ-049). 대여자는 status PROPOSED이고 respondDeadline 전이면 proposalId로 수락·거절한다. 없으면 null")
+	RentalDepositInfo.Proposal latestDeductionProposal) {
 
 	/**
 	 * @param activeCancelAgreement 진행 중인 동의 취소 요청. 없으면 null
 	 * @param overdueFee 현재까지 또는 확정 연체료 (OverdueFeeCalculator#displayFee)
+	 * @param depositInfo 승인된 결제의 보증금 정보. 없으면 null
 	 */
 	public static RentalDetailResponse of(Rental rental, RentalRole myRole, ItemSummary item, Long counterpartId,
-		String counterpartNickname, RentalCancelAgreement activeCancelAgreement, Long memberId, int overdueFee) {
+		String counterpartNickname, RentalCancelAgreement activeCancelAgreement, Long memberId, int overdueFee,
+		RentalDepositInfo depositInfo) {
 		return new RentalDetailResponse(
 			rental.getId(),
 			rental.getStatus(),
@@ -121,7 +142,13 @@ public record RentalDetailResponse(
 			rental.getCancelFee(),
 			overdueFee,
 			rental.getCreatedAt(),
-			activeCancelAgreement == null ? null : ActiveCancelAgreement.of(activeCancelAgreement, memberId));
+			activeCancelAgreement == null ? null : ActiveCancelAgreement.of(activeCancelAgreement, memberId),
+			depositInfo == null ? null : depositInfo.depositStatus(),
+			depositInfo == null ? 0 : depositInfo.refundedAmount(),
+			depositInfo != null && depositInfo.refundPending(),
+			depositInfo == null ? null : depositInfo.heldAt(),
+			depositInfo == null ? null : depositInfo.deduction(),
+			depositInfo == null ? null : depositInfo.latestProposal());
 	}
 
 	public record RentalItem(

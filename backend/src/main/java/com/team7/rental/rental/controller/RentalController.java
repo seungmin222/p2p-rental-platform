@@ -28,6 +28,7 @@ import com.team7.rental.rental.dto.RentalCreateRequest;
 import com.team7.rental.rental.dto.RentalDetailResponse;
 import com.team7.rental.rental.dto.RentalHandoverRequest;
 import com.team7.rental.rental.dto.RentalInspectionResponse;
+import com.team7.rental.rental.dto.RentalLostReportRequest;
 import com.team7.rental.rental.dto.RentalReturnConfirmRequest;
 import com.team7.rental.rental.dto.RentalReturnRequest;
 import com.team7.rental.rental.service.RentalCancelService;
@@ -186,7 +187,8 @@ public class RentalController {
 
 	@Operation(summary = "제공자 상태 확인 (REQ-018)", description = "제공자가 반납된 물품을 정상(NORMAL) 또는 이상(ABNORMAL)으로 판정한다. 판정은 한 번만 할 수 있다. "
 		+ "NORMAL은 보증금을 반환하고 거래 완료(COMPLETED)가 된다. 반환이 실패했거나 PG 결과를 알 수 없으면(타임아웃) 200에 status RETURNED로 답하고 재시도 배치가 완료한다. "
-		+ "ABNORMAL은 동결된 보증금이 있으면 RETURNED로 남고(차감은 REQ-049), 없으면 판정만 기록하고 COMPLETED가 된다. "
+		+ "ABNORMAL은 동결된 보증금이 있으면 보류(HELD)하고 RETURNED로 남아 차감 흐름(REQ-049)으로 이어지며 대여자에게 DEPOSIT_HELD 알림, 없으면 판정만 기록하고 COMPLETED가 된다. "
+		+ "미반납 신고 건은 판정할 수 없다(409 RENTAL_INVALID_TRANSITION, 차감 흐름으로 끝낸다). "
 		+ "반납 요청 후 policies.md return.auto-confirm-days가 지나도록 판정하지 않으면 자동으로 정상 처리된다. "
 		+ "multipart: request part(Content-Type application/json, 필수) { result, resultNote } + images 파일들. "
 		+ "ABNORMAL이면 resultNote(최대 inspection.abnormal-note-max자)와 사진(inspection.images.min~max장) 필수, NORMAL이면 resultNote 선택이고 사진을 보내면 400. "
@@ -207,5 +209,25 @@ public class RentalController {
 		@RequestPart(value = "images", required = false)
 		List<MultipartFile> images) {
 		return ApiResponse.ok(rentalInspectionService.confirmReturn(rentalId, memberId, request, images));
+	}
+
+	@Operation(summary = "미반납 신고 (REQ-018, REQ-049)", description = "반납 예정일 + policies.md lost-report.after-days가 지난 연체(OVERDUE) 건을 제공자가 미반납으로 신고한다. "
+		+ "반납 사진 없이 반납 완료(RETURNED)가 되고 연체료는 신고일 기준으로 확정된다. 동결된 보증금이 있으면 보류(HELD)되고 제공자는 이어서 D 등급 차감을 제안한다"
+		+ "(PATCH /api/rentals/{id}/deposit). 동결된 보증금이 없으면(결제 없음·보증금 0원) 처리할 금액이 없어 바로 거래 완료(COMPLETED)다. "
+		+ "신고 건은 물건이 돌아와도 상태 확인을 하지 않고 차감 흐름(D 등급, 0원 이상)으로 끝낸다. 대여자에게 LOST_REPORTED 알림. "
+		+ "본문은 선택이고 note 최대 글자 수는 policies.md return.note-max. "
+		+ "검사 순서: 400 COMMON_INVALID_INPUT → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → "
+		+ "409 RENTAL_INVALID_TRANSITION(연체 아님) → 409 RENTAL_LOST_REPORT_TOO_EARLY. 응답은 대여 상세와 같다.")
+	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT,
+		RENTAL_OWNER_ONLY, RENTAL_INVALID_TRANSITION, RENTAL_LOST_REPORT_TOO_EARLY})
+	@PostMapping("/{rentalId}/lost-report")
+	public ApiResponse<RentalDetailResponse> reportLost(@LoginMember
+	Long memberId, @PathVariable
+	Long rentalId,
+		@Valid @RequestBody(required = false)
+		RentalLostReportRequest request) {
+		String note = request == null ? null : request.normalizedNote();
+		return ApiResponse.ok(rentalInspectionService.reportLost(rentalId, memberId, note));
 	}
 }

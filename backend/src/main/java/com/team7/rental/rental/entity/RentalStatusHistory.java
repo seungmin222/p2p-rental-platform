@@ -31,7 +31,7 @@ public class RentalStatusHistory extends BaseTimeEntity {
 	public static final String REASON_RETURN_REQUEST = "RETURN_REQUEST";
 	/** 상태 확인 '정상' (REQ-018) */
 	public static final String REASON_RETURN_CONFIRM_NORMAL = "RETURN_CONFIRM_NORMAL";
-	/** 상태 확인 '이상'. 1순위는 기록만 하고 COMPLETED (REQ-018) */
+	/** 상태 확인 '이상'. 동결 보증금이 있으면 RETURNED → RETURNED(HELD, REQ-049), 없으면 COMPLETED (REQ-018) */
 	public static final String REASON_RETURN_CONFIRM_ABNORMAL = "RETURN_CONFIRM_ABNORMAL";
 	/** 자동 상태 확인 배치 (REQ-018). changedBy = null */
 	public static final String REASON_RETURN_AUTO_CONFIRM_BATCH = "RETURN_AUTO_CONFIRM_BATCH";
@@ -47,6 +47,14 @@ public class RentalStatusHistory extends BaseTimeEntity {
 	public static final String REASON_REFUND_RETRY_BATCH = "REFUND_RETRY_BATCH";
 	/** 연체 배치 RENTING → OVERDUE (REQ-023). changedBy = null */
 	public static final String REASON_OVERDUE_BATCH = "OVERDUE_BATCH";
+	/** 미반납 신고 OVERDUE → RETURNED, 동결 보증금이 없으면 이어서 COMPLETED (REQ-018·049). changedBy = 제공자 */
+	public static final String REASON_LOST_REPORT = "LOST_REPORT";
+	/** 차감 제안 수락으로 완료 (REQ-049). changedBy = 대여자 */
+	public static final String REASON_DEDUCTION_ACCEPTED = "DEDUCTION_ACCEPTED";
+	/** 차감 제안 72시간 무응답 자동 수락 배치로 완료 (REQ-049). changedBy = null */
+	public static final String REASON_DEDUCTION_AUTO_ACCEPT_BATCH = "DEDUCTION_AUTO_ACCEPT_BATCH";
+	/** 관리자 차감 확정으로 완료 (REQ-049). changedBy = 관리자 */
+	public static final String REASON_DEDUCTION_ADMIN_DECIDED = "DEDUCTION_ADMIN_DECIDED";
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

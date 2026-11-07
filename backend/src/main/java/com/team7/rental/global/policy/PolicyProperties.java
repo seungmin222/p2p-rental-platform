@@ -65,7 +65,13 @@ public record PolicyProperties(
 	@Valid @NotNull
 	ViewCount viewCount,
 	@Valid @NotNull
-	OverdueFee overdueFee) {
+	OverdueFee overdueFee,
+	@Valid @NotNull
+	LostReport lostReport,
+	@Valid @NotNull
+	Deduction deduction,
+	@Valid @NotNull
+	Deposit deposit) {
 
 	public record PageSize(@Positive
 	int page) {
@@ -140,6 +146,35 @@ public record PolicyProperties(
 	public record OverdueFee(
 		@Positive
 		int ratePercent) {
+	}
+
+	/**
+	 * @param afterDays 반납 예정일 + 이 일수가 지난(오늘 &gt; endDate + afterDays) 연체 건부터 미반납 신고 가능 (lost-report.after-days)
+	 */
+	public record LostReport(
+		@Positive
+		int afterDays) {
+	}
+
+	/**
+	 * 보증금 차감 (REQ-049)
+	 *
+	 * @param reasonMax 차감 사유 최대 글자 수 (deduction.reason.max)
+	 * @param renterResponseHours 차감 제안에 대여자가 이 시간 동안 응답하지 않으면 자동 수락 (deduction.renter-response-hours)
+	 */
+	public record Deduction(
+		@Positive
+		int reasonMax,
+		@Positive
+		int renterResponseHours) {
+	}
+
+	/**
+	 * @param holdAgreementDays 보류 시작 후 이 일수가 지나면 관리자 확정 대상 (deposit.hold-agreement-days)
+	 */
+	public record Deposit(
+		@Positive
+		int holdAgreementDays) {
 	}
 
 	/**

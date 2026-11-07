@@ -3,7 +3,7 @@ package com.team7.rental.rental.service;
 import java.time.LocalDate;
 
 /**
- * 대여 흐름이 부르는 알림 발행 (REQ-031, notification.md). 알림 저장·실시간 전달은 알림 도메인(REQ-032) 구현이 맡고 rental은 그쪽을 직접 알지 않는다.
+ * 대여 흐름이 부르는 알림 발행 (REQ-031·049, notification.md). 보증금 보류·차감(payment 도메인)도 이 포트를 쓴다(payment → rental 방향). 알림 저장·실시간 전달은 알림 도메인(REQ-032) 구현이 맡고 rental은 그쪽을 직접 알지 않는다.
  * 032 머지 전 운영 빈은 로그만 남기는 {@link LoggingRentalNotificationPort}다.
  * <p>
  * 계약:
@@ -19,7 +19,13 @@ public interface RentalNotificationPort {
 
 	/** state-machines.md §5 NotificationType 중 rental이 발행하는 것. 이름이 같으므로 구현은 name()으로 매핑한다 */
 	enum Type {
-		OVERDUE, RETURN_REMINDER
+		OVERDUE,
+		RETURN_REMINDER,
+		LOST_REPORTED,
+		DEPOSIT_HELD,
+		DEDUCTION_PROPOSED,
+		DEDUCTION_ACCEPTED,
+		DEDUCTION_REJECTED
 	}
 
 	/** notifications.target_type 중 rental이 쓰는 것 (클릭 시 대여 상세로 이동) */
@@ -45,5 +51,15 @@ public interface RentalNotificationPort {
 	 */
 	static String returnReminderEventId(Long rentalId, LocalDate endDate) {
 		return Type.RETURN_REMINDER.name() + ":" + rentalId + ":" + endDate;
+	}
+
+	/** 한 대여에 한 번인 알림 키 {@code {TYPE}:{rentalId}} (LOST_REPORTED, DEPOSIT_HELD) */
+	static String rentalEventId(Type type, Long rentalId) {
+		return type.name() + ":" + rentalId;
+	}
+
+	/** 차감 제안별 알림 키 {@code {TYPE}:{rentalId}:{proposalId}} (notification.md event_id 규칙) */
+	static String deductionEventId(Type type, Long rentalId, Long proposalId) {
+		return type.name() + ":" + rentalId + ":" + proposalId;
 	}
 }

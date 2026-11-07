@@ -1,5 +1,6 @@
 package com.team7.rental.rental.service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -30,7 +31,8 @@ public interface RentalRefundPort {
 	Optional<RefundTicket> prepareCancelRefund(Long rentalId, int cancelFee);
 
 	/**
-	 * 보증금 반환을 준비한다 (REQ-025). 반환액 = 보증금 − 연체료. 0원이면 PG 없이 FORFEITED로 끝낸다.
+	 * 보증금 반환을 준비한다 (REQ-025). 반환액 = 보증금 − 연체료. 0원이면 PG 없이 FORFEITED로 끝낸다. 동결(FROZEN)된 보증금만 다룬다:
+	 * 보류(HELD)된 보증금은 차감 확정(REQ-049)으로만 끝난다(state-machines.md §2).
 	 *
 	 * @param overdueFee rentals.overdue_fee. 반납 요청 때 확정된다(REQ-023)
 	 * @param completion 반환이 끝날 때 대여 완료 이력에 남길 정보
@@ -39,8 +41,12 @@ public interface RentalRefundPort {
 	 */
 	Optional<RefundTicket> prepareDepositReturn(Long rentalId, int overdueFee, Completion completion);
 
-	/** 동결된 보증금이 있는지. 상태 확인 '이상'이면 REQ-049까지 RETURNED로 둔다 */
-	boolean hasFrozenDeposit(Long rentalId);
+	/**
+	 * 동결된 보증금을 보류한다 (FROZEN → HELD, REQ-049). 상태 확인 '이상'·미반납 신고에서 호출하는 쪽의 트랜잭션(대여 행 락 안)에서 부른다.
+	 *
+	 * @return 보류했으면 true. 동결된 보증금이 없으면(결제 없음·보증금 0원) false라 호출하는 쪽이 바로 COMPLETED로 바꾼다
+	 */
+	boolean holdDeposit(Long rentalId, LocalDateTime now);
 
 	/** PG를 부르고 결과를 반영한다(TX2). 실패해도 던지지 않고 환불이 남아 재시도 배치가 처리한다 */
 	void execute(RefundTicket ticket);

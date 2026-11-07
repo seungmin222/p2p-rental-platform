@@ -12,6 +12,9 @@ public final class StorageKeys {
 	/** 인계·반납·판정 사진 (REQ-017·018) */
 	public static final String INSPECTIONS = "inspections";
 
+	/** 보증금 차감 증빙·영수증 사진 (REQ-049) */
+	public static final String DEDUCTIONS = "deductions";
+
 	private static final Pattern DIRECTORY = Pattern.compile("[a-z0-9-]+(/[a-z0-9-]+)*");
 	private static final Pattern EXTENSION = Pattern.compile("[a-z0-9]{1,5}");
 	private static final Pattern KEY = Pattern.compile("[a-z0-9-]+(/[a-z0-9-]+)*/[a-z0-9-]+\\.[a-z0-9]{1,5}");

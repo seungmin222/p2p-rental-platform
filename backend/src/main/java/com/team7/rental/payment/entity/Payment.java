@@ -64,6 +64,9 @@ public class Payment extends BaseTimeEntity {
 	@Column(length = 30)
 	private DepositStatus depositStatus;
 
+	/** 보증금 보류 시작 (REQ-049). deposit.hold-agreement-days 관리자 확정 기준 */
+	private LocalDateTime heldAt;
+
 	@Column(nullable = false)
 	private int refundedAmount;
 
@@ -78,6 +81,18 @@ public class Payment extends BaseTimeEntity {
 
 	@Column(nullable = false)
 	private boolean needsAdminCheck;
+
+	/** 확정된 손상 등급 (REQ-049). 확정 때 한 번만 쓴다. 협의 이력은 deduction_proposals */
+	@Enumerated(EnumType.STRING)
+	@Column(length = 30)
+	private DamageGrade damageGrade;
+
+	/** 확정된 손상 차감액 */
+	private Integer deductionAmount;
+
+	/** 확정된 차감 사유 */
+	@Column(length = 500)
+	private String deductionReason;
 
 	/** 승인 API 멱등성 키 */
 	@Column(nullable = false, length = 100)
@@ -192,12 +207,39 @@ public class Payment extends BaseTimeEntity {
 	}
 
 	/**
-	 * 반환액 0원: PG 호출 없이 FROZEN → FORFEITED (REQ-025).
+	 * 상태 확인 '이상'·미반납 신고: FROZEN → HELD (REQ-049).
+	 *
+	 * @throws BusinessException PAYMENT_INVALID_STATUS
+	 */
+	public void holdDeposit(LocalDateTime now) {
+		if (depositStatus != DepositStatus.FROZEN) {
+			throw new BusinessException(ErrorCode.PAYMENT_INVALID_STATUS);
+		}
+		this.depositStatus = DepositStatus.HELD;
+		this.heldAt = now;
+	}
+
+	/**
+	 * 차감 확정 결과를 남긴다 (REQ-049). 보류 중이고 진행 중인 환불이 없을 때 한 번만. 금액 검증은 호출하는 쪽이 한다.
+	 *
+	 * @throws BusinessException PAYMENT_INVALID_STATUS
+	 */
+	public void recordDeduction(DamageGrade grade, int amount, String reason) {
+		if (!isDepositSettleable() || damageGrade != null) {
+			throw new BusinessException(ErrorCode.PAYMENT_INVALID_STATUS);
+		}
+		this.damageGrade = grade;
+		this.deductionAmount = amount;
+		this.deductionReason = reason;
+	}
+
+	/**
+	 * 반환액 0원: PG 호출 없이 FROZEN(REQ-025)·HELD(차감 확정, REQ-049) → FORFEITED.
 	 *
 	 * @throws BusinessException PAYMENT_INVALID_STATUS
 	 */
 	public void forfeitDeposit() {
-		if (depositStatus != DepositStatus.FROZEN) {
+		if (depositStatus != DepositStatus.FROZEN && depositStatus != DepositStatus.HELD) {
 			throw new BusinessException(ErrorCode.PAYMENT_INVALID_STATUS);
 		}
 		this.depositStatus = DepositStatus.FORFEITED;
@@ -215,5 +257,10 @@ public class Payment extends BaseTimeEntity {
 
 	public boolean isDepositFrozen() {
 		return depositStatus == DepositStatus.FROZEN;
+	}
+
+	/** 차감 협의·확정을 할 수 있는지: 보류 중이고 진행 중인 환불이 없다 */
+	public boolean isDepositSettleable() {
+		return depositStatus == DepositStatus.HELD && refundPendingAmount == null;
 	}
 }

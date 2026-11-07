@@ -67,6 +67,8 @@ public enum ErrorCode {
 	RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE(HttpStatus.FORBIDDEN, "본인이 보낸 취소 동의 요청에는 응답할 수 없습니다."),
 	RENTAL_CANCEL_AGREEMENT_CLOSED(HttpStatus.CONFLICT, "이미 응답했거나 만료된 취소 동의 요청입니다."),
 	RENTAL_HANDOVER_TOO_EARLY(HttpStatus.CONFLICT, "대여 시작일부터 인계를 확인할 수 있습니다."),
+	RENTAL_RENTER_ONLY(HttpStatus.FORBIDDEN, "대여자만 처리할 수 있습니다."),
+	RENTAL_LOST_REPORT_TOO_EARLY(HttpStatus.CONFLICT, "반납 예정일로부터 정해진 기간이 지난 연체 건만 미반납 신고할 수 있습니다."),
 
 	// 결제
 	PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "결제 내역을 찾을 수 없습니다."),
@@ -78,7 +80,19 @@ public enum ErrorCode {
 	/** PG 응답을 받지 못했다. 같은 요청을 다시 보내도 중복 승인되지 않는다 */
 	PAYMENT_RESULT_UNKNOWN(HttpStatus.SERVICE_UNAVAILABLE, "결제 결과를 확인하고 있습니다. 잠시 후 다시 시도해 주세요."),
 	/** 승인 직후 대여가 이미 만료·취소된 경합. 전액 취소를 진행한다 */
-	PAYMENT_CANCELED_AFTER_EXPIRY(HttpStatus.CONFLICT, "결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다.");
+	PAYMENT_CANCELED_AFTER_EXPIRY(HttpStatus.CONFLICT, "결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다."),
+
+	// 보증금 보류·차감 (REQ-049)
+	DEPOSIT_NOT_HELD(HttpStatus.CONFLICT, "보류 중인 보증금이 없거나 반환이 진행 중입니다."),
+	DEPOSIT_ADMIN_DECISION_TOO_EARLY(HttpStatus.CONFLICT, "보증금 보류 후 정해진 기간이 지나야 관리자가 확정할 수 있습니다."),
+	DEDUCTION_GRADE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "선택할 수 없는 손상 등급입니다."),
+	DEDUCTION_EXCEEDS_DEPOSIT(HttpStatus.BAD_REQUEST, "차감액이 남은 보증금보다 큽니다."),
+	/** details에 상한 금액을 담는다: { field: "maxAmount", reason: "30000" } */
+	DEDUCTION_EXCEEDS_CAP(HttpStatus.BAD_REQUEST, "차감액이 등급별 차감 상한을 넘습니다."),
+	DEDUCTION_EVIDENCE_REQUIRED(HttpStatus.BAD_REQUEST, "증빙 자료가 필요합니다."),
+	DEDUCTION_PROPOSAL_IN_PROGRESS(HttpStatus.CONFLICT, "대여자 응답을 기다리는 차감 제안이 있습니다."),
+	DEDUCTION_PROPOSAL_NOT_FOUND(HttpStatus.NOT_FOUND, "응답할 차감 제안이 없습니다."),
+	DEDUCTION_PROPOSAL_CLOSED(HttpStatus.CONFLICT, "이미 응답했거나 응답 기한이 지난 차감 제안입니다.");
 
 	private final HttpStatus status;
 	private final String message;

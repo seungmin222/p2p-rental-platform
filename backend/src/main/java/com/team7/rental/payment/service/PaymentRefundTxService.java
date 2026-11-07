@@ -80,8 +80,11 @@ public class PaymentRefundTxService {
 		return Optional.of(prepare(payment, refund, RefundPurpose.DEPOSIT, completion));
 	}
 
-	public boolean hasFrozenDeposit(Long rentalId) {
-		return findFrozen(rentalId).isPresent();
+	/** 보증금 보류 (REQ-049). 호출하는 쪽이 대여 행 락을 잡은 트랜잭션 안에서 부른다 */
+	public boolean holdDeposit(Long rentalId, LocalDateTime now) {
+		Optional<Payment> frozen = findFrozen(rentalId);
+		frozen.ifPresent(payment -> payment.holdDeposit(now));
+		return frozen.isPresent();
 	}
 
 	private Optional<Payment> findFrozen(Long rentalId) {

@@ -15,7 +15,7 @@ import jakarta.validation.Payload;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = {HandoverRequestValidator.class, ReturnRequestValidator.class,
-	ReturnConfirmRequestValidator.class})
+	ReturnConfirmRequestValidator.class, LostReportRequestValidator.class})
 public @interface ValidInspectionText{
 
 	String message() default "입력값이 올바르지 않습니다.";
