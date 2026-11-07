@@ -58,7 +58,7 @@ public class ItemInspection extends BaseTimeEntity {
 	@Column(length = 300)
 	private String note;
 
-	/** 미반납 신고(REQ-018 2순위). 1순위에서는 항상 false */
+	/** 미반납 신고(REQ-018·049). 신고 기록은 판정하지 않고 차감 흐름으로만 끝낸다 */
 	@Column(nullable = false)
 	private boolean lostReported;
 
@@ -91,6 +91,18 @@ public class ItemInspection extends BaseTimeEntity {
 		Map<ReturnChecklistItem, Boolean> copy = new EnumMap<>(ReturnChecklistItem.class);
 		copy.putAll(Objects.requireNonNull(checklist, "checklist"));
 		return create(rentalId, InspectionPhase.RETURN, writtenBy, imageUrls, copy, note);
+	}
+
+	/**
+	 * 미반납 신고 기록 (REQ-018·049). 반납 사진·체크리스트 없이 RETURN 단계로 남긴다.
+	 *
+	 * @param writtenBy 신고한 제공자
+	 * @param note 정규화된 메모. 없으면 null
+	 */
+	public static ItemInspection lostReported(Long rentalId, Long writtenBy, String note) {
+		ItemInspection inspection = create(rentalId, InspectionPhase.RETURN, writtenBy, List.of(), null, note);
+		inspection.lostReported = true;
+		return inspection;
 	}
 
 	private static ItemInspection create(Long rentalId, InspectionPhase phase, Long writtenBy, List<String> imageUrls,

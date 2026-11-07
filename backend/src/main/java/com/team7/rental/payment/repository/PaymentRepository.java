@@ -66,6 +66,22 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	Optional<Payment> findFirstByRentalIdAndTypeAndStatusOrderByIdDesc(Long rentalId, PaymentType type,
 		PaymentStatus status);
 
+	/** 대여의 결제 행들, 최신 순. 조회·사전 검사용 일반 읽기(잠그지 않는다) */
+	List<Payment> findAllByRentalIdAndTypeOrderByIdDesc(Long rentalId, PaymentType type);
+
+	/**
+	 * 관리자 확정 대상 (REQ-049): 보류 중이고 진행 중인 환불이 없으며 heldAt ≤ threshold(now − deposit.hold-agreement-days). 보류가 오래된 순
+	 */
+	@Query("""
+		select p from Payment p
+		where p.depositStatus = com.team7.rental.payment.entity.DepositStatus.HELD
+			and p.refundPendingAmount is null
+			and p.heldAt <= :threshold
+		order by p.heldAt, p.id
+		""")
+	List<Payment> findHeldBefore(@Param("threshold")
+	LocalDateTime threshold);
+
 	/** 대여의 결제 행들, 최신 순. 같은 대여에 FAILED 뒤 새 주문이 있을 수 있다 */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select p from Payment p where p.rentalId = :rentalId and p.type = :type order by p.id desc")

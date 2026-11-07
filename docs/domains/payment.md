@@ -57,18 +57,20 @@
 
 **데이터 역할**: `deduction_proposals`는 협의 이력(제안·거절·수락 전부), `payments`의 `damage_grade`·`deduction_amount`·`deduction_reason`은 **확정된 결과**만 담는다(손상 발생률 집계용). 확정 시점에 한 번만 복사하고 이후 수정하지 않는다.
 
-1. 상태 확인 ABNORMAL 또는 미반납 신고 → depositStatus=HELD, `held_at=now`, 정산 보류
-2. **제안(PROPOSE, 제공자)**: grade(B/C/D), amount, reason(500자), evidence 사진 필수. C는 수리 견적서·영수증 필수, B 소모품 실비(TOOL)는 구매 내역 필수. 미반납 신고 건은 D 등급만
-   - 상한 계산(`GET /api/rentals/{id}/deposit/policy?grade=`): `policies.md` §4 계산 규칙(연체료를 뺀 **남은 보증금** 기준)
-   - 검증: amount > 남은 보증금 → 400 `DEDUCTION_EXCEEDS_DEPOSIT`, amount > 상한 → 400 `DEDUCTION_EXCEEDS_CAP` + 상한 금액, C인데 증빙 없음 → 400 `DEDUCTION_EVIDENCE_REQUIRED`
-   - 진행 중인 PROPOSED 제안이 있으면 409. deduction_proposals 저장, 대여자 알림 `DEDUCTION_PROPOSED`, 채팅방에 SYSTEM 메시지
-3. **수락(ACCEPT, 대여자)** 또는 **72시간 무응답 자동 수락**(배치 1시간, 제안 status=AUTO_ACCEPTED): 확정 처리로 이동
+1. 상태 확인 ABNORMAL 또는 미반납 신고 → depositStatus=HELD, `held_at=now`, 정산 보류. 대여자 알림 `DEPOSIT_HELD`(이상 판정) 또는 `LOST_REPORTED`(미반납 신고). 동결된 보증금이 없으면(결제 없음·보증금 0원) 보류할 금액이 없어 바로 COMPLETED
+2. **제안(PROPOSE, 제공자)**: multipart — request part `{ action, grade(B/C/D), amount, reason(deduction.reason.max) }` + `evidenceImages`(손상 사진) + `receiptImages`(견적서·영수증·구매 내역). 손상 사진 필수(미반납 신고 건은 물건이 없어 선택). damage_policies의 deduction_type이 `ACTUAL`(C 전부, TOOL의 B 소모품 실비)이면 receiptImages 필수. 사진 장수·용량은 차감용 정책 키가 없어 `inspection.images.*`를 쓴다(open-issues #40). 미반납 신고 건은 D 등급만
+   - 상한 계산(`GET /api/rentals/{id}/deposit/policy?grade=`, 당사자): `policies.md` §4 계산 규칙(연체료를 뺀 **남은 보증금** 기준). 카테고리는 대여 시점이 아니라 **물품의 현재 카테고리**로 본다(대여에 카테고리 스냅샷이 없다)
+   - 검증 순서: 진행 중인 PROPOSED 제안(기한이 지나 자동 수락을 기다리는 것 포함) → 409 `DEDUCTION_PROPOSAL_IN_PROGRESS`, A 등급·미반납 건의 D 아닌 등급 → 400 `DEDUCTION_GRADE_NOT_ALLOWED`, amount > 남은 보증금 → 400 `DEDUCTION_EXCEEDS_DEPOSIT`, amount > 상한 → 400 `DEDUCTION_EXCEEDS_CAP`(details `{field: maxAmount, reason: 금액}`), 필수 증빙 없음 → 400 `DEDUCTION_EVIDENCE_REQUIRED`
+   - 보증금이 보류 중이 아니거나 반환이 진행 중이면 409 `DEPOSIT_NOT_HELD`. deduction_proposals 저장, 대여자 알림 `DEDUCTION_PROPOSED`, 채팅방에 SYSTEM 메시지(채팅 구현 후)
+3. **수락(ACCEPT, 대여자)** 또는 **72시간 무응답 자동 수락**(배치 1시간, 제안 status=AUTO_ACCEPTED): 확정 처리로 이동. 수락·거절은 `proposalId`를 보낸다(다른 제안에 잘못 응답하지 않게). 응답 기한(제안 + `deduction.renter-response-hours`)이 지나면 배치가 돌기 전이어도 409 `DEDUCTION_PROPOSAL_CLOSED`(open-issues #43)
 4. **거절(REJECT, 대여자)**: 제안 REJECTED, 제공자 알림 `DEDUCTION_REJECTED`. 제공자는 다시 제안 가능
-5. **보류 7일 초과 → 관리자 확정** (2순위로 앞당김): `PATCH /api/admin/rentals/{id}/deposit { grade, amount, reason }` (ADMIN 전용). 상한 검증은 같고, 제안 status=ADMIN_DECIDED로 기록. 관리자 화면 전체(REQ-057)는 3순위라, 2순위에서는 이 API와 "보류 7일 초과 목록" API(`GET /api/admin/deposits/held`)만 만든다
+5. **보류 7일 초과 → 관리자 확정** (2순위로 앞당김): `PATCH /api/admin/rentals/{id}/deposit { grade, amount, reason }` (ADMIN 전용). 상한 검증은 같고, 제안 이력에 status=ADMIN_DECIDED 행으로 기록. 보류 후 `deposit.hold-agreement-days` 전이면 409 `DEPOSIT_ADMIN_DECISION_TOO_EARLY`, 대여자 응답을 기다리는 제안이 있으면 409 `DEDUCTION_PROPOSAL_IN_PROGRESS`(그 결과를 기다린다). 관리자 화면 전체(REQ-057)는 3순위라, 2순위에서는 이 API와 "보류 7일 초과 목록" API(`GET /api/admin/deposits/held`, 페이지 없이 전체, 보류가 오래된 순, open-issues #42)만 만든다
 6. **확정 처리 (3·5 공통)**: 반환액 = deposit − overdueFee − amount
    - 반환액 > 0 → 부분 취소(멱등성 키 `deposit-refund:{rentalId}`) → depositStatus=REFUNDED
    - 반환액 = 0 → PG 호출 없이 depositStatus=FORFEITED
-   - payments에 확정 결과 복사 → rental COMPLETED → 정산 생성. 제공자 알림 `DEDUCTION_ACCEPTED`
+   - payments에 확정 결과 복사 → rental COMPLETED → 정산 생성(REQ-039에서 붙인다). 양측 알림 `DEDUCTION_ACCEPTED`(notification.md 표)
+   - 한 대여의 보증금 반환(키 `deposit-refund:{rentalId}`)은 정상 반환(FROZEN)과 차감 확정(HELD) 중 한 번만 일어난다: 차감 협의·확정은 HELD이고 진행 중인 환불이 없을 때만, 정상 반환은 FROZEN일 때만 한다
+   - 모든 쓰기는 대여 행 락 → 결제 행 락 순서. 수락·자동 수락·관리자 확정이 겹치면 늦은 쪽은 409(배치는 건너뜀)
 - 당사자 아님 403. 부분 취소 실패 → REFUND_FAILED + 재시도 배치
 - A 등급 판정 손상은 차감 불가(UI에서 등급 선택지에 A 없음)
 
@@ -99,7 +101,7 @@
 | 환불 재시도 | REFUND_FAILED → 같은 멱등성 키로 재시도, `refund_retry_count` 증가, 5회 초과 시 `needs_admin_check` |
 | 자동 상태 확인 | RETURNED + 3일 → NORMAL 처리 → 보증금 반환 |
 | 차감 제안 자동 수락 | PROPOSED + 72시간 → AUTO_ACCEPTED → 확정 처리 |
-| 보류 7일 초과 표시 | HELD + 7일 → 관리자 확정 대상 목록에 노출 |
+| 보류 7일 초과 표시 | HELD + 7일 → 관리자 확정 대상 목록에 노출. 바꿀 상태가 없어 배치를 두지 않고 목록 API가 `held_at`으로 조회한다 |
 | 정산 지급 | SCHEDULED → PAID |
 | 조정 | 최근 결제(`reconciliation.lookback-hours`)의 PG 조회 결과 ↔ 내부 상태 대조. 승인 응답 유실 건은 확정 또는 전액 환불로 보정, 잔액 불일치는 고치지 않고 로그 + `needs_admin_check` |
 

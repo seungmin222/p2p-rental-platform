@@ -36,8 +36,8 @@ public class PaymentRefundService implements RentalRefundPort {
 	}
 
 	@Override
-	public boolean hasFrozenDeposit(Long rentalId) {
-		return paymentRefundTxService.hasFrozenDeposit(rentalId);
+	public boolean holdDeposit(Long rentalId, LocalDateTime now) {
+		return paymentRefundTxService.holdDeposit(rentalId, now);
 	}
 
 	/** 재시도 배치 대상 */

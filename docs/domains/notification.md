@@ -30,8 +30,8 @@
 | 반납 리마인더 (`RETURN_REMINDER`, 예정일 하루 전) | ✔ | |
 | 미반납 신고 (`LOST_REPORTED`) | ✔ | |
 | 반납 요청 | | ✔ |
-| 상태 확인 결과·보증금 반환/보류 | ✔ | |
-| 차감 제안 | ✔ | |
+| 상태 확인 결과·보증금 반환/보류 (`INSPECTION_RESULT`·`DEPOSIT_REFUNDED`·`DEPOSIT_HELD`) | ✔ | |
+| 차감 제안 (`DEDUCTION_PROPOSED`) | ✔ | |
 | 차감 수락·자동 수락·관리자 확정 (`DEDUCTION_ACCEPTED`) | ✔ | ✔ |
 | 차감 거절 (`DEDUCTION_REJECTED`) | | ✔ |
 | 연체 | ✔ | ✔ |

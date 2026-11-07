@@ -21,6 +21,8 @@ import com.team7.rental.rental.dto.RentalHandoverRequest;
 import com.team7.rental.rental.dto.RentalReturnConfirmRequest;
 import com.team7.rental.rental.dto.RentalReturnRequest;
 import com.team7.rental.rental.entity.InspectionResult;
+import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +43,7 @@ public class RentalInspectionService {
 
 	private final RentalInspectionTxService rentalInspectionTxService;
 	private final RentalRefundPort rentalRefundPort;
+	private final RentalNotificationPort rentalNotificationPort;
 	private final RentalQueryService rentalQueryService;
 	private final ImageProcessor imageProcessor;
 	private final FileStorage fileStorage;
@@ -91,8 +94,30 @@ public class RentalInspectionService {
 			processed = processImages(images);
 		}
 		// 판정·환불 기록을 커밋한 뒤 트랜잭션 밖에서 PG를 부른다. 반환이 실패하면 RETURNED로 남고 재시도 배치가 COMPLETED로 끝낸다(REQ-025)
-		withUploaded(processed, urls -> rentalInspectionTxService.confirmReturn(rentalId, memberId, request.result(),
-			request.normalizedResultNote(), urls)).ifPresent(rentalRefundPort::execute);
+		RentalInspectionTxService.JudgeResult result = withUploaded(processed,
+			urls -> rentalInspectionTxService.confirmReturn(rentalId, memberId, request.result(),
+				request.normalizedResultNote(), urls));
+		if (result.refund() != null) {
+			rentalRefundPort.execute(result.refund());
+		}
+		if (result.depositHeld()) {
+			rentalNotificationPort.send(result.renterId(), Type.DEPOSIT_HELD, TargetType.RENTAL, rentalId,
+				RentalNotificationPort.rentalEventId(Type.DEPOSIT_HELD, rentalId));
+		}
+		return rentalQueryService.getRental(rentalId, memberId);
+	}
+
+	/**
+	 * 미반납 신고 (REQ-018·049). 제공자만. 사진 없이 반납 완료로 바꾸고 대여자에게 LOST_REPORTED를 보낸다(커밋 뒤).
+	 *
+	 * @param note 정규화된 메모. 없으면 null
+	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY, RENTAL_INVALID_TRANSITION,
+	 *     RENTAL_LOST_REPORT_TOO_EARLY
+	 */
+	public RentalDetailResponse reportLost(Long rentalId, Long memberId, String note) {
+		Long renterId = rentalInspectionTxService.reportLost(rentalId, memberId, note);
+		rentalNotificationPort.send(renterId, Type.LOST_REPORTED, TargetType.RENTAL, rentalId,
+			RentalNotificationPort.rentalEventId(Type.LOST_REPORTED, rentalId));
 		return rentalQueryService.getRental(rentalId, memberId);
 	}
 

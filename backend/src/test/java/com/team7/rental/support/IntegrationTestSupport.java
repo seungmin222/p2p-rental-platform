@@ -89,6 +89,11 @@ public abstract class IntegrationTestSupport {
 		return "Bearer " + jwtProvider.createAccessToken(memberId, "USER");
 	}
 
+	/** 관리자 Authorization 헤더 값 (role ADMIN). /api/admin/** 는 토큰의 역할만 본다 */
+	protected String adminBearerToken(Long memberId) {
+		return "Bearer " + jwtProvider.createAccessToken(memberId, "ADMIN");
+	}
+
 	/** 최초 테스트도 Flyway 행정동 시드와 테스트용 코드가 충돌하지 않도록 정리한다. */
 	@BeforeEach
 	void prepareIntegrationTest() {

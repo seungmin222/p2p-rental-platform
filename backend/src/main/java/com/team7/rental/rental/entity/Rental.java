@@ -397,6 +397,34 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
+	 * 미반납 신고할 수 있는지 확인한다 (REQ-018·049). OVERDUE이고 오늘 &gt; endDate + afterDays.
+	 *
+	 * @param afterDays lost-report.after-days
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION(OVERDUE 아님), RENTAL_LOST_REPORT_TOO_EARLY
+	 */
+	public void validateLostReport(LocalDate today, int afterDays) {
+		if (status != RentalStatus.OVERDUE) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+		if (!today.isAfter(endDate.plusDays(afterDays))) {
+			throw new BusinessException(ErrorCode.RENTAL_LOST_REPORT_TOO_EARLY);
+		}
+	}
+
+	/**
+	 * OVERDUE → RETURNED (미반납 신고, REQ-018·049). 반납 사진 없이 반납 완료로 바꾸고 신고일 기준 연체료를 확정한다.
+	 *
+	 * @param overdueFee OverdueFeeCalculator가 신고일 기준으로 계산한 연체료
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION, RENTAL_LOST_REPORT_TOO_EARLY
+	 */
+	public void reportLost(LocalDateTime now, int afterDays, int overdueFee) {
+		validateLostReport(now.toLocalDate(), afterDays);
+		this.status = RentalStatus.RETURNED;
+		this.returnedAt = now;
+		this.overdueFee = overdueFee;
+	}
+
+	/**
 	 * 상태 확인 '정상'에서 보증금 반환에 PG가 필요 없을 때 (REQ-018, 제공자 또는 자동 확인 배치). PG가 필요하면 반환이 끝난 뒤 {@link #complete}.
 	 *
 	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RETURNED 아님)
@@ -406,8 +434,8 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
-	 * 상태 확인 '이상' (REQ-018). RETURNED를 유지한다. 동결된 보증금이 없으면 서비스가 이어서 {@link #complete}를 부른다.
-	 * 보증금이 동결돼 있으면 RETURNED·FROZEN으로 남고, REQ-049에서 HELD로 바뀐다(RETURNED → RETURNED 이력).
+	 * 상태 확인 '이상' (REQ-018). RETURNED를 유지한다. 보증금 상태는 결제에 있어 서비스가 HELD로 바꾸고 RETURNED → RETURNED 이력을 남긴다
+	 * (REQ-049). 동결된 보증금이 없으면 서비스가 이어서 {@link #complete}를 부른다.
 	 *
 	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RETURNED 아님)
 	 */

@@ -210,6 +210,17 @@ public class ItemQueryService {
 	}
 
 	/**
+	 * 물품의 현재 카테고리 (보증금 차감 상한 계산, REQ-049). 삭제된 물품도 반환한다.
+	 *
+	 * @throws BusinessException ITEM_NOT_FOUND
+	 */
+	public Long getCategoryId(Long itemId) {
+		return itemRepository.findById(itemId)
+			.map(Item::getCategoryId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
+	}
+
+	/**
 	 * {@link #getSummary}의 일괄 조회판(목록 화면용). 규칙이 같아 삭제된 물품도 담는다. 쿼리는 물품 수와 상관없이 2개(물품·대표 이미지)다.
 	 * 대표 이미지가 sort_order로 동률이면 id가 작은 것을 쓴다.
 	 *

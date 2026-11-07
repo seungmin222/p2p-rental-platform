@@ -72,6 +72,8 @@ app:
     overdue-recheck-cron: "0 0 * * * *"
     # 반납 리마인더: 매일 09:00 (REQ-031)
     return-reminder-cron: "0 0 9 * * *"
+    # 차감 제안 자동 수락(deduction.renter-response-hours): 1시간 (REQ-049)
+    deduction-auto-accept-cron: "0 15 * * * *"
     # 환불 재시도: 10분 (REQ-025)
     refund-retry-cron: "0 */10 * * * *"
     # PG 조정: 1시간 (REQ-024)
@@ -122,6 +124,17 @@ app:
     overdue-fee:
       # overdue-fee.rate: 연체 1일당 일 대여료 × 150%, 보증금 한도 (REQ-023)
       rate-percent: 150
+    lost-report:
+      # lost-report.after-days: 반납 예정일 + 7일이 지난 연체 건부터 제공자가 미반납 신고 가능 (REQ-018, REQ-049)
+      after-days: 7
+    deduction:
+      # deduction.reason.max: 차감 사유 500자. deduction_proposals.reason·payments.deduction_reason VARCHAR(500)과 같게 (REQ-049)
+      reason-max: 500
+      # deduction.renter-response-hours: 차감 제안에 대여자 72시간 무응답이면 자동 수락 (REQ-049)
+      renter-response-hours: 72
+    deposit:
+      # deposit.hold-agreement-days: 보류 시작 후 7일 미합의 → 관리자 확정 대상 (REQ-049)
+      hold-agreement-days: 7
     cancel-agreement:
       # cancel-agreement.expire-hours: 양측 동의 취소 요청이 상대 무응답으로 만료되는 시간 (REQ-015)
       expire-hours: 48

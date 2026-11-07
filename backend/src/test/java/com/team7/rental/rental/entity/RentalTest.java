@@ -661,6 +661,32 @@ class RentalTest {
 		assertThat(withStatus(RentalStatus.RENTING).canWriteReview(NOW, 7)).isFalse();
 	}
 
+	@Test
+	@DisplayName("미반납 신고는 OVERDUE이고 오늘 > 종료일 + 7일부터 가능하며 RETURNED·반납 시각·연체료를 남긴다")
+	void reportLost() {
+		// given
+		Rental rental = withStatus(RentalStatus.OVERDUE);
+		LocalDateTime boundary = END.plusDays(7).atTime(23, 59);
+		LocalDateTime allowed = END.plusDays(8).atStartOfDay();
+
+		// when, then
+		assertTransitionFails(() -> rental.reportLost(boundary, 7, 0), ErrorCode.RENTAL_LOST_REPORT_TOO_EARLY);
+		rental.reportLost(allowed, 7, 50_000);
+		assertThat(rental.getStatus()).isEqualTo(RentalStatus.RETURNED);
+		assertThat(rental.getReturnedAt()).isEqualTo(allowed);
+		assertThat(rental.getOverdueFee()).isEqualTo(50_000);
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = RentalStatus.class, names = "OVERDUE", mode = EnumSource.Mode.EXCLUDE)
+	@DisplayName("OVERDUE가 아니면 미반납 신고할 수 없다")
+	void reportLostOnlyOverdue(RentalStatus status) {
+		Rental rental = withStatus(status);
+
+		assertTransitionFails(() -> rental.reportLost(END.plusDays(30).atStartOfDay(), 7, 0),
+			ErrorCode.RENTAL_INVALID_TRANSITION);
+	}
+
 	private void assertTransitionFails(ThrowingCallable transition, ErrorCode errorCode) {
 		assertThatThrownBy(transition)
 			.isInstanceOf(BusinessException.class)

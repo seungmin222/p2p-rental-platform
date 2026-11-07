@@ -2,17 +2,25 @@ package com.team7.rental.rental.service;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
+import com.team7.rental.rental.dto.RentalDepositView;
 import com.team7.rental.rental.dto.RentalPaymentView;
+import com.team7.rental.rental.entity.InspectionPhase;
+import com.team7.rental.rental.entity.ItemInspection;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
+import com.team7.rental.rental.repository.ItemInspectionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
 
@@ -29,6 +37,7 @@ public class RentalPaymentTxService {
 
 	private final RentalRepository rentalRepository;
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
+	private final ItemInspectionRepository itemInspectionRepository;
 	private final Clock clock;
 
 	/**
@@ -70,13 +79,59 @@ public class RentalPaymentTxService {
 		saveHistory(rental, from, RentalStatusHistory.REASON_AMOUNT_MISMATCH, now);
 	}
 
-	/** 보증금 반환 완료: RETURNED → COMPLETED (REQ-025) */
+	/** 보증금 처리 완료: RETURNED → COMPLETED (REQ-025 반환, REQ-049 차감 확정) */
 	public void completeAfterDepositReturn(Long rentalId, RentalRefundPort.Completion completion, LocalDateTime now) {
 		Rental rental = getForUpdate(rentalId);
 		RentalStatus from = rental.getStatus();
 		rental.complete(now);
 		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(),
 			completion.changedBy(), completion.reason(), now));
+	}
+
+	/**
+	 * 보증금 보류·차감용으로 행 락을 잡고 읽는다 (REQ-049). 차감 쓰기 트랜잭션은 이것으로 시작한다(대여 행 락 → 결제 행 락).
+	 *
+	 * @throws BusinessException RENTAL_NOT_FOUND
+	 */
+	public RentalDepositView lockForDeposit(Long rentalId) {
+		return depositViewOf(getForUpdate(rentalId));
+	}
+
+	/**
+	 * 보증금 차감 조회·사전 검사용 일반 읽기 (REQ-049).
+	 *
+	 * @throws BusinessException RENTAL_NOT_FOUND
+	 */
+	@Transactional(readOnly = true)
+	public RentalDepositView getDepositView(Long rentalId) {
+		return depositViewOf(rentalRepository.findById(rentalId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_NOT_FOUND)));
+	}
+
+	/** 보류 목록용 일괄 읽기. 없는 ID는 담지 않는다 */
+	@Transactional(readOnly = true)
+	public Map<Long, RentalDepositView> getDepositViews(Collection<Long> rentalIds) {
+		if (rentalIds.isEmpty()) {
+			return Map.of();
+		}
+		Set<Long> lostReported = itemInspectionRepository.findLostReportedRentalIds(rentalIds);
+		Map<Long, RentalDepositView> views = new HashMap<>();
+		for (Rental rental : rentalRepository.findAllById(rentalIds)) {
+			views.put(rental.getId(), depositViewOf(rental, lostReported.contains(rental.getId())));
+		}
+		return views;
+	}
+
+	private RentalDepositView depositViewOf(Rental rental) {
+		boolean lostReported = itemInspectionRepository.findByRentalIdAndPhase(rental.getId(), InspectionPhase.RETURN)
+			.map(ItemInspection::isLostReported)
+			.orElse(false);
+		return depositViewOf(rental, lostReported);
+	}
+
+	private RentalDepositView depositViewOf(Rental rental, boolean lostReported) {
+		return new RentalDepositView(rental.getId(), rental.getItemId(), rental.getOwnerId(), rental.getRenterId(),
+			rental.getStatus(), rental.getDeposit(), rental.getOverdueFee(), lostReported);
 	}
 
 	private Rental getForUpdate(Long rentalId) {

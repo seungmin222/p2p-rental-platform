@@ -15,6 +15,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V7 | `V7__create_payment_tables.sql` | `feat/payment-core` | 머지 |
 | V8 | `V8__create_damage_policies.sql` | `feat/item-crud` | 머지 |
 | V9 | `V9__insert_regions.sql` | `feat/item-crud` | 머지 |
+| V10 | `V10__create_deduction_proposals.sql` | `feat/payment-deposit` | 머지 |
 
 ## 규칙
 
@@ -155,17 +156,17 @@ erDiagram
 | amount INT, rental_fee_amount INT, deposit_amount INT | 분리 저장. 결제 금액 0원이면 레코드를 만들지 않음 |
 | status | `PaymentStatus` |
 | deposit_status | `DepositStatus` (type=RENTAL만) |
-| held_at DATETIME(6) NULL | 보증금 보류 시작 — 7일 관리자 확정 기준 |
+| held_at DATETIME(6) NULL | 보증금 보류 시작 — 7일 관리자 확정 기준. 인덱스 `(deposit_status, held_at)`(보류 목록) — `V10` |
 | refunded_amount INT | 누적 취소 금액 |
 | refund_pending_amount INT NULL | 아직 끝나지 않은 환불액. NULL이 아니면 환불이 남아 있다(재시도 배치 대상). 보증금 0원이라 depositStatus가 NONE인 결제의 취소 환불 실패, TX1 직후 서버 중단도 이 값으로 찾는다 |
 | last_refund_attempt_at DATETIME(6) NULL | 마지막 PG 취소 시도 시각(시도마다 기록). 재시도 간격의 기준 |
 | refund_retry_count INT, needs_admin_check BOOLEAN | 환불 재시도 횟수, 5회 초과 시 true |
-| damage_grade, deduction_amount, deduction_reason | **확정된 차감 결과만** (협의 이력은 deduction_proposals). 손상 발생률 집계용. `held_at`과 함께 REQ-049 마이그레이션에서 추가 |
+| damage_grade VARCHAR(30) NULL, deduction_amount INT NULL, deduction_reason VARCHAR(500) NULL | **확정된 차감 결과만** (협의 이력은 deduction_proposals). 손상 발생률 집계용. 확정 때 한 번만 쓴다. `held_at`과 함께 `V10`에서 추가 |
 | idempotency_key UK | |
 
 **payment_transactions** — 승인·취소 시도 이력: payment_id, action(APPROVE/CANCEL), amount, idempotency_key, result(PENDING/SUCCESS/FAIL), pg_response JSON, created_at, updated_at. 재시도·조정 배치의 근거. PENDING은 PG 호출 전 기록(TX1)이고, 타임아웃으로 결과를 모르면 PENDING으로 남아 조정 배치가 처리한다.
 
-**deduction_proposals** — id, rental_id, proposed_by, grade, amount, reason, evidence_urls JSON, status(`DeductionProposalStatus`), responded_at, created_at. 인덱스 `(status, created_at)`(72시간 자동 수락 배치). **협의 이력 전용**이며, 확정되면 그 값이 payments에 한 번 복사된다.
+**deduction_proposals** — id, rental_id FK, proposed_by FK→members, grade VARCHAR(30)(`DamageGrade`), amount INT, reason VARCHAR(500), evidence_urls JSON(손상 증빙 사진, 미반납 신고 건·관리자 확정은 빈 배열 가능), receipt_urls JSON NULL(견적서·영수증·구매 내역, 정책 deduction_type `ACTUAL`이면 필수), status VARCHAR(30)(`DeductionProposalStatus`), responded_at DATETIME(6) NULL, created_at, updated_at. 인덱스 `(status, created_at)`(72시간 자동 수락 배치), `(rental_id, id)`(최신 제안) — 생성됨(`V10`). **협의 이력 전용**이며, 확정되면 그 값이 payments에 한 번 복사된다. 관리자 확정도 한 행으로 남긴다(status `ADMIN_DECIDED`, proposed_by = 확정한 관리자, responded_at = 확정 시각). 대여자 응답 기한은 created_at + `deduction.renter-response-hours`로 계산한다(컬럼 없음).
 
 **damage_policies** [1] — (1순위로 당김, 권장 보증금 REQ-006이 쓴다. 테이블·시드는 `feat/item-crud`, open-issues #23) id, category_id, grade, deduction_type, fixed_amount, cap_rate, recommended_deposit_min_rate, recommended_deposit_max_rate (초기값: `policies.md` §4)
 

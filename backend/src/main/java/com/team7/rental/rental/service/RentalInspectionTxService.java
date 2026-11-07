@@ -132,7 +132,15 @@ public class RentalInspectionTxService {
 	public void validateConfirmReturn(Long rentalId, Long memberId) {
 		Rental rental = getOwnerRental(rentalId, memberId);
 		rental.validateReturned();
-		if (getReturnInspection(rentalId).isJudged()) {
+		validateJudgeable(getReturnInspection(rentalId));
+	}
+
+	/**
+	 * 판정 전이고 미반납 신고 기록이 아니어야 한다. 미반납 신고 건은 물건이 돌아와도 판정하지 않고 차감 흐름(D 등급, 0원 이상 제안)으로만 끝낸다
+	 * (보류된 보증금의 정상 반환 경로가 없다. state-machines.md §2 HELD → REFUNDED는 차감 확정뿐, open-issues).
+	 */
+	private void validateJudgeable(ItemInspection inspection) {
+		if (inspection.isJudged() || inspection.isLostReported()) {
 			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
 		}
 	}
@@ -143,19 +151,61 @@ public class RentalInspectionTxService {
 	 *
 	 * @param resultNote 정규화된 판정 내용. 없으면 null
 	 * @param resultImageUrls ABNORMAL 사진. NORMAL이면 빈 목록
-	 * @return 커밋 뒤 실행할 보증금 반환. 비어 있으면 PG가 필요 없다
+	 * @return 커밋 뒤 실행할 보증금 반환(PG가 필요 없으면 null)과 보증금을 보류했는지
 	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY,
-	 *     RENTAL_INVALID_TRANSITION(RETURNED 아님 또는 이미 판정)
+	 *     RENTAL_INVALID_TRANSITION(RETURNED 아님, 이미 판정, 미반납 신고 건)
 	 */
 	@Transactional
-	public Optional<RefundTicket> confirmReturn(Long rentalId, Long memberId, InspectionResult result,
-		String resultNote, List<String> resultImageUrls) {
+	public JudgeResult confirmReturn(Long rentalId, Long memberId, InspectionResult result, String resultNote,
+		List<String> resultImageUrls) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		Rental rental = rentalRepository.findByIdForUpdate(rentalId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_NOT_FOUND));
 		requireOwner(rental, memberId);
 		rental.validateReturned();
-		return judge(rental, getReturnInspection(rentalId), result, resultNote, resultImageUrls, memberId, now);
+		ItemInspection inspection = getReturnInspection(rentalId);
+		validateJudgeable(inspection);
+		return judge(rental, inspection, result, resultNote, resultImageUrls, memberId, now);
+	}
+
+	/**
+	 * @param refund 커밋 뒤 실행할 보증금 반환. PG가 필요 없으면 null
+	 * @param depositHeld 상태 확인 '이상'으로 보증금을 보류했는지 (대여자에게 DEPOSIT_HELD)
+	 * @param renterId 알림 받을 대여자
+	 */
+	public record JudgeResult(RefundTicket refund, boolean depositHeld, Long renterId) {
+	}
+
+	/**
+	 * 미반납 신고 (REQ-018·049, open-issues P4): OVERDUE → RETURNED + 사진 없는 RETURN 기록(lost_reported) + 이력. 연체료는 신고일 기준으로
+	 * 확정한다. 동결된 보증금이 있으면 HELD로 보류하고 제공자가 D 등급 차감을 제안한다. 없으면 처리할 금액이 없어 바로 COMPLETED다(그대로 두면
+	 * 끝낼 길이 없다). 대여 행 락을 잡아 반납 요청·연체 배치와 한 줄로 선다(늦은 쪽은 RENTAL_INVALID_TRANSITION).
+	 *
+	 * @param note 정규화된 메모. 없으면 null
+	 * @return 알림 받을 대여자 ID
+	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY, RENTAL_INVALID_TRANSITION,
+	 *     RENTAL_LOST_REPORT_TOO_EARLY
+	 */
+	@Transactional
+	public Long reportLost(Long rentalId, Long memberId, String note) {
+		Rental rental = rentalRepository.findByIdForUpdate(rentalId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_NOT_FOUND));
+		requireOwner(rental, memberId);
+		LocalDateTime now = LocalDateTime.now(clock);
+		RentalStatus from = rental.getStatus();
+		rental.reportLost(now, policyProperties.lostReport().afterDays(),
+			overdueFeeCalculator.calculate(rental, now.toLocalDate()));
+		// 버전 검사를 기록 INSERT보다 먼저 (클래스 주석)
+		rentalRepository.flush();
+		itemInspectionRepository.save(ItemInspection.lostReported(rentalId, memberId, note));
+		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(), memberId,
+			RentalStatusHistory.REASON_LOST_REPORT, now));
+		if (!rentalRefundPort.holdDeposit(rentalId, now)) {
+			rental.complete(now);
+			rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, RentalStatus.RETURNED,
+				rental.getStatus(), memberId, RentalStatusHistory.REASON_LOST_REPORT, now));
+		}
+		return rental.getRenterId();
 	}
 
 	/** 자동 상태 확인 배치 대상 id (반납 요청 후 return.auto-confirm-days 경과, 판정 전, 미반납 신고 아님) */
@@ -181,7 +231,7 @@ public class RentalInspectionTxService {
 			return new AutoConfirmResult(false, null);
 		}
 		return new AutoConfirmResult(true,
-			judge(rental, inspection, InspectionResult.NORMAL, null, List.of(), null, now).orElse(null));
+			judge(rental, inspection, InspectionResult.NORMAL, null, List.of(), null, now).refund());
 	}
 
 	public record AutoConfirmResult(boolean confirmed, RefundTicket refund) {
@@ -191,12 +241,13 @@ public class RentalInspectionTxService {
 	 * 판정을 기록하고 보증금에 따라 끝맺는다. 호출 전에 대여 행 락을 잡는다.
 	 * <ul>
 	 *   <li>NORMAL: 보증금 반환에 PG가 필요하면 RETURNED로 두고 환불 요청을 돌려준다(반환이 끝나면 COMPLETED, REQ-025). 필요 없으면 바로 COMPLETED</li>
-	 *   <li>ABNORMAL: 보증금이 동결돼 있으면 RETURNED 유지·FROZEN 유지(HELD 전이는 REQ-049). 동결된 보증금이 없으면 처리할 금액이 없어 COMPLETED</li>
+	 *   <li>ABNORMAL: 보증금이 동결돼 있으면 HELD로 보류하고 RETURNED → RETURNED 이력(REQ-049 차감 흐름). 동결된 보증금이 없으면 처리할
+	 *   금액이 없어 COMPLETED</li>
 	 * </ul>
 	 *
 	 * @param changedBy 판정한 제공자. 자동 확인 배치면 null
 	 */
-	private Optional<RefundTicket> judge(Rental rental, ItemInspection inspection, InspectionResult result,
+	private JudgeResult judge(Rental rental, ItemInspection inspection, InspectionResult result,
 		String resultNote, List<String> resultImageUrls, Long changedBy, LocalDateTime now) {
 		inspection.judge(result, resultNote, resultImageUrls);
 		RentalStatus from = rental.getStatus();
@@ -208,20 +259,23 @@ public class RentalInspectionTxService {
 			Optional<RefundTicket> refund = rentalRefundPort.prepareDepositReturn(rental.getId(),
 				rental.getOverdueFee(), new Completion(changedBy, reason));
 			if (refund.isPresent()) {
-				return refund;
+				return new JudgeResult(refund.get(), false, rental.getRenterId());
 			}
 			rental.confirmNormal(now);
-		} else {
-			rental.markAbnormal();
-			if (rentalRefundPort.hasFrozenDeposit(rental.getId())) {
-				return Optional.empty();
-			}
-			rental.complete(now);
-			reason = RentalStatusHistory.REASON_RETURN_CONFIRM_ABNORMAL;
+			rentalStatusHistoryRepository.save(RentalStatusHistory.create(rental.getId(), from, rental.getStatus(),
+				changedBy, reason, now));
+			return new JudgeResult(null, false, rental.getRenterId());
 		}
+		reason = RentalStatusHistory.REASON_RETURN_CONFIRM_ABNORMAL;
+		rental.markAbnormal();
+		boolean held = rentalRefundPort.holdDeposit(rental.getId(), now);
+		if (!held) {
+			rental.complete(now);
+		}
+		// 보류면 RETURNED → RETURNED (state-machines.md §1)
 		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rental.getId(), from, rental.getStatus(),
 			changedBy, reason, now));
-		return Optional.empty();
+		return new JudgeResult(null, held, rental.getRenterId());
 	}
 
 	private ItemInspection getReturnInspection(Long rentalId) {

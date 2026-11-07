@@ -36,6 +36,7 @@ import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort;
 import com.team7.rental.support.FakePaymentGateway.Fault;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
@@ -170,18 +171,31 @@ class DepositReturnIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	@DisplayName("이상 판정이고 보증금이 동결돼 있으면 RETURNED·FROZEN을 유지하고 PG를 부르지 않는다(REQ-049 전)")
-	void abnormalKeepsFrozen() throws Exception {
+	@DisplayName("이상 판정이고 보증금이 동결돼 있으면 HELD로 보류하고 RETURNED → RETURNED 이력을 남기며 PG를 부르지 않는다(REQ-049)")
+	void abnormalHoldsDeposit() throws Exception {
 		// given
 		Payment payment = paymentFixture.createApproved(rental);
 
 		// when, then
 		confirm(json(ABNORMAL), image()).andExpect(status().isOk())
-			.andExpect(jsonPath("$.data.status").value("RETURNED"));
+			.andExpect(jsonPath("$.data.status").value("RETURNED"))
+			.andExpect(jsonPath("$.data.depositStatus").value("HELD"));
 
-		assertThat(reload(payment).getDepositStatus()).isEqualTo(DepositStatus.FROZEN);
+		Payment held = reload(payment);
+		assertThat(held.getDepositStatus()).isEqualTo(DepositStatus.HELD);
+		assertThat(held.getHeldAt()).isEqualTo(NOW);
 		assertThat(paymentGateway.cancelCalls()).isZero();
-		assertThat(historyRepository.findAll()).isEmpty();
+		assertThat(historyRepository.findAll()).singleElement().satisfies((RentalStatusHistory history) -> {
+			assertThat(history.getFromStatus()).isEqualTo(RentalStatus.RETURNED);
+			assertThat(history.getToStatus()).isEqualTo(RentalStatus.RETURNED);
+			assertThat(history.getChangedBy()).isEqualTo(owner.getId());
+			assertThat(history.getReason()).isEqualTo(RentalStatusHistory.REASON_RETURN_CONFIRM_ABNORMAL);
+		});
+		assertThat(notificationPort.sent()).singleElement().satisfies(sent -> {
+			assertThat(sent.memberId()).isEqualTo(rental.getRenterId());
+			assertThat(sent.type()).isEqualTo(RentalNotificationPort.Type.DEPOSIT_HELD);
+			assertThat(sent.eventId()).isEqualTo("DEPOSIT_HELD:" + rental.getId());
+		});
 	}
 
 	@Test
