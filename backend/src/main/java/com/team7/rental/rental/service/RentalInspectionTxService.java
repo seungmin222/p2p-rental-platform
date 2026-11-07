@@ -177,17 +177,6 @@ public class RentalInspectionTxService {
 	}
 
 	/**
-	 * 미반납 신고 사전 검사. 제공자만, OVERDUE이고 오늘 &gt; endDate + lost-report.after-days.
-	 *
-	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_OWNER_ONLY, RENTAL_INVALID_TRANSITION,
-	 *     RENTAL_LOST_REPORT_TOO_EARLY
-	 */
-	public void validateLostReport(Long rentalId, Long memberId) {
-		getOwnerRental(rentalId, memberId).validateLostReport(LocalDate.now(clock),
-			policyProperties.lostReport().afterDays());
-	}
-
-	/**
 	 * 미반납 신고 (REQ-018·049, open-issues P4): OVERDUE → RETURNED + 사진 없는 RETURN 기록(lost_reported) + 이력. 연체료는 신고일 기준으로
 	 * 확정한다. 동결된 보증금이 있으면 HELD로 보류하고 제공자가 D 등급 차감을 제안한다. 없으면 처리할 금액이 없어 바로 COMPLETED다(그대로 두면
 	 * 끝낼 길이 없다). 대여 행 락을 잡아 반납 요청·연체 배치와 한 줄로 선다(늦은 쪽은 RENTAL_INVALID_TRANSITION).
