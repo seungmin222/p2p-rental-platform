@@ -246,6 +246,10 @@ public class DepositDeductionTxService {
 	 * </ul>
 	 * 금액이 남은 보증금을 넘지 않는 것은 제안·관리자 확정 때 검사했다. RETURNED 이후 보증금·연체료가 바뀌지 않으므로 다시 검사하지 않는다
 	 * (등급별 상한은 현재 카테고리로 계산해 제안 뒤 바뀔 수 있어, 합의된 금액을 수락 때 다시 깎지 않는다).
+	 * <p>
+	 * 불변식: payment.depositAmount == rental.deposit. RENTAL 결제는 {@code PaymentTxService#createOrder}에서만 만들어지고 대여 행 락 안에서
+	 * rental.deposit을 그대로 복사하며, Rental.deposit은 생성 뒤 바뀌지 않는다. 그래서 상한 검사({@link #limitOf}, rental.deposit 기준)와
+	 * 반환액 계산(payment.depositAmount 기준)이 같은 보증금을 본다. 보증금을 바꾸는 기능이 생기면 이 둘을 한쪽으로 맞춰야 한다.
 	 */
 	private Settlement settle(RentalDepositView view, Payment payment, DeductionProposal proposal, Long changedBy,
 		String historyReason, LocalDateTime now) {
