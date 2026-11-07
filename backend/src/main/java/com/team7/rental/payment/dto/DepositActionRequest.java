@@ -9,8 +9,9 @@ import jakarta.validation.constraints.PositiveOrZero;
 /**
  * 보증금 차감 협의 multipart의 request part (REQ-049). 동작별 필수 항목·사유 길이는 {@link DepositActionRequestValidator}.
  * <ul>
- *   <li>PROPOSE: grade, amount, reason 필수. proposalId는 보내지 않는다</li>
- *   <li>ACCEPT·REJECT: proposalId 필수(대여 상세 latestProposal.proposalId). 다른 제안에 잘못 응답하지 않게 한다</li>
+ *   <li>PROPOSE: grade, amount, reason 필수. proposalId는 보내도 무시한다(새 제안이라 가리킬 제안이 없다)</li>
+ *   <li>ACCEPT·REJECT: proposalId 필수(대여 상세 latestDeductionProposal.proposalId). 다른 제안에 잘못 응답하지 않게 한다.
+ *   grade·amount·reason은 쓰지 않는다(amount의 0 이상 검사는 동작과 상관없이 걸린다)</li>
  * </ul>
  */
 @ValidDepositAction
