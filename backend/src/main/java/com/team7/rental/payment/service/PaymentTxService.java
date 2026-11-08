@@ -254,7 +254,7 @@ public class PaymentTxService {
 		LocalDateTime now = LocalDateTime.now(clock);
 		RentalPaymentView rental = rentalPaymentTxService.lock(target.rentalId());
 		Optional<RentalExtensionPaymentView> extension = target.type() == PaymentType.EXTENSION
-			? extensionPaymentTxService.lockExtensionForReconcile(target.paymentId())
+			? extensionPaymentTxService.lockExtensionForReconcile(target.rentalId(), target.paymentId())
 			: Optional.empty();
 		Payment payment = paymentRepository.findByIdForUpdate(target.paymentId()).orElseThrow();
 		boolean notApproved = payment.getStatus() == PaymentStatus.READY || payment.getStatus() == PaymentStatus.FAILED;
@@ -276,12 +276,12 @@ public class PaymentTxService {
 				flag(payment, "approved elsewhere with a different balance");
 				return ReconcileOutcome.NONE;
 			}
-			if (payment.getType() == PaymentType.EXTENSION && extension.isEmpty()) {
-				// 실패 뒤 새 주문에 밀려 연장에서 떨어진 옛 주문이 PG에서는 승인됐다: 어느 연장의 돈인지 정할 수 없어 사람이 본다
-				flag(payment, "approved extension order detached from its extension");
-				return ReconcileOutcome.NONE;
-			}
 			pendingApprovals(payment).forEach(transaction -> transaction.succeed(result.toRecord()));
+			if (payment.getType() == PaymentType.EXTENSION && extension.isEmpty()) {
+				// 실패 뒤 새 주문에 밀려 연장에서 떨어진 옛 주문이 PG에서는 승인됐다. 어느 연장도 이 돈으로 확정하지 않으므로 승인으로 맞추고 전액 돌려준다
+				return new ReconcileOutcome(extensionPaymentTxService.refundDetached(payment, pgPayment.paymentKey()),
+					null);
+			}
 			if (extension.isPresent()) {
 				ExtensionConfirmOutcome outcome = extensionPaymentTxService.approveAndSettle(target.rentalId(),
 					extension.get(), payment, pgPayment.paymentKey());

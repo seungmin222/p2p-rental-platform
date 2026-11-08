@@ -375,12 +375,16 @@ public class Rental extends BaseTimeEntity {
 	/**
 	 * 연장을 요청할 수 있는지 (REQ-038). 대여자 확인은 서비스가 한다.
 	 *
+	 * 종료일이 지난 RENTING(00:00 ~ 연체 배치 00:05 사이)도 연체로 보고 막는다. 그래서 연체 배치가 결제 대기 연장을 건너뛰어도
+	 * 연체 전환은 결제 대기 시간(payment.expire-minutes)만큼만 미뤄진다(open-issues #45).
+	 *
 	 * @param maxCount extension.max-count. 확정된 연장만 센다(결제 대기 연장은 대여당 1건이라 따로 막는다)
-	 * @throws BusinessException RENTAL_EXTENSION_OVERDUE(연체 중, 반납 안내), RENTAL_INVALID_TRANSITION(그 외 RENTING 아님),
+	 * @param today Clock(Asia/Seoul) 기준 오늘
+	 * @throws BusinessException RENTAL_EXTENSION_OVERDUE(연체 중이거나 종료일이 지남, 반납 안내), RENTAL_INVALID_TRANSITION(그 외 RENTING 아님),
 	 *     RENTAL_EXTENSION_LIMIT_EXCEEDED(횟수 초과)
 	 */
-	public void validateExtendable(int maxCount) {
-		if (status == RentalStatus.OVERDUE) {
+	public void validateExtendable(int maxCount, LocalDate today) {
+		if (status == RentalStatus.OVERDUE || (status == RentalStatus.RENTING && endDate.isBefore(today))) {
 			throw new BusinessException(ErrorCode.RENTAL_EXTENSION_OVERDUE);
 		}
 		if (status != RentalStatus.RENTING) {

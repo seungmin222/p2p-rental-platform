@@ -201,6 +201,17 @@ class RentalExtensionIntegrationTest extends IntegrationTestSupport {
 			.andExpect(jsonPath("$.error.code").value("COMMON_INVALID_INPUT"));
 	}
 
+	@Test
+	@DisplayName("종료일 다음 날 00:00 ~ 00:05(연체 배치 전, 상태는 RENTING)의 연장 요청도 409 RENTAL_EXTENSION_OVERDUE")
+	void endDatePassedBeforeOverdueBatch() throws Exception {
+		testClock.fixAt(LocalDateTime.of(2026, 11, 6, 0, 2));
+
+		extendExpectingError(renter, "2026-11-08", 409, "RENTAL_EXTENSION_OVERDUE");
+		assertThat(rentalRepository.findById(rental.getId()).orElseThrow().getStatus())
+			.isEqualTo(RentalStatus.RENTING);
+		assertThat(extensionRepository.count()).isZero();
+	}
+
 	private ResultActions extend(Member member, String newEndDate) throws Exception {
 		return extend(member, rental, newEndDate);
 	}

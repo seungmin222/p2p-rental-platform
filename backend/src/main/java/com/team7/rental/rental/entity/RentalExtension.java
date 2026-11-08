@@ -56,7 +56,10 @@ public class RentalExtension extends BaseTimeEntity {
 	@Column(nullable = false)
 	private LocalDateTime expiresAt;
 
-	/** 승인된 EXTENSION 결제. 결제 없이 확정한 연장(0원·결제 기능 꺼짐)은 null */
+	/**
+	 * 연장의 현재 주문(READY·FAILED 포함). 주문 생성 때 묶고, 승인 실패 뒤 새 주문을 만들면 바꾼다. 승인되면 그 결제다.
+	 * 결제 없이 확정한 연장(0원·결제 기능 꺼짐)과 아직 주문이 없는 결제 대기는 null
+	 */
 	private Long paymentId;
 
 	/**

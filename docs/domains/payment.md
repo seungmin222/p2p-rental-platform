@@ -114,7 +114,7 @@
 | 차감 제안 자동 수락 | PROPOSED + 72시간 → AUTO_ACCEPTED → 확정 처리 |
 | 보류 7일 초과 표시 | HELD + 7일 → 관리자 확정 대상 목록에 노출. 바꿀 상태가 없어 배치를 두지 않고 목록 API가 `held_at`으로 조회한다 |
 | 정산 지급 | SCHEDULED → PAID |
-| 조정 | 최근 결제(`reconciliation.lookback-hours`)의 PG 조회 결과 ↔ 내부 상태 대조. 승인 응답 유실 건은 확정 또는 전액 환불로 보정, 잔액 불일치는 고치지 않고 로그 + `needs_admin_check` |
+| 조정 | 최근 결제(`reconciliation.lookback-hours`)의 PG 조회 결과 ↔ 내부 상태 대조. 승인 응답 유실 건은 확정 또는 전액 환불로 보정, 잔액 불일치는 고치지 않고 로그 + `needs_admin_check`. 연장 결제는 연장 행으로 판단하고(대여 → 연장 → 결제 락), 새 주문에 밀려 연장에서 떨어진 옛 주문이 PG에서 승인돼 있으면 승인으로 맞춘 뒤 전액 환불(키 `extension-refund:{paymentId}`) |
 
 모든 배치는 ShedLock으로 단일 실행하고 멱등하게 만든다.
 

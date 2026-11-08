@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,10 +29,14 @@ import com.team7.rental.item.entity.Item;
 import com.team7.rental.member.entity.Member;
 import com.team7.rental.payment.batch.ExtensionPaymentExpireJob;
 import com.team7.rental.payment.batch.PaymentReconcileJob;
+import com.team7.rental.payment.batch.RefundRetryJob;
 import com.team7.rental.payment.entity.Payment;
 import com.team7.rental.payment.entity.PaymentStatus;
+import com.team7.rental.payment.entity.PaymentTransaction;
+import com.team7.rental.payment.entity.PaymentTransactionAction;
 import com.team7.rental.payment.entity.PaymentType;
 import com.team7.rental.payment.repository.PaymentRepository;
+import com.team7.rental.payment.repository.PaymentTransactionRepository;
 import com.team7.rental.rental.entity.ExtensionStatus;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalExtension;
@@ -71,6 +76,12 @@ class ExtensionPaymentIntegrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private PaymentReconcileJob reconcileJob;
+
+	@Autowired
+	private RefundRetryJob refundRetryJob;
+
+	@Autowired
+	private PaymentTransactionRepository transactionRepository;
 
 	private Member owner;
 	private Member renter;
@@ -206,9 +217,11 @@ class ExtensionPaymentIntegrationTest extends IntegrationTestSupport {
 		assertThat(extensionRepository.findById(extensionId).orElseThrow().getStatus())
 			.isEqualTo(ExtensionStatus.CONFIRMED);
 		assertThat(rentalRepository.findById(rental.getId()).orElseThrow().getEndDate()).isEqualTo(NEW_END);
-		// 실패한 옛 주문은 연장에서 떨어져 다시 승인할 수 없다
+		// 실패한 옛 주문은 연장에서 떨어져 다시 승인할 수 없고, PG도 다시 부르지 않는다
+		int confirmCallsBefore = paymentGateway.confirmCalls();
 		confirm(first).andExpect(status().isConflict())
 			.andExpect(jsonPath("$.error.code").value("PAYMENT_INVALID_STATUS"));
+		assertThat(paymentGateway.confirmCalls()).isEqualTo(confirmCallsBefore);
 	}
 
 	@Test
@@ -338,6 +351,135 @@ class ExtensionPaymentIntegrationTest extends IntegrationTestSupport {
 
 		// then
 		assertRefundedWithoutExtension(extensionId, order);
+	}
+
+	@Test
+	@DisplayName("결제를 켜도 연장료 0원(무료 대여)이면 결제 행 없이 바로 CONFIRMED이고 payment_id는 NULL이다")
+	void freeExtensionWithPaymentEnabled() throws Exception {
+		// given: 1일 대여료 0원 스냅샷
+		ReflectionTestUtils.setField(rental, "pricePerDay", 0);
+		rental = rentalRepository.save(rental);
+
+		// when
+		extend(NEW_END.toString())
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+			.andExpect(jsonPath("$.data.additionalFee").value(0));
+
+		// then
+		assertThat(paymentRepository.count()).isZero();
+		assertThat(extensionRepository.findAll()).singleElement()
+			.satisfies(extension -> assertThat(extension.getPaymentId()).isNull());
+		assertThat(rentalRepository.findById(rental.getId()).orElseThrow().getEndDate()).isEqualTo(NEW_END);
+	}
+
+	@Test
+	@DisplayName("다른 대여의 결제 대기 연장 기간과 겹치면 409 RENTAL_EXTENSION_PERIOD_CONFLICT + maxEndDate(그 기간 시작 전날)")
+	void conflictWithOtherPendingExtension() throws Exception {
+		// given: 같은 물품의 다른 대여가 11/7 ~ 11/9를 결제 대기로 선점(점유 판정은 연장 기간만 본다)
+		Rental other = rentalFixture.createRental(item, fixture.createVerifiedMember().member(), RentalStatus.RENTING,
+			LocalDate.of(2026, 11, 20), LocalDate.of(2026, 11, 21));
+		extensionRepository.save(RentalExtension.pendingPayment(other.getId(), LocalDate.of(2026, 11, 6),
+			LocalDate.of(2026, 11, 9), 30_000, NOW.plusMinutes(10)));
+
+		// when & then
+		extend(NEW_END.toString())
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.error.code").value("RENTAL_EXTENSION_PERIOD_CONFLICT"))
+			.andExpect(jsonPath("$.error.details[0].field").value("maxEndDate"))
+			.andExpect(jsonPath("$.error.details[0].reason").value("2026-11-06"));
+	}
+
+	@Test
+	@DisplayName("4-A: 결제 대기 중 반납 요청으로 RETURNED가 되면 연장 CANCELED + 환불 1회, 환불이 실패해도 재시도가 연장 환불 키로 끝낸다")
+	void returnedDuringPaymentRefunds() throws Exception {
+		// given
+		Long extensionId = extensionIdOf(requestExtension().andReturn().getResponse().getContentAsString());
+		Order order = createOrder(extensionId);
+		paymentGateway.beforeNextConfirm(
+			() -> changeRental(current -> ReflectionTestUtils.setField(current, "status", RentalStatus.RETURNED)));
+		paymentGateway.failNextCancel(Fault.ERROR);
+
+		// when
+		confirm(order).andExpect(status().isConflict())
+			.andExpect(jsonPath("$.error.code").value("PAYMENT_CANCELED_AFTER_EXPIRY"));
+
+		// then: 첫 환불은 실패해 남아 있다
+		assertThat(paymentGateway.appliedCancels()).isEmpty();
+		assertThat(paymentOf(order).getRefundPendingAmount()).isEqualTo(FEE);
+		assertThat(paymentOf(order).getDepositStatus()).isNull();
+
+		// when: 재시도 배치
+		LocalDateTime retryAt = NOW.plusHours(1);
+		testClock.fixAt(retryAt);
+		refundRetryJob.retryDue(retryAt);
+
+		// then
+		assertRefundedWithoutExtension(extensionId, order);
+		assertThat(transactionRepository.findAll())
+			.filteredOn(transaction -> transaction.getAction() == PaymentTransactionAction.CANCEL)
+			.extracting(PaymentTransaction::getIdempotencyKey)
+			.containsOnly("extension-refund:" + paymentOf(order).getId());
+		assertThat(rentalRepository.findById(rental.getId()).orElseThrow().getStatus())
+			.isEqualTo(RentalStatus.RETURNED);
+	}
+
+	@Test
+	@DisplayName("4-A: 결제 중 종료일이 바뀌면(RENTING 그대로) 연장 CANCELED + 환불 1회, 바뀐 종료일은 그대로다")
+	void endDateChangedDuringPaymentRefunds() throws Exception {
+		// given
+		Long extensionId = extensionIdOf(requestExtension().andReturn().getResponse().getContentAsString());
+		Order order = createOrder(extensionId);
+		LocalDate changedEnd = LocalDate.of(2026, 11, 6);
+		paymentGateway.beforeNextConfirm(
+			() -> changeRental(current -> ReflectionTestUtils.setField(current, "endDate", changedEnd)));
+
+		// when
+		confirm(order).andExpect(status().isConflict())
+			.andExpect(jsonPath("$.error.code").value("PAYMENT_CANCELED_AFTER_EXPIRY"));
+
+		// then
+		assertThat(extensionRepository.findById(extensionId).orElseThrow().getStatus())
+			.isEqualTo(ExtensionStatus.CANCELED);
+		assertThat(paymentGateway.appliedCancels()).containsExactly(FEE);
+		Rental current = rentalRepository.findById(rental.getId()).orElseThrow();
+		assertThat(current.getStatus()).isEqualTo(RentalStatus.RENTING);
+		assertThat(current.getEndDate()).isEqualTo(changedEnd);
+		assertThat(current.getExtensionCount()).isZero();
+	}
+
+	@Test
+	@DisplayName("조정 배치: 새 주문에 밀려 연장에서 떨어진 옛 주문이 PG에서 승인돼 있으면 승인으로 맞추고 전액 환불한다(관리자 표시 없음)")
+	void reconcileDetachedOrderRefunds() throws Exception {
+		// given: 첫 주문은 PG 오류로 FAILED, 새 주문이 연장에 묶임. 그런데 PG에는 첫 주문이 승인돼 있다
+		Long extensionId = extensionIdOf(requestExtension().andReturn().getResponse().getContentAsString());
+		Order first = createOrder(extensionId);
+		paymentGateway.failNextConfirm(Fault.ERROR);
+		confirm(first).andExpect(status().isBadRequest());
+		Order second = createOrder(extensionId);
+		paymentGateway.seedApproved("pay-" + first.orderId(), first.orderId(), FEE);
+		LocalDateTime runAt = NOW.plusMinutes(16);
+		testClock.fixAt(runAt);
+
+		// when
+		reconcileJob.reconcileRecent(runAt);
+
+		// then
+		Payment detached = paymentOf(first);
+		assertThat(detached.getStatus()).isEqualTo(PaymentStatus.CANCELED);
+		assertThat(detached.isNeedsAdminCheck()).isFalse();
+		assertThat(detached.getDepositStatus()).isNull();
+		assertThat(paymentGateway.appliedCancels()).containsExactly(FEE);
+		assertThat(paymentOf(second).getStatus()).isEqualTo(PaymentStatus.FAILED);
+		assertThat(extensionRepository.findById(extensionId).orElseThrow().getPaymentId())
+			.isEqualTo(paymentOf(second).getId());
+		assertThat(rentalRepository.findById(rental.getId()).orElseThrow().getEndDate()).isEqualTo(END);
+	}
+
+	private void changeRental(Consumer<Rental> change) {
+		Rental current = rentalRepository.findById(rental.getId()).orElseThrow();
+		change.accept(current);
+		rentalRepository.save(current);
 	}
 
 	private void assertRefundedWithoutExtension(Long extensionId, Order order) {

@@ -8,7 +8,7 @@ CREATE TABLE rental_extensions (
     additional_fee INT         NOT NULL COMMENT '연장료 = 스냅샷 price_per_day × 연장 일수',
     status         VARCHAR(30) NOT NULL COMMENT 'ExtensionStatus',
     expires_at     DATETIME(6) NOT NULL COMMENT '결제 대기 만료 (payment.expire-minutes)',
-    payment_id     BIGINT      NULL COMMENT '승인된 EXTENSION 결제. 0원 연장·결제 기능 꺼짐은 NULL',
+    payment_id     BIGINT      NULL COMMENT '연장의 현재 주문(READY·FAILED 포함). 주문 생성 때 묶고 실패 뒤 새 주문이면 바꾼다. 승인되면 그 결제. 0원 연장·결제 기능 꺼짐은 NULL',
     created_at     DATETIME(6) NOT NULL,
     updated_at     DATETIME(6) NOT NULL,
     PRIMARY KEY (id),

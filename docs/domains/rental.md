@@ -155,7 +155,7 @@ try {
 
 ## REQ-038 대여 연장 [2]
 `POST /api/rentals/{id}/extensions { newEndDate }`
-- RENTING만(OVERDUE 불가 → 409 + 반납 안내), 대여자 본인
+- RENTING만(OVERDUE 불가 → 409 + 반납 안내), 대여자 본인. **종료일이 지난 RENTING(00:00 ~ 연체 배치 00:05 사이)도 연장 불가**(409 `RENTAL_EXTENSION_OVERDUE`). 그래서 연체 배치의 결제 대기 연장 건너뛰기는 연체 전환을 최대 15분(`payment.expire-minutes`)만 미룬다
 - extension_count < 2, (newEnd − 기존 end) ≤ 7일 → 위반 400
 - 기간 `(기존 end + 1) ~ newEnd`: available_period 안 + ACTIVE_FOR_PERIOD 대여(자기 자신 제외)·결제 대기 연장과 무겹침 → 겹치면 409 + **연장 가능한 최대 날짜** 안내
 - 검사는 예약과 같은 락(`lock:item:{itemId}`)

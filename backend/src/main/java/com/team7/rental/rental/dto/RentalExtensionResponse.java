@@ -15,7 +15,7 @@ public record RentalExtensionResponse(
 	@Schema(description = "대여 ID", example = "1")
 	Long rentalId,
 
-	@Schema(description = "PENDING_PAYMENT면 결제 대기(expiresAt까지 기간 선점), CONFIRMED면 결제 없이 바로 확정(연장료 0원)")
+	@Schema(description = "PENDING_PAYMENT면 결제 대기(expiresAt까지 기간 선점), CONFIRMED면 결제 없이 바로 확정(연장료 0원이거나, 결제 기능이 꺼진 경우에도 CONFIRMED)")
 	ExtensionStatus status,
 
 	@Schema(description = "연장 전 종료일", example = "2026-11-08")

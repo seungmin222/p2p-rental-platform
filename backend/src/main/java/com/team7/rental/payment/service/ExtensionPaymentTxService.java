@@ -107,7 +107,7 @@ public class ExtensionPaymentTxService {
 		if (!rental.renterId().equals(memberId)) {
 			throw new BusinessException(ErrorCode.PAYMENT_RENTER_ONLY);
 		}
-		RentalExtensionPaymentView extension = lockExtensionOf(paymentId);
+		RentalExtensionPaymentView extension = lockExtensionOf(rentalId, paymentId);
 		Payment payment = paymentRepository.findByIdForUpdate(paymentId).orElseThrow();
 		if (payment.getStatus() == PaymentStatus.FAILED) {
 			throw new BusinessException(ErrorCode.PAYMENT_INVALID_STATUS);
@@ -136,7 +136,7 @@ public class ExtensionPaymentTxService {
 	public ExtensionConfirmOutcome applyApproved(Long rentalId, Long paymentId, Long transactionId,
 		PgResult.Success result) {
 		rentalPaymentTxService.lock(rentalId);
-		RentalExtensionPaymentView extension = lockExtensionOf(paymentId);
+		RentalExtensionPaymentView extension = lockExtensionOf(rentalId, paymentId);
 		Payment payment = paymentRepository.findByIdForUpdate(paymentId).orElseThrow();
 		paymentTransactionRepository.findById(transactionId).orElseThrow().succeed(result.toRecord());
 		if (payment.getStatus() != PaymentStatus.READY && payment.getStatus() != PaymentStatus.FAILED) {
@@ -164,6 +164,15 @@ public class ExtensionPaymentTxService {
 		RefundTicket refund = paymentRefundTxService.prepare(payment, payment.getAmount(),
 			RefundPurpose.EXTENSION_CANCEL, null);
 		return new ExtensionConfirmOutcome(PaymentConfirmResponse.of(payment), refund, true, null);
+	}
+
+	/**
+	 * 연장에서 떨어진 옛 주문이 PG에서 승인된 것을 조정 배치가 찾았을 때: 승인으로 맞추고 전액 환불을 준비한다(키 extension-refund:{paymentId}).
+	 * 호출하는 쪽이 대여 행 → 결제 행 락을 잡았다. 연장 상태는 건드리지 않는다(현재 주문이 따로 있다).
+	 */
+	RefundTicket refundDetached(Payment payment, String paymentKey) {
+		payment.approve(paymentKey);
+		return paymentRefundTxService.prepare(payment, payment.getAmount(), RefundPurpose.EXTENSION_CANCEL, null);
 	}
 
 	/** 연장 결제 만료 배치 대상 */
@@ -195,13 +204,13 @@ public class ExtensionPaymentTxService {
 	/**
 	 * 조정 배치가 대여 행 락 다음, 결제 행 락 전에 부른다. 실패 뒤 새 주문에 밀려 연장에서 떨어진 옛 주문이면 비어 있다.
 	 */
-	Optional<RentalExtensionPaymentView> lockExtensionForReconcile(Long paymentId) {
-		return rentalPaymentTxService.lockExtensionByPayment(paymentId);
+	Optional<RentalExtensionPaymentView> lockExtensionForReconcile(Long rentalId, Long paymentId) {
+		return rentalPaymentTxService.lockExtensionByPayment(rentalId, paymentId);
 	}
 
 	// 연장에 묶이지 않은 주문은 실패한 뒤 새 주문에 밀린 옛 주문뿐이다(FAILED)
-	private RentalExtensionPaymentView lockExtensionOf(Long paymentId) {
-		return rentalPaymentTxService.lockExtensionByPayment(paymentId)
+	private RentalExtensionPaymentView lockExtensionOf(Long rentalId, Long paymentId) {
+		return rentalPaymentTxService.lockExtensionByPayment(rentalId, paymentId)
 			.orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_INVALID_STATUS));
 	}
 

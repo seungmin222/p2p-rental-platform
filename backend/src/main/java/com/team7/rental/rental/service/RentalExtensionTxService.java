@@ -74,7 +74,7 @@ public class RentalExtensionTxService {
 			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_NOT_FOUND));
 		RentalExtensionService.validateRenter(rental, memberId);
 		PolicyProperties.Extension policy = policyProperties.extension();
-		rental.validateExtendable(policy.maxCount());
+		rental.validateExtendable(policy.maxCount(), now.toLocalDate());
 		LocalDate prevEndDate = rental.getEndDate();
 		validateDays(prevEndDate, newEndDate, policy.maxDaysPer());
 		if (rentalExtensionRepository.existsPending(rentalId, now)) {

@@ -20,6 +20,7 @@ class RentalExtensionTest {
 	private static final LocalDate NEW_END = LocalDate.of(2026, 11, 8);
 	private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 5, 20, 0);
 	private static final int MAX_COUNT = 2;
+	private static final LocalDate TODAY = END;
 
 	private Rental rentalIn(RentalStatus status) {
 		Rental rental = Rental.createReserved(1L, 2L, 3L, START, END, 10_000, 50_000);
@@ -30,15 +31,25 @@ class RentalExtensionTest {
 	@Test
 	@DisplayName("RENTING만 연장을 요청할 수 있다: OVERDUE는 RENTAL_EXTENSION_OVERDUE, 그 외는 RENTAL_INVALID_TRANSITION")
 	void extendableOnlyWhenRenting() {
-		rentalIn(RentalStatus.RENTING).validateExtendable(MAX_COUNT);
+		rentalIn(RentalStatus.RENTING).validateExtendable(MAX_COUNT, TODAY);
 
-		assertThatThrownBy(() -> rentalIn(RentalStatus.OVERDUE).validateExtendable(MAX_COUNT))
+		assertThatThrownBy(() -> rentalIn(RentalStatus.OVERDUE).validateExtendable(MAX_COUNT, TODAY))
 			.extracting("errorCode").isEqualTo(ErrorCode.RENTAL_EXTENSION_OVERDUE);
 		for (RentalStatus status : new RentalStatus[] {RentalStatus.PENDING_PAYMENT, RentalStatus.RESERVED,
 			RentalStatus.RETURNED, RentalStatus.COMPLETED, RentalStatus.CANCELED}) {
-			assertThatThrownBy(() -> rentalIn(status).validateExtendable(MAX_COUNT))
+			assertThatThrownBy(() -> rentalIn(status).validateExtendable(MAX_COUNT, TODAY))
 				.extracting("errorCode").isEqualTo(ErrorCode.RENTAL_INVALID_TRANSITION);
 		}
+	}
+
+	@Test
+	@DisplayName("종료일이 지난 RENTING(연체 배치 전)도 RENTAL_EXTENSION_OVERDUE다. 종료일 당일은 연장할 수 있다")
+	void endDatePassedIsOverdue() {
+		Rental renting = rentalIn(RentalStatus.RENTING);
+
+		renting.validateExtendable(MAX_COUNT, END);
+		assertThatThrownBy(() -> renting.validateExtendable(MAX_COUNT, END.plusDays(1)))
+			.extracting("errorCode").isEqualTo(ErrorCode.RENTAL_EXTENSION_OVERDUE);
 	}
 
 	@Test
@@ -55,7 +66,7 @@ class RentalExtensionTest {
 		assertThat(rental.getStatus()).isEqualTo(RentalStatus.RENTING);
 		assertThat(rental.getEndDate()).isEqualTo(NEW_END.plusDays(2));
 		assertThat(rental.getExtensionCount()).isEqualTo(2);
-		assertThatThrownBy(() -> rental.validateExtendable(MAX_COUNT))
+		assertThatThrownBy(() -> rental.validateExtendable(MAX_COUNT, TODAY))
 			.extracting("errorCode").isEqualTo(ErrorCode.RENTAL_EXTENSION_LIMIT_EXCEEDED);
 		assertThatThrownBy(() -> rental.extend(NEW_END.plusDays(2), NEW_END.plusDays(3), MAX_COUNT))
 			.extracting("errorCode").isEqualTo(ErrorCode.RENTAL_EXTENSION_LIMIT_EXCEEDED);

@@ -8848,7 +8848,7 @@
           },
           "status": {
             "type": "string",
-            "description": "PENDING_PAYMENT면 결제 대기(expiresAt까지 기간 선점), CONFIRMED면 결제 없이 바로 확정(연장료 0원)",
+            "description": "PENDING_PAYMENT면 결제 대기(expiresAt까지 기간 선점), CONFIRMED면 결제 없이 바로 확정(연장료 0원이거나, 결제 기능이 꺼진 경우에도 CONFIRMED)",
             "enum": [
               "PENDING_PAYMENT",
               "CONFIRMED",

@@ -23,20 +23,22 @@
 
 ## 결제 연결
 - **주문 API에 `extensionId`를 더했다(payment-core 요약대로).** 연장 요청 응답은 `extensionId`·`additionalFee`·`expiresAt`만 주고 주문은 만들지 않는다. 결제창을 여는 흐름이 대여 결제와 같아지고, 주문 재사용(READY)·실패 뒤 새 주문 규칙도 그대로 쓴다.
-- **`rental_extensions.payment_id`는 연장의 "현재 주문"이다.** 주문을 만들 때 묶고, 승인 실패 뒤 새 주문을 만들면 바꾼다. payments에는 extension_id 컬럼이 없어서, 승인할 때 주문 → 연장을 찾는 기준으로 이 컬럼을 쓴다(erd.md 정의는 "payment_id NULL"뿐이라 컬럼을 더하지 않았다).
+- **`rental_extensions.payment_id`는 연장의 "현재 주문"(READY·FAILED 포함)이다.** 주문을 만들 때 묶고, 승인 실패 뒤 새 주문을 만들면 바꾼다. payments에는 extension_id 컬럼이 없어서, 승인할 때 주문 → 연장을 찾는 기준으로 이 컬럼을 쓴다(erd.md 정의는 "payment_id NULL"뿐이라 컬럼을 더하지 않았다).
   - 실패 뒤 새 주문에 밀려 연장에서 떨어진 옛 주문을 다시 승인하면 409 `PAYMENT_INVALID_STATUS`다.
-  - 조정 배치가 그런 주문의 PG 승인을 찾으면 어느 연장의 돈인지 정할 수 없어 `needs_admin_check`로 표시한다(정상 흐름에서는 PG 오류로 확정 실패한 주문뿐이라 생기지 않는다).
+  - 조정 배치가 그런 주문의 PG 승인을 찾으면 `approve()`로 맞춘 뒤 `EXTENSION_CANCEL` 전액 환불을 준비한다(키 `extension-refund:{paymentId}`). 처음에는 `needs_admin_check` 표시였다. 리뷰에서 바꾼 이유: 그 돈으로 확정할 연장이 없다는 것은 분명하고(연장은 현재 주문만 본다), 사람이 볼 일은 돌려주는 것뿐이라 자동 환불이 결과가 같고 더 빠르다. 연장 상태는 건드리지 않는다.
 - **연장 결제 대기 시간은 `payment.expire-minutes`(15분)를 재사용한다.** 같은 결제창·같은 PG 흐름이라 대기 시간을 나눌 이유가 없다. 새 키를 만들지 않고 policies.md 설명에 "연장 결제 대기에도 적용"을 적었다.
 - **결제 실패 해석은 대여 결제와 같다.** PG 승인 오류는 결제만 FAILED로 두고 연장은 대기로 남아 15분 안에 새 주문으로 재시도할 수 있다. 확정 실패인 금액 불일치만 즉시 연장 CANCELED다. rental.md 038 문장에도 적었다.
 - **보증금 상태는 RENTAL 결제에만 둔다(open-issues #1).** 기존 `Payment.approve()`는 종류와 상관없이 FROZEN/NONE을 넣었고, `applyRefund`·`markRefundFailed`는 "NONE이 아니면" 상태를 바꿨다. 그대로 두면 연장 결제에 보증금 상태가 생기거나 null이 REFUNDED로 바뀐다. 승인은 RENTAL일 때만 넣고, 환불은 null·NONE을 건너뛰게 했다. RENTAL 동작은 회귀 테스트로 고정했다(`PaymentTest.rentalDepositRegression`).
 - **연장 환불 멱등성 키는 `extension-refund:{paymentId}`다.** 계획에서는 extensionId였다. 환불을 준비하는 `PaymentRefundTxService.prepare`가 결제만 받고, 승인된 연장 결제는 연장당 1건이라 결제 ID로도 유일하다. 대여 취소 키 `cancel-refund:{rentalId}`와 겹치지 않는다. payment.md에 적었다.
 
 ## 경합 (open-issues #45, 사용자 결정 B+A)
+- **종료일이 지난 RENTING도 연장 요청을 막는다(409 `RENTAL_EXTENSION_OVERDUE`, 오늘은 Clock 기준).** 00:00 ~ 00:05(연체 배치 전)에 연장을 요청하면 B의 건너뛰기가 연체를 계속 미룰 수 있었다. 요청 시점에 막으면 건너뛰기는 종료일 당일에 시작한 결제 대기(최대 15분)만큼만 미룬다. 승인 시점에는 이 검사를 하지 않는다. 종료일 당일 밤에 요청한 결제가 자정을 넘겨 승인되는 것이 B가 지키려는 경우이기 때문이다.
 - **B: 연체 배치는 만료 전 결제 대기 연장이 있는 대여를 건너뛴다.** 대여 행 락 안에서 확인하고, 연장 승인도 대여 행 락을 먼저 잡으므로 둘이 한 줄로 선다. 연장이 만료되면 매시 재검사(최대 1시간 뒤)가 OVERDUE로 바꾼다. 연체료는 날짜로 계산해 금액이 같다.
 - **A: 그래도 남는 경합은 승인 시점에 처리한다.** 결제 대기 중 반납 요청, PG 호출 중 만료가 그런 경우다. 연장이 만료됐거나, 대여가 RENTING이 아니거나, 종료일이 요청 때와 다르면 확정하지 않고 연장 CANCELED + 전액 환불, 409 `PAYMENT_CANCELED_AFTER_EXPIRY`로 답한다. 대여 결제의 "만료 뒤 승인"과 같은 경로이고 새 전이는 없다.
 - **조정 배치에서 연장 결제는 항상 환불 쪽으로 간다.** 조정 대상은 `payment.expire-minutes` 동안 바뀌지 않은 결제라서, 볼 때는 연장이 이미 만료돼 있다. 대여 결제와 같은 규칙이고, 이 경우도 A로 처리한다.
 
 ## 락 순서
+- **연장 메서드는 대여 행을 다시 락 걸지 않는다.** `RentalPaymentTxService.lockedRental`은 호출자가 `lock()`으로 이미 잡은 대여를 영속성 컨텍스트에서 꺼낸다(`findById`, 추가 FOR UPDATE 없음). 대여 행 락을 먼저 잡은 호출자만 부른다(javadoc). `lockExtensionByPayment`는 대여 ID를 함께 받아 다른 대여의 연장을 돌려주지 않는다.
 **대여 행 → 연장 행 → 결제 행.** 연장 요청만 그 앞에 물품 락(`lock:item:{itemId}`, Redisson)을 잡는다. 확인한 경로:
 
 | 경로 | 순서 |

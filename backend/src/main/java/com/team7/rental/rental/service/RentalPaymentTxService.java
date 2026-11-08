@@ -97,12 +97,16 @@ public class RentalPaymentTxService {
 		RentalExtension extension = rentalExtensionRepository.findByIdForUpdate(extensionId)
 			.filter(found -> found.getRentalId().equals(rentalId))
 			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_EXTENSION_NOT_FOUND));
-		return extensionViewOf(extension);
+		return extensionViewOf(extension, lockedRental(rentalId));
 	}
 
-	/** 주문에 묶인 연장의 행 락. 대여 행 락 뒤에 부른다. 연장 주문이 아니면 비어 있다 */
-	public Optional<RentalExtensionPaymentView> lockExtensionByPayment(Long paymentId) {
-		return rentalExtensionRepository.findByPaymentIdForUpdate(paymentId).map(this::extensionViewOf);
+	/**
+	 * 주문에 묶인 연장의 행 락. 호출하는 쪽이 {@link #lock}으로 그 대여의 행 락을 먼저 잡는다. 이 대여의 연장 주문이 아니면(연장에서 떨어진 옛 주문 포함) 비어 있다
+	 */
+	public Optional<RentalExtensionPaymentView> lockExtensionByPayment(Long rentalId, Long paymentId) {
+		return rentalExtensionRepository.findByPaymentIdForUpdate(paymentId)
+			.filter(extension -> extension.getRentalId().equals(rentalId))
+			.map(extension -> extensionViewOf(extension, lockedRental(rentalId)));
 	}
 
 	/** 새 연장 주문을 연장에 묶는다. 연장 행 락 안에서 부른다 */
@@ -116,7 +120,7 @@ public class RentalPaymentTxService {
 	 */
 	public RentalExtensionConfirmed confirmExtension(Long rentalId, Long extensionId, Long paymentId,
 		LocalDateTime now) {
-		Rental rental = getForUpdate(rentalId);
+		Rental rental = lockedRental(rentalId);
 		RentalExtension extension = getExtension(extensionId);
 		rentalExtensionRecorder.apply(rental, extension, null, now);
 		extension.confirm(paymentId);
@@ -139,8 +143,16 @@ public class RentalPaymentTxService {
 			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_EXTENSION_NOT_FOUND));
 	}
 
-	private RentalExtensionPaymentView extensionViewOf(RentalExtension extension) {
-		Rental rental = getForUpdate(extension.getRentalId());
+	/**
+	 * 호출하는 쪽이 {@link #lock}으로 행 락을 이미 잡은 대여. 같은 트랜잭션의 영속성 컨텍스트에 있으므로 다시 SELECT ... FOR UPDATE를 보내지 않는다.
+	 * <b>대여 행 락을 먼저 잡은 호출자만 부른다</b>(연장 메서드들의 계약: 대여 → 연장 → 결제 순서).
+	 */
+	private Rental lockedRental(Long rentalId) {
+		return rentalRepository.findById(rentalId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_NOT_FOUND));
+	}
+
+	private RentalExtensionPaymentView extensionViewOf(RentalExtension extension, Rental rental) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		return new RentalExtensionPaymentView(extension.getId(), extension.getRentalId(), extension.getStatus(),
 			extension.getAdditionalFee(), extension.getPaymentId(), extension.isPendingAt(now),
