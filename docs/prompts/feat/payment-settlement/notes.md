@@ -10,5 +10,9 @@
 - **`settlements`에 `paid_at`·`created_at`·`updated_at`과 인덱스 두 개를 더했다(D2).** erd.md에 없던 컬럼이다. 지급 완료 시각을 목록에 보여 주기 위해, 인덱스는 지급 배치(status, scheduled_date)와 내 정산 목록(owner_id, id)용이다.
 - **HELD 전이 메서드는 만들지 않았다.** 트리거인 문의(063)가 3순위다. 지급 배치가 SCHEDULED만 고르므로 HELD가 생겨도 지급되지 않는다.
 
+## 정산 지급 배치
+- **실행 시각은 application.yml cron `app.batch.settlement-payout-cron` = 매일 00:30이다.** policies.md 배치 주기 표는 "매일"만 두었다(D4). 지급 예정일 당일 아침 전에 지급되도록 자정 직후로 했고, 연체 감지(00:05)와 겹치지 않게 30분으로 정했다.
+- **건마다 행 락을 잡고 `isPayable`을 다시 본다.** 같은 회차를 두 서버가 돌리는 것은 ShedLock이 막고, 재실행·겹친 실행은 이 확인으로 한 번만 지급된다.
+
 ## 033 결제·보증금 내역
 - type 의미는 open-issues #44의 임시 해석으로 구현한다(확정 전).

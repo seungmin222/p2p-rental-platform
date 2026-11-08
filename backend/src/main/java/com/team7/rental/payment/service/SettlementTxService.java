@@ -1,5 +1,6 @@
 package com.team7.rental.payment.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
@@ -74,6 +75,26 @@ public class SettlementTxService implements RentalSettlementPort {
 		}
 		settlementRepository.save(Settlement.schedule(rentalId, ownerId, source, amount,
 			BusinessDays.plus(baseAt.toLocalDate(), policyProperties.settlement().payoutDelayBusinessDays())));
+	}
+
+	/** 지급 배치 대상 id: SCHEDULED이고 지급 예정일 ≤ today */
+	@Transactional(readOnly = true)
+	public List<Long> findPayableIds(LocalDate today) {
+		return settlementRepository.findPayableIds(today);
+	}
+
+	/**
+	 * 지급 한 건: SCHEDULED → PAID (실제 송금 없음). 대상 조회 뒤 상태가 바뀌었을 수 있어 행 락을 잡고 다시 본다.
+	 *
+	 * @return 지급했으면 true. 이미 지급됐거나 대상이 아니면 false(배치를 다시 돌려도 결과가 같다)
+	 */
+	public boolean pay(Long settlementId, LocalDateTime now) {
+		Settlement settlement = settlementRepository.findByIdForUpdate(settlementId).orElse(null);
+		if (settlement == null || !settlement.isPayable(now.toLocalDate())) {
+			return false;
+		}
+		settlement.pay(now);
+		return true;
 	}
 
 	/** 일반 읽기. 호출하는 쪽이 대여 행 락을 잡았다(PaymentRepository 주석: 행이 없을 때 FOR UPDATE의 갭 락을 피한다) */
