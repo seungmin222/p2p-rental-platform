@@ -2284,6 +2284,133 @@
         ]
       }
     },
+    "/api/members/me/payments": {
+      "get": {
+        "description": "본인이 대여자인 결제만, 한 항목 \u003d 결제 한 건(주문만 만들고 승인되지 않은 READY·FAILED 제외). 최신 결제 순. type(임시 해석, open-issues #44): ALL·PAYMENT \u003d 승인된 결제 전체, REFUND \u003d 취소 환불이 있는 건, DEPOSIT \u003d 보증금이 HELD·REFUNDED·FORFEITED·REFUND_FAILED인 건. from·to는 결제 시각(createdAt)의 날짜에 걸리고 둘 다 포함한다. 생략하면 to \u003d 오늘, from \u003d to − policies.md payment-history.default-range(3개월). from \u003e to면 400. 페이지 크기는 policies.md payment-history.page로 고정이다.",
+        "operationId": "getMyPayments",
+        "parameters": [
+          {
+            "description": "구분. 생략하면 ALL",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ALL",
+              "description": "구분. 생략하면 ALL",
+              "enum": [
+                "ALL",
+                "PAYMENT",
+                "REFUND",
+                "DEPOSIT"
+              ]
+            }
+          },
+          {
+            "description": "조회 시작일(포함). 생략하면 to에서 policies.md payment-history.default-range(3개월) 전",
+            "example": "2026-08-10",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "조회 시작일(포함). 생략하면 to에서 policies.md payment-history.default-range(3개월) 전",
+              "example": "2026-08-10"
+            }
+          },
+          {
+            "description": "조회 종료일(포함). 생략하면 오늘. from보다 빠르면 400",
+            "example": "2026-11-10",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "조회 종료일(포함). 생략하면 오늘. from보다 빠르면 400",
+              "example": "2026-11-10"
+            }
+          },
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponsePaymentHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "결제·보증금 내역 조회 (REQ-033)",
+        "tags": [
+          "Payment"
+        ]
+      }
+    },
     "/api/members/me/regions": {
       "get": {
         "description": "대표 동네 먼저. 최대 개수는 policies.md region.max-per-member.",
@@ -2862,6 +2989,90 @@
         "summary": "빌린 내역 조회 (REQ-019)",
         "tags": [
           "Rental"
+        ]
+      }
+    },
+    "/api/members/me/settlements": {
+      "get": {
+        "description": "본인이 제공자인 정산만, 최신 생성 순. 정산은 거래 완료 또는 수수료 있는 취소 때 생기며 받은 돈이 없거나 지급액이 0원이면 생기지 않는다. 지급 예정일에 지급 배치가 PAID로 바꾼다(실제 송금 없음). 합계(scheduledTotal·paidTotal)는 페이지와 상관없이 전체 기준이다. 페이지 크기는 policies.md settlement.page로 고정이다.",
+        "operationId": "getMySettlements",
+        "parameters": [
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSettlementListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "정산 내역 조회 (REQ-039)",
+        "tags": [
+          "Payment"
         ]
       }
     },
@@ -5985,6 +6196,20 @@
           }
         }
       },
+      "ApiResponsePageResponsePaymentHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponsePaymentHistoryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponsePageResponseRentalHistoryResponse": {
         "type": "object",
         "properties": {
@@ -6074,6 +6299,20 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/RentalDetailResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseSettlementListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SettlementListResponse"
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -7453,6 +7692,40 @@
           }
         }
       },
+      "PageResponsePaymentHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/PaymentHistoryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
+          }
+        }
+      },
       "PageResponseRentalHistoryResponse": {
         "type": "object",
         "properties": {
@@ -7465,6 +7738,40 @@
             "description": "이 페이지의 항목",
             "items": {
               "$ref": "#/components/schemas/RentalHistoryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
+          }
+        }
+      },
+      "PageResponseSettlementResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/SettlementResponse"
             }
           },
           "page": {
@@ -7575,6 +7882,126 @@
         "required": [
           "rentalId"
         ]
+      },
+      "PaymentHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "결제 금액(원) \u003d rentalFee + deposit + extensionFee",
+            "example": 80000
+          },
+          "cancelFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "취소 수수료(원)",
+            "example": 0
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "결제 시각(주문 생성 시각). from·to 필터도 이 값에 건다"
+          },
+          "deduction": {
+            "$ref": "#/components/schemas/Deduction",
+            "description": "확정된 보증금 차감. 차감이 없으면 null"
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금(원). 연장 결제면 0",
+            "example": 50000
+          },
+          "depositRefundPending": {
+            "type": "boolean",
+            "description": "아직 끝나지 않은 환불이 있는지(반환 처리 중·재시도 대기)",
+            "example": false
+          },
+          "depositStatus": {
+            "type": "string",
+            "description": "보증금 상태 (state-machines.md §2). 연장 결제면 null",
+            "enum": [
+              "NONE",
+              "FROZEN",
+              "HELD",
+              "REFUNDED",
+              "FORFEITED",
+              "REFUND_FAILED"
+            ]
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 종료일",
+            "example": "2026-11-05"
+          },
+          "extensionFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "연장료(원). 대여 결제면 0",
+            "example": 0
+          },
+          "item": {
+            "$ref": "#/components/schemas/RentalItem",
+            "description": "물품"
+          },
+          "overdueFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "확정 연체료(원). 보증금에서 차감했다",
+            "example": 15000
+          },
+          "paymentId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "결제 ID",
+            "example": 1
+          },
+          "paymentStatus": {
+            "type": "string",
+            "description": "결제 상태 (state-machines.md §4)",
+            "enum": [
+              "READY",
+              "APPROVED",
+              "CANCELED",
+              "PARTIAL_CANCELED",
+              "FAILED"
+            ]
+          },
+          "paymentType": {
+            "type": "string",
+            "description": "결제 종류: RENTAL 대여료+보증금, EXTENSION 연장료(REQ-038)",
+            "enum": [
+              "RENTAL",
+              "EXTENSION"
+            ]
+          },
+          "refundedAmount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "누적 취소 금액(원). 취소 환불·보증금 반환을 모두 더한 값",
+            "example": 35000
+          },
+          "rentalFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "대여료(원). 연장 결제면 0",
+            "example": 30000
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID. 대여 상세(GET /api/rentals/{rentalId})로 이동할 때 쓴다",
+            "example": 10
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 시작일",
+            "example": "2026-11-03"
+          }
+        }
       },
       "PaymentOrderResponse": {
         "type": "object",
@@ -8320,6 +8747,112 @@
             "type": "string",
             "description": "닉네임",
             "example": "텐트초보"
+          }
+        }
+      },
+      "SettlementListResponse": {
+        "type": "object",
+        "properties": {
+          "paidTotal": {
+            "type": "integer",
+            "format": "int64",
+            "description": "지급 완료(PAID) 지급액 합계(원)",
+            "example": 60500
+          },
+          "scheduledTotal": {
+            "type": "integer",
+            "format": "int64",
+            "description": "지급 예정(SCHEDULED) 지급액 합계(원). 보류(HELD)는 포함하지 않는다",
+            "example": 27000
+          },
+          "settlements": {
+            "$ref": "#/components/schemas/PageResponseSettlementResponse",
+            "description": "정산 목록. 최신 생성 순"
+          }
+        }
+      },
+      "SettlementResponse": {
+        "type": "object",
+        "properties": {
+          "deductionAmount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "손상 차감액(원). 수수료를 떼지 않고 지급액에 더한다. 취소 정산이면 0",
+            "example": 20000
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 종료일",
+            "example": "2026-11-05"
+          },
+          "feeAmount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "플랫폼 수수료(원): floor(grossAmount × policies.md settlement.fee-rate)",
+            "example": 4500
+          },
+          "grossAmount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "수수료 대상 금액(원): 대여료 + 연장료 + 연체료, 또는 취소 수수료",
+            "example": 45000
+          },
+          "item": {
+            "$ref": "#/components/schemas/RentalItem",
+            "description": "물품"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "지급 완료 시각. PAID가 아니면 null"
+          },
+          "payoutAmount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "지급액(원) \u003d grossAmount − feeAmount + deductionAmount",
+            "example": 60500
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID. 대여 상세(GET /api/rentals/{rentalId})로 이동할 때 쓴다",
+            "example": 10
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date",
+            "description": "지급 예정일: 완료(취소)일 + 영업일 2일(주말만 제외)",
+            "example": "2026-11-10"
+          },
+          "settlementId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "정산 ID",
+            "example": 1
+          },
+          "source": {
+            "type": "string",
+            "description": "정산 종류: COMPLETED 거래 완료, CANCEL_FEE 수수료 있는 취소",
+            "enum": [
+              "COMPLETED",
+              "CANCEL_FEE"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "description": "대여 시작일",
+            "example": "2026-11-03"
+          },
+          "status": {
+            "type": "string",
+            "description": "정산 상태: SCHEDULED 지급 예정, HELD 보류(분쟁), PAID 지급 완료(실제 송금 없음)",
+            "enum": [
+              "SCHEDULED",
+              "HELD",
+              "PAID"
+            ]
           }
         }
       }

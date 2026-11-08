@@ -49,7 +49,7 @@
 | 41 | ⬜ | 보증금 | 미반납 신고 뒤 물건이 돌아온 건의 **정상 반환 경로가 없다**. state-machines §2에서 HELD → REFUNDED는 차감 확정뿐이라, 물건이 멀쩡히 돌아와도 상태 확인 '정상'으로 보증금을 돌려줄 수 없다 | 현재: 신고 건은 상태 확인을 막고(409 `RENTAL_INVALID_TRANSITION`) D 등급·0원 이상 제안 → 수락/자동 수락/관리자 확정으로 끝낸다(0원이면 연체료를 뺀 전액 반환). 판정 경로를 둘지는 미결 |
 | 42 | ✅ | 관리자 | 보류 7일 초과 목록(`GET /api/admin/deposits/held`)의 페이지 크기 정책이 없다 | 페이지 없이 전체를 보류가 오래된 순(held_at, id)으로 돌려준다. 관리자 목록 화면(REQ-057, 3순위)에서 페이지를 정한다 |
 | 43 | ✅ | 보증금 | 72시간이 지났지만 자동 수락 배치(1시간)가 아직 돌지 않은 제안에 대여자가 수락·거절할 수 있는지 | 기한이 지나면 수락·거절 모두 409 `DEDUCTION_PROPOSAL_CLOSED`. 결과가 배치 실행 시각에 좌우되지 않게 한다(연체료를 상태가 아니라 날짜로 계산한 것과 같은 원칙) |
-| 44 | ⬜ | 결제 내역 | REQ-033 `type=PAYMENT|REFUND|DEPOSIT`의 의미와 한 항목의 단위가 명세에 없다 | (임시 해석, 확정 전) 한 항목 = 대여자 본인의 `payments` 행 1개(READY·FAILED 제외). `PAYMENT` = 승인된 결제 전체, `REFUND` = 취소 환불이 있는 건, `DEPOSIT` = 보증금이 동결 이후 단계(`HELD`·`REFUNDED`·`FORFEITED`·`REFUND_FAILED`)로 넘어간 건. from/to 생략 시 최근 3개월(`payment-history.default-range`), from > to는 400 |
+| 44 | ⬜ | 결제 내역 | REQ-033 `type` 값(`PAYMENT`·`REFUND`·`DEPOSIT`)의 의미와 한 항목의 단위가 명세에 없다 | (임시 해석, 확정 전) 한 항목 = 대여자 본인의 `payments` 행 1개(READY·FAILED 제외). `PAYMENT` = 승인된 결제 전체, `REFUND` = 취소 환불이 있는 건, `DEPOSIT` = 보증금이 동결 이후 단계(`HELD`·`REFUNDED`·`FORFEITED`·`REFUND_FAILED`)로 넘어간 건. from/to 생략 시 최근 3개월(`payment-history.default-range`), from > to는 400 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

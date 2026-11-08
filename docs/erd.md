@@ -171,7 +171,7 @@ erDiagram
 
 **damage_policies** [1] — (1순위로 당김, 권장 보증금 REQ-006이 쓴다. 테이블·시드는 `feat/item-crud`, open-issues #23) id, category_id, grade, deduction_type, fixed_amount, cap_rate, recommended_deposit_min_rate, recommended_deposit_max_rate (초기값: `policies.md` §4)
 
-**settlements** — id, rental_id UK, owner_id, source(`COMPLETED`/`CANCEL_FEE`), gross_amount(대여료+연장료+연체료 또는 취소 수수료), fee_amount, deduction_amount, payout_amount, scheduled_date, status
+**settlements** — id, rental_id UK, owner_id FK→members, source(`SettlementSource`: `COMPLETED`/`CANCEL_FEE`), gross_amount(대여료+연장료+연체료 또는 취소 수수료), fee_amount, deduction_amount, payout_amount, scheduled_date DATE, status(`SettlementStatus`), paid_at DATETIME(6) NULL(지급 배치가 PAID로 바꾼 시각), created_at, updated_at. 인덱스 `(status, scheduled_date)`(지급 배치), `(owner_id, id)`(내 정산 목록) — 생성됨(`V11`). 대여당 하나이며 대여 완료·수수료 취소와 같은 트랜잭션에서 만든다. 받은 돈이 없거나(승인된 RENTAL 결제 없음) 지급액이 0원이면 만들지 않는다
 
 ## 관심·조회 [2]
 

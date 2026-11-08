@@ -75,19 +75,22 @@
 - A 등급 판정 손상은 차감 불가(UI에서 등급 선택지에 A 없음)
 
 ## REQ-039 제공자 대금 정산 [2]
-- 생성 시점: rental COMPLETED, 또는 cancelFee > 0인 취소
+- 생성 시점: rental COMPLETED, 또는 cancelFee > 0인 취소. 그 전이와 **같은 트랜잭션**에서 대여당 한 번만 만든다(`RentalSettlementPort`)
+- 만들지 않는 경우: 승인된 RENTAL 결제가 없음(결제 기능을 끄고 만든 건·무료 대여) 또는 지급액 0원. 수수료 취소 정산은 대여자 환불이 실패(REFUND_FAILED)해도 그대로 둔다(수수료는 환불 결과와 상관없이 제공자 몫)
+- 금액 출처: 대여료 `payments.rental_fee_amount`, 연장료 승인된 EXTENSION 결제 합계(REQ-038 전에는 0), 연체료 `rentals.overdue_fee`, 손상 차감액 `payments.deduction_amount`(연체료 미포함)
 - 금액 (모두 원 미만 절사):
   - 거래 완료: `gross = rentalFee + 연장료 합계 + overdueFee`, `feeAmount = floor(gross × 0.10)`, `payoutAmount = gross − feeAmount + 손상 차감액`
   - 수수료 있는 취소: `gross = cancelFee`, `feeAmount = floor(gross × 0.10)`, `payoutAmount = gross − feeAmount`
   - 손상 차감액은 수리비 보전이라 수수료를 떼지 않는다
-- scheduledDate = 완료(취소)일 + 영업일 2일 (주말만 제외)
+- scheduledDate = 완료(취소)일(`completed_at`/`canceled_at`의 날짜) + 영업일 2일 (주말만 제외)
 - 배치(매일): `SCHEDULED AND scheduledDate <= 오늘` → PAID (실제 송금 없음)
 - 분쟁 진행 중(문의 REQ-063 접수) → HELD
-- `GET /api/members/me/settlements`: 지급 예정·완료 금액, 수수료 내역
+- `GET /api/members/me/settlements`: 지급 예정·완료 금액 합계, 정산별 수수료 내역(gross·fee·deduction·payout). 본인이 제공자인 정산만, 최신 순, `settlement.page` 고정
 - 실제 계좌 송금·출금 신청은 범위 외(보고서 명시)
 
 ## REQ-033 결제·보증금 내역 [2]
 `GET /api/members/me/payments?type=ALL|PAYMENT|REFUND|DEPOSIT&from=&to=` (기본 최근 3개월)
+- 한 항목 = 대여자 본인의 결제 한 건(READY·FAILED 제외). type 의미는 임시 해석(open-issues #44). from·to는 결제 시각(created_at)의 날짜, 둘 다 포함. 기본값을 채운 뒤 from > to면 400. `payment-history.page` 고정
 - 항목: 일시, 물품명, 대여 기간, 구분, 금액(대여료·보증금·연장료 분리), 결제 상태, 보증금 상태(없음/동결/보류/반환/전액 차감/반환 실패), 연체료, 취소 수수료, 차감 금액·사유
 - 클릭 → 대여 상세. 정산 내역은 같은 화면 별도 탭
 
