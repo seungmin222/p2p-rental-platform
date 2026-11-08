@@ -56,6 +56,9 @@ public class RentalStatusHistory extends BaseTimeEntity {
 	/** 관리자 차감 확정으로 완료 (REQ-049). changedBy = 관리자 */
 	public static final String REASON_DEDUCTION_ADMIN_DECIDED = "DEDUCTION_ADMIN_DECIDED";
 
+	/** 연장 확정 RENTING → RENTING (REQ-038). 결제 없이 확정하면 changedBy = 대여자, 결제 승인으로 확정하면 null */
+	public static final String REASON_EXTENSION = "EXTENSION";
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;

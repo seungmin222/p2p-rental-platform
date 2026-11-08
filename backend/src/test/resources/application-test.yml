@@ -16,6 +16,7 @@ app:
     cancel-agreement-expire-cron: "-"
     return-auto-confirm-cron: "-"
     payment-expire-cron: "-"
+    rental-extension-expire-cron: "-"
     no-handover-cancel-cron: "-"
     refund-retry-cron: "-"
     payment-reconcile-cron: "-"

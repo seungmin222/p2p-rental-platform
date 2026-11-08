@@ -26,12 +26,15 @@ import com.team7.rental.rental.dto.CancelAgreementResponse;
 import com.team7.rental.rental.dto.RentalCancelRequest;
 import com.team7.rental.rental.dto.RentalCreateRequest;
 import com.team7.rental.rental.dto.RentalDetailResponse;
+import com.team7.rental.rental.dto.RentalExtensionRequest;
+import com.team7.rental.rental.dto.RentalExtensionResponse;
 import com.team7.rental.rental.dto.RentalHandoverRequest;
 import com.team7.rental.rental.dto.RentalInspectionResponse;
 import com.team7.rental.rental.dto.RentalLostReportRequest;
 import com.team7.rental.rental.dto.RentalReturnConfirmRequest;
 import com.team7.rental.rental.dto.RentalReturnRequest;
 import com.team7.rental.rental.service.RentalCancelService;
+import com.team7.rental.rental.service.RentalExtensionService;
 import com.team7.rental.rental.service.RentalInspectionService;
 import com.team7.rental.rental.service.RentalQueryService;
 import com.team7.rental.rental.service.RentalService;
@@ -52,6 +55,7 @@ public class RentalController {
 	private final RentalQueryService rentalQueryService;
 	private final RentalCancelService rentalCancelService;
 	private final RentalInspectionService rentalInspectionService;
+	private final RentalExtensionService rentalExtensionService;
 
 	@Operation(summary = "대여 예약 요청 (REQ-013, REQ-014)", description = "1순위 단계(결제 비활성)와 무료 대여는 바로 RESERVED, 결제를 켜면 PENDING_PAYMENT로 생성해 결제 대기 시간(policies.md payment.expire-minutes) 동안 기간을 선점한다. "
 		+ "응답은 대여 상세와 같다.")
@@ -229,5 +233,28 @@ public class RentalController {
 		RentalLostReportRequest request) {
 		String note = request == null ? null : request.normalizedNote();
 		return ApiResponse.ok(rentalInspectionService.reportLost(rentalId, memberId, note));
+	}
+
+	@Operation(summary = "대여 연장 요청 (REQ-038)", description = "대여 중(RENTING)인 대여자가 종료일을 늘린다. 연장 구간은 (기존 종료일 + 1) ~ newEndDate다. "
+		+ "연체 중(OVERDUE)이면 409 RENTAL_EXTENSION_OVERDUE(먼저 반납), 그 외 RENTING이 아니면 409 RENTAL_INVALID_TRANSITION. "
+		+ "확정된 연장이 extension.max-count 이상이거나 연장 일수가 extension.max-days-per를 넘으면 400 RENTAL_EXTENSION_LIMIT_EXCEEDED, newEndDate ≤ 기존 종료일이면 400 RENTAL_INVALID_PERIOD. "
+		+ "결제를 기다리는 연장이 있으면 409 RENTAL_EXTENSION_IN_PROGRESS(대여당 1건). "
+		+ "연장 구간이 가능 기간 하나 안에 없으면 400 RENTAL_OUT_OF_AVAILABLE_PERIOD, 다른 예약·결제 대기 연장과 겹치면 409 RENTAL_EXTENSION_PERIOD_CONFLICT이고, "
+		+ "둘 다 error.details에 연장 가능한 최대 날짜 { field: \"maxEndDate\", reason: \"yyyy-MM-dd\" }를 싣는다(하루도 연장할 수 없으면 비운다). "
+		+ "연장료 = 예약 시점 1일 대여료 × 연장 일수, 보증금은 그대로다. 결제를 켰고 연장료 > 0이면 PENDING_PAYMENT로 만들어 payment.expire-minutes 동안 기간을 선점하고, "
+		+ "POST /api/payments { rentalId, extensionId }로 주문한다. 연장료 0원이거나 결제 기능이 꺼져 있으면 바로 CONFIRMED로 종료일이 바뀐다.")
+	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT,
+		RENTAL_RENTER_ONLY, RENTAL_EXTENSION_OVERDUE, RENTAL_INVALID_TRANSITION, RENTAL_EXTENSION_LIMIT_EXCEEDED,
+		RENTAL_INVALID_PERIOD, RENTAL_EXTENSION_IN_PROGRESS, RENTAL_OUT_OF_AVAILABLE_PERIOD,
+		RENTAL_EXTENSION_PERIOD_CONFLICT, RENTAL_LOCK_TIMEOUT})
+	@PostMapping("/{rentalId}/extensions")
+	@ResponseStatus(HttpStatus.CREATED)
+	public ApiResponse<RentalExtensionResponse> requestExtension(@LoginMember
+	Long memberId, @PathVariable
+	Long rentalId,
+		@Valid @RequestBody
+		RentalExtensionRequest request) {
+		return ApiResponse.ok(rentalExtensionService.request(memberId, rentalId, request));
 	}
 }

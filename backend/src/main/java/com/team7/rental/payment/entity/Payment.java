@@ -121,13 +121,33 @@ public class Payment extends BaseTimeEntity {
 		return payment;
 	}
 
+	/**
+	 * 연장료 주문(READY, REQ-038). 대여료·보증금 칸은 0이고 보증금 상태는 끝까지 null이다(open-issues #1).
+	 *
+	 * @throws IllegalArgumentException 연장료가 0원 이하일 때. 0원 연장은 결제 없이 확정한다
+	 */
+	public static Payment createForExtension(Long rentalId, String orderId, String idempotencyKey,
+		int extensionFee) {
+		if (extensionFee <= 0) {
+			throw new IllegalArgumentException("연장료는 0원보다 커야 합니다: " + extensionFee);
+		}
+		Payment payment = new Payment();
+		payment.rentalId = rentalId;
+		payment.type = PaymentType.EXTENSION;
+		payment.orderId = orderId;
+		payment.idempotencyKey = idempotencyKey;
+		payment.amount = extensionFee;
+		payment.status = PaymentStatus.READY;
+		return payment;
+	}
+
 	/** 승인 요청에 받은 paymentKey를 기록한다(TX1). 결과를 모를 때 조정 배치가 취소에 쓴다 */
 	public void recordPaymentKey(String paymentKey) {
 		this.paymentKey = paymentKey;
 	}
 
 	/**
-	 * READY·FAILED → APPROVED, 보증금 FROZEN(0원이면 NONE). FAILED는 조정 배치가 PG에서 승인을 확인했을 때만 온다.
+	 * READY·FAILED → APPROVED, 대여 결제면 보증금 FROZEN(0원이면 NONE). 연장 결제는 보증금 상태를 두지 않는다. FAILED는 조정 배치가 PG에서 승인을 확인했을 때만 온다.
 	 *
 	 * @throws BusinessException PAYMENT_INVALID_STATUS
 	 */
@@ -137,7 +157,9 @@ public class Payment extends BaseTimeEntity {
 		}
 		this.paymentKey = paymentKey;
 		this.status = PaymentStatus.APPROVED;
-		this.depositStatus = depositAmount > 0 ? DepositStatus.FROZEN : DepositStatus.NONE;
+		if (type == PaymentType.RENTAL) {
+			this.depositStatus = depositAmount > 0 ? DepositStatus.FROZEN : DepositStatus.NONE;
+		}
 	}
 
 	/**
@@ -186,14 +208,14 @@ public class Payment extends BaseTimeEntity {
 		this.refundedAmount = Math.addExact(refundedAmount, refundPendingAmount);
 		this.refundPendingAmount = null;
 		this.status = refundedAmount == amount ? PaymentStatus.CANCELED : PaymentStatus.PARTIAL_CANCELED;
-		if (depositStatus != DepositStatus.NONE) {
+		if (hasDepositStatus()) {
 			this.depositStatus = DepositStatus.REFUNDED;
 		}
 	}
 
 	/** 환불 실패·결과 불명(TX2). 환불액은 남아 재시도 배치 대상이 된다. 보증금 0원이면 NONE 유지(재시도는 refundPendingAmount로 찾는다) */
 	public void markRefundFailed() {
-		if (depositStatus != DepositStatus.NONE) {
+		if (hasDepositStatus()) {
 			this.depositStatus = DepositStatus.REFUND_FAILED;
 		}
 	}
@@ -248,6 +270,11 @@ public class Payment extends BaseTimeEntity {
 	/** 조정 배치가 고칠 수 없는 불일치를 찾았을 때 */
 	public void flagForAdminCheck() {
 		this.needsAdminCheck = true;
+	}
+
+	// 보증금 상태를 바꿀 대상: 승인된 대여 결제이고 보증금이 있다. 연장 결제(null)·보증금 0원(NONE)은 그대로 둔다
+	private boolean hasDepositStatus() {
+		return depositStatus != null && depositStatus != DepositStatus.NONE;
 	}
 
 	/** 아직 취소되지 않은 금액 */

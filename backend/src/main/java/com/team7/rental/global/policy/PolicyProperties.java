@@ -75,7 +75,9 @@ public record PolicyProperties(
 	@Valid @NotNull
 	Settlement settlement,
 	@Valid @NotNull
-	PaymentHistory paymentHistory) {
+	PaymentHistory paymentHistory,
+	@Valid @NotNull
+	Extension extension) {
 
 	public record PageSize(@Positive
 	int page) {
@@ -195,6 +197,19 @@ public record PolicyProperties(
 		int payoutDelayBusinessDays,
 		@Positive
 		int page) {
+	}
+
+	/**
+	 * 대여 연장 (REQ-038). 결제 대기 시간은 따로 두지 않고 payment.expire-minutes를 쓴다(policies.md)
+	 *
+	 * @param maxCount 대여 한 건당 확정 연장 최대 횟수 (extension.max-count)
+	 * @param maxDaysPer 한 번에 늘릴 수 있는 최대 일수 (extension.max-days-per)
+	 */
+	public record Extension(
+		@Positive
+		int maxCount,
+		@Positive
+		int maxDaysPer) {
 	}
 
 	/**

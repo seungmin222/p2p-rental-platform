@@ -3078,7 +3078,7 @@
     },
     "/api/payments": {
       "post": {
-        "description": "결제 대기(PENDING_PAYMENT)이고 만료 전인 대여의 주문을 만든다. 금액은 서버가 계산한다. 진행 중인 주문이 있으면 같은 주문을 돌려주고, 승인에 실패한 뒤에는 새 주문을 만든다. 무료 대여는 결제 없이 바로 RESERVED라 이 API를 쓰지 않는다.",
+        "description": "결제 대기(PENDING_PAYMENT)이고 만료 전인 대여의 주문을 만든다. 금액은 서버가 계산한다. 진행 중인 주문이 있으면 같은 주문을 돌려주고, 승인에 실패한 뒤에는 새 주문을 만든다. 무료 대여는 결제 없이 바로 RESERVED라 이 API를 쓰지 않는다. extensionId를 보내면 그 연장(결제 대기이고 만료 전)의 연장료 주문을 만든다(REQ-038). 다른 대여의 연장이면 404 RENTAL_EXTENSION_NOT_FOUND, 결제 대기가 아니면 409 RENTAL_INVALID_TRANSITION.",
         "operationId": "createOrder",
         "requestBody": {
           "content": {
@@ -3165,6 +3165,17 @@
             "content": {
               "application/json": {
                 "examples": {
+                  "RENTAL_EXTENSION_NOT_FOUND": {
+                    "summary": "연장 요청을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_EXTENSION_NOT_FOUND",
+                        "details": [],
+                        "message": "연장 요청을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  },
                   "RENTAL_NOT_FOUND": {
                     "summary": "대여 내역을 찾을 수 없습니다.",
                     "value": {
@@ -3179,7 +3190,7 @@
                 }
               }
             },
-            "description": "RENTAL_NOT_FOUND"
+            "description": "RENTAL_EXTENSION_NOT_FOUND, RENTAL_NOT_FOUND"
           },
           "409": {
             "content": {
@@ -3218,7 +3229,7 @@
             "bearerAuth": []
           }
         ],
-        "summary": "결제 주문 생성 (REQ-024)",
+        "summary": "결제 주문 생성 (REQ-024, REQ-038)",
         "tags": [
           "Payment"
         ]
@@ -3226,7 +3237,7 @@
     },
     "/api/payments/confirm": {
       "post": {
-        "description": "토스 결제창 성공 후 호출한다. 승인되면 대여가 RESERVED, 보증금이 FROZEN(0원이면 NONE)이 된다. 이미 처리한 orderId는 기존 결과를 돌려준다. 금액이 다르면 400과 함께 대여가 취소된다. PAYMENT_APPROVAL_FAILED는 대여가 결제 대기로 남아 새 주문으로 다시 결제할 수 있다. PAYMENT_RESULT_UNKNOWN은 같은 요청을 다시 보내도 중복 승인되지 않는다. PAYMENT_CANCELED_AFTER_EXPIRY는 승인 직후 대여가 만료된 경우로, 전액 환불을 진행한다.",
+        "description": "토스 결제창 성공 후 호출한다. 승인되면 대여가 RESERVED, 보증금이 FROZEN(0원이면 NONE)이 된다. 이미 처리한 orderId는 기존 결과를 돌려준다. 금액이 다르면 400과 함께 대여가 취소된다. PAYMENT_APPROVAL_FAILED는 대여가 결제 대기로 남아 새 주문으로 다시 결제할 수 있다. PAYMENT_RESULT_UNKNOWN은 같은 요청을 다시 보내도 중복 승인되지 않는다. PAYMENT_CANCELED_AFTER_EXPIRY는 승인 직후 대여가 만료된 경우로, 전액 환불을 진행한다. 연장 결제(type\u003dEXTENSION, REQ-038)는 승인되면 연장이 CONFIRMED가 되고 대여 종료일이 바뀐다(보증금 상태 없음). 금액이 다르면 연장이 취소된다. 승인 시점에 연장이 만료됐거나 대여가 대여 중(RENTING)이 아니면(연체 전환·반납과의 경합) 연장을 취소하고 연장료를 전액 환불하며 PAYMENT_CANCELED_AFTER_EXPIRY로 답한다.",
         "operationId": "confirm",
         "requestBody": {
           "content": {
@@ -3356,12 +3367,12 @@
               "application/json": {
                 "examples": {
                   "PAYMENT_CANCELED_AFTER_EXPIRY": {
-                    "summary": "결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다.",
+                    "summary": "결제 처리 중 예약 또는 연장이 만료·취소되어 결제 금액을 전액 환불합니다.",
                     "value": {
                       "error": {
                         "code": "PAYMENT_CANCELED_AFTER_EXPIRY",
                         "details": [],
-                        "message": "결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다."
+                        "message": "결제 처리 중 예약 또는 연장이 만료·취소되어 결제 금액을 전액 환불합니다."
                       },
                       "success": false
                     }
@@ -4867,6 +4878,242 @@
         ]
       }
     },
+    "/api/rentals/{rentalId}/extensions": {
+      "post": {
+        "description": "대여 중(RENTING)인 대여자가 종료일을 늘린다. 연장 구간은 (기존 종료일 + 1) ~ newEndDate다. 연체 중(OVERDUE)이면 409 RENTAL_EXTENSION_OVERDUE(먼저 반납), 그 외 RENTING이 아니면 409 RENTAL_INVALID_TRANSITION. 확정된 연장이 extension.max-count 이상이거나 연장 일수가 extension.max-days-per를 넘으면 400 RENTAL_EXTENSION_LIMIT_EXCEEDED, newEndDate ≤ 기존 종료일이면 400 RENTAL_INVALID_PERIOD. 결제를 기다리는 연장이 있으면 409 RENTAL_EXTENSION_IN_PROGRESS(대여당 1건). 연장 구간이 가능 기간 하나 안에 없으면 400 RENTAL_OUT_OF_AVAILABLE_PERIOD, 다른 예약·결제 대기 연장과 겹치면 409 RENTAL_EXTENSION_PERIOD_CONFLICT이고, 둘 다 error.details에 연장 가능한 최대 날짜 { field: \"maxEndDate\", reason: \"yyyy-MM-dd\" }를 싣는다(하루도 연장할 수 없으면 비운다). 연장료 \u003d 예약 시점 1일 대여료 × 연장 일수, 보증금은 그대로다. 결제를 켰고 연장료 \u003e 0이면 PENDING_PAYMENT로 만들어 payment.expire-minutes 동안 기간을 선점하고, POST /api/payments { rentalId, extensionId }로 주문한다. 연장료 0원이거나 결제 기능이 꺼져 있으면 바로 CONFIRMED로 종료일이 바뀐다.",
+        "operationId": "requestExtension",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RentalExtensionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRentalExtensionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_EXTENSION_LIMIT_EXCEEDED": {
+                    "summary": "연장 횟수 또는 한 번에 연장할 수 있는 일수를 넘었습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_EXTENSION_LIMIT_EXCEEDED",
+                        "details": [],
+                        "message": "연장 횟수 또는 한 번에 연장할 수 있는 일수를 넘었습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_PERIOD": {
+                    "summary": "대여 기간이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_PERIOD",
+                        "details": [],
+                        "message": "대여 기간이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_OUT_OF_AVAILABLE_PERIOD": {
+                    "summary": "대여 가능 기간을 벗어났습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_OUT_OF_AVAILABLE_PERIOD",
+                        "details": [],
+                        "message": "대여 가능 기간을 벗어났습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, RENTAL_EXTENSION_LIMIT_EXCEEDED, RENTAL_INVALID_PERIOD, RENTAL_OUT_OF_AVAILABLE_PERIOD"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_RENTER_ONLY": {
+                    "summary": "대여자만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_RENTER_ONLY",
+                        "details": [],
+                        "message": "대여자만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT, RENTAL_RENTER_ONLY"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_EXTENSION_IN_PROGRESS": {
+                    "summary": "결제를 기다리는 연장 요청이 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_EXTENSION_IN_PROGRESS",
+                        "details": [],
+                        "message": "결제를 기다리는 연장 요청이 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_EXTENSION_OVERDUE": {
+                    "summary": "연체 중에는 연장할 수 없습니다. 먼저 반납해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_EXTENSION_OVERDUE",
+                        "details": [],
+                        "message": "연체 중에는 연장할 수 없습니다. 먼저 반납해 주세요."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_EXTENSION_PERIOD_CONFLICT": {
+                    "summary": "연장하려는 기간에 다른 예약이 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_EXTENSION_PERIOD_CONFLICT",
+                        "details": [],
+                        "message": "연장하려는 기간에 다른 예약이 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "RENTAL_LOCK_TIMEOUT": {
+                    "summary": "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_LOCK_TIMEOUT",
+                        "details": [],
+                        "message": "예약 요청이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_EXTENSION_IN_PROGRESS, RENTAL_EXTENSION_OVERDUE, RENTAL_EXTENSION_PERIOD_CONFLICT, RENTAL_INVALID_TRANSITION, RENTAL_LOCK_TIMEOUT"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "대여 연장 요청 (REQ-038)",
+        "tags": [
+          "Rental"
+        ]
+      }
+    },
     "/api/rentals/{rentalId}/handover": {
       "patch": {
         "description": "제공자가 인계 사진과 메모를 올리면 대여 예정(RESERVED)이 대여 중(RENTING)이 된다. 대여 시작일 당일부터 할 수 있고, 기록은 수정할 수 없다. multipart: request part(Content-Type application/json, 생략 가능) { memo } + images 파일들. 사진 장수 policies.md inspection.images.min~max, 장당 inspection.images.max-file-size, jpg/png. 메모 최대 글자 수 inspection.handover-memo-max. 검사 순서: request part 검증 400 COMMON_INVALID_INPUT(part의 Content-Type이 json이 아니면 415 COMMON_UNSUPPORTED_MEDIA_TYPE) → 404 RENTAL_NOT_FOUND → 403 RENTAL_NOT_PARTICIPANT → 403 RENTAL_OWNER_ONLY → 409 RENTAL_INVALID_TRANSITION → 409 RENTAL_HANDOVER_TOO_EARLY → 사진 400(IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED). 다른 요청이 먼저 대여를 바꿨으면 409 COMMON_CONCURRENT_UPDATE 또는 RENTAL_INVALID_TRANSITION. 응답은 대여 상세와 같다.",
@@ -6299,6 +6546,20 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/RentalDetailResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseRentalExtensionResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RentalExtensionResponse"
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -7835,7 +8096,7 @@
           },
           "depositStatus": {
             "type": "string",
-            "description": "보증금 상태",
+            "description": "보증금 상태. EXTENSION 결제는 null",
             "enum": [
               "NONE",
               "FROZEN",
@@ -7866,12 +8127,26 @@
               "PARTIAL_CANCELED",
               "FAILED"
             ]
+          },
+          "type": {
+            "type": "string",
+            "description": "결제 종류: RENTAL 대여료+보증금, EXTENSION 연장료(REQ-038)",
+            "enum": [
+              "RENTAL",
+              "EXTENSION"
+            ]
           }
         }
       },
       "PaymentCreateRequest": {
         "type": "object",
         "properties": {
+          "extensionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "연장 ID(REQ-038). 연장 요청 응답의 extensionId. 없으면 대여료+보증금 주문",
+            "example": 3
+          },
           "rentalId": {
             "type": "integer",
             "format": "int64",
@@ -8515,6 +8790,70 @@
             "format": "int64",
             "description": "결제 금액 \u003d 대여료 + 보증금",
             "example": 80000
+          }
+        }
+      },
+      "RentalExtensionRequest": {
+        "type": "object",
+        "properties": {
+          "newEndDate": {
+            "type": "string",
+            "format": "date",
+            "description": "연장 후 종료일. 기존 종료일보다 뒤이고 extension.max-days-per 이내",
+            "example": "2026-11-12"
+          }
+        },
+        "required": [
+          "newEndDate"
+        ]
+      },
+      "RentalExtensionResponse": {
+        "type": "object",
+        "properties": {
+          "additionalFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "연장료(원) \u003d 예약 시점 1일 대여료 × 연장 일수. 보증금은 그대로",
+            "example": 20000
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "결제 대기 만료 시각. 결제 없이 확정했으면 null",
+            "example": "2026-11-08T21:15:00"
+          },
+          "extensionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "연장 ID. 결제가 필요하면 POST /api/payments에 rentalId와 함께 보낸다",
+            "example": 3
+          },
+          "newEndDate": {
+            "type": "string",
+            "format": "date",
+            "description": "연장 후 종료일",
+            "example": "2026-11-12"
+          },
+          "prevEndDate": {
+            "type": "string",
+            "format": "date",
+            "description": "연장 전 종료일",
+            "example": "2026-11-08"
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID",
+            "example": 1
+          },
+          "status": {
+            "type": "string",
+            "description": "PENDING_PAYMENT면 결제 대기(expiresAt까지 기간 선점), CONFIRMED면 결제 없이 바로 확정(연장료 0원이거나, 결제 기능이 꺼진 경우에도 CONFIRMED)",
+            "enum": [
+              "PENDING_PAYMENT",
+              "CONFIRMED",
+              "CANCELED"
+            ]
           }
         }
       },

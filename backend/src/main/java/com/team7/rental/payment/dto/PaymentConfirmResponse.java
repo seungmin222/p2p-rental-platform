@@ -3,6 +3,7 @@ package com.team7.rental.payment.dto;
 import com.team7.rental.payment.entity.DepositStatus;
 import com.team7.rental.payment.entity.Payment;
 import com.team7.rental.payment.entity.PaymentStatus;
+import com.team7.rental.payment.entity.PaymentType;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -13,17 +14,21 @@ public record PaymentConfirmResponse(
 	@Schema(description = "대여 ID", example = "1")
 	Long rentalId,
 
+	@Schema(description = "결제 종류: RENTAL 대여료+보증금, EXTENSION 연장료(REQ-038)")
+	PaymentType type,
+
 	@Schema(description = "결제 금액", example = "35000")
 	int amount,
 
 	@Schema(description = "결제 상태")
 	PaymentStatus status,
 
-	@Schema(description = "보증금 상태")
+	@Schema(description = "보증금 상태. EXTENSION 결제는 null")
 	DepositStatus depositStatus) {
 
 	public static PaymentConfirmResponse of(Payment payment) {
-		return new PaymentConfirmResponse(payment.getOrderId(), payment.getRentalId(), payment.getAmount(),
+		return new PaymentConfirmResponse(payment.getOrderId(), payment.getRentalId(), payment.getType(),
+			payment.getAmount(),
 			payment.getStatus(), payment.getDepositStatus());
 	}
 }

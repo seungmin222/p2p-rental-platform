@@ -35,7 +35,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	 * 조정 대상: createdAt ≥ since(최근 결제)이고 updatedAt ≤ settledBefore(진행 중인 요청과 겹치지 않게), 관리자 확인 전. id 순
 	 */
 	@Query("""
-		select new com.team7.rental.payment.repository.ReconcileTarget(p.id, p.rentalId, p.orderId) from Payment p
+		select new com.team7.rental.payment.repository.ReconcileTarget(p.id, p.rentalId, p.orderId, p.type) from Payment p
 		where p.createdAt >= :since
 			and p.updatedAt <= :settledBefore
 			and p.needsAdminCheck = false
@@ -44,6 +44,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 	List<ReconcileTarget> findReconcileTargets(@Param("since")
 	LocalDateTime since, @Param("settledBefore")
 	LocalDateTime settledBefore);
+
+	/** 락 전에 주문의 대여·결제 ID와 종류를 찾는 읽기 (승인 경로를 RENTAL·EXTENSION으로 나눈다) */
+	@Query("select new com.team7.rental.payment.repository.PaymentRef(p.id, p.rentalId, p.type) from Payment p where p.orderId = :orderId")
+	Optional<PaymentRef> findRefByOrderId(@Param("orderId")
+	String orderId);
 
 	@Query("select p.rentalId from Payment p where p.orderId = :orderId")
 	Optional<Long> findRentalIdByOrderId(@Param("orderId")

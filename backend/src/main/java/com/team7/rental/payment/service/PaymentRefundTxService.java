@@ -42,7 +42,7 @@ public class PaymentRefundTxService {
 	public RefundTicket prepare(Payment payment, int amount, RefundPurpose purpose, Completion completion) {
 		payment.requestRefund(amount, LocalDateTime.now(clock));
 		PaymentTransaction transaction = paymentTransactionRepository.save(PaymentTransaction.pending(payment.getId(),
-			PaymentTransactionAction.CANCEL, amount, purpose.keyOf(payment.getRentalId())));
+			PaymentTransactionAction.CANCEL, amount, purpose.keyOf(payment.getRentalId(), payment.getId())));
 		return ticketOf(payment, transaction, purpose, completion, false);
 	}
 
@@ -99,6 +99,14 @@ public class PaymentRefundTxService {
 	 */
 	public void closeReadyOrders(Long rentalId) {
 		closeReadyOrders(paymentRepository.findAllByRentalIdForUpdate(rentalId, PaymentType.RENTAL));
+	}
+
+	/**
+	 * 연장이 결제 없이 끝났을 때 그 연장의 READY 주문을 FAILED로 닫는다(REQ-038). 규칙은 {@link #closeReadyOrders(Long)}와 같다.
+	 * 호출하는 쪽이 대여 행 → 연장 행 락을 잡은 트랜잭션 안에서 부른다.
+	 */
+	public void closeReadyOrder(Long paymentId) {
+		closeReadyOrders(paymentRepository.findByIdForUpdate(paymentId).stream().toList());
 	}
 
 	private void closeReadyOrders(List<Payment> payments) {
