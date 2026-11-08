@@ -146,7 +146,7 @@ erDiagram
 
 **item_inspections**
 | id | rental_id | phase(`HANDOVER/RETURN`) | image_urls JSON | checklist JSON(RETURN만) | note | lost_reported BOOLEAN(미반납 신고, 사진 없음) | result(`NORMAL/ABNORMAL`, 제공자 판정) | result_note | result_image_urls JSON | ai_result JSON [2] (040에서 추가) | written_by | created_at |
-- V6에서 생성(ai_result 제외). UK `uk_item_inspections_rental_id_phase`(rental_id, phase). 제출 후 수정 불가(업데이트 API 없음, 판정 필드만 1회 기록). 사진은 저장소 URL 배열(item_images와 같음). note는 인계 메모·반납 메모 300자, result_note 500자.
+- V6에서 생성(ai_result 제외). **ai_result는 V13에서 추가**(RETURN 기록만, NULL = 비교 전·적재 실패·미반납 신고): `{status, result, model, startedAt, finishedAt}`. status는 `AiCompareStatus`(state-machines.md §5), result는 ai.md REQ-040 고정 스키마이고 DONE일 때만 있다. 판정과 따로 쓰이므로 엔티티는 바뀐 컬럼만 UPDATE한다(@DynamicUpdate). UK `uk_item_inspections_rental_id_phase`(rental_id, phase). 제출 후 수정 불가(업데이트 API 없음, 판정 필드만 1회 기록). 사진은 저장소 URL 배열(item_images와 같음). note는 인계 메모·반납 메모 300자, result_note 500자.
 
 ## 결제 [2]
 

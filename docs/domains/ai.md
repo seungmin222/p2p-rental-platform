@@ -25,7 +25,9 @@
   ```
   - 시스템 프롬프트에 스키마·허용 값·"조명·각도 차이는 변화로 보지 말 것"을 명시
   - 응답을 Jackson + 스키마 검증 → 실패 시 **최대 2회 재시도** → 그래도 실패면 결과 없음
-- 결과를 item_inspections(RETURN).ai_result에 저장 → 양측 `AI_COMPARE_DONE` 알림
+- 결과를 item_inspections(RETURN).ai_result에 저장 → 양측 `AI_COMPARE_DONE` 알림 (완료일 때만, open-issues #48)
+  - 진행 상태 `AiCompareStatus`(state-machines.md §5): PROCESSING → DONE / FAILED / LIMIT_EXCEEDED. 오래 끝나지 않은 PROCESSING은 응답에서 FAILED(#46)
+  - 월 한도는 호출 단위·재시도 포함으로 센다(#47)
 - 대여 건당 1회. 같은 사진 조합 결과 캐싱(중복 호출 방지)
 - 화면: 제공자 상태 확인 화면·보증금 보류 화면에 근거로 표시 + "조명·각도 차이로 오판 가능" 고지
 - 결과가 늦게 와도 제공자는 판정 가능(대기 강제 금지)
