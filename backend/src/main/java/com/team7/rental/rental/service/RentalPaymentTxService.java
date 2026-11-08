@@ -38,6 +38,7 @@ public class RentalPaymentTxService {
 	private final RentalRepository rentalRepository;
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
 	private final ItemInspectionRepository itemInspectionRepository;
+	private final RentalCompletionRecorder rentalCompletionRecorder;
 	private final Clock clock;
 
 	/**
@@ -79,13 +80,9 @@ public class RentalPaymentTxService {
 		saveHistory(rental, from, RentalStatusHistory.REASON_AMOUNT_MISMATCH, now);
 	}
 
-	/** 보증금 처리 완료: RETURNED → COMPLETED (REQ-025 반환, REQ-049 차감 확정) */
+	/** 보증금 처리 완료: RETURNED → COMPLETED (REQ-025 반환, REQ-049 차감 확정). 제공자 정산(REQ-039)도 같은 트랜잭션에서 만든다 */
 	public void completeAfterDepositReturn(Long rentalId, RentalRefundPort.Completion completion, LocalDateTime now) {
-		Rental rental = getForUpdate(rentalId);
-		RentalStatus from = rental.getStatus();
-		rental.complete(now);
-		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(),
-			completion.changedBy(), completion.reason(), now));
+		rentalCompletionRecorder.complete(getForUpdate(rentalId), completion.changedBy(), completion.reason(), now);
 	}
 
 	/**

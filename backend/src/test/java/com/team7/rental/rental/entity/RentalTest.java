@@ -527,13 +527,13 @@ class RentalTest {
 	}
 
 	@Test
-	@DisplayName("반납 완료에서 '정상'이면 COMPLETED가 되고 완료 시각이 기록된다")
-	void confirmNormal() {
+	@DisplayName("반납 완료에서 완료하면 COMPLETED가 되고 완료 시각이 기록된다")
+	void complete() {
 		// given
 		Rental rental = withStatus(RentalStatus.RETURNED);
 
 		// when
-		rental.confirmNormal(NOW);
+		rental.complete(NOW);
 
 		// then
 		assertThat(rental.getStatus()).isEqualTo(RentalStatus.COMPLETED);
@@ -564,13 +564,12 @@ class RentalTest {
 	@ParameterizedTest
 	@EnumSource(value = RentalStatus.class, names = {"PENDING_PAYMENT", "RESERVED", "RENTING", "OVERDUE", "COMPLETED",
 		"CANCELED"})
-	@DisplayName("반납 완료가 아니면 정상·이상·완료는 409 RENTAL_INVALID_TRANSITION이다")
+	@DisplayName("반납 완료가 아니면 이상·완료는 409 RENTAL_INVALID_TRANSITION이다")
 	void confirmInvalidStatus(RentalStatus status) {
 		// given
 		Rental rental = withStatus(status);
 
 		// then
-		assertTransitionFails(() -> rental.confirmNormal(NOW), ErrorCode.RENTAL_INVALID_TRANSITION);
 		assertTransitionFails(rental::markAbnormal, ErrorCode.RENTAL_INVALID_TRANSITION);
 		assertTransitionFails(() -> rental.complete(NOW), ErrorCode.RENTAL_INVALID_TRANSITION);
 		assertThat(rental.getStatus()).isEqualTo(status);
@@ -589,7 +588,7 @@ class RentalTest {
 		// when
 		rental.handover(handedOverAt);
 		rental.requestReturn(returnedAt, 0);
-		rental.confirmNormal(completedAt);
+		rental.complete(completedAt);
 
 		// then
 		assertThat(rental.getStatus()).isEqualTo(RentalStatus.COMPLETED);
@@ -653,7 +652,7 @@ class RentalTest {
 		rental.handover(START.atTime(10, 0));
 		rental.requestReturn(END.atTime(18, 0), 0);
 		LocalDateTime completedAt = END.atTime(20, 0);
-		rental.confirmNormal(completedAt);
+		rental.complete(completedAt);
 
 		// then
 		assertThat(rental.canWriteReview(completedAt.plusDays(7), 7)).isTrue();

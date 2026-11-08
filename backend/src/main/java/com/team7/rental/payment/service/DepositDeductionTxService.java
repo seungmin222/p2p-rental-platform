@@ -269,7 +269,7 @@ public class DepositDeductionTxService {
 			ticket = paymentRefundTxService.prepare(payment, refund, RefundPurpose.DEPOSIT, completion);
 		} else {
 			payment.forfeitDeposit();
-			// 반환할 금액이 없어 바로 완료한다. 제공자 정산(REQ-039)을 만들 자리다
+			// 반환할 금액이 없어 바로 완료한다. 제공자 정산(REQ-039)도 이 완료와 함께 생긴다
 			rentalPaymentTxService.completeAfterDepositReturn(view.rentalId(), completion, now);
 		}
 		return new DeductionSettled(view.rentalId(), proposal.getId(), view.ownerId(), view.renterId(), ticket);

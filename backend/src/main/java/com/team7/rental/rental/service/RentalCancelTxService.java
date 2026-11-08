@@ -43,6 +43,7 @@ public class RentalCancelTxService {
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
 	private final RentalCancelAgreementRepository rentalCancelAgreementRepository;
 	private final CancelFeeCalculator cancelFeeCalculator;
+	private final RentalSettlementPort rentalSettlementPort;
 	private final RentalRefundPort rentalRefundPort;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
@@ -175,5 +176,7 @@ public class RentalCancelTxService {
 		rental.cancel(canceledBy, type, reason, reasonText, cancelFee, now);
 		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rental.getId(), from, rental.getStatus(),
 			changedBy, RentalStatusHistory.cancelReasonOf(reason, reasonText), now));
+		// 수수료는 대여자 환불 결과와 상관없이 제공자 몫이다(REQ-039). 환불 TX1보다 먼저 불러 결제가 아직 APPROVED일 때 본다
+		rentalSettlementPort.createForCancelFee(rental.getId(), rental.getOwnerId(), cancelFee, now);
 	}
 }
