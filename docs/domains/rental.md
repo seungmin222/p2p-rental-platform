@@ -146,6 +146,7 @@ try {
 - 대상: `status = RENTING AND end_date < 오늘` → OVERDUE 일괄 전환(이력: changedBy=null, reason=`OVERDUE_BATCH`)
 - 대여자·제공자에게 `OVERDUE` 알림 (DB 저장 → WebSocket). **같은 건 중복 알림 금지**: event_id = `OVERDUE:{rentalId}` 유니크
 - 실패 시 로그, 다음 주기 재처리 (전환이 멱등이므로 안전)
+- **결제 대기 연장(REQ-038)이 있으면 건너뛴다**: 만료 전 `rental_extensions` PENDING_PAYMENT가 있는 대여는 전환하지 않고, 연장이 만료되면 매시 재검사가 전환한다(open-issues #45)
 - **반납 리마인더**: 매일 09:00, `RENTING AND end_date = 내일` → 대여자 `RETURN_REMINDER` (event_id `RETURN_REMINDER:{rentalId}:{endDate}` — 연장으로 end_date가 바뀌면 다시 보낼 수 있게)
 - **연체료**: 연체일수 = (반납 요청일 또는 미반납 신고일) − end_date. 연체료 = min(연체일수 × floor(pricePerDay × 1.5), deposit). 반납 시점에 `rentals.overdue_fee`로 확정해 저장하고, 보증금 처리(REQ-025)에서 먼저 차감. 대여 상세에는 OVERDUE 동안 "현재까지 연체료"를 계산해 보여 준다
 - 연체 일수는 신뢰 점수에도 반영(REQ-054)
@@ -160,7 +161,10 @@ try {
 - 검사는 예약과 같은 락(`lock:item:{itemId}`)
 - 추가 대여료 = pricePerDay(스냅샷) × 연장 일수, 보증금 유지
 - 흐름: rental_extensions(status=`PENDING_PAYMENT`, expires_at=now+15분) 생성 → 그 기간을 선점 → 결제(type=EXTENSION) → 승인 시 extension `CONFIRMED`, end_date 갱신, extension_count++, 양측 알림
-- 15분 내 미결제·결제 실패 → extension `CANCELED`, 기존 end 유지(배치 1분)
+- 15분 내 미결제·결제 실패 → extension `CANCELED`, 기존 end 유지(배치 1분). "결제 실패"는 대여 결제(REQ-024)와 같은 해석이다: **PG 승인 오류는 결제만 FAILED로 두고 연장은 결제 대기로 남아 15분 안에 새 주문으로 다시 결제할 수 있고**, 확정 실패인 금액 불일치만 즉시 CANCELED. 만료 배치가 나머지를 CANCELED로 정리한다
+- 승인 시점에 연장이 만료됐거나 대여가 RENTING이 아니거나 종료일이 요청 때와 다르면(연체 배치·반납 요청과의 경합) 확정하지 않고 extension `CANCELED` + 연장료 전액 환불, 409 `PAYMENT_CANCELED_AFTER_EXPIRY` (open-issues #45)
+- 결제 대기 연장은 대여당 1건(두 번째 요청 409 `RENTAL_EXTENSION_IN_PROGRESS`). 횟수 한도는 확정된 연장만 센다
+- 409·가능 기간 밖 400의 "연장 가능한 최대 날짜"는 `error.details`의 `{ field: "maxEndDate", reason: "yyyy-MM-dd" }`(하루도 안 되면 비움)
 - 추가 대여료가 0원(무료 대여)이면 결제 없이 바로 CONFIRMED
 
 ## 테스트 포인트 (필수)

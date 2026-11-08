@@ -78,7 +78,7 @@
 | 1 | GET | /api/members/me/rentals?role=renter&tab=&page= | 빌린 내역 | O | 019 |
 | 1 | GET | /api/members/me/items?tab=&page= | 내 물품 관리 | O | 020 |
 | 1 | GET | /api/items/{itemId}/rentals?page= | 물품별 예약 현황(제공자) | O | 020 |
-| 2 | POST | /api/rentals/{id}/extensions | 연장 요청(추가 결제 생성) | O | 038 |
+| 2 | POST | /api/rentals/{id}/extensions | 연장 요청. 연장료 > 0이고 결제를 켰으면 결제 대기(기간 선점), 아니면 바로 확정 | O | 038 |
 | 2 | POST | /api/rentals/{id}/reviews | 후기 작성 | O | 034 |
 
 > 원 명세는 인계 사진 등록을 `POST /api/rentals/{id}/inspections`로도 표기한다. 인계 확인과 사진 등록은 한 요청이어야 하므로 `PATCH /handover`(multipart) 하나로 합쳤다(`open-issues.md` #4).
@@ -87,8 +87,8 @@
 
 | 순위 | Method | Path | 설명 | 인증 | REQ |
 | --- | --- | --- | --- | --- | --- |
-| 2 | POST | /api/payments | 주문 생성. 지금은 대여 건만, 연장 건은 038에서 추가 | O | 024 |
-| 2 | POST | /api/payments/confirm | 결제 승인 | O | 024 |
+| 2 | POST | /api/payments | 주문 생성. `extensionId`가 있으면 연장료 주문 | O | 024, 038 |
+| 2 | POST | /api/payments/confirm | 결제 승인(대여·연장 공통, orderId로 구분) | O | 024, 038 |
 | — | — | ~~/api/payments/{id}/cancel~~ | **외부 API 없음.** 원 명세에 있던 경로지만, 회원이 직접 환불을 호출할 수 있어 제거. 취소·환불은 대여 취소(015), 보증금 처리(025·049) 안에서 서버가 내부적으로만 PG를 호출 | — | 015, 025 |
 | 2 | PATCH | /api/rentals/{id}/deposit | 보증금: 차감 제안 / 수락 / 거절 (`action` 필드) | O | 049 |
 | 2 | GET | /api/rentals/{id}/deposit/policy?grade= | 등급별 차감 상한 계산 | O | 049 |

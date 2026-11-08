@@ -40,7 +40,7 @@
 | --- | --- | --- |
 | `rental.min-days` / `max-days` | 1일 / 30일 (최초 예약 기준) | 013 |
 | `rental.lock-wait` | 분산 락 대기 3초. **임대 시간은 지정하지 않음**(Redisson watchdog 자동 연장, 기본 30초 단위) | 013, 014, 038 |
-| `payment.expire-minutes` | 15분 (초과 시 PENDING_PAYMENT → CANCELED, 기간 선점 해제) | 013, 024 |
+| `payment.expire-minutes` | 15분 (초과 시 PENDING_PAYMENT → CANCELED, 기간 선점 해제). **연장 결제 대기에도 적용**(rental_extensions PENDING_PAYMENT, 별도 키 없음 — 같은 결제창·같은 PG 흐름이라 대기 시간을 나눌 이유가 없다) | 013, 024, 038 |
 | `cancel.reason-text-max` | 200자 (사유 OTHER일 때 필수) | 015 |
 | `cancel-agreement.expire-hours` | 48시간 (상대 무응답 시 요청 만료) | 015 |
 | `inspection.images.min` / `max` / `max-file-size` | 1~5장, jpg/png, 장당 10MB. 보증금 차감 증빙·영수증 사진(049)도 이 값을 쓴다 | 017, 018, 049 |

@@ -43,6 +43,14 @@
 - 인계 없음 자동 취소(REQ-017)도 같은 전액 환불이다
 - cancelFee > 0 → 정산 생성(REQ-039)
 
+## 연장료 결제 [2] (REQ-038 연계)
+- 주문 `POST /api/payments { rentalId, extensionId }` → payments(type=`EXTENSION`, amount = additional_fee, 대여료·보증금 칸 0, **deposit_status는 항상 NULL**). 승인 `/confirm`은 대여 결제와 같고 orderId의 type으로 갈린다
+- 유효성은 연장 행으로 본다(PENDING_PAYMENT이고 expires_at > now). 진행 중인 READY 주문이 연장에 묶여 있으면 그대로 돌려주고, 실패 뒤에는 새 주문을 만들어 연장에 다시 묶는다(`rental_extensions.payment_id`)
+- 승인 성공 → [TX] payment APPROVED, extension CONFIRMED, rental end_date·extension_count 갱신, 커밋 뒤 양측 `RENTAL_EXTENDED`
+- 금액 불일치 → payment FAILED + extension CANCELED. PG 오류 → payment FAILED만(연장은 대기로 남아 재결제 가능). 만료 → 만료 배치가 extension CANCELED + READY 주문 FAILED
+- 승인 직후 연장이 만료됐거나 대여가 RENTING이 아니면 → extension CANCELED + 전액 취소, 멱등성 키 `extension-refund:{paymentId}`(대여당 연장 결제가 여럿이라 결제 ID로). 대여 취소 키(`cancel-refund:{rentalId}`)와 겹치지 않는다
+- 락 순서: 대여 행 → 연장 행 → 결제 행
+
 ## REQ-025 보증금 반환 [2 필수]
 - 트리거: 상태 확인 NORMAL 또는 3일 자동 처리
 - 반환액 = deposit − overdueFee (`rental.md` REQ-023)
@@ -77,7 +85,7 @@
 ## REQ-039 제공자 대금 정산 [2]
 - 생성 시점: rental COMPLETED, 또는 cancelFee > 0인 취소. 그 전이와 **같은 트랜잭션**에서 대여당 한 번만 만든다(`RentalSettlementPort`)
 - 만들지 않는 경우: 승인된 RENTAL 결제가 없음(결제 기능을 끄고 만든 건·무료 대여) 또는 지급액 0원. 수수료 취소 정산은 대여자 환불이 실패(REFUND_FAILED)해도 그대로 둔다(수수료는 환불 결과와 상관없이 제공자 몫)
-- 금액 출처: 대여료 `payments.rental_fee_amount`, 연장료 승인된 EXTENSION 결제 합계(REQ-038 전에는 0), 연체료 `rentals.overdue_fee`, 손상 차감액 `payments.deduction_amount`(연체료 미포함)
+- 금액 출처: 대여료 `payments.rental_fee_amount`, 연장료 = EXTENSION 결제의 **실제로 받은 금액** 합계(APPROVED·PARTIAL_CANCELED 결제마다 amount − refunded_amount − refund_pending_amount. 확정 못 해 환불하는 연장은 환불이 실패해도 빠진다, 0원 연장은 결제가 없어 0), 연체료 `rentals.overdue_fee`, 손상 차감액 `payments.deduction_amount`(연체료 미포함)
 - 금액 (모두 원 미만 절사):
   - 거래 완료: `gross = rentalFee + 연장료 합계 + overdueFee`, `feeAmount = floor(gross × 0.10)`, `payoutAmount = gross − feeAmount + 손상 차감액`
   - 수수료 있는 취소: `gross = cancelFee`, `feeAmount = floor(gross × 0.10)`, `payoutAmount = gross − feeAmount`
@@ -100,7 +108,7 @@
 | 배치 | 내용 |
 | --- | --- |
 | 결제 만료 | PENDING_PAYMENT 15분 초과 → CANCELED (rental.md) |
-| 연장 결제 만료 | extension PENDING_PAYMENT 15분 초과 → CANCELED |
+| 연장 결제 만료 | extension PENDING_PAYMENT 15분(`payment.expire-minutes`) 초과 → CANCELED, 묶인 READY 주문 FAILED(승인 결과를 모르는 주문은 조정 배치) |
 | 환불 재시도 | REFUND_FAILED → 같은 멱등성 키로 재시도, `refund_retry_count` 증가, 5회 초과 시 `needs_admin_check` |
 | 자동 상태 확인 | RETURNED + 3일 → NORMAL 처리 → 보증금 반환 |
 | 차감 제안 자동 수락 | PROPOSED + 72시간 → AUTO_ACCEPTED → 확정 처리 |

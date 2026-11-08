@@ -285,6 +285,34 @@ class SettlementCreationIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("연장료는 실제로 받은 금액만 더한다(REQ-038): 승인 20,000원은 들어가고, 환불 중(실패 포함)·전액 환불된 연장 결제는 빠진다")
+	void extensionFeesActuallyCollected() {
+		// given: 대여 결제 + 확정된 연장 20,000원 + 확정 못 해 환불이 실패한 연장 10,000원 + 전액 환불된 연장 5,000원
+		paymentFixture.createApproved(rental);
+		paymentRepository.save(approvedExtension(20_000, "ext-1"));
+		Payment refundFailed = approvedExtension(10_000, "ext-2");
+		refundFailed.requestRefund(10_000, NOW);
+		refundFailed.markRefundFailed();
+		paymentRepository.save(refundFailed);
+		Payment refunded = approvedExtension(5_000, "ext-3");
+		refunded.requestRefund(5_000, NOW);
+		refunded.applyRefund();
+		paymentRepository.save(refunded);
+
+		// when
+		rentalSettlementPort.createForCompletion(rental.getId(), owner.getId(), 0, NOW);
+
+		// then: gross = 대여료 30,000 + 연장료 20,000
+		assertSettlement(SettlementSource.COMPLETED, 50_000, 5_000, 0, 45_000, FRIDAY_PAYOUT);
+	}
+
+	private Payment approvedExtension(int fee, String orderId) {
+		Payment payment = Payment.createForExtension(rental.getId(), orderId, "key-" + orderId, fee);
+		payment.approve("pay-" + orderId);
+		return payment;
+	}
+
+	@Test
 	@DisplayName("만들지 않음: 결제 없이 완료된 대여(결제 기능 꺼짐)는 정상 판정이 실패하지 않고 정산이 없다")
 	void noPaymentCompletion() throws Exception {
 		confirm(json(NORMAL)).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("COMPLETED"));

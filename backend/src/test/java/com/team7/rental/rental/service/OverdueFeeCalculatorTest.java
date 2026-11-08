@@ -22,7 +22,8 @@ class OverdueFeeCalculatorTest {
 
 	private final OverdueFeeCalculator calculator = new OverdueFeeCalculator(
 		new PolicyProperties(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, new PolicyProperties.OverdueFee(150), null, null, null, null, null));
+			null, null, null, null, null, null, new PolicyProperties.OverdueFee(150), null, null, null, null, null,
+			null));
 
 	@Test
 	@DisplayName("반납 예정일 당일·이전 반납은 연체 0일, 0원이다")

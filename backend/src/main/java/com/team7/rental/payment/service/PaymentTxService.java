@@ -20,9 +20,13 @@ import com.team7.rental.payment.entity.PaymentTransaction;
 import com.team7.rental.payment.entity.PaymentTransactionAction;
 import com.team7.rental.payment.entity.PaymentTransactionResult;
 import com.team7.rental.payment.entity.PaymentType;
+import com.team7.rental.payment.repository.PaymentRef;
 import com.team7.rental.payment.repository.PaymentRepository;
 import com.team7.rental.payment.repository.PaymentTransactionRepository;
 import com.team7.rental.payment.repository.ReconcileTarget;
+import com.team7.rental.payment.service.ExtensionPaymentTxService.ExtensionConfirmOutcome;
+import com.team7.rental.rental.dto.RentalExtensionConfirmed;
+import com.team7.rental.rental.dto.RentalExtensionPaymentView;
 import com.team7.rental.rental.dto.RentalPaymentView;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.service.RentalPaymentTxService;
@@ -70,6 +74,7 @@ public class PaymentTxService {
 	private final PaymentTransactionRepository paymentTransactionRepository;
 	private final RentalPaymentTxService rentalPaymentTxService;
 	private final PaymentRefundTxService paymentRefundTxService;
+	private final ExtensionPaymentTxService extensionPaymentTxService;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
@@ -97,6 +102,17 @@ public class PaymentTxService {
 	}
 
 	record OrderResult(String orderId, int amount, Long itemId) {
+	}
+
+	/**
+	 * 락 전에 주문의 대여·결제 ID와 종류를 찾는 읽기. 별도 트랜잭션이라 TX1의 스냅샷에 영향을 주지 않는다.
+	 *
+	 * @throws BusinessException PAYMENT_NOT_FOUND
+	 */
+	@Transactional(readOnly = true)
+	public PaymentRef getRef(String orderId) {
+		return paymentRepository.findRefByOrderId(orderId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
 	}
 
 	/**
@@ -230,17 +246,21 @@ public class PaymentTxService {
 	 *   <li>승인 전인데 PG에 승인이 없음: READY면 FAILED로 닫는다</li>
 	 *   <li>승인 후: 잔액이 내부 기록(결제 금액 − 누적 취소)과 다르면 고치지 않고 관리자 확인 대상으로 표시한다. 환불이 남아 있으면 재시도 배치 몫이라 건너뛴다</li>
 	 * </ul>
+	 * 연장 결제(REQ-038)는 대여 → 연장 → 결제 순서로 락을 잡고, 승인 반영은 {@link ExtensionPaymentTxService#approveAndSettle}이 한다.
 	 *
-	 * @return 커밋 뒤 실행할 환불
+	 * @return 커밋 뒤 실행할 환불과 보낼 연장 확정 알림
 	 */
-	public Optional<RefundTicket> reconcile(ReconcileTarget target, PgResult result) {
+	public ReconcileOutcome reconcile(ReconcileTarget target, PgResult result) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		RentalPaymentView rental = rentalPaymentTxService.lock(target.rentalId());
+		Optional<RentalExtensionPaymentView> extension = target.type() == PaymentType.EXTENSION
+			? extensionPaymentTxService.lockExtensionForReconcile(target.paymentId())
+			: Optional.empty();
 		Payment payment = paymentRepository.findByIdForUpdate(target.paymentId()).orElseThrow();
 		boolean notApproved = payment.getStatus() == PaymentStatus.READY || payment.getStatus() == PaymentStatus.FAILED;
 		if (result instanceof PgResult.Failure failure && !PgResult.NOT_FOUND.equals(failure.code())) {
 			log.warn("Reconcile lookup rejected: paymentId={}, code={}", payment.getId(), failure.code());
-			return Optional.empty();
+			return ReconcileOutcome.NONE;
 		}
 		PgResult.PgPayment pgPayment = result instanceof PgResult.Success success ? success.payment() : null;
 		boolean pgApproved = pgPayment != null && pgPayment.isApproved();
@@ -250,20 +270,41 @@ public class PaymentTxService {
 				if (payment.getStatus() == PaymentStatus.READY) {
 					payment.fail();
 				}
-				return Optional.empty();
+				return ReconcileOutcome.NONE;
 			}
 			if (pgPayment.balanceAmount() != payment.getAmount()) {
 				flag(payment, "approved elsewhere with a different balance");
-				return Optional.empty();
+				return ReconcileOutcome.NONE;
+			}
+			if (payment.getType() == PaymentType.EXTENSION && extension.isEmpty()) {
+				// 실패 뒤 새 주문에 밀려 연장에서 떨어진 옛 주문이 PG에서는 승인됐다: 어느 연장의 돈인지 정할 수 없어 사람이 본다
+				flag(payment, "approved extension order detached from its extension");
+				return ReconcileOutcome.NONE;
 			}
 			pendingApprovals(payment).forEach(transaction -> transaction.succeed(result.toRecord()));
-			return Optional.ofNullable(approveAndSettle(rental, payment, pgPayment.paymentKey(), now).refund());
+			if (extension.isPresent()) {
+				ExtensionConfirmOutcome outcome = extensionPaymentTxService.approveAndSettle(target.rentalId(),
+					extension.get(), payment, pgPayment.paymentKey());
+				return new ReconcileOutcome(outcome.refund(), outcome.extended());
+			}
+			return new ReconcileOutcome(approveAndSettle(rental, payment, pgPayment.paymentKey(), now).refund(), null);
 		}
 		if (payment.getRefundPendingAmount() == null
 			&& (!pgApproved || pgPayment.balanceAmount() != payment.balance())) {
 			flag(payment, "balance mismatch");
 		}
-		return Optional.empty();
+		return ReconcileOutcome.NONE;
+	}
+
+	/**
+	 * 조정 한 건의 결과.
+	 *
+	 * @param refund 커밋 뒤 실행할 환불
+	 * @param extended 조정으로 연장을 확정했으면 커밋 뒤 보낼 알림 대상 (REQ-038)
+	 */
+	public record ReconcileOutcome(RefundTicket refund, RentalExtensionConfirmed extended) {
+
+		static final ReconcileOutcome NONE = new ReconcileOutcome(null, null);
 	}
 
 	private List<PaymentTransaction> pendingApprovals(Payment payment) {

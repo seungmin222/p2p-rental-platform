@@ -13,8 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.team7.rental.item.entity.Item;
 import com.team7.rental.member.entity.Member;
 import com.team7.rental.rental.entity.Rental;
+import com.team7.rental.rental.entity.RentalExtension;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
+import com.team7.rental.rental.repository.RentalExtensionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
 import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
@@ -37,6 +39,9 @@ class OverdueDetectJobTest extends IntegrationTestSupport {
 
 	@Autowired
 	private RentalStatusHistoryRepository historyRepository;
+
+	@Autowired
+	private RentalExtensionRepository extensionRepository;
 
 	private Member owner;
 	private Member renter;
@@ -132,6 +137,31 @@ class OverdueDetectJobTest extends IntegrationTestSupport {
 		assertThat(job.markDue(TODAY.minusDays(1).atTime(23, 59))).isZero();
 		assertThat(job.markDue(TODAY.atStartOfDay())).isEqualTo(1);
 		assertThat(statusOf(rental)).isEqualTo(RentalStatus.OVERDUE);
+	}
+
+	@Test
+	@DisplayName("결제 대기 연장이 있으면 건너뛰고(4-B), 연장이 만료된 뒤 매시 재검사에서 OVERDUE가 된다")
+	void skipsWhilePendingExtension() {
+		// given: 어제가 예정일이고, 어제 23:55에 연장을 요청해 00:10까지 결제 대기
+		Rental rental = renting(TODAY.minusDays(3), TODAY.minusDays(1));
+		extensionRepository.save(RentalExtension.pendingPayment(rental.getId(), TODAY.minusDays(1),
+			TODAY.plusDays(1), 20_000, NOW.plusMinutes(5)));
+
+		// when
+		int markedAt0005 = job.markDue(NOW);
+
+		// then
+		assertThat(markedAt0005).isZero();
+		assertThat(statusOf(rental)).isEqualTo(RentalStatus.RENTING);
+		assertThat(notificationPort.sent()).isEmpty();
+
+		// when: 01:00 재검사 (연장은 00:10에 만료, 만료 배치 전이어도 시각으로 본다)
+		int markedAt0100 = job.markDue(NOW.plusMinutes(55));
+
+		// then
+		assertThat(markedAt0100).isEqualTo(1);
+		assertThat(statusOf(rental)).isEqualTo(RentalStatus.OVERDUE);
+		assertThat(notificationPort.sent()).hasSize(2);
 	}
 
 	private Rental renting(LocalDate start, LocalDate end) {

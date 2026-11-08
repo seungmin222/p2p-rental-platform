@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
@@ -14,13 +15,18 @@ import org.springframework.transaction.annotation.Transactional;
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.rental.dto.RentalDepositView;
+import com.team7.rental.rental.dto.RentalExtensionConfirmed;
+import com.team7.rental.rental.dto.RentalExtensionPaymentView;
 import com.team7.rental.rental.dto.RentalPaymentView;
 import com.team7.rental.rental.entity.InspectionPhase;
 import com.team7.rental.rental.entity.ItemInspection;
 import com.team7.rental.rental.entity.Rental;
+import com.team7.rental.rental.entity.RentalExtension;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
+import com.team7.rental.rental.repository.ExtensionRef;
 import com.team7.rental.rental.repository.ItemInspectionRepository;
+import com.team7.rental.rental.repository.RentalExtensionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
 
@@ -39,6 +45,8 @@ public class RentalPaymentTxService {
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
 	private final ItemInspectionRepository itemInspectionRepository;
 	private final RentalCompletionRecorder rentalCompletionRecorder;
+	private final RentalExtensionRepository rentalExtensionRepository;
+	private final RentalExtensionRecorder rentalExtensionRecorder;
 	private final Clock clock;
 
 	/**
@@ -78,6 +86,65 @@ public class RentalPaymentTxService {
 		RentalStatus from = rental.getStatus();
 		rental.cancelForAmountMismatch(now);
 		saveHistory(rental, from, RentalStatusHistory.REASON_AMOUNT_MISMATCH, now);
+	}
+
+	/**
+	 * 연장 행 락 (REQ-038). 호출하는 쪽이 {@link #lock}으로 대여 행 락을 먼저 잡는다(대여 → 연장 → 결제 순서).
+	 *
+	 * @throws BusinessException RENTAL_EXTENSION_NOT_FOUND: 없거나 다른 대여의 연장일 때
+	 */
+	public RentalExtensionPaymentView lockExtension(Long rentalId, Long extensionId) {
+		RentalExtension extension = rentalExtensionRepository.findByIdForUpdate(extensionId)
+			.filter(found -> found.getRentalId().equals(rentalId))
+			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_EXTENSION_NOT_FOUND));
+		return extensionViewOf(extension);
+	}
+
+	/** 주문에 묶인 연장의 행 락. 대여 행 락 뒤에 부른다. 연장 주문이 아니면 비어 있다 */
+	public Optional<RentalExtensionPaymentView> lockExtensionByPayment(Long paymentId) {
+		return rentalExtensionRepository.findByPaymentIdForUpdate(paymentId).map(this::extensionViewOf);
+	}
+
+	/** 새 연장 주문을 연장에 묶는다. 연장 행 락 안에서 부른다 */
+	public void attachExtensionOrder(Long extensionId, Long paymentId) {
+		getExtension(extensionId).attachOrder(paymentId);
+	}
+
+	/**
+	 * 연장 결제 승인: 연장 CONFIRMED + 대여 RENTING → RENTING(종료일 갱신, 연장 횟수 + 1) + 이력(changedBy = null).
+	 * 호출하는 쪽이 {@link RentalExtensionPaymentView#applicable()}을 먼저 본다.
+	 */
+	public RentalExtensionConfirmed confirmExtension(Long rentalId, Long extensionId, Long paymentId,
+		LocalDateTime now) {
+		Rental rental = getForUpdate(rentalId);
+		RentalExtension extension = getExtension(extensionId);
+		rentalExtensionRecorder.apply(rental, extension, null, now);
+		extension.confirm(paymentId);
+		return new RentalExtensionConfirmed(rentalId, extensionId, rental.getRenterId(), rental.getOwnerId());
+	}
+
+	/** 연장 결제 대기 → CANCELED (만료·금액 불일치·승인 시점에 확정 불가). 대여 행 락 → 연장 행 락 안에서 부른다 */
+	public void cancelExtension(Long extensionId) {
+		getExtension(extensionId).cancel();
+	}
+
+	/** 연장 결제 만료 배치 대상 (대여 ID와 함께, 배치가 대여 행 락부터 잡도록) */
+	@Transactional(readOnly = true)
+	public List<ExtensionRef> findExpiredExtensions(LocalDateTime now) {
+		return rentalExtensionRepository.findExpiredRefs(now);
+	}
+
+	private RentalExtension getExtension(Long extensionId) {
+		return rentalExtensionRepository.findById(extensionId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.RENTAL_EXTENSION_NOT_FOUND));
+	}
+
+	private RentalExtensionPaymentView extensionViewOf(RentalExtension extension) {
+		Rental rental = getForUpdate(extension.getRentalId());
+		LocalDateTime now = LocalDateTime.now(clock);
+		return new RentalExtensionPaymentView(extension.getId(), extension.getRentalId(), extension.getStatus(),
+			extension.getAdditionalFee(), extension.getPaymentId(), extension.isPendingAt(now),
+			rental.canApplyExtension(extension.getPrevEndDate()));
 	}
 
 	/** 보증금 처리 완료: RETURNED → COMPLETED (REQ-025 반환, REQ-049 차감 확정). 제공자 정산(REQ-039)도 같은 트랜잭션에서 만든다 */

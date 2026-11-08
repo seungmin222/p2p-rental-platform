@@ -65,6 +65,8 @@ app:
     return-auto-confirm-cron: "0 0 * * * *"
     # 결제 만료: 1분 (REQ-024)
     payment-expire-cron: "0 * * * * *"
+    # 연장 결제 만료: 1분 (REQ-038)
+    rental-extension-expire-cron: "0 * * * * *"
     # 인계 없음 자동 취소: 매일 09:00 (REQ-017)
     no-handover-cancel-cron: "0 0 9 * * *"
     # 연체 감지: 매일 00:05 + 매시 정각 재검사 (REQ-023)
@@ -149,6 +151,10 @@ app:
       default-range-months: 3
       # payment-history.page: 결제·보증금 내역 페이지 크기. size 파라미터를 받지 않는다 (REQ-033)
       page: 20
+    extension:
+      # extension.max-count / max-days-per: 대여 한 건당 2회, 한 번에 7일 (REQ-038). 결제 대기는 payment.expire-minutes
+      max-count: 2
+      max-days-per: 7
     cancel-agreement:
       # cancel-agreement.expire-hours: 양측 동의 취소 요청이 상대 무응답으로 만료되는 시간 (REQ-015)
       expire-hours: 48

@@ -104,13 +104,18 @@ public class SettlementTxService implements RentalSettlementPort {
 			.findFirst();
 	}
 
-	/** 승인된 연장 결제 합계. 연장(REQ-038) 전에는 EXTENSION 결제가 없어 0이다 */
+	/**
+	 * 실제로 받은 연장료 합계 (REQ-038): 승인된(부분 취소 포함) EXTENSION 결제마다 결제 금액 − 누적 취소 − 진행 중인 환불.
+	 * 승인 시점에 확정할 수 없던 연장은 전액 환불하므로 0이 되고, 그 환불이 실패해 APPROVED로 남아 있어도 진행 중인 환불액을 빼므로 들어가지 않는다.
+	 * 0원 연장은 결제 행이 없어 0이다.
+	 */
 	private long sumExtensionFees(Long rentalId) {
 		List<Payment> extensions = paymentRepository.findAllByRentalIdAndTypeOrderByIdDesc(rentalId,
 			PaymentType.EXTENSION);
 		return extensions.stream()
-			.filter(payment -> payment.getStatus() == PaymentStatus.APPROVED)
-			.mapToLong(Payment::getAmount)
+			.filter(payment -> COLLECTED.contains(payment.getStatus()))
+			.mapToLong(payment -> payment.balance() - (payment.getRefundPendingAmount() == null ? 0
+				: payment.getRefundPendingAmount()))
 			.sum();
 	}
 }

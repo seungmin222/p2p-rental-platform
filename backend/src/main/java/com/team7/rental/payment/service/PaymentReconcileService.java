@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 import com.team7.rental.payment.client.PaymentGateway;
 import com.team7.rental.payment.client.PgResult;
 import com.team7.rental.payment.repository.ReconcileTarget;
+import com.team7.rental.payment.service.PaymentTxService.ReconcileOutcome;
+import com.team7.rental.rental.service.RentalExtensionService;
+import com.team7.rental.rental.service.RentalNotificationPort;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +25,7 @@ public class PaymentReconcileService {
 	private final PaymentGateway paymentGateway;
 	private final PaymentTxService paymentTxService;
 	private final PaymentRefundService paymentRefundService;
+	private final RentalNotificationPort rentalNotificationPort;
 
 	public List<ReconcileTarget> findTargets(LocalDateTime now) {
 		return paymentTxService.findReconcileTargets(now);
@@ -33,6 +37,12 @@ public class PaymentReconcileService {
 		if (result instanceof PgResult.Unknown) {
 			return;
 		}
-		paymentTxService.reconcile(target, result).ifPresent(paymentRefundService::execute);
+		ReconcileOutcome outcome = paymentTxService.reconcile(target, result);
+		if (outcome.extended() != null) {
+			RentalExtensionService.notifyExtended(rentalNotificationPort, outcome.extended());
+		}
+		if (outcome.refund() != null) {
+			paymentRefundService.execute(outcome.refund());
+		}
 	}
 }

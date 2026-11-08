@@ -13,11 +13,17 @@ import com.team7.rental.payment.client.PgResult;
 import com.team7.rental.payment.dto.PaymentConfirmRequest;
 import com.team7.rental.payment.dto.PaymentConfirmResponse;
 import com.team7.rental.payment.dto.PaymentOrderResponse;
+import com.team7.rental.payment.entity.PaymentType;
+import com.team7.rental.payment.repository.PaymentRef;
+import com.team7.rental.payment.service.ExtensionPaymentTxService.ExtensionConfirmOutcome;
 import com.team7.rental.payment.service.PaymentTxService.AlreadyProcessed;
 import com.team7.rental.payment.service.PaymentTxService.AmountMismatch;
+import com.team7.rental.payment.service.PaymentTxService.ConfirmDecision;
 import com.team7.rental.payment.service.PaymentTxService.ConfirmOutcome;
 import com.team7.rental.payment.service.PaymentTxService.OrderResult;
 import com.team7.rental.payment.service.PaymentTxService.Proceed;
+import com.team7.rental.rental.service.RentalExtensionService;
+import com.team7.rental.rental.service.RentalNotificationPort;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,19 +36,28 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class PaymentService {
 
+	/** 연장료 주문명 접미사 (토스 결제창 표시) */
+	static final String EXTENSION_ORDER_NAME_SUFFIX = " 대여 연장";
+
 	private final PaymentTxService paymentTxService;
 	private final PaymentRefundService paymentRefundService;
 	private final PaymentGateway paymentGateway;
 	private final ItemQueryService itemQueryService;
+	private final ExtensionPaymentTxService extensionPaymentTxService;
+	private final RentalNotificationPort rentalNotificationPort;
 
 	/**
-	 * 주문 생성.
+	 * 주문 생성. extensionId가 있으면 연장료 주문(REQ-038), 없으면 대여료 + 보증금 주문이다.
 	 *
-	 * @throws BusinessException RENTAL_NOT_FOUND, PAYMENT_RENTER_ONLY, PAYMENT_EXPIRED, RENTAL_INVALID_TRANSITION
+	 * @throws BusinessException RENTAL_NOT_FOUND, PAYMENT_RENTER_ONLY, PAYMENT_EXPIRED, RENTAL_INVALID_TRANSITION,
+	 *     RENTAL_EXTENSION_NOT_FOUND
 	 */
-	public PaymentOrderResponse createOrder(Long rentalId, Long memberId) {
-		OrderResult order = paymentTxService.createOrder(rentalId, memberId);
-		String orderName = itemQueryService.getSummary(order.itemId()).name();
+	public PaymentOrderResponse createOrder(Long rentalId, Long extensionId, Long memberId) {
+		OrderResult order = extensionId == null
+			? paymentTxService.createOrder(rentalId, memberId)
+			: extensionPaymentTxService.createOrder(rentalId, extensionId, memberId);
+		String itemName = itemQueryService.getSummary(order.itemId()).name();
+		String orderName = extensionId == null ? itemName : itemName + EXTENSION_ORDER_NAME_SUFFIX;
 		return new PaymentOrderResponse(order.orderId(), order.amount(), orderName, customerKeyOf(memberId));
 	}
 
@@ -53,23 +68,29 @@ public class PaymentService {
 	 *     PAYMENT_AMOUNT_MISMATCH, PAYMENT_APPROVAL_FAILED, PAYMENT_RESULT_UNKNOWN, PAYMENT_CANCELED_AFTER_EXPIRY
 	 */
 	public PaymentConfirmResponse confirm(Long memberId, PaymentConfirmRequest request) {
-		Long rentalId = paymentTxService.getRentalId(request.orderId());
-		return switch (paymentTxService.prepareConfirm(rentalId, memberId, request.orderId(), request.paymentKey(),
-			request.amount())) {
+		PaymentRef ref = paymentTxService.getRef(request.orderId());
+		ConfirmDecision decision = ref.type() == PaymentType.EXTENSION
+			? extensionPaymentTxService.prepareConfirm(ref.rentalId(), ref.paymentId(), memberId, request.paymentKey(),
+				request.amount())
+			: paymentTxService.prepareConfirm(ref.rentalId(), memberId, request.orderId(), request.paymentKey(),
+				request.amount());
+		return switch (decision) {
 			case AlreadyProcessed processed -> processed.response();
 			case AmountMismatch mismatch -> throw new BusinessException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
-			case Proceed proceed -> callPg(request, proceed);
+			case Proceed proceed -> callPg(request, ref, proceed);
 		};
 	}
 
-	private PaymentConfirmResponse callPg(PaymentConfirmRequest request, Proceed proceed) {
+	private PaymentConfirmResponse callPg(PaymentConfirmRequest request, PaymentRef ref, Proceed proceed) {
 		PgResult result = paymentGateway.confirm(request.paymentKey(), request.orderId(), proceed.amount(),
 			proceed.idempotencyKey());
 		if (result instanceof PgResult.Unknown) {
 			result = lookUpAfterUnknown(request.orderId());
 		}
 		return switch (result) {
-			case PgResult.Success success -> applyApproved(request, proceed, success);
+			case PgResult.Success success -> ref.type() == PaymentType.EXTENSION
+				? applyExtensionApproved(ref, proceed, success)
+				: applyApproved(request, proceed, success);
 			case PgResult.Failure failure -> {
 				log.warn("Payment approval failed: orderId={}, code={}", request.orderId(), failure.code());
 				paymentTxService.applyFailed(proceed.rentalId(), request.orderId(), proceed.transactionId(), failure);
@@ -95,6 +116,24 @@ public class PaymentService {
 			proceed.transactionId(), success);
 		if (outcome.refund() != null) {
 			log.warn("Payment approved after rental expired, refunding: orderId={}", request.orderId());
+			paymentRefundService.execute(outcome.refund());
+		}
+		if (outcome.canceledAfterExpiry()) {
+			throw new BusinessException(ErrorCode.PAYMENT_CANCELED_AFTER_EXPIRY);
+		}
+		return outcome.response();
+	}
+
+	// 연장 결제(REQ-038): 확정했으면 커밋 뒤 양측 알림, 확정할 수 없었으면 전액 환불 후 PAYMENT_CANCELED_AFTER_EXPIRY
+	private PaymentConfirmResponse applyExtensionApproved(PaymentRef ref, Proceed proceed, PgResult.Success success) {
+		ExtensionConfirmOutcome outcome = extensionPaymentTxService.applyApproved(ref.rentalId(), ref.paymentId(),
+			proceed.transactionId(), success);
+		if (outcome.extended() != null) {
+			RentalExtensionService.notifyExtended(rentalNotificationPort, outcome.extended());
+		}
+		if (outcome.refund() != null) {
+			log.warn("Extension payment approved but extension not applicable, refunding: paymentId={}",
+				ref.paymentId());
 			paymentRefundService.execute(outcome.refund());
 		}
 		if (outcome.canceledAfterExpiry()) {

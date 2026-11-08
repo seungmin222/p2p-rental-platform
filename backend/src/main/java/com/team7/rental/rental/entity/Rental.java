@@ -373,6 +373,46 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
+	 * 연장을 요청할 수 있는지 (REQ-038). 대여자 확인은 서비스가 한다.
+	 *
+	 * @param maxCount extension.max-count. 확정된 연장만 센다(결제 대기 연장은 대여당 1건이라 따로 막는다)
+	 * @throws BusinessException RENTAL_EXTENSION_OVERDUE(연체 중, 반납 안내), RENTAL_INVALID_TRANSITION(그 외 RENTING 아님),
+	 *     RENTAL_EXTENSION_LIMIT_EXCEEDED(횟수 초과)
+	 */
+	public void validateExtendable(int maxCount) {
+		if (status == RentalStatus.OVERDUE) {
+			throw new BusinessException(ErrorCode.RENTAL_EXTENSION_OVERDUE);
+		}
+		if (status != RentalStatus.RENTING) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+		if (extensionCount >= maxCount) {
+			throw new BusinessException(ErrorCode.RENTAL_EXTENSION_LIMIT_EXCEEDED);
+		}
+	}
+
+	/** 승인 시점에 연장을 확정할 수 있는지: RENTING이고 종료일이 요청 때와 같다. 아니면 호출하는 쪽이 연장을 취소하고 환불한다 */
+	public boolean canApplyExtension(LocalDate prevEndDate) {
+		return status == RentalStatus.RENTING && endDate.equals(prevEndDate);
+	}
+
+	/**
+	 * RENTING → RENTING 연장 확정 (REQ-038): 종료일 갱신, 연장 횟수 + 1. 이력은 서비스가 저장한다.
+	 *
+	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RENTING 아님·종료일이 요청 때와 다름), RENTAL_EXTENSION_LIMIT_EXCEEDED
+	 */
+	public void extend(LocalDate prevEndDate, LocalDate newEndDate, int maxCount) {
+		if (!canApplyExtension(prevEndDate) || !newEndDate.isAfter(endDate)) {
+			throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+		}
+		if (extensionCount >= maxCount) {
+			throw new BusinessException(ErrorCode.RENTAL_EXTENSION_LIMIT_EXCEEDED);
+		}
+		this.endDate = newEndDate;
+		this.extensionCount++;
+	}
+
+	/**
 	 * RENTING·OVERDUE → RETURNED (REQ-018 반납 요청, 제공자 대리 접수 포함). 연체료를 확정해 저장한다(REQ-023).
 	 *
 	 * @param overdueFee OverdueFeeCalculator가 반납 요청일 기준으로 계산한 연체료. 보증금 처리(REQ-025)에서 먼저 차감한다

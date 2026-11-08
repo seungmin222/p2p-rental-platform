@@ -25,7 +25,8 @@ public interface RentalNotificationPort {
 		DEPOSIT_HELD,
 		DEDUCTION_PROPOSED,
 		DEDUCTION_ACCEPTED,
-		DEDUCTION_REJECTED
+		DEDUCTION_REJECTED,
+		RENTAL_EXTENDED
 	}
 
 	/** notifications.target_type 중 rental이 쓰는 것 (클릭 시 대여 상세로 이동) */
@@ -56,6 +57,11 @@ public interface RentalNotificationPort {
 	/** 한 대여에 한 번인 알림 키 {@code {TYPE}:{rentalId}} (LOST_REPORTED, DEPOSIT_HELD) */
 	static String rentalEventId(Type type, Long rentalId) {
 		return type.name() + ":" + rentalId;
+	}
+
+	/** 연장 확정 알림 키 {@code RENTAL_EXTENDED:{rentalId}:{extensionId}} (REQ-038). 연장은 대여당 여러 번이라 연장 ID로 구분한다 */
+	static String extensionEventId(Long rentalId, Long extensionId) {
+		return Type.RENTAL_EXTENDED.name() + ":" + rentalId + ":" + extensionId;
 	}
 
 	/** 차감 제안별 알림 키 {@code {TYPE}:{rentalId}:{proposalId}} (notification.md event_id 규칙) */

@@ -70,6 +70,14 @@ public enum ErrorCode {
 	RENTAL_RENTER_ONLY(HttpStatus.FORBIDDEN, "대여자만 처리할 수 있습니다."),
 	RENTAL_LOST_REPORT_TOO_EARLY(HttpStatus.CONFLICT, "반납 예정일로부터 정해진 기간이 지난 연체 건만 미반납 신고할 수 있습니다."),
 
+	// 대여 연장 (REQ-038)
+	RENTAL_EXTENSION_NOT_FOUND(HttpStatus.NOT_FOUND, "연장 요청을 찾을 수 없습니다."),
+	RENTAL_EXTENSION_OVERDUE(HttpStatus.CONFLICT, "연체 중에는 연장할 수 없습니다. 먼저 반납해 주세요."),
+	RENTAL_EXTENSION_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "연장 횟수 또는 한 번에 연장할 수 있는 일수를 넘었습니다."),
+	RENTAL_EXTENSION_IN_PROGRESS(HttpStatus.CONFLICT, "결제를 기다리는 연장 요청이 있습니다."),
+	/** details에 연장 가능한 최대 날짜를 담는다: { field: "maxEndDate", reason: "2026-11-12" }. 하루도 연장할 수 없으면 비운다 */
+	RENTAL_EXTENSION_PERIOD_CONFLICT(HttpStatus.CONFLICT, "연장하려는 기간에 다른 예약이 있습니다."),
+
 	// 결제
 	PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "결제 내역을 찾을 수 없습니다."),
 	PAYMENT_INVALID_STATUS(HttpStatus.CONFLICT, "현재 결제 상태에서는 처리할 수 없는 요청입니다."),
@@ -79,8 +87,8 @@ public enum ErrorCode {
 	PAYMENT_APPROVAL_FAILED(HttpStatus.BAD_REQUEST, "결제 승인에 실패했습니다. 다시 결제해 주세요."),
 	/** PG 응답을 받지 못했다. 같은 요청을 다시 보내도 중복 승인되지 않는다 */
 	PAYMENT_RESULT_UNKNOWN(HttpStatus.SERVICE_UNAVAILABLE, "결제 결과를 확인하고 있습니다. 잠시 후 다시 시도해 주세요."),
-	/** 승인 직후 대여가 이미 만료·취소된 경합. 전액 취소를 진행한다 */
-	PAYMENT_CANCELED_AFTER_EXPIRY(HttpStatus.CONFLICT, "결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다."),
+	/** 승인 직후 대여(또는 연장, REQ-038)가 이미 만료·취소된 경합. 전액 취소를 진행한다 */
+	PAYMENT_CANCELED_AFTER_EXPIRY(HttpStatus.CONFLICT, "결제 처리 중 예약 또는 연장이 만료·취소되어 결제 금액을 전액 환불합니다."),
 
 	// 보증금 보류·차감 (REQ-049)
 	DEPOSIT_NOT_HELD(HttpStatus.CONFLICT, "보류 중인 보증금이 없거나 반환이 진행 중입니다."),
