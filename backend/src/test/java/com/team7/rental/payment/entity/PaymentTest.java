@@ -140,6 +140,72 @@ class PaymentTest {
 	}
 
 	@Test
+	@DisplayName("대여 결제의 보증금 상태 흐름은 연장 가드를 넣은 뒤에도 같다: 승인 FROZEN/NONE, 환불 실패 REFUND_FAILED, 성공 REFUNDED")
+	void rentalDepositRegression() {
+		// given
+		Payment withDeposit = approved(10_000, 5_000);
+		Payment noDeposit = approved(10_000, 0);
+		assertThat(withDeposit.getDepositStatus()).isEqualTo(DepositStatus.FROZEN);
+		assertThat(noDeposit.getDepositStatus()).isEqualTo(DepositStatus.NONE);
+		withDeposit.requestRefund(15_000, NOW);
+		noDeposit.requestRefund(10_000, NOW);
+
+		// when
+		withDeposit.markRefundFailed();
+		noDeposit.markRefundFailed();
+
+		// then
+		assertThat(withDeposit.getDepositStatus()).isEqualTo(DepositStatus.REFUND_FAILED);
+		assertThat(noDeposit.getDepositStatus()).isEqualTo(DepositStatus.NONE);
+
+		// when
+		withDeposit.applyRefund();
+		noDeposit.applyRefund();
+
+		// then
+		assertThat(withDeposit.getDepositStatus()).isEqualTo(DepositStatus.REFUNDED);
+		assertThat(noDeposit.getDepositStatus()).isEqualTo(DepositStatus.NONE);
+	}
+
+	@Test
+	@DisplayName("연장 결제는 승인·환불 실패·환불 성공 어디서도 보증금 상태를 갖지 않는다 (open-issues #1)")
+	void extensionHasNoDepositStatus() {
+		// given
+		Payment payment = Payment.createForExtension(1L, "order-ext", "key-ext", 7_000);
+
+		// when
+		payment.approve("pay-key");
+
+		// then
+		assertThat(payment.getType()).isEqualTo(PaymentType.EXTENSION);
+		assertThat(payment.getAmount()).isEqualTo(7_000);
+		assertThat(payment.getRentalFeeAmount()).isZero();
+		assertThat(payment.getDepositAmount()).isZero();
+		assertThat(payment.getDepositStatus()).isNull();
+
+		// when
+		payment.requestRefund(7_000, NOW);
+		payment.markRefundFailed();
+
+		// then
+		assertThat(payment.getDepositStatus()).isNull();
+
+		// when
+		payment.applyRefund();
+
+		// then
+		assertThat(payment.getDepositStatus()).isNull();
+		assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELED);
+	}
+
+	@Test
+	@DisplayName("연장료가 0원이면 연장 결제를 만들 수 없다")
+	void zeroExtensionFeeRejected() {
+		assertThatThrownBy(() -> Payment.createForExtension(1L, "order-ext", "key-ext", 0))
+			.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
 	@DisplayName("보증금 전액 차감은 FROZEN에서만 된다")
 	void forfeit() {
 		Payment payment = approved(10_000, 5_000);
