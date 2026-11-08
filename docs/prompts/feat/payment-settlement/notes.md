@@ -15,4 +15,8 @@
 - **건마다 행 락을 잡고 `isPayable`을 다시 본다.** 같은 회차를 두 서버가 돌리는 것은 ShedLock이 막고, 재실행·겹친 실행은 이 확인으로 한 번만 지급된다.
 
 ## 033 결제·보증금 내역
-- type 의미는 open-issues #44의 임시 해석으로 구현한다(확정 전).
+- type 의미는 open-issues #44의 임시 해석으로 구현했다(확정 전). REFUND = 대여 CANCELED이고 환불했거나 환불이 남은 결제, DEPOSIT = deposit_status가 HELD·REFUNDED·FORFEITED·REFUND_FAILED. 취소 환불도 보증금을 REFUNDED로 돌려주므로 DEPOSIT에도 나온다.
+- **from·to는 `payments.created_at`(주문 생성 시각)의 날짜에 건다.** 승인 시각 컬럼이 없고, 승인은 주문 뒤 15분(payment.expire-minutes) 안이라 날짜가 거의 같다. 응답 필드도 `createdAt`으로 이름을 정직하게 두었다.
+- **from > to 검사는 기본값을 채운 뒤 서비스에서 한다.** from만 미래로 주면 to(오늘)보다 늦어지는 경우까지 같은 400(details field `to`)으로 막기 위해서다.
+- **대여자 조건은 QueryDSL 서브쿼리로 rentals를 본다.** ItemListingRepositoryImpl과 같은 "조회 전용 관계 쿼리" 선례를 따랐다. 대여 Service를 거쳐 대여 ID 목록을 받으면 대여 수만큼 IN 목록이 커진다.
+- **목록 화면의 물품·기간·연체료·취소 수수료는 `RentalSummaryReader`(rental 쪽)로 페이지 단위 일괄 조회**한다. 정산 목록도 같이 쓴다.
