@@ -43,6 +43,7 @@ public class AiUsageCounter {
 	 */
 	public boolean tryAcquire() {
 		YearMonth month = YearMonth.now(clock);
+		// 다음 달 2일 00:00 = 그달 말일이 끝난 뒤 하루 더 = erd.md "월 말 + 1일"
 		long expireAt = month.atEndOfMonth().plusDays(2).atStartOfDay(clock.getZone()).toEpochSecond();
 		Long count = redis.execute(INCREMENT, List.of(key(month)), Long.toString(expireAt));
 		if (count == null) {

@@ -85,7 +85,7 @@
 | 키(제안) | 값 | 관련 REQ |
 | --- | --- | --- |
 | `ai.compare.max-retry` | 형식 오류 재시도 최대 2회 | 040 |
-| `ai.monthly-limit` | 월 1,000건 (초과 시 AI 없이 진행). **재시도도 1건으로 센다**(호출 직전에 Redis 카운터 증가, open-issues #47) | 040 |
+| `ai.monthly-limit` | 월 1,000건 (초과 시 AI 없이 진행). **재시도도 1건으로 센다**(호출 직전에 Redis 카운터 증가, open-issues #47). SDK 수준 재시도(429·5xx)는 세지 않는다 | 040 |
 | `ai.compare.per-rental` | 대여 건당 1회 (반납 기록의 ai_result가 비어 있을 때만 맡는다) | 040 |
 | `ai.compare.processing-timeout-minutes` | 10분. 비교를 맡은 지 10분이 지나도 끝나지 않으면(워커 중단) 응답에서 `FAILED`로 보인다. 다시 비교하지 않는다 (명세 외, open-issues #46) | 040 |
 | `ai.compare.image-max-long-side` | 1024px. 보내기 전 긴 변을 줄여 토큰을 아낀다 (명세 외) | 040 |

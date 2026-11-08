@@ -32,7 +32,7 @@ import lombok.NoArgsConstructor;
  * 사진은 저장소 URL을 저장한다(item_images와 같음).
  * <p>
  * RETURN 기록의 ai_result는 AI 워커가 판정과 따로 쓴다(REQ-040). @DynamicUpdate로 바뀐 컬럼만 UPDATE해, 판정 트랜잭션이 먼저 읽어 둔 기록을
- * 커밋할 때 그 사이에 저장된 AI 결과를 옛 값으로 덮어쓰지 않게 한다(ItemInspectionAiResultIntegrationTest).
+ * 커밋할 때 그 사이에 저장된 AI 결과를 옛 값으로 덮어쓰지 않게 한다(AiCompareIntegrationTest.judgementDoesNotOverwriteAiResult).
  */
 @Getter
 @Entity

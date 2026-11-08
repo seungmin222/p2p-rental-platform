@@ -13,6 +13,8 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
+import org.springframework.core.io.ClassPathResource;
 
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.team7.rental.ai.service.AiCompareParser;
@@ -38,7 +40,7 @@ class ClaudeAiClientLiveTest {
 		assumeTrue(apiKey != null && !apiKey.isBlank(), "ANTHROPIC_API_KEY 없음");
 		assumeTrue(sampleDir != null && Files.isDirectory(Path.of(sampleDir)), "AI_COMPARE_SAMPLE_DIR 없음");
 
-		AiProperties properties = new AiProperties(apiKey, "claude-haiku-4-5", 1024, Duration.ofSeconds(30), 2);
+		AiProperties properties = new AiProperties(apiKey, configuredModel(), 1024, Duration.ofSeconds(30), 2);
 		ClaudeAiClient client = new ClaudeAiClient(AnthropicOkHttpClient.builder()
 			.apiKey(apiKey)
 			.timeout(properties.timeout())
@@ -64,6 +66,15 @@ class ClaudeAiClientLiveTest {
 		}
 		System.out.printf("schema valid %d/%d%n", valid, pairs);
 		assertThat(pairs).isPositive();
+	}
+
+	/** 운영과 같은 모델로 실험하도록 application.yml의 app.ai.model을 읽는다 */
+	private static String configuredModel() {
+		YamlPropertiesFactoryBean yaml = new YamlPropertiesFactoryBean();
+		yaml.setResources(new ClassPathResource("application.yml"));
+		String model = yaml.getObject().getProperty("app.ai.model");
+		assertThat(model).as("application.yml app.ai.model").isNotBlank();
+		return model;
 	}
 
 	private static List<AiImage> images(Path pair, String prefix) throws IOException {
