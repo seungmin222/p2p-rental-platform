@@ -27,6 +27,7 @@ import com.team7.rental.rental.event.ReturnRequestedEvent;
 import com.team7.rental.rental.repository.ItemInspectionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
 import com.team7.rental.rental.service.RentalRefundPort.Completion;
 import com.team7.rental.rental.service.RentalRefundPort.RefundTicket;
 
@@ -59,6 +60,7 @@ public class RentalInspectionTxService {
 	private final RentalCompletionRecorder rentalCompletionRecorder;
 	private final PolicyProperties policyProperties;
 	private final ApplicationEventPublisher eventPublisher;
+	private final RentalNotificationPublisher rentalNotificationPublisher;
 	private final Clock clock;
 
 	/**
@@ -91,6 +93,8 @@ public class RentalInspectionTxService {
 		itemInspectionRepository.save(ItemInspection.handover(rentalId, memberId, imageUrls, memo));
 		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(), memberId,
 			RentalStatusHistory.REASON_HANDOVER, now));
+		rentalNotificationPublisher.toRenter(rental, Type.HANDOVER_CONFIRMED,
+			RentalNotificationPort.rentalEventId(Type.HANDOVER_CONFIRMED, rentalId));
 		return rentalQueryService.getRental(rentalId, memberId);
 	}
 
@@ -127,6 +131,11 @@ public class RentalInspectionTxService {
 			RentalStatusHistory.REASON_RETURN_REQUEST, now));
 		// AI 비교 큐 적재는 커밋 뒤(REQ-040). 롤백되면 적재하지 않고, 적재가 실패해도 반납은 이미 끝났다
 		eventPublisher.publishEvent(new ReturnRequestedEvent(rentalId));
+		// 제공자 대리 접수면 제공자가 이미 알고 있어 보내지 않는다
+		if (!memberId.equals(rental.getOwnerId())) {
+			rentalNotificationPublisher.toOwner(rental, Type.RETURN_REQUESTED,
+				RentalNotificationPort.rentalEventId(Type.RETURN_REQUESTED, rentalId));
+		}
 		return rentalQueryService.getRental(rentalId, memberId);
 	}
 
@@ -254,6 +263,9 @@ public class RentalInspectionTxService {
 	private JudgeResult judge(Rental rental, ItemInspection inspection, InspectionResult result,
 		String resultNote, List<String> resultImageUrls, Long changedBy, LocalDateTime now) {
 		inspection.judge(result, resultNote, resultImageUrls);
+		// 제공자 판정·자동 확인 모두 대여자에게 (보증금 보류·반환 알림은 따로 간다)
+		rentalNotificationPublisher.toRenter(rental, Type.INSPECTION_RESULT,
+			RentalNotificationPort.rentalEventId(Type.INSPECTION_RESULT, rental.getId()));
 		RentalStatus from = rental.getStatus();
 		String reason;
 		if (result == InspectionResult.NORMAL) {

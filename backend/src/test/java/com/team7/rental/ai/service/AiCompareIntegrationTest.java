@@ -129,7 +129,7 @@ class AiCompareIntegrationTest extends IntegrationTestSupport {
 			.andExpect(jsonPath("$.data[1].aiResult.analyzedAt").value("2026-11-05T18:00:00"));
 
 		String eventId = "AI_COMPARE_DONE:" + rental.getId();
-		assertThat(notificationPort.sent()).containsExactlyInAnyOrder(
+		assertThat(aiNotifications()).containsExactlyInAnyOrder(
 			new Sent(renter.getId(), Type.AI_COMPARE_DONE, TargetType.RENTAL, rental.getId(), eventId),
 			new Sent(owner.getId(), Type.AI_COMPARE_DONE, TargetType.RENTAL, rental.getId(), eventId));
 		assertThat(redis.opsForValue().get(usageKey())).isEqualTo("1");
@@ -147,7 +147,7 @@ class AiCompareIntegrationTest extends IntegrationTestSupport {
 
 		// then
 		assertThat(aiClient.calls()).hasSize(1);
-		assertThat(notificationPort.sent()).hasSize(2);
+		assertThat(aiNotifications()).hasSize(2);
 	}
 
 	@Test
@@ -180,7 +180,7 @@ class AiCompareIntegrationTest extends IntegrationTestSupport {
 		// then
 		assertThat(aiClient.calls()).hasSize(3);
 		assertThat(returnInspection(rental).getAiResult().status()).isEqualTo(AiCompareStatus.FAILED);
-		assertThat(notificationPort.sent()).isEmpty();
+		assertThat(aiNotifications()).isEmpty();
 		assertThat(rentalRepository.findById(rental.getId()).orElseThrow().getStatus())
 			.isEqualTo(RentalStatus.RETURNED);
 		inspections(rental, owner)
@@ -219,7 +219,7 @@ class AiCompareIntegrationTest extends IntegrationTestSupport {
 		// then
 		assertThat(aiClient.calls()).isEmpty();
 		assertThat(returnInspection(rental).getAiResult().status()).isEqualTo(AiCompareStatus.LIMIT_EXCEEDED);
-		assertThat(notificationPort.sent()).isEmpty();
+		assertThat(aiNotifications()).isEmpty();
 		inspections(rental, renter)
 			.andExpect(jsonPath("$.data[1].aiResult.status").value("LIMIT_EXCEEDED"));
 	}
@@ -429,5 +429,10 @@ class AiCompareIntegrationTest extends IntegrationTestSupport {
 
 	private static BufferedImage decode(byte[] data) throws IOException {
 		return ImageIO.read(new ByteArrayInputStream(data));
+	}
+
+	// 인계·반납 요청 알림(REQ-032)도 같은 포트로 가므로 AI 비교 완료만 본다
+	private java.util.List<Sent> aiNotifications() {
+		return notificationPort.sent().stream().filter(sent -> sent.type() == Type.AI_COMPARE_DONE).toList();
 	}
 }

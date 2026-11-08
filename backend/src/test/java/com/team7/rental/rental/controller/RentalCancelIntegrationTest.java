@@ -22,6 +22,9 @@ import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
+import com.team7.rental.support.FakeRentalNotificationPort.Sent;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -73,6 +76,9 @@ class RentalCancelIntegrationTest extends IntegrationTestSupport {
 			assertThat(history.getReason()).isEqualTo("SCHEDULE_CHANGE");
 			assertThat(history.getChangedAt()).isEqualTo(NOW);
 		});
+		// 상대방(제공자)에게만 예약 취소 (REQ-032)
+		assertThat(notificationPort.sent()).containsExactly(new Sent(owner.getId(), Type.RESERVATION_CANCELED,
+			TargetType.RENTAL, rental.getId(), "RESERVATION_CANCELED:" + rental.getId()));
 	}
 
 	@Test

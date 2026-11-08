@@ -26,6 +26,9 @@ import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
+import com.team7.rental.support.FakeRentalNotificationPort.Sent;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
@@ -95,6 +98,11 @@ class RentalCreateIntegrationTest extends IntegrationTestSupport {
 			assertThat(history.getToStatus()).isEqualTo(RentalStatus.RESERVED);
 			assertThat(history.getChangedBy()).isEqualTo(renter.getId());
 		});
+		// 결제 없이 바로 확정이라 양측에 예약 확정 (REQ-032)
+		String eventId = "RESERVATION_CONFIRMED:" + rental.getId();
+		assertThat(notificationPort.sent()).containsExactlyInAnyOrder(
+			new Sent(renter.getId(), Type.RESERVATION_CONFIRMED, TargetType.RENTAL, rental.getId(), eventId),
+			new Sent(owner.member().getId(), Type.RESERVATION_CONFIRMED, TargetType.RENTAL, rental.getId(), eventId));
 	}
 
 	@Test

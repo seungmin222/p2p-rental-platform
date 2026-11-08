@@ -13,9 +13,11 @@ import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.item.dto.ItemRentalTarget;
 import com.team7.rental.rental.entity.Rental;
+import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
 
 /**
  * 예약의 트랜잭션 부분(REQ-013·014): 겹침 검사 → INSERT → 생성 이력.
@@ -28,17 +30,19 @@ public class RentalReservationTxService {
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
 	private final RentalOccupancyReader rentalOccupancyReader;
 	private final PolicyProperties policyProperties;
+	private final RentalNotificationPublisher rentalNotificationPublisher;
 	private final boolean paymentEnabled;
 
 	public RentalReservationTxService(RentalRepository rentalRepository,
 		RentalStatusHistoryRepository rentalStatusHistoryRepository, RentalOccupancyReader rentalOccupancyReader,
-		PolicyProperties policyProperties,
+		PolicyProperties policyProperties, RentalNotificationPublisher rentalNotificationPublisher,
 		@Value("${app.feature.payment-enabled}")
 		boolean paymentEnabled) {
 		this.rentalRepository = rentalRepository;
 		this.rentalStatusHistoryRepository = rentalStatusHistoryRepository;
 		this.rentalOccupancyReader = rentalOccupancyReader;
 		this.policyProperties = policyProperties;
+		this.rentalNotificationPublisher = rentalNotificationPublisher;
 		this.paymentEnabled = paymentEnabled;
 	}
 
@@ -58,6 +62,11 @@ public class RentalReservationTxService {
 		// 이력은 같은 트랜잭션에서 저장한다(커밋 후 리스너로 저장하면 실패 시 이력이 빠진다)
 		rentalStatusHistoryRepository.save(
 			RentalStatusHistory.create(rental.getId(), null, rental.getStatus(), renterId, null, now));
+		// 결제 없이 바로 확정(1순위·무료 대여)이면 양측에 예약 확정. 결제 대기면 승인 때 PAYMENT_COMPLETED (RentalPaymentTxService)
+		if (rental.getStatus() == RentalStatus.RESERVED) {
+			rentalNotificationPublisher.toBoth(rental, Type.RESERVATION_CONFIRMED,
+				RentalNotificationPort.rentalEventId(Type.RESERVATION_CONFIRMED, rental.getId()));
+		}
 		return rental;
 	}
 

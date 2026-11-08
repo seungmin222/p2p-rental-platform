@@ -106,6 +106,9 @@ app:
       page: 20
     item-rentals:
       page: 20
+    # notification.page: 알림 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-032)
+    notification:
+      page: 20
     view-count:
       dedupe-hours: 24
     profile:

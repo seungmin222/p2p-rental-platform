@@ -22,7 +22,10 @@ import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
 import com.team7.rental.support.FakePaymentGateway.Fault;
+import com.team7.rental.support.FakeRentalNotificationPort.Sent;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -84,6 +87,11 @@ class NoHandoverCancelJobTest extends IntegrationTestSupport {
 			assertThat(history.getChangedBy()).isNull();
 			assertThat(history.getReason()).isEqualTo(RentalStatusHistory.REASON_NO_HANDOVER_BATCH);
 		});
+		// 양측에 예약 취소 한 번씩 (취소 환불은 보증금 반환 알림 대상이 아니다)
+		String eventId = "RESERVATION_CANCELED:" + due.getId();
+		assertThat(notificationPort.sent()).containsExactlyInAnyOrder(
+			new Sent(renter.getId(), Type.RESERVATION_CANCELED, TargetType.RENTAL, due.getId(), eventId),
+			new Sent(canceled.getOwnerId(), Type.RESERVATION_CANCELED, TargetType.RENTAL, due.getId(), eventId));
 	}
 
 	@Test

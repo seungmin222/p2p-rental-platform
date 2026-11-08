@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.team7.rental.item.entity.Item;
 import com.team7.rental.member.entity.Member;
+import com.team7.rental.notification.entity.NotificationType;
+import com.team7.rental.notification.repository.NotificationRepository;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.repository.RentalRepository;
@@ -36,6 +38,9 @@ class ReturnReminderJobTest extends IntegrationTestSupport {
 
 	@Autowired
 	private RentalStatusHistoryRepository historyRepository;
+
+	@Autowired
+	private NotificationRepository notificationRepository;
 
 	private Member renter;
 	private Item item;
@@ -71,7 +76,7 @@ class ReturnReminderJobTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	@DisplayName("두 번 돌리면 같은 event_id로 다시 발행한다(중복 저장은 알림 구현이 event_id 유니크로 막는다)")
+	@DisplayName("두 번 돌리면 같은 event_id로 다시 발행하고, 알림은 (회원, event_id) 유니크로 1건만 저장된다")
 	void rerunSendsSameEventId() {
 		// given
 		Rental target = renting(TOMORROW.minusDays(2), TOMORROW);
@@ -83,6 +88,12 @@ class ReturnReminderJobTest extends IntegrationTestSupport {
 		// then
 		assertThat(notificationPort.sent()).hasSize(2)
 			.extracting(Sent::eventId).containsOnly("RETURN_REMINDER:" + target.getId() + ":2026-11-21");
+		assertThat(notificationRepository.findAll()).singleElement().satisfies(notification -> {
+			assertThat(notification.getMemberId()).isEqualTo(renter.getId());
+			assertThat(notification.getType()).isEqualTo(NotificationType.RETURN_REMINDER);
+			assertThat(notification.getTargetId()).isEqualTo(target.getId());
+			assertThat(notification.isRead()).isFalse();
+		});
 	}
 
 	private Rental renting(LocalDate start, LocalDate end) {

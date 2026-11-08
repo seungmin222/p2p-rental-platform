@@ -27,6 +27,9 @@ import com.team7.rental.rental.entity.ReturnChecklistItem;
 import com.team7.rental.rental.repository.ItemInspectionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
+import com.team7.rental.support.FakeRentalNotificationPort.Sent;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -95,6 +98,10 @@ class RentalReturnRequestIntegrationTest extends IntegrationTestSupport {
 			assertThat(history.getChangedBy()).isEqualTo(renter.getId());
 			assertThat(history.getReason()).isEqualTo(RentalStatusHistory.REASON_RETURN_REQUEST);
 		});
+		// AI 비교 완료 알림이 비동기로 섞일 수 있어 종류로 거른다
+		assertThat(notificationPort.sent()).filteredOn(sent -> sent.type() == Type.RETURN_REQUESTED)
+			.containsExactly(new Sent(owner.getId(), Type.RETURN_REQUESTED,
+				TargetType.RENTAL, rental.getId(), "RETURN_REQUESTED:" + rental.getId()));
 	}
 
 	@Test
@@ -110,6 +117,8 @@ class RentalReturnRequestIntegrationTest extends IntegrationTestSupport {
 			.satisfies(inspection -> assertThat(inspection.getWrittenBy()).isEqualTo(owner.getId()));
 		assertThat(historyRepository.findAll()).singleElement()
 			.satisfies(history -> assertThat(history.getChangedBy()).isEqualTo(owner.getId()));
+		// 대리 접수는 제공자 본인이 했으므로 반납 요청 알림을 보내지 않는다
+		assertThat(notificationPort.sent()).extracting(Sent::type).doesNotContain(Type.RETURN_REQUESTED);
 	}
 
 	@Test

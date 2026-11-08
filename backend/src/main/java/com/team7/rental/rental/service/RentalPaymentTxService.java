@@ -29,6 +29,7 @@ import com.team7.rental.rental.repository.ItemInspectionRepository;
 import com.team7.rental.rental.repository.RentalExtensionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
 
 import lombok.RequiredArgsConstructor;
 
@@ -47,6 +48,7 @@ public class RentalPaymentTxService {
 	private final RentalCompletionRecorder rentalCompletionRecorder;
 	private final RentalExtensionRepository rentalExtensionRepository;
 	private final RentalExtensionRecorder rentalExtensionRecorder;
+	private final RentalNotificationPublisher rentalNotificationPublisher;
 	private final Clock clock;
 
 	/**
@@ -70,6 +72,8 @@ public class RentalPaymentTxService {
 		RentalStatus from = rental.getStatus();
 		rental.confirmPayment();
 		saveHistory(rental, from, RentalStatusHistory.REASON_PAYMENT_APPROVED, now);
+		rentalNotificationPublisher.toBoth(rental, Type.PAYMENT_COMPLETED,
+			RentalNotificationPort.rentalEventId(Type.PAYMENT_COMPLETED, rentalId));
 	}
 
 	/** 결제 만료: PENDING_PAYMENT → CANCELED(PAYMENT_EXPIRED) */
@@ -162,6 +166,15 @@ public class RentalPaymentTxService {
 	/** 보증금 처리 완료: RETURNED → COMPLETED (REQ-025 반환, REQ-049 차감 확정). 제공자 정산(REQ-039)도 같은 트랜잭션에서 만든다 */
 	public void completeAfterDepositReturn(Long rentalId, RentalRefundPort.Completion completion, LocalDateTime now) {
 		rentalCompletionRecorder.complete(getForUpdate(rentalId), completion.changedBy(), completion.reason(), now);
+	}
+
+	/**
+	 * 보증금 반환 PG 환불 성공을 대여자에게 알린다(REQ-032 DEPOSIT_REFUNDED). 결제 도메인이 환불 결과 반영 트랜잭션 안에서 부르고, 커밋 뒤 발송된다.
+	 * 반환액 0원(FORFEITED)은 돌려준 돈이 없어 부르지 않는다.
+	 */
+	public void notifyDepositRefunded(Long rentalId) {
+		rentalNotificationPublisher.toRenter(lockedRental(rentalId), Type.DEPOSIT_REFUNDED,
+			RentalNotificationPort.rentalEventId(Type.DEPOSIT_REFUNDED, rentalId));
 	}
 
 	/**

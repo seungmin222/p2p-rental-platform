@@ -79,7 +79,10 @@ public record PolicyProperties(
 	@Valid @NotNull
 	Extension extension,
 	@Valid @NotNull
-	Ai ai) {
+	Ai ai,
+	/** notification.page: 알림 목록 페이지 크기 (REQ-032). size 파라미터를 받지 않는다 */
+	@Valid @NotNull
+	PageSize notification) {
 
 	public record PageSize(@Positive
 	int page) {

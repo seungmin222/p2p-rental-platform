@@ -28,6 +28,9 @@ import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.repository.RentalCancelAgreementRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
+import com.team7.rental.support.FakeRentalNotificationPort.Sent;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -87,6 +90,9 @@ class RentalCancelAgreementIntegrationTest extends IntegrationTestSupport {
 			.andExpect(jsonPath("$.data.activeCancelAgreement.requestedByMe").value(false))
 			.andExpect(jsonPath("$.data.activeCancelAgreement.reason").value("OTHER"))
 			.andExpect(jsonPath("$.data.activeCancelAgreement.expiresAt").value("2026-11-05T10:00:00"));
+		Long agreementId = agreementRepository.findAll().getFirst().getId();
+		assertThat(notificationPort.sent()).containsExactly(new Sent(owner.getId(), Type.CANCEL_AGREEMENT_REQUESTED,
+			TargetType.RENTAL, rental.getId(), "CANCEL_AGREEMENT_REQUESTED:" + rental.getId() + ":" + agreementId));
 	}
 
 	@Test
@@ -121,6 +127,10 @@ class RentalCancelAgreementIntegrationTest extends IntegrationTestSupport {
 		RentalCancelAgreement agreement = agreementRepository.findById(agreementId).orElseThrow();
 		assertThat(agreement.getStatus()).isEqualTo(CancelAgreementStatus.ACCEPTED);
 		assertThat(agreement.getRespondedAt()).isEqualTo(respondedAt);
+		// 수락은 결과 알림만 양측에 보낸다(예약 취소 알림은 따로 보내지 않는다)
+		assertThat(notificationPort.sent()).extracting(Sent::type)
+			.containsExactlyInAnyOrder(Type.CANCEL_AGREEMENT_REQUESTED, Type.CANCEL_AGREEMENT_RESULT,
+				Type.CANCEL_AGREEMENT_RESULT);
 	}
 
 	@Test
@@ -140,6 +150,13 @@ class RentalCancelAgreementIntegrationTest extends IntegrationTestSupport {
 		assertThat(agreement.getStatus()).isEqualTo(CancelAgreementStatus.REJECTED);
 		assertThat(agreement.getRespondedAt()).isEqualTo(NOW);
 		assertThat(historyRepository.count()).isZero();
+		String resultEventId = "CANCEL_AGREEMENT_RESULT:" + rental.getId() + ":" + agreementId;
+		assertThat(notificationPort.sent()).filteredOn(sent -> sent.type() == Type.CANCEL_AGREEMENT_RESULT)
+			.containsExactlyInAnyOrder(
+				new Sent(renter.getId(), Type.CANCEL_AGREEMENT_RESULT, TargetType.RENTAL, rental.getId(),
+					resultEventId),
+				new Sent(owner.getId(), Type.CANCEL_AGREEMENT_RESULT, TargetType.RENTAL, rental.getId(),
+					resultEventId));
 
 		requestAgreement(owner, "{\"reason\": \"ITEM_PROBLEM\"}").andExpect(status().isCreated());
 	}

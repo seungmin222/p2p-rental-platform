@@ -26,6 +26,7 @@ import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.repository.RentalCancelAgreementRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
 import com.team7.rental.rental.service.RentalRefundPort.RefundTicket;
 
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class RentalCancelTxService {
 	private final CancelFeeCalculator cancelFeeCalculator;
 	private final RentalSettlementPort rentalSettlementPort;
 	private final RentalRefundPort rentalRefundPort;
+	private final RentalNotificationPublisher rentalNotificationPublisher;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
@@ -62,8 +64,14 @@ public class RentalCancelTxService {
 		Rental rental = getParticipantRentalForUpdate(rentalId, memberId);
 		CancelType type = rental.roleOf(memberId) == RentalRole.RENTER ? CancelType.RENTER : CancelType.OWNER;
 		rental.validateCancelable(type, today);
+		boolean wasReserved = rental.getStatus() == RentalStatus.RESERVED;
 		int cancelFee = cancelFeeCalculator.calculate(rental, type, today);
 		cancel(rental, memberId, memberId, type, request.reason(), request.normalizedReasonText(), cancelFee, now);
+		// 결제 대기 취소는 아직 확정된 예약이 아니라 알리지 않는다
+		if (wasReserved) {
+			rentalNotificationPublisher.toCounterpart(rental, memberId, Type.RESERVATION_CANCELED,
+				RentalNotificationPort.rentalEventId(Type.RESERVATION_CANCELED, rentalId));
+		}
 		return rentalRefundPort.prepareCancelRefund(rentalId, cancelFee);
 	}
 
@@ -90,6 +98,9 @@ public class RentalCancelTxService {
 		LocalDateTime expiresAt = now.plusHours(policyProperties.cancelAgreement().expireHours());
 		RentalCancelAgreement agreement = rentalCancelAgreementRepository.save(RentalCancelAgreement.request(
 			rentalId, memberId, request.reason(), request.normalizedReasonText(), expiresAt));
+		rentalNotificationPublisher.toCounterpart(rental, memberId, Type.CANCEL_AGREEMENT_REQUESTED,
+			RentalNotificationPort.cancelAgreementEventId(Type.CANCEL_AGREEMENT_REQUESTED, rentalId,
+				agreement.getId()));
 		return CancelAgreementResponse.of(agreement, memberId);
 	}
 
@@ -113,12 +124,14 @@ public class RentalCancelTxService {
 		}
 		if (request.action() == CancelAgreementAction.REJECT) {
 			agreement.reject(now);
+			notifyAgreementResult(rental, agreement);
 			return Optional.empty();
 		}
 		agreement.accept(now);
 		int cancelFee = cancelFeeCalculator.calculate(rental, CancelType.MUTUAL, now.toLocalDate());
 		cancel(rental, agreement.getRequestedBy(), memberId, CancelType.MUTUAL, agreement.getReason(),
 			agreement.getReasonText(), cancelFee, now);
+		notifyAgreementResult(rental, agreement);
 		return rentalRefundPort.prepareCancelRefund(rentalId, cancelFee);
 	}
 
@@ -154,7 +167,15 @@ public class RentalCancelTxService {
 		rental.cancelForNoHandover(now);
 		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(), null,
 			RentalStatusHistory.REASON_NO_HANDOVER_BATCH, now));
+		rentalNotificationPublisher.toBoth(rental, Type.RESERVATION_CANCELED,
+			RentalNotificationPort.rentalEventId(Type.RESERVATION_CANCELED, rentalId));
 		return new NoHandoverCancelResult(true, rentalRefundPort.prepareCancelRefund(rentalId, 0).orElse(null));
+	}
+
+	// 수락·거절 모두 양측에 결과 알림 (rental.md 양측 동의 취소, notification.md 수신자 매핑). 만료(48시간 무응답)는 명세에 알림이 없어 보내지 않는다
+	private void notifyAgreementResult(Rental rental, RentalCancelAgreement agreement) {
+		rentalNotificationPublisher.toBoth(rental, Type.CANCEL_AGREEMENT_RESULT, RentalNotificationPort
+			.cancelAgreementEventId(Type.CANCEL_AGREEMENT_RESULT, rental.getId(), agreement.getId()));
 	}
 
 	public record NoHandoverCancelResult(boolean canceled, RefundTicket refund) {

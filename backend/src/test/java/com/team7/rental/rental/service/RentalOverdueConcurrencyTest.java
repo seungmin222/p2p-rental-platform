@@ -112,7 +112,7 @@ class RentalOverdueConcurrencyTest extends IntegrationTestSupport {
 				assertThat(histories).extracting(RentalStatusHistory::getToStatus)
 					.containsExactly(RentalStatus.OVERDUE, RentalStatus.RETURNED);
 				assertThat(histories.get(1).getFromStatus()).isEqualTo(RentalStatus.OVERDUE);
-				assertThat(notificationPort.sent()).hasSize(2)
+				assertThat(overdueNotifications()).hasSize(2)
 					.extracting(Sent::eventId).containsOnly("OVERDUE:" + rental.getId());
 			} else {
 				// 반납이 먼저: 배치는 RETURNED를 보고 건너뛰었다
@@ -120,7 +120,7 @@ class RentalOverdueConcurrencyTest extends IntegrationTestSupport {
 					assertThat(history.getFromStatus()).isEqualTo(RentalStatus.RENTING);
 					assertThat(history.getToStatus()).isEqualTo(RentalStatus.RETURNED);
 				});
-				assertThat(notificationPort.sent()).isEmpty();
+				assertThat(overdueNotifications()).isEmpty();
 			}
 		}
 	}
@@ -175,7 +175,7 @@ class RentalOverdueConcurrencyTest extends IntegrationTestSupport {
 		assertReturnedWithFee(rental);
 		assertThat(historiesOf(rental)).singleElement()
 			.extracting(RentalStatusHistory::getToStatus).isEqualTo(RentalStatus.RETURNED);
-		assertThat(notificationPort.sent()).isEmpty();
+		assertThat(overdueNotifications()).isEmpty();
 	}
 
 	private MvcResult requestReturn(Rental rental) throws Exception {
@@ -212,5 +212,12 @@ class RentalOverdueConcurrencyTest extends IntegrationTestSupport {
 			Thread.currentThread().interrupt();
 			throw new IllegalStateException(e);
 		}
+	}
+
+	// 반납 요청 알림(REQ-032)도 같은 포트로 가므로 연체 알림만 본다
+	private List<Sent> overdueNotifications() {
+		return notificationPort.sent().stream()
+			.filter(sent -> sent.type() == com.team7.rental.rental.service.RentalNotificationPort.Type.OVERDUE)
+			.toList();
 	}
 }

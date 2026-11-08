@@ -28,6 +28,10 @@
       "name": "Member"
     },
     {
+      "description": "알림",
+      "name": "Notification"
+    },
+    {
       "description": "관리자",
       "name": "Admin"
     }
@@ -3073,6 +3077,277 @@
         "summary": "정산 내역 조회 (REQ-039)",
         "tags": [
           "Payment"
+        ]
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "description": "내 알림 최신순. 커서 기반이고 한 번에 policies.md notification.page건(size를 받지 않는다). 표시 문구(content)는 종류별 임시 문구다. targetType·targetId로 이동할 화면을 정한다(RENTAL이면 대여 상세). 실시간 전달(WebSocket)은 채팅 구현 뒤에 붙고, 그 전에는 이 목록과 안 읽은 수로만 확인한다.",
+        "operationId": "getNotifications",
+        "parameters": [
+          {
+            "description": "이전 응답의 nextCursor. 첫 페이지는 생략",
+            "example": "MTU",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCursorResponseNotificationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "알림 목록 (REQ-032)",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/notifications/read-all": {
+      "patch": {
+        "description": "내 안 읽은 알림을 모두 읽음으로 바꾼다. 없으면 updatedCount 0.",
+        "operationId": "markAllRead",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNotificationReadAllResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "알림 모두 읽음 (REQ-032)",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "description": "상단 알림 아이콘 배지.",
+        "operationId": "getUnreadCount",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUnreadCountResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "안 읽은 알림 수 (REQ-032)",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/notifications/{notificationId}/read": {
+      "patch": {
+        "description": "이미 읽은 알림도 성공한다. 없거나 다른 회원의 알림이면 404.",
+        "operationId": "markRead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notificationId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "NOTIFICATION_NOT_FOUND": {
+                    "summary": "알림을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "NOTIFICATION_NOT_FOUND",
+                        "details": [],
+                        "message": "알림을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "NOTIFICATION_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "알림 읽음 (REQ-032)",
+        "tags": [
+          "Notification"
         ]
       }
     },
@@ -6238,6 +6513,20 @@
           }
         }
       },
+      "ApiResponseCursorResponseNotificationResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CursorResponseNotificationResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseDeductionPolicyResponse": {
         "type": "object",
         "properties": {
@@ -6435,6 +6724,20 @@
           }
         }
       },
+      "ApiResponseNotificationReadAllResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NotificationReadAllResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponsePageResponseItemRentalResponse": {
         "type": "object",
         "properties": {
@@ -6608,6 +6911,20 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/SettlementListResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseUnreadCountResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/UnreadCountResponse"
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -6796,6 +7113,27 @@
             "description": "이번에 가져온 항목",
             "items": {
               "$ref": "#/components/schemas/ItemSummaryResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "description": "다음 요청의 cursor. 다음이 없으면 null",
+            "example": "MjAyNi0xMC0yOVQxMDowMDowMHwxMjM"
+          }
+        }
+      },
+      "CursorResponseNotificationResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 항목이 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이번에 가져온 항목",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponse"
             }
           },
           "nextCursor": {
@@ -7856,6 +8194,87 @@
             "format": "int32",
             "description": "관심 수",
             "example": 5
+          }
+        }
+      },
+      "NotificationReadAllResponse": {
+        "type": "object",
+        "properties": {
+          "updatedCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "이번에 읽음으로 바꾼 알림 수",
+            "example": 3
+          }
+        }
+      },
+      "NotificationResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "표시 문구",
+            "example": "반납 예정일이 지났어요."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "알림 시각",
+            "example": "2026-11-08T09:00:00"
+          },
+          "isRead": {
+            "type": "boolean",
+            "description": "읽었으면 true"
+          },
+          "notificationId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "알림 ID",
+            "example": 15
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "이동할 대상 ID",
+            "example": 123
+          },
+          "targetType": {
+            "type": "string",
+            "description": "눌렀을 때 이동할 대상 종류. RENTAL이면 대여 상세",
+            "enum": [
+              "RENTAL",
+              "ITEM",
+              "CHAT_ROOM",
+              "REVIEW"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "알림 종류",
+            "enum": [
+              "RESERVATION_CONFIRMED",
+              "PAYMENT_COMPLETED",
+              "RESERVATION_CANCELED",
+              "CANCEL_AGREEMENT_REQUESTED",
+              "CANCEL_AGREEMENT_RESULT",
+              "HANDOVER_CONFIRMED",
+              "HANDOVER_REMINDER",
+              "RETURN_REMINDER",
+              "RETURN_REQUESTED",
+              "LOST_REPORTED",
+              "INSPECTION_RESULT",
+              "DEPOSIT_REFUNDED",
+              "DEPOSIT_HELD",
+              "DEDUCTION_PROPOSED",
+              "DEDUCTION_ACCEPTED",
+              "DEDUCTION_REJECTED",
+              "OVERDUE",
+              "RENTAL_EXTENDED",
+              "REVIEW_RECEIVED",
+              "AI_COMPARE_DONE",
+              "KEYWORD_MATCHED",
+              "APPOINTMENT_REMINDER"
+            ]
           }
         }
       },
@@ -9266,6 +9685,17 @@
               "HELD",
               "PAID"
             ]
+          }
+        }
+      },
+      "UnreadCountResponse": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "안 읽은 알림 수 (상단 알림 아이콘 배지)",
+            "example": 3
           }
         }
       }

@@ -105,6 +105,12 @@ class DepositReturnIntegrationTest extends IntegrationTestSupport {
 			assertThat(history.getChangedBy()).isEqualTo(owner.getId());
 			assertThat(history.getReason()).isEqualTo(RentalStatusHistory.REASON_RETURN_CONFIRM_NORMAL);
 		});
+		assertThat(notificationPort.sent())
+			.filteredOn(sent -> sent.type() == RentalNotificationPort.Type.DEPOSIT_REFUNDED)
+			.singleElement().satisfies(sent -> {
+				assertThat(sent.memberId()).isEqualTo(rental.getRenterId());
+				assertThat(sent.eventId()).isEqualTo("DEPOSIT_REFUNDED:" + rental.getId());
+			});
 	}
 
 	@Test
@@ -133,6 +139,9 @@ class DepositReturnIntegrationTest extends IntegrationTestSupport {
 
 		assertThat(reload(payment).getDepositStatus()).isEqualTo(DepositStatus.FORFEITED);
 		assertThat(paymentGateway.cancelCalls()).isZero();
+		// 돌려준 돈이 없어 보증금 반환 알림을 보내지 않는다
+		assertThat(notificationPort.sent()).extracting(sent -> sent.type())
+			.doesNotContain(RentalNotificationPort.Type.DEPOSIT_REFUNDED);
 	}
 
 	@Test
@@ -191,11 +200,16 @@ class DepositReturnIntegrationTest extends IntegrationTestSupport {
 			assertThat(history.getChangedBy()).isEqualTo(owner.getId());
 			assertThat(history.getReason()).isEqualTo(RentalStatusHistory.REASON_RETURN_CONFIRM_ABNORMAL);
 		});
-		assertThat(notificationPort.sent()).singleElement().satisfies(sent -> {
-			assertThat(sent.memberId()).isEqualTo(rental.getRenterId());
-			assertThat(sent.type()).isEqualTo(RentalNotificationPort.Type.DEPOSIT_HELD);
-			assertThat(sent.eventId()).isEqualTo("DEPOSIT_HELD:" + rental.getId());
-		});
+		// 상태 확인 결과(INSPECTION_RESULT)와 함께 보류 알림 1건
+		assertThat(notificationPort.sent()).extracting(sent -> sent.type())
+			.containsExactlyInAnyOrder(RentalNotificationPort.Type.INSPECTION_RESULT,
+				RentalNotificationPort.Type.DEPOSIT_HELD);
+		assertThat(notificationPort.sent()).filteredOn(sent -> sent.type() == RentalNotificationPort.Type.DEPOSIT_HELD)
+			.singleElement().satisfies(sent -> {
+				assertThat(sent.memberId()).isEqualTo(rental.getRenterId());
+				assertThat(sent.type()).isEqualTo(RentalNotificationPort.Type.DEPOSIT_HELD);
+				assertThat(sent.eventId()).isEqualTo("DEPOSIT_HELD:" + rental.getId());
+			});
 	}
 
 	@Test

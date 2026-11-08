@@ -37,7 +37,10 @@ import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
 import com.team7.rental.support.FakePaymentGateway.Fault;
+import com.team7.rental.support.FakeRentalNotificationPort.Sent;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -149,6 +152,10 @@ class PaymentConfirmIntegrationTest extends IntegrationTestSupport {
 			assertThat(history.getChangedBy()).isNull();
 			assertThat(history.getReason()).isEqualTo(RentalStatusHistory.REASON_PAYMENT_APPROVED);
 		});
+		String eventId = "PAYMENT_COMPLETED:" + rental.getId();
+		assertThat(notificationPort.sent()).containsExactlyInAnyOrder(
+			new Sent(renter.getId(), Type.PAYMENT_COMPLETED, TargetType.RENTAL, rental.getId(), eventId),
+			new Sent(owner.getId(), Type.PAYMENT_COMPLETED, TargetType.RENTAL, rental.getId(), eventId));
 	}
 
 	@Test
