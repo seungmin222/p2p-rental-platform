@@ -3,6 +3,8 @@ package com.team7.rental.global.storage;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /** S3 저장소(prod 프로필). 자격 증명은 AWS SDK 기본 체인(환경 변수 AWS_ACCESS_KEY_ID 등 또는 EC2 역할)으로 얻는다. */
@@ -27,6 +29,18 @@ public class S3FileStorage implements FileStorage {
 			.contentType(contentType)
 			.build(), RequestBody.fromBytes(content));
 		return new StoredFile(key, publicUrl + "/" + key);
+	}
+
+	@Override
+	public byte[] read(String key) {
+		try {
+			return s3Client.getObjectAsBytes(GetObjectRequest.builder()
+				.bucket(bucket)
+				.key(StorageKeys.validate(key))
+				.build()).asByteArray();
+		} catch (NoSuchKeyException e) {
+			throw new java.io.UncheckedIOException("파일 없음: " + key, new java.io.IOException(e));
+		}
 	}
 
 	@Override

@@ -77,7 +77,9 @@ public record PolicyProperties(
 	@Valid @NotNull
 	PaymentHistory paymentHistory,
 	@Valid @NotNull
-	Extension extension) {
+	Extension extension,
+	@Valid @NotNull
+	Ai ai) {
 
 	public record PageSize(@Positive
 	int page) {
@@ -197,6 +199,32 @@ public record PolicyProperties(
 		int payoutDelayBusinessDays,
 		@Positive
 		int page) {
+	}
+
+	/**
+	 * AI 상태 비교 (REQ-040). ai.compare.per-rental(대여 건당 1회)은 수치가 아니라 반납 기록의 ai_result가 비어 있을 때만 맡는 규칙이다
+	 *
+	 * @param monthlyLimit 월 호출 한도 (ai.monthly-limit). 재시도도 1건으로 센다. 넘으면 호출하지 않고 LIMIT_EXCEEDED
+	 */
+	public record Ai(
+		@Positive
+		int monthlyLimit,
+		@Valid @NotNull
+		Compare compare) {
+
+		/**
+		 * @param maxRetry 응답 형식 오류 재시도 (ai.compare.max-retry). 첫 호출 + 이 횟수
+		 * @param processingTimeoutMinutes 이 시간이 지나도 PROCESSING이면 응답에서 FAILED로 보인다 (ai.compare.processing-timeout-minutes)
+		 * @param imageMaxLongSide 보내기 전 긴 변 축소 기준 px (ai.compare.image-max-long-side, 토큰 절약)
+		 */
+		public record Compare(
+			@PositiveOrZero
+			int maxRetry,
+			@Positive
+			int processingTimeoutMinutes,
+			@Positive
+			int imageMaxLongSide) {
+		}
 	}
 
 	/**

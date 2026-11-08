@@ -31,6 +31,12 @@ app:
       url-prefix: /files
 
 spring:
+  rabbitmq:
+    listener:
+      simple:
+        # AI 비교 리스너(REQ-040)를 띄우지 않는다. 앞 테스트의 메시지가 TRUNCATE 뒤 같은 id의 다음 테스트 데이터를 건드리지 않게.
+        # 큐 소비 경로는 AiCompareQueueIntegrationTest가 리스너를 직접 켜서 검증한다
+        auto-startup: false
   jpa:
     properties:
       # 쿼리 수 단언용(Statistics.getPrepareStatementCount). 세션마다 찍히는 통계 로그는 아래에서 끈다

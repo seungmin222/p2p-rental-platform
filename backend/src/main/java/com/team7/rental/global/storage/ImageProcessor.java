@@ -59,6 +59,24 @@ public class ImageProcessor {
 		return new ProcessedImage(format, original, thumbnail);
 	}
 
+	/**
+	 * 이미 저장된(검증·재인코딩된) 이미지를 긴 변 기준으로 줄인다. 외부 API에 보내기 전 토큰 절약용(REQ-040 ai.compare.image-max-long-side).
+	 * 작으면 그대로 돌려준다.
+	 *
+	 * @throws BusinessException IMAGE_INVALID_TYPE jpg/png가 아니거나 디코딩할 수 없을 때
+	 */
+	public ScaledImage downscale(byte[] content, int maxLongSide) {
+		ImageFormat format = ImageFormat.detect(content)
+			.orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_INVALID_TYPE));
+		checkPixelCount(content);
+		BufferedImage image = decode(content, format);
+		int longSide = Math.max(image.getWidth(), image.getHeight());
+		if (longSide <= maxLongSide) {
+			return new ScaledImage(format, content);
+		}
+		return new ScaledImage(format, encode(image, format, scaleDownTo(maxLongSide, longSide)));
+	}
+
 	/** 작은 이미지는 키우지 않는다. */
 	private static double scaleDownTo(int limit, int actual) {
 		return Math.min(1.0, (double)limit / actual);

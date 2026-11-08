@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
+import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.item.dto.AvailablePeriod;
 import com.team7.rental.item.dto.ItemSummary;
 import com.team7.rental.item.service.ItemQueryService;
@@ -43,6 +44,7 @@ public class RentalQueryService {
 	private final MemberQueryService memberQueryService;
 	private final OverdueFeeCalculator overdueFeeCalculator;
 	private final RentalDepositQueryPort rentalDepositQueryPort;
+	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
 	/**
@@ -73,7 +75,7 @@ public class RentalQueryService {
 	}
 
 	/**
-	 * 인계·반납 기록(REQ-017·018). 당사자만 본다. HANDOVER → RETURN 순(인계가 반납보다 먼저 저장된다).
+	 * 인계·반납 기록(REQ-017·018)과 AI 비교 결과(REQ-040). 당사자만 본다. HANDOVER → RETURN 순(인계가 반납보다 먼저 저장된다).
 	 *
 	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT
 	 */
@@ -83,8 +85,11 @@ public class RentalQueryService {
 		if (!rental.isParticipant(memberId)) {
 			throw new BusinessException(ErrorCode.RENTAL_NOT_PARTICIPANT);
 		}
+		LocalDateTime processingDeadline = LocalDateTime.now(clock)
+			.minusMinutes(policyProperties.ai().compare().processingTimeoutMinutes());
 		return itemInspectionRepository.findAllByRentalIdOrderById(rentalId).stream()
-			.map(inspection -> RentalInspectionResponse.of(inspection, rental.roleOf(inspection.getWrittenBy())))
+			.map(inspection -> RentalInspectionResponse.of(inspection, rental.roleOf(inspection.getWrittenBy()),
+				processingDeadline))
 			.toList();
 	}
 

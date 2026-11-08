@@ -12,7 +12,7 @@ import com.team7.rental.rental.entity.ReturnChecklistItem;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** 인계·반납 기록 하나 (REQ-017·018). AI 비교 결과는 REQ-040에서 추가한다 */
+/** 인계·반납 기록 하나 (REQ-017·018), 반납 기록에는 AI 비교 결과(REQ-040) */
 public record RentalInspectionResponse(
 	@Schema(description = "기록 ID", example = "1")
 	Long inspectionId,
@@ -42,9 +42,16 @@ public record RentalInspectionResponse(
 	String resultNote,
 
 	@Schema(description = "판정 사진 URL. 없으면 빈 목록")
-	List<String> resultImageUrls) {
+	List<String> resultImageUrls,
 
-	public static RentalInspectionResponse of(ItemInspection inspection, RentalRole writerRole) {
+	@Schema(description = "AI 상태 비교(반납 기록만, REQ-040). 비교 전·인계 기록·미반납 신고면 null")
+	RentalAiResultResponse aiResult) {
+
+	/**
+	 * @param processingDeadline AI 비교가 이 시각보다 먼저 시작돼 아직 PROCESSING이면 FAILED로 보인다
+	 */
+	public static RentalInspectionResponse of(ItemInspection inspection, RentalRole writerRole,
+		LocalDateTime processingDeadline) {
 		return new RentalInspectionResponse(
 			inspection.getId(),
 			inspection.getPhase(),
@@ -55,6 +62,7 @@ public record RentalInspectionResponse(
 			inspection.getCreatedAt(),
 			inspection.getResult(),
 			inspection.getResultNote(),
-			inspection.getResultImageUrls() == null ? List.of() : inspection.getResultImageUrls());
+			inspection.getResultImageUrls() == null ? List.of() : inspection.getResultImageUrls(),
+			RentalAiResultResponse.of(inspection.getAiResult(), processingDeadline));
 	}
 }
