@@ -41,6 +41,7 @@ class MyPaymentIntegrationTest extends IntegrationTestSupport {
 	@Autowired
 	private RentalRepository rentalRepository;
 
+	private Member owner;
 	private Member renter;
 	private Item item;
 	private int nextStart;
@@ -53,9 +54,10 @@ class MyPaymentIntegrationTest extends IntegrationTestSupport {
 
 	@BeforeEach
 	void setUp() {
-		VerifiedMember owner = fixture.createVerifiedMember();
+		VerifiedMember verifiedOwner = fixture.createVerifiedMember();
+		owner = verifiedOwner.member();
 		renter = fixture.createVerifiedMember().member();
-		item = fixture.createItem(owner, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)).item();
+		item = fixture.createItem(verifiedOwner, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)).item();
 
 		old = approvedAt(LocalDateTime.of(2026, 8, 9, 23, 59), RentalStatus.COMPLETED);
 		frozen = approvedAt(LocalDateTime.of(2026, 8, 10, 0, 0), RentalStatus.RESERVED);
@@ -145,6 +147,16 @@ class MyPaymentIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("제공자가 부르면 자기 물품을 빌려 간 대여자의 결제는 보이지 않는다(제공자 쪽은 정산 내역)")
+	void ownerSeesNoRenterPayments() throws Exception {
+		for (String type : new String[] {"ALL", "PAYMENT", "REFUND", "DEPOSIT"}) {
+			get(owner, type, "2026-01-01", "2026-12-31").andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.totalElements").value(0))
+				.andExpect(jsonPath("$.data.items").isEmpty());
+		}
+	}
+
+	@Test
 	@DisplayName("from > to면 400(기본값을 채운 뒤 기준), type이 틀리면 400, 로그인하지 않으면 401")
 	void invalid() throws Exception {
 		get(null, "2026-10-02", "2026-10-01").andExpect(status().isBadRequest())
@@ -184,8 +196,12 @@ class MyPaymentIntegrationTest extends IntegrationTestSupport {
 	}
 
 	private ResultActions get(String type, String from, String to) throws Exception {
+		return get(renter, type, from, to);
+	}
+
+	private ResultActions get(Member member, String type, String from, String to) throws Exception {
 		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get("/api/members/me/payments")
-			.header(HttpHeaders.AUTHORIZATION, bearerToken(renter.getId()));
+			.header(HttpHeaders.AUTHORIZATION, bearerToken(member.getId()));
 		if (type != null) {
 			request.param("type", type);
 		}
