@@ -54,6 +54,8 @@
 | 46 | ✅ | AI | 워커가 비교를 맡은 뒤(PROCESSING) 서버가 죽으면 결과가 영원히 "분석 중"으로 남는다. 명세에 처리 규칙이 없다 | (사용자 결정) 다시 비교하지 않는다. 맡은 지 `ai.compare.processing-timeout-minutes`(10분)가 지나도 PROCESSING이면 조회 응답에서 `FAILED`로 보인다(DB 값은 그대로). policies.md에 새 상수로 추가 |
 | 47 | ✅ | AI | `ai.monthly-limit`(월 1,000건)을 호출 단위로 셀지 비교(대여) 단위로 셀지, 형식 오류 재시도(`ai.compare.max-retry`)를 셀지 명세에 없다 | (사용자 결정) **호출 단위, 재시도 포함**. 호출 직전에 `ai:usage:{yyyyMM}`을 1 올리고 한도를 넘으면 부르지 않고 `LIMIT_EXCEEDED`. 과금 기준과 맞춘다. SDK 내부 재시도(429·5xx, 과금 없음)는 세지 않는다 |
 | 48 | ✅ | AI | 비교가 실패하거나 한도를 넘었을 때도 `AI_COMPARE_DONE`을 보낼지 명세에 없다(ai.md는 "결과 저장 → 양측 알림"만) | (사용자 결정) `DONE`일 때만 양측에 보낸다. `FAILED`·`LIMIT_EXCEEDED`는 알리지 않는다(화면은 "AI 결과 없음"). event_id는 `AI_COMPARE_DONE:{rentalId}`, 양측 같은 키(OVERDUE와 같음) |
+| 49 | ✅ | 알림 | erd.md는 `notifications.event_id` 단일 유니크인데, REQ-031·#48은 `OVERDUE:{rentalId}`·`AI_COMPARE_DONE:{rentalId}`를 양측에 같은 키로 보낸다. 단일 유니크면 두 번째 회원의 알림이 저장되지 않는다 | (사용자 결정) 유니크를 `(member_id, event_id)`로 바꾼다(`uk_notifications_member_id_event_id`). event_id 형식(`{TYPE}:{targetId}[:{추가키}]`)과 양측 같은 키는 그대로. 반영: erd.md, notification.md |
+| 50 | ⬜ | 알림 | 알림 표시 문구(`notifications.content`)가 명세에 없다 | (임시, 기획 확인 전) 종류마다 고정 문구 하나(`notification/service/NotificationContentTemplate`). 물품명 등 인자는 넣지 않는다. 기획이 문구를 정하면 그 파일만 바꾸고, 인자가 필요하면 발행 포트에 args를 더한다. 이미 저장된 알림의 문구는 바뀌지 않는다 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

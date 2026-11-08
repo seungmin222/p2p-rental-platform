@@ -191,7 +191,7 @@ erDiagram
 
 ## 알림 [2]
 
-**notifications** — id, member_id, type, content, target_type, target_id, event_id UK(중복 방지), is_read, created_at
+**notifications** — id, member_id, type, content, target_type, target_id, event_id, is_read, created_at · UK(member_id, event_id) 중복 방지(양측에 같은 event_id를 보내는 알림이 있어 회원별, open-issues #49) · INDEX(member_id, id) 목록, (member_id, is_read) 안 읽은 수
 **keywords** [3] — id, member_id, word, region_id
 **notification_settings** [3] — member_id, type, enabled
 
