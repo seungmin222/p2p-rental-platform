@@ -19,7 +19,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V11 | `V11__create_settlements.sql` | `feat/payment-settlement` | 머지 |
 | V12 | `V12__create_rental_extensions.sql` | `feat/rental-extension` | 머지 |
 | V13 | `V13__add_ai_result_to_item_inspections.sql` | `feat/ai-compare` | 머지 |
-| V14 | `V14__create_notifications.sql` | `feat/notification` | 작업 중 |
+| V14 | `V14__create_notifications.sql` | `feat/notification` | 머지 |
 
 ## 규칙
 
