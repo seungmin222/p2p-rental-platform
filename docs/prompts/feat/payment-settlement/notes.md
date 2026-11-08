@@ -1,5 +1,11 @@
 # feat/payment-settlement 결정 기록 (REQ-039, REQ-033)
 
+## 요약
+- API: `GET /api/members/me/settlements?page=`(내 정산, 합계 scheduledTotal·paidTotal), `GET /api/members/me/payments?type=&from=&to=&page=`(대여자 결제·보증금 내역). 배치: 정산 지급(매일 00:30, SCHEDULED → PAID). 정산은 대여 완료·수수료 취소와 같은 트랜잭션에서 `RentalSettlementPort`로 생긴다.
+- 주요 파일: `payment/entity/Settlement`·`SettlementAmount`, `payment/service/SettlementTxService`(포트 구현·지급)·`SettlementQueryService`·`PaymentHistoryQueryService`·`BusinessDays`, `payment/repository/PaymentHistoryQueryRepository`, `payment/batch/SettlementPayoutJob`, `rental/service/RentalCompletionRecorder`(RETURNED → COMPLETED 유일 입구)·`RentalSettlementPort`·`RentalSummaryReader`, `V11__create_settlements.sql`.
+- 남은 일: 038 — `sumExtensionFees`가 APPROVED만 합산한다. 연장 환불(PARTIAL_CANCELED)이 생기면 실제 받은 연장료 기준으로 바꾼다. 063 — 정산 HELD 전이를 추가할 때 목록 합계에 heldTotal을 넣거나, 제외한다는 것을 문서에 명시한다.
+- 미결: open-issues #44(033 type 해석, 확정 전). 새 완료 경로는 반드시 `RentalCompletionRecorder.complete`를 거쳐야 정산이 빠지지 않는다.
+
 ## 정산 생성
 - **대여 완료·수수료 취소와 같은 트랜잭션에서 `RentalSettlementPort`로 만든다.** backend/CLAUDE.md는 정산 생성을 AFTER_COMMIT 이벤트로 적었지만, 커밋 뒤 리스너가 실패하거나 서버가 죽으면 정산 없는 COMPLETED가 남고 이를 메우는 복구 배치가 따로 필요하다. 같은 트랜잭션이면 둘이 함께 커밋되거나 함께 롤백돼 복구 배치가 필요 없다. `RentalRefundPort`와 같은 포트 방식이라 rental이 payment를 직접 알지 않는다. backend/CLAUDE.md 문장을 고쳤다.
 - **RETURNED → COMPLETED는 `RentalCompletionRecorder.complete` 하나로만 지난다.** 완료 경로가 5곳(정상·이상 판정, 미반납 신고, 보증금 반환 완료, 차감 확정)에 흩어져 있어 한곳에 모아야 정산이 빠지지 않는다. 부르는 곳이 없어진 `Rental.confirmNormal`은 지웠다.
@@ -18,5 +24,5 @@
 - type 의미는 open-issues #44의 임시 해석으로 구현했다(확정 전). REFUND = 대여 CANCELED이고 환불했거나 환불이 남은 결제, DEPOSIT = deposit_status가 HELD·REFUNDED·FORFEITED·REFUND_FAILED. 취소 환불도 보증금을 REFUNDED로 돌려주므로 DEPOSIT에도 나온다.
 - **from·to는 `payments.created_at`(주문 생성 시각)의 날짜에 건다.** 승인 시각 컬럼이 없고, 승인은 주문 뒤 15분(payment.expire-minutes) 안이라 날짜가 거의 같다. 응답 필드도 `createdAt`으로 이름을 정직하게 두었다.
 - **from > to 검사는 기본값을 채운 뒤 서비스에서 한다.** from만 미래로 주면 to(오늘)보다 늦어지는 경우까지 같은 400(details field `to`)으로 막기 위해서다.
-- **대여자 조건은 QueryDSL 서브쿼리로 rentals를 본다.** ItemListingRepositoryImpl과 같은 "조회 전용 관계 쿼리" 선례를 따랐다. 대여 Service를 거쳐 대여 ID 목록을 받으면 대여 수만큼 IN 목록이 커진다.
+- **대여자 조건은 QueryDSL 서브쿼리로 rentals를 본다.** 대여 Service를 거쳐 대여 ID 목록을 받으면 대여 수만큼 IN 목록이 커진다. 이 쿼리는 `PaymentRepository`에 붙이지 않고 별도 빈 `PaymentHistoryQueryRepository`로 두어 읽기 전용 `PaymentHistoryQueryService`만 주입한다(리뷰 지적): 결제 쓰기 트랜잭션 서비스가 rentals를 읽는 쿼리에 닿지 않게 하기 위해서다.
 - **목록 화면의 물품·기간·연체료·취소 수수료는 `RentalSummaryReader`(rental 쪽)로 페이지 단위 일괄 조회**한다. 정산 목록도 같이 쓴다.
