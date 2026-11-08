@@ -425,15 +425,6 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
-	 * 상태 확인 '정상'에서 보증금 반환에 PG가 필요 없을 때 (REQ-018, 제공자 또는 자동 확인 배치). PG가 필요하면 반환이 끝난 뒤 {@link #complete}.
-	 *
-	 * @throws BusinessException RENTAL_INVALID_TRANSITION(RETURNED 아님)
-	 */
-	public void confirmNormal(LocalDateTime now) {
-		complete(now);
-	}
-
-	/**
 	 * 상태 확인 '이상' (REQ-018). RETURNED를 유지한다. 보증금 상태는 결제에 있어 서비스가 HELD로 바꾸고 RETURNED → RETURNED 이력을 남긴다
 	 * (REQ-049). 동결된 보증금이 없으면 서비스가 이어서 {@link #complete}를 부른다.
 	 *
@@ -444,7 +435,8 @@ public class Rental extends BaseTimeEntity {
 	}
 
 	/**
-	 * RETURNED → COMPLETED (REQ-018 1순위, 이후 차감 확정·환불 재시도 REQ-025·049도 이 메서드).
+	 * RETURNED → COMPLETED (상태 확인 '정상'·'이상', 미반납 신고, 보증금 반환 완료, 차감 확정 모두 이 메서드). 서비스는 정산(REQ-039)을 함께 남기는
+	 * RentalCompletionRecorder로만 부른다.
 	 *
 	 * @throws BusinessException RENTAL_INVALID_TRANSITION
 	 */

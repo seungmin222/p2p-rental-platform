@@ -48,7 +48,7 @@ public class PaymentRefundTxService {
 
 	/**
 	 * 취소 환불 TX1. 호출하는 쪽이 대여 행 락을 잡은 트랜잭션 안에서 부른다. 보증금은 항상 전액 반환이다(policies.md §2).
-	 * cancelFee &gt; 0이면 제공자 정산(REQ-039)을 여기서 만들 자리다.
+	 * cancelFee &gt; 0의 제공자 정산(REQ-039)은 대여 취소 전이에서 먼저 만든다(RentalSettlementPort).
 	 */
 	public Optional<RefundTicket> prepareCancelRefund(Long rentalId, int cancelFee) {
 		List<Payment> payments = paymentRepository.findAllByRentalIdForUpdate(rentalId, PaymentType.RENTAL);
@@ -144,7 +144,7 @@ public class PaymentRefundTxService {
 
 	/**
 	 * TX2. 이미 반영된 환불이면 시도 기록만 남긴다(요청과 재시도 배치가 겹친 경우). Unknown이면 시도는 PENDING으로 두고 실패처럼 처리한다.
-	 * 보증금 반환이 끝나면 대여를 COMPLETED로 바꾼다. 그 자리가 제공자 정산(REQ-039)을 만들 곳이다.
+	 * 보증금 반환이 끝나면 대여를 COMPLETED로 바꾸고 제공자 정산(REQ-039)을 같은 트랜잭션에서 만든다.
 	 */
 	public void applyResult(RefundTicket ticket, PgResult result) {
 		rentalPaymentTxService.lock(ticket.rentalId());

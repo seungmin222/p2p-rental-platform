@@ -92,8 +92,8 @@
 | — | — | ~~/api/payments/{id}/cancel~~ | **외부 API 없음.** 원 명세에 있던 경로지만, 회원이 직접 환불을 호출할 수 있어 제거. 취소·환불은 대여 취소(015), 보증금 처리(025·049) 안에서 서버가 내부적으로만 PG를 호출 | — | 015, 025 |
 | 2 | PATCH | /api/rentals/{id}/deposit | 보증금: 차감 제안 / 수락 / 거절 (`action` 필드) | O | 049 |
 | 2 | GET | /api/rentals/{id}/deposit/policy?grade= | 등급별 차감 상한 계산 | O | 049 |
-| 2 | GET | /api/members/me/payments?type=&from=&to= | 결제·보증금 내역 | O | 033 |
-| 2 | GET | /api/members/me/settlements | 정산 내역 | O | 039 |
+| 2 | GET | /api/members/me/payments?type=&from=&to=&page= | 결제·보증금 내역 | O | 033 |
+| 2 | GET | /api/members/me/settlements?page= | 정산 내역 | O | 039 |
 | 2 | GET | /api/admin/deposits/held | 보류 7일 초과 건 목록 (관리자 확정 대상) | A | 049, 057 |
 | 2 | PATCH | /api/admin/rentals/{id}/deposit | 보증금 차감액 관리자 확정 (2순위로 앞당김) | A | 049, 057 |
 

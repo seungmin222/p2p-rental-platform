@@ -54,7 +54,8 @@ rental/
 ## 의존 규칙
 - `controller → service → repository / entity`. entity는 다른 계층을 모른다.
 - **다른 도메인의 Repository를 직접 호출하지 않는다.** 다른 도메인의 Service(또는 조회용 Facade)를 통해서만. 예: rental이 item 소유자를 알아야 하면 `ItemQueryService.getOwnerId(itemId)`.
-- 도메인 간 후속 동작(알림, AI 큐, 정산 생성)은 **도메인 이벤트 + `@TransactionalEventListener(phase = AFTER_COMMIT)`**로. 직접 호출로 트랜잭션을 묶지 않는다.
+- 도메인 간 후속 동작(알림, AI 큐)은 **도메인 이벤트 + `@TransactionalEventListener(phase = AFTER_COMMIT)`**로. 직접 호출로 트랜잭션을 묶지 않는다.
+  - 예외: 상태와 함께 커밋돼야 하는 돈의 기록(환불 TX1 `RentalRefundPort`, 정산 생성 `RentalSettlementPort`)은 호출하는 도메인이 정의한 **포트를 같은 트랜잭션에서** 부른다. 커밋 뒤 리스너가 실패하면 정산 없는 거래 완료가 남아 복구 배치가 따로 필요해지기 때문이다. 포트 구현은 결제 도메인에 두어 rental이 payment를 직접 알지 않는다.
 - 순환 의존이 생기면 이벤트로 끊는다.
 
 ## 코딩 규칙

@@ -54,6 +54,7 @@ public class RentalInspectionTxService {
 	private final RentalQueryService rentalQueryService;
 	private final RentalRefundPort rentalRefundPort;
 	private final OverdueFeeCalculator overdueFeeCalculator;
+	private final RentalCompletionRecorder rentalCompletionRecorder;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
@@ -201,9 +202,7 @@ public class RentalInspectionTxService {
 		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(), memberId,
 			RentalStatusHistory.REASON_LOST_REPORT, now));
 		if (!rentalRefundPort.holdDeposit(rentalId, now)) {
-			rental.complete(now);
-			rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, RentalStatus.RETURNED,
-				rental.getStatus(), memberId, RentalStatusHistory.REASON_LOST_REPORT, now));
+			rentalCompletionRecorder.complete(rental, memberId, RentalStatusHistory.REASON_LOST_REPORT, now);
 		}
 		return rental.getRenterId();
 	}
@@ -261,20 +260,19 @@ public class RentalInspectionTxService {
 			if (refund.isPresent()) {
 				return new JudgeResult(refund.get(), false, rental.getRenterId());
 			}
-			rental.confirmNormal(now);
-			rentalStatusHistoryRepository.save(RentalStatusHistory.create(rental.getId(), from, rental.getStatus(),
-				changedBy, reason, now));
+			rentalCompletionRecorder.complete(rental, changedBy, reason, now);
 			return new JudgeResult(null, false, rental.getRenterId());
 		}
 		reason = RentalStatusHistory.REASON_RETURN_CONFIRM_ABNORMAL;
 		rental.markAbnormal();
 		boolean held = rentalRefundPort.holdDeposit(rental.getId(), now);
-		if (!held) {
-			rental.complete(now);
+		if (held) {
+			// 보류면 RETURNED → RETURNED (state-machines.md §1)
+			rentalStatusHistoryRepository.save(RentalStatusHistory.create(rental.getId(), from, rental.getStatus(),
+				changedBy, reason, now));
+		} else {
+			rentalCompletionRecorder.complete(rental, changedBy, reason, now);
 		}
-		// 보류면 RETURNED → RETURNED (state-machines.md §1)
-		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rental.getId(), from, rental.getStatus(),
-			changedBy, reason, now));
 		return new JudgeResult(null, held, rental.getRenterId());
 	}
 

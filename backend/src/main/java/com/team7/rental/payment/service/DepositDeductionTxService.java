@@ -66,7 +66,7 @@ public class DepositDeductionTxService {
 	/**
 	 * 확정 결과. refund가 있으면 커밋 뒤 실행하고, 없으면 이미 COMPLETED다(반환액 0원 → FORFEITED).
 	 */
-	public record Settlement(Long rentalId, Long proposalId, Long ownerId, Long renterId, RefundTicket refund) {
+	public record DeductionSettled(Long rentalId, Long proposalId, Long ownerId, Long renterId, RefundTicket refund) {
 	}
 
 	/** 새 제안 결과 */
@@ -136,7 +136,7 @@ public class DepositDeductionTxService {
 	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_RENTER_ONLY, RENTAL_INVALID_TRANSITION,
 	 *     DEPOSIT_NOT_HELD, DEDUCTION_PROPOSAL_NOT_FOUND, DEDUCTION_PROPOSAL_CLOSED
 	 */
-	public Settlement accept(Long rentalId, Long memberId, Long proposalId) {
+	public DeductionSettled accept(Long rentalId, Long memberId, Long proposalId) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		RentalDepositView view = rentalPaymentTxService.lockForDeposit(rentalId);
 		requireRole(view, memberId, RentalRole.RENTER);
@@ -174,7 +174,7 @@ public class DepositDeductionTxService {
 	 *
 	 * @return 처리했으면 확정 결과
 	 */
-	public Optional<Settlement> autoAccept(DeductionAutoAcceptTarget target, LocalDateTime now) {
+	public Optional<DeductionSettled> autoAccept(DeductionAutoAcceptTarget target, LocalDateTime now) {
 		RentalDepositView view = rentalPaymentTxService.lockForDeposit(target.rentalId());
 		List<Payment> payments = lockPayments(target.rentalId());
 		DeductionProposal proposal = deductionProposalRepository.findById(target.proposalId()).orElse(null);
@@ -204,7 +204,7 @@ public class DepositDeductionTxService {
 	 *     DEPOSIT_ADMIN_DECISION_TOO_EARLY, DEDUCTION_PROPOSAL_IN_PROGRESS, DEDUCTION_GRADE_NOT_ALLOWED,
 	 *     DEDUCTION_EXCEEDS_DEPOSIT, DEDUCTION_EXCEEDS_CAP
 	 */
-	public Settlement adminDecide(Long rentalId, Long adminId, DamageGrade grade, int amount, String reason) {
+	public DeductionSettled adminDecide(Long rentalId, Long adminId, DamageGrade grade, int amount, String reason) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		RentalDepositView view = rentalPaymentTxService.lockForDeposit(rentalId);
 		requireReturned(view);
@@ -256,7 +256,7 @@ public class DepositDeductionTxService {
 	 * rental.deposit을 그대로 복사하며, Rental.deposit은 생성 뒤 바뀌지 않는다. 그래서 상한 검사({@link #limitOf}, rental.deposit 기준)와
 	 * 반환액 계산(payment.depositAmount 기준)이 같은 보증금을 본다. 보증금을 바꾸는 기능이 생기면 이 둘을 한쪽으로 맞춰야 한다.
 	 */
-	private Settlement settle(RentalDepositView view, Payment payment, DeductionProposal proposal, Long changedBy,
+	private DeductionSettled settle(RentalDepositView view, Payment payment, DeductionProposal proposal, Long changedBy,
 		String historyReason, LocalDateTime now) {
 		int refund = payment.getDepositAmount() - view.overdueFee() - proposal.getAmount();
 		if (refund < 0) {
@@ -269,10 +269,10 @@ public class DepositDeductionTxService {
 			ticket = paymentRefundTxService.prepare(payment, refund, RefundPurpose.DEPOSIT, completion);
 		} else {
 			payment.forfeitDeposit();
-			// 반환할 금액이 없어 바로 완료한다. 제공자 정산(REQ-039)을 만들 자리다
+			// 반환할 금액이 없어 바로 완료한다. 제공자 정산(REQ-039)도 이 완료와 함께 생긴다
 			rentalPaymentTxService.completeAfterDepositReturn(view.rentalId(), completion, now);
 		}
-		return new Settlement(view.rentalId(), proposal.getId(), view.ownerId(), view.renterId(), ticket);
+		return new DeductionSettled(view.rentalId(), proposal.getId(), view.ownerId(), view.renterId(), ticket);
 	}
 
 	/** 등급·금액 검사. 대여자 응답을 기다리는 제안(PROPOSED, 기한이 지나 배치 대기 중인 것 포함)이 있으면 409 */

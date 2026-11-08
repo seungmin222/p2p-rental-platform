@@ -23,6 +23,7 @@ app:
     overdue-recheck-cron: "-"
     return-reminder-cron: "-"
     deduction-auto-accept-cron: "-"
+    settlement-payout-cron: "-"
   storage:
     local:
       root-dir: build/test-uploads

@@ -22,8 +22,8 @@ import com.team7.rental.payment.dto.DepositActionRequest;
 import com.team7.rental.payment.dto.HeldDepositResponse;
 import com.team7.rental.payment.entity.DamageGrade;
 import com.team7.rental.payment.repository.DeductionAutoAcceptTarget;
+import com.team7.rental.payment.service.DepositDeductionTxService.DeductionSettled;
 import com.team7.rental.payment.service.DepositDeductionTxService.ProposeRule;
-import com.team7.rental.payment.service.DepositDeductionTxService.Settlement;
 import com.team7.rental.rental.dto.RentalDepositInfo;
 import com.team7.rental.rental.dto.RentalDetailResponse;
 import com.team7.rental.rental.service.RentalNotificationPort;
@@ -100,7 +100,7 @@ public class DepositDeductionService {
 	 * @return 처리했으면 true, 이미 대상이 아니면 false
 	 */
 	public boolean autoAccept(DeductionAutoAcceptTarget target, LocalDateTime now) {
-		Optional<Settlement> settlement = depositDeductionTxService.autoAccept(target, now);
+		Optional<DeductionSettled> settlement = depositDeductionTxService.autoAccept(target, now);
 		settlement.ifPresent(this::afterSettle);
 		return settlement.isPresent();
 	}
@@ -139,7 +139,7 @@ public class DepositDeductionService {
 	}
 
 	/** 커밋 뒤: 반환액이 있으면 PG 부분 취소, 양측에 DEDUCTION_ACCEPTED (수락·자동 수락·관리자 확정 공통) */
-	private void afterSettle(Settlement settlement) {
+	private void afterSettle(DeductionSettled settlement) {
 		if (settlement.refund() != null) {
 			rentalRefundPort.execute(settlement.refund());
 		}

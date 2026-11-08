@@ -150,6 +150,7 @@ stateDiagram-v2
 | `CancelAgreementStatus` | `REQUESTED`, `ACCEPTED`, `REJECTED`, `EXPIRED` |
 | `ExtensionStatus` | `PENDING_PAYMENT`(15분 기간 선점), `CONFIRMED`, `CANCELED` |
 | `DeductionProposalStatus` | `PROPOSED`, `ACCEPTED`, `REJECTED`, `AUTO_ACCEPTED`(72시간 무응답), `ADMIN_DECIDED` |
+| `SettlementSource` | `COMPLETED`(거래 완료), `CANCEL_FEE`(수수료 있는 취소) — 정산 종류(`settlements.source`) |
 | `Satisfaction` | `BAD`(별로예요), `GOOD`(좋아요), `BEST`(최고예요) |
 | `ComplimentType` | `ON_TIME`(시간 약속), `AS_DESCRIBED`(물품 상태가 설명과 같음), `CLEAN_USE`(깨끗하게 사용) … 확장 가능 |
 | `MemberStatus` | `ACTIVE`, `SUSPENDED`, `WITHDRAWN` |
