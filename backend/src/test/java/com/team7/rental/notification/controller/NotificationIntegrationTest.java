@@ -144,7 +144,7 @@ class NotificationIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	@DisplayName("개별 읽음은 내 알림만(다른 회원 알림은 404), 다시 읽어도 성공하고 안 읽은 수가 줄어든다")
+	@DisplayName("개별 읽음은 내 알림만(다른 회원 알림은 403, 없는 알림은 404), 다시 읽어도 성공하고 안 읽은 수가 줄어든다")
 	void markRead() throws Exception {
 		// given
 		send(me, NotificationType.OVERDUE, 1L, "OVERDUE:1");
@@ -156,6 +156,10 @@ class NotificationIntegrationTest extends IntegrationTestSupport {
 
 		// when & then
 		mockMvc.perform(patch("/api/notifications/{id}/read", others).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(me.getId())))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.error.code").value("NOTIFICATION_NOT_OWNER"));
+		mockMvc.perform(patch("/api/notifications/{id}/read", others + 1000).header(HttpHeaders.AUTHORIZATION,
 			bearerToken(me.getId())))
 			.andExpect(status().isNotFound())
 			.andExpect(jsonPath("$.error.code").value("NOTIFICATION_NOT_FOUND"));

@@ -3255,7 +3255,7 @@
     },
     "/api/notifications/{notificationId}/read": {
       "patch": {
-        "description": "이미 읽은 알림도 성공한다. 없거나 다른 회원의 알림이면 404.",
+        "description": "이미 읽은 알림도 성공한다. 없는 알림이면 404, 다른 회원의 알림이면 403.",
         "operationId": "markRead",
         "parameters": [
           {
@@ -3318,6 +3318,26 @@
               }
             },
             "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "NOTIFICATION_NOT_OWNER": {
+                    "summary": "본인의 알림만 처리할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "NOTIFICATION_NOT_OWNER",
+                        "details": [],
+                        "message": "본인의 알림만 처리할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "NOTIFICATION_NOT_OWNER"
           },
           "404": {
             "content": {

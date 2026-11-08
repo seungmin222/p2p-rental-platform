@@ -15,13 +15,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.team7.rental.item.entity.Item;
 import com.team7.rental.member.entity.Member;
+import com.team7.rental.notification.repository.NotificationRepository;
+import com.team7.rental.rental.dto.RentalCancelRequest;
+import com.team7.rental.rental.entity.CancelReason;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
+import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalCancelTxService;
 import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
 import com.team7.rental.rental.service.RentalNotificationPort.Type;
 import com.team7.rental.support.FakeRentalNotificationPort.Sent;
@@ -37,6 +43,18 @@ class RentalCancelIntegrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private RentalStatusHistoryRepository historyRepository;
+
+	@Autowired
+	private RentalRepository rentalRepository;
+
+	@Autowired
+	private NotificationRepository notificationRepository;
+
+	@Autowired
+	private RentalCancelTxService rentalCancelTxService;
+
+	@Autowired
+	private TransactionTemplate transactionTemplate;
 
 	private Member owner;
 	private Member renter;
@@ -79,6 +97,43 @@ class RentalCancelIntegrationTest extends IntegrationTestSupport {
 		// 상대방(제공자)에게만 예약 취소 (REQ-032)
 		assertThat(notificationPort.sent()).containsExactly(new Sent(owner.getId(), Type.RESERVATION_CANCELED,
 			TargetType.RENTAL, rental.getId(), "RESERVATION_CANCELED:" + rental.getId()));
+	}
+
+	@Test
+	@DisplayName("결제 대기(PENDING_PAYMENT) 단독 취소는 RESERVATION_CANCELED를 보내지 않는다")
+	void pendingPaymentCancelNoNotification() throws Exception {
+		// given
+		Rental pending = rentalFixture.createPendingPayment(item, renter, END.plusDays(3), END.plusDays(5),
+			NOW.plusMinutes(10));
+
+		// when
+		mockMvc.perform(patch("/api/rentals/{id}/cancel", pending.getId())
+			.header(HttpHeaders.AUTHORIZATION, bearerToken(renter.getId()))
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("{\"reason\": \"SCHEDULE_CHANGE\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.status").value("CANCELED"));
+
+		// then
+		assertThat(notificationPort.sent()).isEmpty();
+		assertThat(notificationRepository.count()).isZero();
+	}
+
+	@Test
+	@DisplayName("취소 트랜잭션이 롤백되면 이벤트로 남긴 알림(AFTER_COMMIT)을 보내지도 저장하지도 않는다")
+	void noNotificationOnRollback() {
+		// when
+		transactionTemplate.executeWithoutResult(status -> {
+			rentalCancelTxService.cancel(rental.getId(), renter.getId(),
+				new RentalCancelRequest(CancelReason.SCHEDULE_CHANGE, null));
+			status.setRollbackOnly();
+		});
+
+		// then
+		assertThat(notificationPort.sent()).isEmpty();
+		assertThat(notificationRepository.count()).isZero();
+		assertThat(rentalRepository.findById(rental.getId()).orElseThrow().getStatus())
+			.isEqualTo(RentalStatus.RESERVED);
 	}
 
 	@Test

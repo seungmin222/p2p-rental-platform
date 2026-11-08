@@ -24,8 +24,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 	/** 다음 페이지: 커서 id보다 오래된 것 */
 	List<Notification> findByMemberIdAndIdLessThanOrderByIdDesc(Long memberId, Long id, Limit limit);
 
-	Optional<Notification> findByIdAndMemberId(Long id, Long memberId);
-
 	long countByMemberIdAndIsReadFalse(Long memberId);
 
 	/** 모두 읽음. 벌크 수정이라 updated_at을 직접 넣는다 */

@@ -48,9 +48,9 @@ public class NotificationController {
 		return ApiResponse.ok(notificationQueryService.getNotifications(memberId, cursor));
 	}
 
-	@Operation(summary = "알림 읽음 (REQ-032)", description = "이미 읽은 알림도 성공한다. 없거나 다른 회원의 알림이면 404.")
+	@Operation(summary = "알림 읽음 (REQ-032)", description = "이미 읽은 알림도 성공한다. 없는 알림이면 404, 다른 회원의 알림이면 403.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
-	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, NOTIFICATION_NOT_FOUND})
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, NOTIFICATION_NOT_OWNER, NOTIFICATION_NOT_FOUND})
 	@PatchMapping("/{notificationId}/read")
 	public ApiResponse<Void> markRead(@LoginMember
 	Long memberId, @PathVariable

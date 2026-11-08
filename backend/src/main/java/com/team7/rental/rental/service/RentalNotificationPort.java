@@ -10,7 +10,7 @@ import java.time.LocalDate;
  * 계약:
  * <ul>
  *   <li>호출하는 쪽은 상태 전이 트랜잭션이 커밋된 뒤에 부른다(notification.md AFTER_COMMIT).</li>
- *   <li><b>중복 방지는 구현이 책임진다.</b> 같은 eventId(notifications.event_id UK)로 다시 불리면 저장하지 않고 예외 없이 무시한다.
+ *   <li><b>중복 방지는 구현이 책임진다.</b> 같은 회원에게 같은 eventId(notifications (member_id, event_id) UK, open-issues #49)로 다시 불리면 저장하지 않고 예외 없이 무시한다.
  *   배치가 같은 대상을 다시 보는 경우(반납 리마인더 재실행 등) 호출하는 쪽은 같은 eventId를 넘길 뿐 중복을 따로 막지 않는다.</li>
  *   <li>발행 실패는 던지지 않는다(DB 저장이 기준, 실시간 전달 실패는 재전송하지 않는다).</li>
  * </ul>
@@ -50,7 +50,7 @@ public interface RentalNotificationPort {
 	/**
 	 * @param memberId 받는 회원 (notifications.member_id)
 	 * @param targetId 이동할 대상 ID (notifications.target_id)
-	 * @param eventId 중복 방지 키 (notifications.event_id). {@link #overdueEventId}·{@link #returnReminderEventId}로 만든다
+	 * @param eventId 중복 방지 키 (notifications.event_id, member_id와 함께 유니크). {@link #overdueEventId}·{@link #returnReminderEventId}로 만든다
 	 */
 	void send(Long memberId, Type type, TargetType targetType, Long targetId, String eventId);
 

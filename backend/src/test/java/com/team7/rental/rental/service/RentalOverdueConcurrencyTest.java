@@ -30,6 +30,8 @@ import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
 import com.team7.rental.support.FakeRentalNotificationPort.Sent;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
@@ -64,15 +66,17 @@ class RentalOverdueConcurrencyTest extends IntegrationTestSupport {
 	@Autowired
 	private TransactionTemplate transactionTemplate;
 
+	private Member owner;
 	private Member renter;
 	private Item item;
 
 	@BeforeEach
 	void setUp() {
 		testClock.fixAt(NOW);
-		VerifiedMember owner = fixture.createVerifiedMember();
+		VerifiedMember verifiedOwner = fixture.createVerifiedMember();
+		owner = verifiedOwner.member();
 		renter = fixture.createVerifiedMember().member();
-		item = fixture.createItem(owner, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30)).item();
+		item = fixture.createItem(verifiedOwner, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30)).item();
 	}
 
 	@Test
@@ -112,15 +116,18 @@ class RentalOverdueConcurrencyTest extends IntegrationTestSupport {
 				assertThat(histories).extracting(RentalStatusHistory::getToStatus)
 					.containsExactly(RentalStatus.OVERDUE, RentalStatus.RETURNED);
 				assertThat(histories.get(1).getFromStatus()).isEqualTo(RentalStatus.OVERDUE);
-				assertThat(overdueNotifications()).hasSize(2)
-					.extracting(Sent::eventId).containsOnly("OVERDUE:" + rental.getId());
+				String overdue = "OVERDUE:" + rental.getId();
+				assertThat(notificationPort.sent()).containsExactlyInAnyOrder(
+					new Sent(renter.getId(), Type.OVERDUE, TargetType.RENTAL, rental.getId(), overdue),
+					new Sent(owner.getId(), Type.OVERDUE, TargetType.RENTAL, rental.getId(), overdue),
+					returnRequested(rental));
 			} else {
 				// 반납이 먼저: 배치는 RETURNED를 보고 건너뛰었다
 				assertThat(histories).singleElement().satisfies(history -> {
 					assertThat(history.getFromStatus()).isEqualTo(RentalStatus.RENTING);
 					assertThat(history.getToStatus()).isEqualTo(RentalStatus.RETURNED);
 				});
-				assertThat(overdueNotifications()).isEmpty();
+				assertThat(notificationPort.sent()).containsExactly(returnRequested(rental));
 			}
 		}
 	}
@@ -175,7 +182,7 @@ class RentalOverdueConcurrencyTest extends IntegrationTestSupport {
 		assertReturnedWithFee(rental);
 		assertThat(historiesOf(rental)).singleElement()
 			.extracting(RentalStatusHistory::getToStatus).isEqualTo(RentalStatus.RETURNED);
-		assertThat(overdueNotifications()).isEmpty();
+		assertThat(notificationPort.sent()).containsExactly(returnRequested(rental));
 	}
 
 	private MvcResult requestReturn(Rental rental) throws Exception {
@@ -214,10 +221,9 @@ class RentalOverdueConcurrencyTest extends IntegrationTestSupport {
 		}
 	}
 
-	// 반납 요청 알림(REQ-032)도 같은 포트로 가므로 연체 알림만 본다
-	private List<Sent> overdueNotifications() {
-		return notificationPort.sent().stream()
-			.filter(sent -> sent.type() == com.team7.rental.rental.service.RentalNotificationPort.Type.OVERDUE)
-			.toList();
+	// 반납 요청은 제공자에게 RETURN_REQUESTED를 보낸다 (REQ-032)
+	private Sent returnRequested(Rental rental) {
+		return new Sent(owner.getId(), Type.RETURN_REQUESTED, TargetType.RENTAL, rental.getId(),
+			"RETURN_REQUESTED:" + rental.getId());
 	}
 }

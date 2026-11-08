@@ -13,6 +13,7 @@ import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.notification.dto.NotificationReadAllResponse;
 import com.team7.rental.notification.dto.NotificationResponse;
+import com.team7.rental.notification.entity.Notification;
 import com.team7.rental.notification.entity.NotificationTargetType;
 import com.team7.rental.notification.entity.NotificationType;
 import com.team7.rental.notification.repository.NotificationRepository;
@@ -97,13 +98,16 @@ public class NotificationService {
 	/**
 	 * 개별 읽음. 이미 읽은 알림도 성공(멱등).
 	 *
-	 * @throws BusinessException NOTIFICATION_NOT_FOUND: 없거나 다른 회원의 알림
+	 * @throws BusinessException NOTIFICATION_NOT_FOUND: 없는 알림, NOTIFICATION_NOT_OWNER: 다른 회원의 알림
 	 */
 	@Transactional
 	public void markRead(Long memberId, Long notificationId) {
-		notificationRepository.findByIdAndMemberId(notificationId, memberId)
-			.orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND))
-			.markRead();
+		Notification notification = notificationRepository.findById(notificationId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
+		if (!notification.getMemberId().equals(memberId)) {
+			throw new BusinessException(ErrorCode.NOTIFICATION_NOT_OWNER);
+		}
+		notification.markRead();
 	}
 
 	/** 모두 읽음 */
