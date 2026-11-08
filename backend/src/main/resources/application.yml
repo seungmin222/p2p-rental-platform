@@ -13,6 +13,13 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  rabbitmq:
+    # 반납 요청 커밋 뒤 AI 비교 큐 적재가 요청 스레드에서 돈다(REQ-040). 브로커가 죽었을 때 오래 붙잡지 않게
+    connection-timeout: 3s
+    listener:
+      simple:
+        # 리스너 예외로 같은 메시지가 끝없이 다시 오지 않게 (RabbitConfig)
+        default-requeue-rejected: false
   servlet:
     multipart:
       # docs/policies.md upload.max-file-size / upload.max-request-size. 용도별 한도는 ImageProcessor에서 다시 검사
@@ -47,6 +54,16 @@ app:
       connect-timeout: 3s
       # 토스 문서에 일반 승인·취소의 권장값이 없다 (docs/prompts/feat/payment-core/notes.md)
       read-timeout: 30s
+  ai:
+    # Claude API (REQ-040). 키가 비어 있으면 호출하지 않고 FAILED로 남긴다(거래 흐름은 그대로)
+    api-key: ${ANTHROPIC_API_KEY:}
+    # docs/domains/ai.md 모델
+    model: claude-haiku-4-5
+    max-tokens: 1024
+    # 검증 목표 30초 이내 (ai.md). 요청 한 번의 제한 시간
+    timeout: 30s
+    # SDK 재시도(429·5xx·연결 오류, 과금 안 됨). 응답 형식 오류 재시도(ai.compare.max-retry)와 별개
+    sdk-max-retries: 2
   jwt:
     # 32바이트(256bit) 미만이면 기동 실패 (JwtProvider)
     secret: ${JWT_SECRET}
@@ -219,6 +236,16 @@ app:
         max: 3000000
       # item.item-price.max: 0 ~ 10,000,000원, 대여자에게 비공개 (REQ-006)
       item-price-max: 10000000
+    ai:
+      # ai.monthly-limit: 월 1,000건, 재시도도 1건. 넘으면 AI 없이 진행 (REQ-040)
+      monthly-limit: 1000
+      compare:
+        # ai.compare.max-retry: 응답 형식 오류면 최대 2회 재시도 (REQ-040)
+        max-retry: 2
+        # ai.compare.processing-timeout-minutes: 10분 넘게 PROCESSING이면 응답에서 FAILED (REQ-040, 명세 외)
+        processing-timeout-minutes: 10
+        # ai.compare.image-max-long-side: 보내기 전 긴 변 1024px로 축소 (REQ-040, 명세 외)
+        image-max-long-side: 1024
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

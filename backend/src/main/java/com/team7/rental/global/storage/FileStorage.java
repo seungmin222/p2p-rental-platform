@@ -14,6 +14,13 @@ public interface FileStorage {
 	 */
 	StoredFile upload(String directory, String extension, String contentType, byte[] content);
 
+	/**
+	 * 저장된 파일을 읽는다(REQ-040 AI 비교: 로컬 디스크 URL은 외부에서 열 수 없어 바이트로 넘긴다).
+	 *
+	 * @throws java.io.UncheckedIOException 없는 키이거나 읽기 실패
+	 */
+	byte[] read(String key);
+
 	/** 없는 키면 아무 일도 하지 않는다. */
 	void delete(String key);
 

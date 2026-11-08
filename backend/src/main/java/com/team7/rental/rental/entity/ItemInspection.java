@@ -1,10 +1,12 @@
 package com.team7.rental.rental.entity;
 
+import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -28,9 +30,13 @@ import lombok.NoArgsConstructor;
  * 인계·반납 기록 (REQ-017·018). 대여당 단계별 1건(UK rental_id, phase)이고 제출 후 수정하지 않는다.
  * 바뀌는 것은 RETURN 기록의 판정 필드(result·resultNote·resultImageUrls)뿐이며 한 번만 기록한다.
  * 사진은 저장소 URL을 저장한다(item_images와 같음).
+ * <p>
+ * RETURN 기록의 ai_result는 AI 워커가 판정과 따로 쓴다(REQ-040). @DynamicUpdate로 바뀐 컬럼만 UPDATE해, 판정 트랜잭션이 먼저 읽어 둔 기록을
+ * 커밋할 때 그 사이에 저장된 AI 결과를 옛 값으로 덮어쓰지 않게 한다(AiCompareIntegrationTest.judgementDoesNotOverwriteAiResult).
  */
 @Getter
 @Entity
+@DynamicUpdate
 @Table(name = "item_inspections")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ItemInspection extends BaseTimeEntity {
@@ -71,6 +77,10 @@ public class ItemInspection extends BaseTimeEntity {
 
 	@JdbcTypeCode(SqlTypes.JSON)
 	private List<String> resultImageUrls;
+
+	/** AI 상태 비교 (REQ-040). RETURN 기록만, 비교 전이면 null */
+	@JdbcTypeCode(SqlTypes.JSON)
+	private AiCompareRecord aiResult;
 
 	/** 작성자. 반납 대리 접수면 제공자 */
 	@Column(nullable = false)
@@ -138,5 +148,35 @@ public class ItemInspection extends BaseTimeEntity {
 		this.result = Objects.requireNonNull(result, "result");
 		this.resultNote = resultNote;
 		this.resultImageUrls = resultImageUrls.isEmpty() ? null : List.copyOf(resultImageUrls);
+	}
+
+	/**
+	 * AI 비교를 맡는다(REQ-040). 대여 건당 한 번: 사진이 있는 반납 기록이고 아직 비어 있을 때만 PROCESSING으로 바꾼다.
+	 *
+	 * @return 맡았으면 true. 인계 기록·미반납 신고·이미 맡은 기록이면 false
+	 */
+	public boolean startAiCompare(LocalDateTime now) {
+		if (phase != InspectionPhase.RETURN || lostReported || aiResult != null) {
+			return false;
+		}
+		this.aiResult = AiCompareRecord.processing(now);
+		return true;
+	}
+
+	/**
+	 * AI 비교 결과를 남긴다. PROCESSING일 때만 바꾼다(같은 대여를 두 번 끝내지 않는다).
+	 *
+	 * @param finished PROCESSING이 아닌 상태
+	 * @return 저장했으면 true
+	 */
+	public boolean finishAiCompare(AiCompareRecord finished) {
+		if (finished.isProcessing()) {
+			throw new IllegalArgumentException("끝난 상태만 저장한다");
+		}
+		if (aiResult == null || !aiResult.isProcessing()) {
+			return false;
+		}
+		this.aiResult = finished;
+		return true;
 	}
 }

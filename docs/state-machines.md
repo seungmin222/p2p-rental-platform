@@ -159,6 +159,8 @@ stateDiagram-v2
 | `ChatMessageType` | `TEXT`, `IMAGE`, `APPOINTMENT`, `SYSTEM` |
 | `ReportStatus` | `PENDING`, `DISMISSED`, `WARNED`, `SUSPENDED` |
 | `CategorySuggestionStatus` | `PENDING`, `APPROVED`, `REJECTED` |
+| `AiCompareStatus` | `PROCESSING`(비교 중), `DONE`(완료), `FAILED`(실패), `LIMIT_EXCEEDED`(월 한도 초과) — AI 상태 비교 진행(`item_inspections.ai_result.status`, REQ-040). 비교 전은 값 없음(NULL). `PROCESSING`이 `ai.compare.processing-timeout-minutes`를 넘으면 응답에서 `FAILED` |
+| `AiChangeType` | `SCRATCH`, `STAIN`, `MISSING_PART`, `BROKEN`, `OTHER` — AI 비교 출력 changeTypes (ai.md REQ-040) |
 | `ReturnChecklistItem` | `NO_EXTERIOR_DAMAGE`(외관 파손 없음), `ALL_PARTS_INCLUDED`(구성품 전부), `NO_CONTAMINATION`(오염 없음), `WORKS_NORMALLY`(정상 작동), `CONSUMABLES_RESTORED`(충전·소모품 원상 복구) |
 
 ### NotificationType

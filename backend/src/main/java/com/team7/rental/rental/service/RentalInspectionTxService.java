@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import com.team7.rental.rental.entity.RentalRole;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.entity.ReturnChecklistItem;
+import com.team7.rental.rental.event.ReturnRequestedEvent;
 import com.team7.rental.rental.repository.ItemInspectionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
@@ -56,6 +58,7 @@ public class RentalInspectionTxService {
 	private final OverdueFeeCalculator overdueFeeCalculator;
 	private final RentalCompletionRecorder rentalCompletionRecorder;
 	private final PolicyProperties policyProperties;
+	private final ApplicationEventPublisher eventPublisher;
 	private final Clock clock;
 
 	/**
@@ -103,7 +106,7 @@ public class RentalInspectionTxService {
 	/**
 	 * 반납 요청: RENTING·OVERDUE → RETURNED + RETURN 기록 + 이력. 제공자가 부르면 대리 접수(기록 작성자·이력 changedBy = 제공자).
 	 * 연체료는 반납 요청일 기준으로 계산해 확정한다(REQ-023). 대여 행 락을 잡아 연체 배치·다른 반납 요청과 한 줄로 선다(늦은 반납 요청은 RETURNED를 보고
-	 * RENTAL_INVALID_TRANSITION). 시각은 락을 잡은 뒤에 구한다.
+	 * RENTAL_INVALID_TRANSITION). 시각은 락을 잡은 뒤에 구한다. 커밋 뒤 AI 비교 큐에 적재된다({@link ReturnRequestedEvent}).
 	 *
 	 * @param checklist 검증된 체크리스트(모든 항목 true/false)
 	 * @param note 정규화된 메모. 없으면 null
@@ -122,6 +125,8 @@ public class RentalInspectionTxService {
 		itemInspectionRepository.save(ItemInspection.returned(rentalId, memberId, imageUrls, checklist, note));
 		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rentalId, from, rental.getStatus(), memberId,
 			RentalStatusHistory.REASON_RETURN_REQUEST, now));
+		// AI 비교 큐 적재는 커밋 뒤(REQ-040). 롤백되면 적재하지 않고, 적재가 실패해도 반납은 이미 끝났다
+		eventPublisher.publishEvent(new ReturnRequestedEvent(rentalId));
 		return rentalQueryService.getRental(rentalId, memberId);
 	}
 

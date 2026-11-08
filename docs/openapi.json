@@ -6162,6 +6162,40 @@
           }
         }
       },
+      "AiCompareResult": {
+        "type": "object",
+        "properties": {
+          "changeTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "SCRATCH",
+                "STAIN",
+                "MISSING_PART",
+                "BROKEN",
+                "OTHER"
+              ]
+            }
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          },
+          "description": {
+            "type": "string"
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Region"
+            }
+          }
+        }
+      },
       "ApiResponseAuthTokenResponse": {
         "type": "object",
         "properties": {
@@ -8432,6 +8466,18 @@
           }
         }
       },
+      "Region": {
+        "type": "object",
+        "properties": {
+          "imageIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
       "RegionCoordRequest": {
         "type": "object",
         "properties": {
@@ -8475,6 +8521,30 @@
             "format": "int64",
             "description": "행정동 ID",
             "example": 1234
+          }
+        }
+      },
+      "RentalAiResultResponse": {
+        "type": "object",
+        "properties": {
+          "analyzedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "끝난 시각. PROCESSING이면 null"
+          },
+          "result": {
+            "$ref": "#/components/schemas/AiCompareResult",
+            "description": "비교 결과(DONE일 때만). 나머지는 null"
+          },
+          "status": {
+            "type": "string",
+            "description": "진행 상태. PROCESSING이 ai.compare.processing-timeout-minutes를 넘으면 FAILED로 내려간다",
+            "enum": [
+              "PROCESSING",
+              "DONE",
+              "FAILED",
+              "LIMIT_EXCEEDED"
+            ]
           }
         }
       },
@@ -8923,6 +8993,10 @@
       "RentalInspectionResponse": {
         "type": "object",
         "properties": {
+          "aiResult": {
+            "$ref": "#/components/schemas/RentalAiResultResponse",
+            "description": "AI 상태 비교(반납 기록만, REQ-040). 비교 전·인계 기록·미반납 신고면 null"
+          },
           "checklist": {
             "type": "object",
             "additionalProperties": {

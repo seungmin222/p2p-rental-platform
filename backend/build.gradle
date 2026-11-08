@@ -27,6 +27,7 @@ ext {
 	jjwtVersion = '0.13.0'
 	awsSdkVersion = '2.55.6'
 	thumbnailatorVersion = '0.4.21'
+	anthropicVersion = '3.2.0'
 }
 
 dependencyManagement {
@@ -72,6 +73,8 @@ dependencies {
 	implementation 'software.amazon.awssdk:s3'
 	// 이미지 리사이즈·재인코딩 (EXIF orientation 자동 반영)
 	implementation "net.coobird:thumbnailator:${thumbnailatorVersion}"
+	// Claude API (REQ-040 AI 상태 비교). 키가 없으면 AI 비교 없이 진행한다
+	implementation "com.anthropic:anthropic-java:${anthropicVersion}"
 
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.mysql:mysql-connector-j'
@@ -99,8 +102,13 @@ tasks.named('test') {
 	// JVM 기본 타임존을 운영과 같게 (RentalApplication.main과 동일)
 	systemProperty 'user.timezone', 'Asia/Seoul'
 	useJUnitPlatform {
-		// 외부 API 실호출 테스트는 기본 빌드에서 제외
-		excludeTags 'external'
+		if (project.hasProperty('aiLive')) {
+			// 실제 Claude 호출 실험만 (REQ-040, docs/experiments/ai-compare.md): ./gradlew test -PaiLive --tests '*ClaudeAiClientLiveTest'
+			includeTags 'ai-live'
+		} else {
+			// 외부 API 실호출 테스트는 기본 빌드에서 제외 (ai-live: 실제 Claude 호출, 과금)
+			excludeTags 'external', 'ai-live'
+		}
 	}
 }
 

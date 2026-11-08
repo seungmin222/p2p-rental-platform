@@ -26,7 +26,9 @@ public interface RentalNotificationPort {
 		DEDUCTION_PROPOSED,
 		DEDUCTION_ACCEPTED,
 		DEDUCTION_REJECTED,
-		RENTAL_EXTENDED
+		RENTAL_EXTENDED,
+		/** AI 상태 비교 완료(REQ-040). ai 도메인이 발행한다(ai → rental 방향). 양측에 같은 eventId (OVERDUE와 같음) */
+		AI_COMPARE_DONE
 	}
 
 	/** notifications.target_type 중 rental이 쓰는 것 (클릭 시 대여 상세로 이동) */
@@ -54,7 +56,7 @@ public interface RentalNotificationPort {
 		return Type.RETURN_REMINDER.name() + ":" + rentalId + ":" + endDate;
 	}
 
-	/** 한 대여에 한 번인 알림 키 {@code {TYPE}:{rentalId}} (LOST_REPORTED, DEPOSIT_HELD) */
+	/** 한 대여에 한 번인 알림 키 {@code {TYPE}:{rentalId}} (LOST_REPORTED, DEPOSIT_HELD, AI_COMPARE_DONE) */
 	static String rentalEventId(Type type, Long rentalId) {
 		return type.name() + ":" + rentalId;
 	}
