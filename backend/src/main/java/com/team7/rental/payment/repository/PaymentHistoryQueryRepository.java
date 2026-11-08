@@ -9,6 +9,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.support.PageableExecutionUtils;
+import org.springframework.stereotype.Repository;
 
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -21,13 +22,21 @@ import com.team7.rental.rental.entity.RentalStatus;
 
 import lombok.RequiredArgsConstructor;
 
-/** 조회 전용 관계 쿼리: 대여자 조건만 rentals에서 본다(대여 Repository/Service를 부르지 않아 순환 의존이 없다. ItemListingRepositoryImpl과 같다) */
+/**
+ * 결제·보증금 내역 (REQ-033) QueryDSL 조회 전용 빈. 대여자 조건만 rentals에서 본다(대여 Repository/Service를 부르지 않아 순환 의존이 없다).
+ * PaymentRepository와 분리해 읽기 전용 PaymentHistoryQueryService만 주입한다: 결제 쓰기 트랜잭션 서비스가 rentals를 읽는 쿼리에 닿지 않게 하기 위해서다.
+ */
+@Repository
 @RequiredArgsConstructor
-public class PaymentHistoryRepositoryImpl implements PaymentHistoryRepository {
+public class PaymentHistoryQueryRepository {
 
 	private final JPAQueryFactory queryFactory;
 
-	@Override
+	/**
+	 * 대여자 본인의 결제 행. createdAt ∈ [from, toExclusive), 최신 순(createdAt, id 내림차순). READY·FAILED는 뺀다.
+	 *
+	 * @param type open-issues #44 임시 해석
+	 */
 	public Page<PaymentHistoryRow> findRenterPayments(Long renterId, PaymentHistoryType type, LocalDateTime from,
 		LocalDateTime toExclusive, Pageable pageable) {
 		BooleanExpression[] conditions = {ownedBy(renterId), payment.createdAt.goe(from),

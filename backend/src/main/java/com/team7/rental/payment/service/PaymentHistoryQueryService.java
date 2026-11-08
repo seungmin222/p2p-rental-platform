@@ -19,8 +19,8 @@ import com.team7.rental.global.response.FieldErrorDetail;
 import com.team7.rental.global.response.PageResponse;
 import com.team7.rental.payment.dto.PaymentHistoryRequest;
 import com.team7.rental.payment.dto.PaymentHistoryResponse;
+import com.team7.rental.payment.repository.PaymentHistoryQueryRepository;
 import com.team7.rental.payment.repository.PaymentHistoryRow;
-import com.team7.rental.payment.repository.PaymentRepository;
 import com.team7.rental.rental.dto.RentalSummary;
 import com.team7.rental.rental.service.RentalSummaryReader;
 
@@ -31,7 +31,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PaymentHistoryQueryService {
 
-	private final PaymentRepository paymentRepository;
+	private final PaymentHistoryQueryRepository paymentHistoryQueryRepository;
 	private final RentalSummaryReader rentalSummaryReader;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
@@ -50,7 +50,7 @@ public class PaymentHistoryQueryService {
 			throw new BusinessException(ErrorCode.COMMON_INVALID_INPUT,
 				List.of(new FieldErrorDetail("to", "종료일은 시작일보다 빠를 수 없습니다.")));
 		}
-		Page<PaymentHistoryRow> rows = paymentRepository.findRenterPayments(memberId, request.type(),
+		Page<PaymentHistoryRow> rows = paymentHistoryQueryRepository.findRenterPayments(memberId, request.type(),
 			from.atStartOfDay(), to.plusDays(1).atStartOfDay(),
 			PageRequest.of(request.page(), policyProperties.paymentHistory().page()));
 		Set<Long> rentalIds = rows.stream().map(PaymentHistoryRow::rentalId).collect(Collectors.toSet());

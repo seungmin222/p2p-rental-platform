@@ -18,7 +18,7 @@ import jakarta.persistence.LockModeType;
 /**
  * 쓰기 트랜잭션은 대여 행 락 → 결제 행 락 순서로 잡는다(교착 방지). 락을 기다린 뒤에도 최신 값을 읽도록 *ForUpdate로 읽는다.
  */
-public interface PaymentRepository extends JpaRepository<Payment, Long>, PaymentHistoryRepository {
+public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
 	/** 환불 재시도 대상: 환불이 남았고 관리자 확인 전이며 lastRefundAttemptAt ≤ threshold. id 순 */
 	@Query("""
