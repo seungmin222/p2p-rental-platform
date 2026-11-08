@@ -30,6 +30,9 @@ import com.team7.rental.rental.entity.RentalStatusHistory;
 import com.team7.rental.rental.repository.ItemInspectionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
+import com.team7.rental.rental.service.RentalNotificationPort.Type;
+import com.team7.rental.support.FakeRentalNotificationPort.Sent;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -94,6 +97,8 @@ class RentalHandoverIntegrationTest extends IntegrationTestSupport {
 			assertThat(history.getReason()).isEqualTo(RentalStatusHistory.REASON_HANDOVER);
 			assertThat(history.getChangedAt()).isEqualTo(NOW);
 		});
+		assertThat(notificationPort.sent()).containsExactly(new Sent(renter.getId(), Type.HANDOVER_CONFIRMED,
+			TargetType.RENTAL, rental.getId(), "HANDOVER_CONFIRMED:" + rental.getId()));
 		assertThat(storedImageCount()).isEqualTo(storedBefore + 2);
 	}
 

@@ -128,10 +128,7 @@ class AiCompareIntegrationTest extends IntegrationTestSupport {
 			.andExpect(jsonPath("$.data[1].aiResult.result.regions[0].imageIndex").value(0))
 			.andExpect(jsonPath("$.data[1].aiResult.analyzedAt").value("2026-11-05T18:00:00"));
 
-		String eventId = "AI_COMPARE_DONE:" + rental.getId();
-		assertThat(notificationPort.sent()).containsExactlyInAnyOrder(
-			new Sent(renter.getId(), Type.AI_COMPARE_DONE, TargetType.RENTAL, rental.getId(), eventId),
-			new Sent(owner.getId(), Type.AI_COMPARE_DONE, TargetType.RENTAL, rental.getId(), eventId));
+		assertThat(notificationPort.sent()).containsExactlyInAnyOrderElementsOf(aiCompareDone(rental));
 		assertThat(redis.opsForValue().get(usageKey())).isEqualTo("1");
 	}
 
@@ -147,7 +144,7 @@ class AiCompareIntegrationTest extends IntegrationTestSupport {
 
 		// then
 		assertThat(aiClient.calls()).hasSize(1);
-		assertThat(notificationPort.sent()).hasSize(2);
+		assertThat(notificationPort.sent()).containsExactlyInAnyOrderElementsOf(aiCompareDone(rental));
 	}
 
 	@Test
@@ -384,6 +381,8 @@ class AiCompareIntegrationTest extends IntegrationTestSupport {
 			}
 			returnWith(rental, images);
 		}
+		// 준비 단계 알림(인계·반납 요청)은 지우고 비교가 보낸 알림만 정확히 본다
+		notificationPort.reset();
 		return rental;
 	}
 
@@ -429,5 +428,13 @@ class AiCompareIntegrationTest extends IntegrationTestSupport {
 
 	private static BufferedImage decode(byte[] data) throws IOException {
 		return ImageIO.read(new ByteArrayInputStream(data));
+	}
+
+	// 인계·반납 요청 알림(REQ-032)도 같은 포트로 가므로 AI 비교 완료만 본다
+	private java.util.List<Sent> aiCompareDone(Rental rental) {
+		String eventId = "AI_COMPARE_DONE:" + rental.getId();
+		return java.util.List.of(
+			new Sent(renter.getId(), Type.AI_COMPARE_DONE, TargetType.RENTAL, rental.getId(), eventId),
+			new Sent(owner.getId(), Type.AI_COMPARE_DONE, TargetType.RENTAL, rental.getId(), eventId));
 	}
 }

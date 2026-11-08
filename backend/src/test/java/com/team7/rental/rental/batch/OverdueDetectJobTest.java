@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.team7.rental.item.entity.Item;
 import com.team7.rental.member.entity.Member;
+import com.team7.rental.notification.entity.Notification;
+import com.team7.rental.notification.repository.NotificationRepository;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalExtension;
 import com.team7.rental.rental.entity.RentalStatus;
@@ -42,6 +44,9 @@ class OverdueDetectJobTest extends IntegrationTestSupport {
 
 	@Autowired
 	private RentalExtensionRepository extensionRepository;
+
+	@Autowired
+	private NotificationRepository notificationRepository;
 
 	private Member owner;
 	private Member renter;
@@ -100,6 +105,10 @@ class OverdueDetectJobTest extends IntegrationTestSupport {
 		assertThat(historyRepository.findAll()).hasSize(1);
 		assertThat(notificationPort.sent()).hasSize(2)
 			.extracting(Sent::eventId).containsOnly("OVERDUE:" + rental.getId());
+		// 양측이 같은 event_id라도 회원마다 1건씩 저장된다 (UK member_id, event_id, open-issues #49)
+		assertThat(notificationRepository.findAll()).extracting(Notification::getMemberId, Notification::getEventId)
+			.containsExactlyInAnyOrder(tuple(renter.getId(), "OVERDUE:" + rental.getId()),
+				tuple(owner.getId(), "OVERDUE:" + rental.getId()));
 	}
 
 	@Test

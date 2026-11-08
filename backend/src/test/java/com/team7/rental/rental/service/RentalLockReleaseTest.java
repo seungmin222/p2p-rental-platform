@@ -121,11 +121,11 @@ class RentalLockReleaseTest extends IntegrationTestSupport {
 		@Primary
 		SlowRentalReservationTxService slowRentalReservationTxService(RentalRepository rentalRepository,
 			RentalStatusHistoryRepository rentalStatusHistoryRepository, RentalOccupancyReader rentalOccupancyReader,
-			PolicyProperties policyProperties,
+			PolicyProperties policyProperties, RentalNotificationPublisher rentalNotificationPublisher,
 			@Value("${app.feature.payment-enabled}")
 			boolean paymentEnabled) {
 			return new SlowRentalReservationTxService(rentalRepository, rentalStatusHistoryRepository,
-				rentalOccupancyReader, policyProperties, paymentEnabled);
+				rentalOccupancyReader, policyProperties, rentalNotificationPublisher, paymentEnabled);
 		}
 	}
 
@@ -137,9 +137,10 @@ class RentalLockReleaseTest extends IntegrationTestSupport {
 
 		SlowRentalReservationTxService(RentalRepository rentalRepository,
 			RentalStatusHistoryRepository rentalStatusHistoryRepository, RentalOccupancyReader rentalOccupancyReader,
-			PolicyProperties policyProperties, boolean paymentEnabled) {
+			PolicyProperties policyProperties, RentalNotificationPublisher rentalNotificationPublisher,
+			boolean paymentEnabled) {
 			super(rentalRepository, rentalStatusHistoryRepository, rentalOccupancyReader, policyProperties,
-				paymentEnabled);
+				rentalNotificationPublisher, paymentEnabled);
 		}
 
 		// 상속된 @Transactional에 기대지 않고 다시 선언한다

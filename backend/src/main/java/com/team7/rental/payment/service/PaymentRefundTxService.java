@@ -165,6 +165,7 @@ public class PaymentRefundTxService {
 				if (pending) {
 					payment.applyRefund();
 					if (ticket.completion() != null) {
+						rentalPaymentTxService.notifyDepositRefunded(ticket.rentalId());
 						rentalPaymentTxService.completeAfterDepositReturn(ticket.rentalId(), ticket.completion(),
 							LocalDateTime.now(clock));
 					}
