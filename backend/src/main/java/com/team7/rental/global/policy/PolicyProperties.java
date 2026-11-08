@@ -71,7 +71,11 @@ public record PolicyProperties(
 	@Valid @NotNull
 	Deduction deduction,
 	@Valid @NotNull
-	Deposit deposit) {
+	Deposit deposit,
+	@Valid @NotNull
+	Settlement settlement,
+	@Valid @NotNull
+	PaymentHistory paymentHistory) {
 
 	public record PageSize(@Positive
 	int page) {
@@ -175,6 +179,35 @@ public record PolicyProperties(
 	public record Deposit(
 		@Positive
 		int holdAgreementDays) {
+	}
+
+	/**
+	 * 제공자 정산 (REQ-039)
+	 *
+	 * @param feeRatePercent 수수료율 % (settlement.fee-rate). 원 미만 절사
+	 * @param payoutDelayBusinessDays 완료(취소)일 기준 지급까지 영업일 수 (settlement.payout-delay). 주말만 제외
+	 * @param page 정산 내역 페이지 크기 (settlement.page). 요청에서 size를 받지 않는다
+	 */
+	public record Settlement(
+		@PositiveOrZero @Max(100)
+		int feeRatePercent,
+		@PositiveOrZero
+		int payoutDelayBusinessDays,
+		@Positive
+		int page) {
+	}
+
+	/**
+	 * 결제·보증금 내역 (REQ-033)
+	 *
+	 * @param defaultRangeMonths from·to를 생략했을 때 조회 기간 (payment-history.default-range)
+	 * @param page 페이지 크기 (payment-history.page). 요청에서 size를 받지 않는다
+	 */
+	public record PaymentHistory(
+		@Positive
+		int defaultRangeMonths,
+		@Positive
+		int page) {
 	}
 
 	/**

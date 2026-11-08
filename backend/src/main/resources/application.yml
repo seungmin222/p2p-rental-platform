@@ -78,6 +78,8 @@ app:
     refund-retry-cron: "0 */10 * * * *"
     # PG 조정: 1시간 (REQ-024)
     payment-reconcile-cron: "0 30 * * * *"
+    # 정산 지급: 매일 (REQ-039). 지급 예정일 당일에 지급되도록 자정 직후에 돈다
+    settlement-payout-cron: "0 30 0 * * *"
   policy:
     feed:
       page: 20
@@ -135,6 +137,18 @@ app:
     deposit:
       # deposit.hold-agreement-days: 보류 시작 후 7일 미합의 → 관리자 확정 대상 (REQ-049)
       hold-agreement-days: 7
+    settlement:
+      # settlement.fee-rate: 10%, 원 미만 절사. 대여료·연장료·연체료·취소 수수료에 적용 (REQ-039)
+      fee-rate-percent: 10
+      # settlement.payout-delay: 완료(취소)일 + 영업일 2일, 주말만 제외 (REQ-039)
+      payout-delay-business-days: 2
+      # settlement.page: 정산 내역 페이지 크기. size 파라미터를 받지 않는다 (REQ-039)
+      page: 20
+    payment-history:
+      # payment-history.default-range: from·to를 생략하면 최근 3개월 (REQ-033)
+      default-range-months: 3
+      # payment-history.page: 결제·보증금 내역 페이지 크기. size 파라미터를 받지 않는다 (REQ-033)
+      page: 20
     cancel-agreement:
       # cancel-agreement.expire-hours: 양측 동의 취소 요청이 상대 무응답으로 만료되는 시간 (REQ-015)
       expire-hours: 48
