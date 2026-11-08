@@ -1,5 +1,11 @@
 # feat/rental-extension 결정 기록 (REQ-038)
 
+## 요약
+- API: `POST /api/rentals/{id}/extensions`(연장 요청, 결제 대기 또는 바로 확정), `POST /api/payments`에 `extensionId`(연장료 주문), `/api/payments/confirm`은 결제 종류로 분기. 배치: 연장 결제 만료(1분). 연체 배치는 결제 대기 연장이 있으면 건너뛴다(open-issues #45 B+A).
+- 주요 파일: `rental/entity/RentalExtension`·`ExtensionStatus`, `rental/service/RentalExtensionService`·`RentalExtensionTxService`·`RentalExtensionRecorder`·`ExtensionPeriodCalculator`, `RentalOccupancyReader`(결제 대기 연장 점유), `payment/service/ExtensionPaymentTxService`, `payment/batch/ExtensionPaymentExpireJob`, `V12__create_rental_extensions.sql`.
+- 정해진 규칙: 락 순서 대여 → 연장 → 결제, 연장 환불 키 `extension-refund:{paymentId}`, 연장 결제는 보증금 상태 null, 정산 연장료는 실제로 받은 금액, 대기 시간은 `payment.expire-minutes` 재사용.
+- 남은 일: 007 가능 기간 수정은 점유를 `RentalOccupancyReader`로 읽어야 결제 대기 연장 기간이 반영된다(B). 프론트가 연장 결제 화면을 떠나면 extensionId를 다시 얻을 방법이 없다(fe 연장 브랜치에서 상세 응답에 넣을지 결정). `RENTAL_EXTENDED` 알림은 REQ-032 전이라 로그 구현.
+
 ## 점유·겹침
 - **결제 대기 연장 기간은 `RentalOccupancyReader` 한곳에서 합친다.** 예약 겹침(013)과 캘린더 BOOKED(012)가 이미 이 클래스를 거치므로, 여기에 넣으면 두 곳이 같이 바뀌고 따로 고칠 곳이 없다. 연장 검사는 `excludeRentalId`로 자기 대여 행만 뺀다. 자기 대여의 결제 대기 연장은 빼지 않는다. 대여당 1건 제한이 먼저 막기 때문이다.
 - **연장 구간은 가능 기간 하나 안에 있어야 한다.** 예약(013)과 같은 규칙이다. 이어진 다음 가능 기간으로는 넘어가지 않는다.
