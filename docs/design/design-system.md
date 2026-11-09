@@ -214,8 +214,8 @@ grep 결과 요약(`/dev` 제외): 규칙 밖 `text-[..]` 0건, 앱 코드 `#hex
 
 | # | 우선 | 파일 | 현재 값 | 기준 값 | 제안 |
 | --- | --- | --- | --- | --- | --- |
-| 1 | P1 | `pages/ComingSoonPage.jsx` | `text-sm text-gray-500` | `text-caption text-ink-muted` | 리팩터링 |
-| 2 | P1 | `pages/NotFoundPage.jsx` | 링크 `text-sm text-gray-700 underline` | `ButtonLink variant="secondary"` 또는 `text-ink-muted` | 리팩터링 (버튼으로 바꾸면 사용자 확인) |
+| 1 | P1 | `pages/ComingSoonPage.jsx` | `text-sm text-gray-500` | `text-caption text-ink-muted` | 리팩터링 — 사용자 확인(글자 크기·색 변경) |
+| 2 | P1 | `pages/NotFoundPage.jsx` | 링크 `text-sm text-gray-700 underline` | `ButtonLink variant="secondary"` 또는 `text-ink-muted` | 리팩터링 — 사용자 확인(글자 크기·색 변경, 버튼으로 바꾸면 모양도 변경) |
 | 3 | P3 | `shared/ui/Modal.jsx`, `BottomSheet.jsx` | `rounded-2xl`(16), `rounded-t-2xl` | 규칙에 없음 | 유지하고 규칙에 "모달·시트 16" 추가 — 사용자 확인 |
 | 4 | P3 | `shared/ui/Modal.jsx`, `BottomSheet.jsx` | 배경막 `backdrop:bg-black/50` | 토큰 없음 | 유지하고 규칙에 예외 추가, 또는 `ink/50` — 사용자 확인 |
 | 5 | P3 | `shared/ui/Skeleton.jsx` | 기본 `rounded-md`(6) | 규칙에 없음 | 기본을 `rounded-lg`로 — 로딩 모양이 바뀌므로 사용자 확인 |
@@ -235,22 +235,22 @@ grep 결과 요약(`/dev` 제외): 규칙 밖 `text-[..]` 0건, 앱 코드 `#hex
 | 14 | P1·P2 | `features/rental/components/FormParts.jsx` `FormError`, `features/auth/components/AuthFormParts.jsx` `FormRootError`, `features/item/components/ItemForm.jsx:58`, `features/item/components/TradePlaceField.jsx:28`, `features/item/components/AvailablePeriodsField.jsx:89`, `features/region/components/RegionFinder.jsx:171` | 똑같은 `role="alert"` 오류 문구를 6곳에서 만듦. 크기가 `text-caption` 3곳 / `text-xs` 3곳으로 섞임 | `TextField` 오류와 같은 `text-xs text-danger`(필드 오류), 폼 전체 오류는 하나로 | `shared/ui/FormError`로 합치고 크기를 하나로 — 글자 크기가 바뀌므로 사용자 확인 |
 | 15 | P2 | `AmountSummary.jsx`, `InspectionRecords.jsx:127`, `RentalDetailPage.jsx:50`, `RegionFinder.jsx:10`, `ItemFormPage.jsx:22`, `RentalReservePage.jsx:199·245`, `ItemInfo.jsx:88` | 안내 상자 8곳. 안쪽 여백 `p-3.5`·`px-3.5 py-3`·`px-4 py-3`·`p-4`·`px-4 py-5`, 테두리 유무가 섞임 | 시안 `12px 14px`, `rounded-xl` | `shared/ui/Notice`(tone surface·accent·primary)로 합치고 여백을 `px-3.5 py-3`로 — 여백이 바뀌므로 사용자 확인 |
 | 16 | P2 | `pages/MyPage.jsx:16`, `pages/MyProfilePage.jsx:2`, `pages/ComingSoonPage.jsx:4`, `pages/NotFoundPage.jsx:6` | 제목 `h1 text-lg font-bold`를 직접 만듦(높이·여백 제각각) | `PageHeader` | 탭 첫 화면(MyPage)은 뒤로 가기 없는 제목 헤더가 필요 → `PageHeader`에 `back={false}` 옵션을 두고 통일 — 사용자 확인 |
-| 17 | P2 | `features/auth/components/ProfileSummary.jsx:54`, `features/region/components/RegionFinder.jsx:45` | 한 줄 "불러오지 못했어요 + 다시 시도" 알림을 각각 만듦 | `ErrorState`(큰 모양)만 있음 | `ErrorState`에 `inline` 모양을 두거나 `shared/ui/InlineError`로 합침 |
+| 17 | P2 | `features/auth/components/ProfileSummary.jsx:54`, `features/region/components/RegionFinder.jsx:45` | 한 줄 "불러오지 못했어요 + 다시 시도" 알림을 각각 만듦 | `ErrorState`(큰 모양)만 있음 | `ErrorState`에 `inline` 모양을 두거나 `shared/ui/InlineError`로 합침 — 두 곳의 여백(`py-4`/`py-3`)이 달라 하나로 맞추면 모양이 바뀌므로 사용자 확인 |
 | 18 | P2 | `pages/RentalReservePage.jsx:50` | 물품 사진을 `div + img`로 직접 그림(이미지 없을 때 아이콘 없음) | `Thumbnail` | `Thumbnail className="size-13"`로 교체 — 이미지 없을 때 아이콘이 생기므로 사용자 확인 |
 | 19 | P2 | `ItemImageCarousel.jsx:36`, `HomePage.jsx:68`, `Modal.jsx`·`BottomSheet.jsx` 닫기, `BackButton.jsx` | 44 원형 아이콘 버튼 클래스(`flex size-11 items-center justify-center rounded-full … focus-visible`)를 곳곳에서 반복 | — | `shared/ui/IconButton`(aria-label 필수)으로 합침 |
 | 20 | P2 | `pages/HomePage.jsx:51` | 홈 헤더를 `PageHeader`와 같은 틀(sticky·56·divider)로 직접 만듦 | `PageHeader` | 16과 함께 `PageHeader`에 왼쪽 슬롯을 두면 합칠 수 있음. 홈 모양이 달라 유지도 가능 — 사용자 확인 |
-| 30 | P2 | `features/item/components/ItemListView.jsx:10`, `pages/MyRentalsPage.jsx:30`, `pages/MyItemsPage.jsx:90` | 목록 스켈레톤 줄(`flex gap-3.5 border-b border-divider py-3.5` + Skeleton)을 화면마다 직접 만듦 | — | `shared/ui/ListSkeleton`(줄 수·사진 크기 props)으로 합침 |
+| 21 | P2 | `features/item/components/ItemListView.jsx:10`, `pages/MyRentalsPage.jsx:30`, `pages/MyItemsPage.jsx:90` | 목록 스켈레톤 줄(`flex gap-3.5 border-b border-divider py-3.5` + Skeleton)을 화면마다 직접 만듦 | — | `shared/ui/ListSkeleton`(줄 수·사진 크기 props)으로 합침 |
 
 ### 7.3 시안과 다른 크기·간격·의미
 
 | # | 우선 | 파일 | 현재 값 | 시안 값 | 제안 |
 | --- | --- | --- | --- | --- | --- |
-| 21 | P1 | `features/item/components/ItemCard.jsx:30`, `pages/ItemDetailPage.jsx:105` | 가격 단위 `/일` `text-body font-normal`(15/400) | 13/500 muted | `text-caption font-medium`로 — 사용자 확인(보이는 크기 변경) |
-| 22 | P3 | `features/item/components/ItemCard.jsx:15` | 글 사이 `gap-0.5`(2px) | 3px | 유지(차이 1px) |
-| 23 | P1 | `features/item/components/ItemImageCarousel.jsx:130` | 번호 배지 `text-caption font-semibold px-3 py-1 bg-ink/60` | 12px, `3px 9px`, ink 72% | `text-xs px-2.5 py-0.5`로 시안에 맞춤 — 사용자 확인 |
-| 24 | P3 | `ItemDetailPage.jsx:51`, `RentalReservePage.jsx:219`, `ItemInfo.jsx:77` | 섹션 제목 h2에 `text-price` | 16/700 (값은 같음) | 값은 같으므로 유지. 의미가 섞이니 `@theme`에 `--text-section`(16/700)을 둘지 사용자 확인 |
-| 25 | P3 | `pages/HomePage.jsx:55` | 동네 이름 `text-title`(22) | 19/700 | 토큰 유지(19는 토큰 밖) |
-| 26 | P3 | `features/item/components/ItemInfo.jsx:42` | 물품명 `text-title`(22) | 21/700 | 토큰 유지 |
-| 27 | P3 | `pages/RentalReservePage.jsx:50` | 썸네일 52 `rounded-[10px]` | 52, 8 | 썸네일 규칙(10) 유지. 18과 함께 정리 |
-| 28 | P3 | `features/rental/components/RentalActionBar.jsx` | 버튼 48 | 50 | 디자인 시스템(48) 유지 |
-| 29 | P3 | `shared/ui/Calendar.jsx` | 날짜 칸 높이 44 | 약 34 | 터치 영역 규칙(44) 유지 |
+| 22 | P1 | `features/item/components/ItemCard.jsx:34`, `pages/ItemDetailPage.jsx:105` | 가격 단위 `/일` `text-body font-normal`(15/400) | 13/500 muted | `text-caption font-medium`로 — 사용자 확인(보이는 크기 변경) |
+| 23 | P3 | `features/item/components/ItemCard.jsx:19` | 글 사이 `gap-0.5`(2px) | 3px | 유지(차이 1px) |
+| 24 | P1 | `features/item/components/ItemImageCarousel.jsx:130` | 번호 배지 `text-caption font-semibold px-3 py-1 bg-ink/60` | 12px, `3px 9px`, ink 72% | `text-xs px-2.5 py-0.5`로 시안에 맞춤 — 사용자 확인 |
+| 25 | P3 | `ItemDetailPage.jsx:51`, `RentalReservePage.jsx:219`, `ItemInfo.jsx:77` | 섹션 제목 h2에 `text-price` | 16/700 (값은 같음) | 값은 같으므로 유지. 의미가 섞이니 `@theme`에 `--text-section`(16/700)을 둘지 사용자 확인 |
+| 26 | P3 | `pages/HomePage.jsx:55` | 동네 이름 `text-title`(22) | 19/700 | 토큰 유지(19는 토큰 밖) |
+| 27 | P3 | `features/item/components/ItemInfo.jsx:42` | 물품명 `text-title`(22) | 21/700 | 토큰 유지 |
+| 28 | P3 | `pages/RentalReservePage.jsx:50` | 썸네일 52 `rounded-[10px]` | 52, 8 | 썸네일 규칙(10) 유지. 18과 함께 정리 |
+| 29 | P3 | `features/rental/components/RentalActionBar.jsx` | 버튼 48 | 50 | 디자인 시스템(48) 유지 |
+| 30 | P3 | `shared/ui/Calendar.jsx` | 날짜 칸 높이 44 | 약 34 | 터치 영역 규칙(44) 유지 |
