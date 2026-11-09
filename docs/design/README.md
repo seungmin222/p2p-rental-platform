@@ -9,6 +9,7 @@
 | `flow-board.png` | 핵심 대여 흐름 보드: SCR-03 홈 → 05 상세 → 07 예약·결제 → 10 채팅방 → 08 대여 상세(상태 확인) |
 | `screen-flow.png` | 전체 화면(SCR-01~14) 이동 흐름도 |
 | `screens/SCR-xx_*.png` | 화면별 시안: 03 홈, 05 물품 상세, 07 예약, 08 대여 상세(제공자), 10 채팅방 |
+| `design-system.md` | 현재 구현 기준 디자인 시스템: 토큰(시안 대조)·공통 컴포넌트·레이아웃 패턴·화면별 패턴·정리 대상 |
 | `mockups/Main.html` | 디자인 시스템(`design-system.png`의 원본) |
 | `mockups/Home.html`, `Detail.html`, `Booking.html`, `RentalDetail.html`, `Chat.html` | 화면별 시안 원본(390 × 844) |
 

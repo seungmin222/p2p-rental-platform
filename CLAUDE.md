@@ -33,6 +33,7 @@
 | `docs/open-issues.md` | 명세 간 불일치·미결정 사항 | 해당 영역 작업 전 |
 | `docs/domains/*.md` | 도메인별 상세 요구사항(REQ 단위) | 기능 구현 시 |
 | `docs/reference/` | 원본 요구사항명세서 v1.0, 원본 다이어그램 | 위 문서로 판단이 안 될 때만. 위 문서와 다르면 `open-issues.md`에 기록 |
+| `docs/design/design-system.md` | 프론트 디자인 현황: 토큰·공통 컴포넌트·레이아웃 패턴·화면별 패턴, 정리 대상 | 프론트 화면·공통 UI를 만들거나 고칠 때 |
 | `docs/experiments/` | 동시성·결제·피드·AI 실험 결과표 | 성능·정합성 실험 시 기록 |
 | `docs/prompts/<브랜치명>/notes.md` | 브랜치별 결정 기록(무엇을·왜) | 브랜치 작업 중 결정할 때, 이어서 작업할 때 |
 | `backend/CLAUDE.md` | 백엔드 패키지 구조·코딩 규칙·테스트 규칙 | `backend/` 작업 시 자동 로드 |
