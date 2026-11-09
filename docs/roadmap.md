@@ -96,7 +96,7 @@
 ### 프론트 정리
 | 브랜치 | 내용 | 상태 |
 | --- | --- | --- |
-| `docs/fe-design-system` | 현재 디자인 문서화(`docs/design/design-system.md`)와 정리 대상 목록 | ⬜ |
+| `docs/fe-design-system` | 현재 디자인 문서화(`docs/design/design-system.md`)와 정리 대상 목록 | ✅ |
 | `chore/fe-design-refactor` | 정리 대상 리팩터링 | ⬜ |
 
 ### 3순위 (착수 시 추가)

@@ -1,5 +1,12 @@
 # docs/fe-design-system 결정 기록
 
+## 요약
+
+- 구현 API 없음(문서 브랜치). 새 문서 `docs/design/design-system.md`: 현재 토큰(`frontend/src/index.css` `@theme`)·`shared/ui` 컴포넌트·레이아웃·화면별 패턴과 시안 대조.
+- 같은 문서 §7에 정리 대상 30건(7.1 토큰 밖 값 1–13, 7.2 중복 UI 14–21, 7.3 시안과 다른 값 22–30)을 P1·P2·P3와 "사용자 확인" 표시로 정리.
+- 문서 지도 갱신: 루트·`frontend/CLAUDE.md`, `docs/design/README.md`, roadmap.md "### 프론트 정리" 표, git-workflow.md §2.
+- 다음 `chore/fe-design-refactor`: §7의 P1·P2부터 진행하고, "사용자 확인" 항목은 바꾸기 전에 사용자에게 묻는다. P3는 리팩터링 대신 `frontend/CLAUDE.md` 예외로 넣을지 확인.
+
 ## 결정
 
 - **문서의 기준 값은 현재 토큰(`index.css` `@theme`)으로 두고, 시안 값은 나란히 적어 차이만 표시했다.** 시안 8색·글자 5단계는 코드와 모두 같고, 차이는 시안에 없는 토큰과 값(그림자·모달 모서리·14px 간격)과 화면 시안의 토큰 밖 크기(21·19px 등)뿐이라, 코드를 기준으로 써야 다음 리팩터링 범위가 분명해진다. (사용자 승인)
