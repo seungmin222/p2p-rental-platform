@@ -131,7 +131,7 @@
 | 요소 | 모양 | 비고 |
 | --- | --- | --- |
 | `AppLayout` | 세로 flex, 본문 `max-w-5xl px-4`. PC(xl, ≥1280)는 상단 헤더 `DesktopHeader`, 모바일은 하단 탭 | 라우트 `handle.hideTabBar`면 하단 탭과 아래 여백을 뺀다 |
-| `DesktopHeader` | sticky, 높이 64, 내용은 본문과 같은 `max-w-5xl`. 로고(텍스트) → 둥근 `surface` 검색 상자(`/search` 링크, 최대 560) → 동네 ▾ → 알림·채팅·나의 대여(아이콘 22 + `text-sm`) → "+ 물품 등록" 알약(높이 40, `primary`) | Figma 시안. `useMediaQuery`로 PC에서만 그린다(동네 이름에 내 정보 조회) |
+| `DesktopHeader` | sticky, 높이 64, 내용은 본문과 같은 `max-w-5xl`. 로고 마크 `AppLogo`(36, `rounded-xl`, `primary` 면 + 흰 텐트 선 아이콘) → 둥근 `surface` 검색 상자(`/search` 링크, 최대 560) → 동네 ▾ → 알림·채팅·나의 대여(아이콘 22 + `text-sm`) → "+ 물품 등록" 알약(높이 40, `primary`) | Figma 시안. `useMediaQuery`로 PC에서만 그린다(동네 이름에 내 정보 조회) |
 | 하단 탭 | 높이 64, `border-t border-line`, 5칸(홈·검색·채팅·알림·나의 대여), 라벨 11px, 선택 시 아이콘 채움 + `font-semibold text-ink` | 시안(`Main.html` 64)과 같음 |
 | `PageHeader` | sticky, 높이 56, `BackButton` + 제목 `text-lg font-bold` + 오른쪽 `action` | 시안 헤더(56, 18/700)와 같음 |
 | `BackButton` | 44 원형 아이콘 버튼. 앱 안 기록이 없으면 홈으로 | 상세는 이미지 위에 `bg-white/90`로 띄운다 |
@@ -198,7 +198,7 @@ SCR-09~11·13~16은 아직 없다(채팅·알림 탭은 `ComingSoonPage`).
 | 물품 카드(검색 목록) | 사진 104, 글 사이 3px, 단위 `/일` 13/500 muted | 사진 104(`size-26`), `gap-0.5`(2px), 단위 `text-caption font-medium` muted | 단위 같음(7.3 #22 해결), 간격 1px 차이 유지 |
 | 홈 그리드 카드 (Figma) | 사진 모서리 16, 가격 18/700, 단위 12/400, 보조 11px(모바일)·13px(PC), 보증금 태그 모서리 4·`#F1F0EC`, 사진 위 하트 | 모서리 10(썸네일 규칙), `text-price` 16, 단위 `text-caption`, `text-xs`·`text-caption`, `Badge gray`(full·`surface`), 하트 없음 | 가장 가까운 토큰. 하트는 REQ-022 때 |
 | 상세 (Figma) | 제목 22·20/600, 가격 28·26/700, 단위 15/400, 사진 모서리 16, 섹션 제목 17/600, 버튼 44·모서리 8·14px, 판매자 프로필 `#E5EFEA`, 보증금 회색, 설명 14px | 제목·가격 `text-title`(22/700), 단위 `text-caption`, `rounded-xl`, `text-price`(16/700), `Button md`(48·12·15px), `primary-soft`, 보증금 `accent-strong`(§2.1 의미 유지), 설명 `text-body` `ink-muted` | 가장 가까운 토큰 |
-| PC 헤더 (Figma) | 로고 아이콘 36, 검색 상자 `#F1F0EC`, 메뉴 14px, 알림 빨간 점 | 텍스트 로고, `surface`, `text-sm`, 점 없음(알림 2순위) | 로고 이미지 없음 |
+| PC 헤더 (Figma) | 로고 아이콘 36, 검색 상자 `#F1F0EC`, 메뉴 14px, 알림 빨간 점 | `AppLogo`(인라인 SVG), `surface`, `text-sm`, 점 없음(알림 2순위) | 로고 같음 |
 | 상세 캐러셀 번호 | 12px, `3px 9px`, ink 72%(Figma 11px, `4px 10px`, ink 80%) | `text-xs font-medium`, `px-2.5 py-1`, `ink/60` | 크기 맞춤(7.3 #24 해결), 색은 7.1 #8 예외 |
 | 상세 섹션 제목 | 16/700 | `text-price`(16/700) | 값 같음, 토큰 의미 다름 → 7.3 |
 | 캘린더 날짜 칸 | 패딩 8(약 34), Figma 36 | 높이 44 | 터치 영역 규칙(44)으로 코드 유지 |

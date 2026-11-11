@@ -3,6 +3,7 @@ import { Link, NavLink } from 'react-router';
 import { useFeedRegion } from '../../features/item/useFeedRegion';
 import { useMediaQuery, XL_MEDIA_QUERY } from '../../shared/hooks/useMediaQuery';
 import { Skeleton } from '../../shared/ui';
+import AppLogo from './AppLogo';
 import NavIcon from './NavIcon';
 import { NAV_ITEMS } from './navItems';
 
@@ -97,9 +98,10 @@ function DesktopHeaderContent() {
         <NavLink
           to="/"
           end
-          className={`flex min-h-11 shrink-0 items-center rounded-lg text-lg font-bold ${FOCUS}`}
+          aria-label="동네 대여 홈"
+          className={`-ml-1 flex size-11 shrink-0 items-center justify-center rounded-xl ${FOCUS}`}
         >
-          동네 대여
+          <AppLogo />
         </NavLink>
         {/* 검색 화면으로 가는 링크(입력은 검색 화면에서). 모양만 시안의 둥근 검색 상자 */}
         <Link
@@ -141,7 +143,7 @@ function DesktopHeaderContent() {
 }
 
 /**
- * PC(xl, 1280px~) 상단 헤더(Figma 시안): 로고 → 검색 상자 → 동네 ▾ → 알림·채팅·나의 대여 → "+ 물품 등록".
+ * PC(xl, 1280px~) 상단 헤더(Figma 시안): 로고 마크(AppLogo) → 검색 상자 → 동네 ▾ → 알림·채팅·나의 대여 → "+ 물품 등록".
  * 내용은 본문과 같은 폭(max-w-5xl). 동네 이름 때문에 내 정보를 부르므로 모바일에서는 아예 그리지 않는다.
  */
 export default function DesktopHeader() {

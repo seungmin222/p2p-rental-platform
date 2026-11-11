@@ -27,7 +27,7 @@
 ```
 src/
 ├── app/            라우터, QueryClientProvider, 레이아웃(하단 탭 / PC 헤더)
-│   └── layout/         AppLayout, DesktopHeader(PC 상단 헤더), PageHeader, BackButton, BottomActionBar, FloatingActionButton
+│   └── layout/         AppLayout, DesktopHeader(PC 상단 헤더), AppLogo, PageHeader, BackButton, BottomActionBar, FloatingActionButton
 ├── pages/          화면 단위 (SCR-xx와 1:1)
 ├── dev/            개발 서버 전용 화면(`/dev/ui` 공통 UI 미리보기, 빌드에서 제외)
 ├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review)
@@ -180,7 +180,7 @@ export const RENTAL_STATUS = {
 - Button variant는 시안 5가지에 맞춘다: `primary`(채움) · `outline`(주 색상 외곽선) · `secondary`(회색 면) · `danger`(위험 **외곽선**) · 비활성(`disabled`). 크기 기본 `md` 48px, 좁은 곳은 `sm` 44px.
 - 토스트: `import { toast } from '../shared/ui'` → `toast.show({ message, tone })`(tone `default`·`danger`). `<Toaster />`는 App에 한 곳만 있다. 모달 안의 오류는 토스트 대신 모달 안에 표시(모달이 top layer라 토스트가 가려짐).
 - 하단 고정 바가 있는 화면은 라우트에 `handle: { hideTabBar: true }`를 달면 AppLayout이 하단 탭을 숨긴다. 바는 `BottomActionBar`(본문이 가려지지 않게 자리도 확보).
-- PC(xl) 상단 헤더는 `DesktopHeader`: 로고 → 검색 상자(`/search` 링크) → 동네 ▾(`useFeedRegion`, `/regions`) → 알림·채팅·나의 대여 → "+ 물품 등록". 동네 때문에 내 정보를 부르므로 `useMediaQuery(XL_MEDIA_QUERY)`로 PC에서만 그린다. 홈의 모바일 헤더와 FAB는 xl에서 숨긴다.
+- PC(xl) 상단 헤더는 `DesktopHeader`: 로고 마크(`AppLogo`, 텐트 아이콘, 링크 aria-label "동네 대여 홈") → 검색 상자(`/search` 링크) → 동네 ▾(`useFeedRegion`, `/regions`) → 알림·채팅·나의 대여 → "+ 물품 등록". 동네 때문에 내 정보를 부르므로 `useMediaQuery(XL_MEDIA_QUERY)`로 PC에서만 그린다. 홈의 모바일 헤더와 FAB는 xl에서 숨긴다.
 - 날짜: 대여 기간(`startDate`·`endDate`, 캘린더)은 `"YYYY-MM-DD"` 문자열로만 다루고 `shared/lib/date.js`로 계산한다. `new Date('YYYY-MM-DD')`를 쓰지 않는다(UTC 자정이라 시간대에 따라 하루 밀림). 오늘 날짜는 `todayInSeoul()`. 서버 일시(오프셋 없음)는 `parseServerDateTime`이 서울 시각으로 해석.
 - 정책 수치(장수·용량·기간)는 shared/ui에 기본값으로 두지 않는다. `features/*/constants.js`에 policies.md 키 주석과 함께 두고 props로 넘긴다.
 
