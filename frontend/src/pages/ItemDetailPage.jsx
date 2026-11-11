@@ -6,9 +6,13 @@ import BottomActionBar from '../app/layout/BottomActionBar';
 import PageHeader from '../app/layout/PageHeader';
 import DeleteItemModal from '../features/item/components/DeleteItemModal';
 import ItemImageCarousel from '../features/item/components/ItemImageCarousel';
-import { ItemOwnerRow, ItemSummary, ItemTradePlace } from '../features/item/components/ItemInfo';
+import {
+  ItemDescription,
+  ItemHeading,
+  ItemOwnerCard,
+  ItemTradePlace,
+} from '../features/item/components/ItemInfo';
 import { getDeletedMessage, getErrorMessage } from '../features/item/errorMessages';
-import { getPriceParts, getDepositText } from '../features/item/itemDisplay';
 import { parseItemId } from '../features/item/itemId';
 import { useItemDetail } from '../features/item/queries';
 import { RENTAL_DAY_STATUS } from '../features/rental/constants';
@@ -20,11 +24,17 @@ import { Button, ButtonLink, Calendar, ErrorState, Skeleton, toast } from '../sh
 
 function DetailSkeleton() {
   return (
-    <div aria-busy="true" aria-label="불러오는 중" className="flex flex-col gap-4">
-      <Skeleton className="-mx-4 aspect-[390/236] rounded-none" />
-      <Skeleton className="h-10 w-1/2" />
-      <Skeleton className="h-8 w-2/3" />
-      <Skeleton className="h-24 w-full" />
+    <div
+      aria-busy="true"
+      aria-label="불러오는 중"
+      className="flex flex-col gap-4 xl:grid xl:grid-cols-[480px_1fr] xl:gap-12 xl:pt-8"
+    >
+      <Skeleton className="-mx-4 aspect-[390/236] rounded-none xl:mx-0 xl:aspect-square xl:rounded-xl" />
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-10 w-1/2" />
+        <Skeleton className="h-8 w-2/3" />
+        <Skeleton className="h-24 w-full" />
+      </div>
     </div>
   );
 }
@@ -63,6 +73,27 @@ function ItemCalendar({ itemId }) {
   );
 }
 
+function HeartIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+      className="size-6"
+    >
+      <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.6-7 10-7 10z" />
+    </svg>
+  );
+}
+
+// 관심(REQ-022)·채팅(REQ-026)은 2순위라 아직 없다. 시안 자리는 두고 누르면 안내만 한다
+function showComingSoon() {
+  toast.show({ message: '준비 중인 기능이에요' });
+}
+
 /** 내 물품의 수정·삭제. 삭제하면 내 물품 관리로 옮긴다(삭제 중 이 화면을 떠났으면 옮기지 않는다) */
 function OwnerActions({ item }) {
   const navigate = useNavigate();
@@ -74,11 +105,11 @@ function OwnerActions({ item }) {
   }
 
   return (
-    <div className="flex shrink-0 gap-2">
-      <Button variant="danger" onClick={() => setIsDeleting(true)}>
+    <div className="flex w-full gap-2">
+      <Button variant="danger" className="flex-1" onClick={() => setIsDeleting(true)}>
         삭제
       </Button>
-      <ButtonLink to={`/items/${item.itemId}/edit`} variant="outline">
+      <ButtonLink to={`/items/${item.itemId}/edit`} variant="outline" className="flex-1">
         수정
       </ButtonLink>
       {isDeleting && (
@@ -92,31 +123,28 @@ function OwnerActions({ item }) {
   );
 }
 
-/** 하단 바: 일 대여료·보증금 + 예약하기. 내 물품이면 예약 대신 수정·삭제 */
-function DetailBar({ item }) {
-  const price = getPriceParts(item.pricePerDay);
-  const depositText = getDepositText(item.deposit) ?? '보증금 없음';
+/** 관심(하트) · 채팅하기(외곽선) · 예약하기(채움, 더 넓게). 내 물품이면 수정·삭제. PC는 오른쪽 열, 모바일은 하단 바 */
+function DetailActions({ item }) {
+  if (item.isOwner) {
+    return <OwnerActions item={item} />;
+  }
   return (
-    <BottomActionBar className="flex items-center justify-between gap-3">
-      <div className="flex min-w-0 flex-col">
-        <span className="text-price tabular-nums">
-          {price.amount}
-          {price.unit && (
-            <span className="text-body font-normal text-ink-muted"> {price.unit}</span>
-          )}
-        </span>
-        <span className="text-caption font-semibold text-accent-strong tabular-nums">
-          {depositText}
-        </span>
-      </div>
-      {item.isOwner ? (
-        <OwnerActions item={item} />
-      ) : (
-        <ButtonLink to={`/items/${item.itemId}/reserve`} className="shrink-0">
-          예약하기
-        </ButtonLink>
-      )}
-    </BottomActionBar>
+    <div className="flex w-full items-center gap-2">
+      <button
+        type="button"
+        aria-label="관심 등록(준비 중)"
+        onClick={showComingSoon}
+        className="mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        <HeartIcon />
+      </button>
+      <Button variant="outline" className="flex-[0.72] px-0" onClick={showComingSoon}>
+        채팅하기
+      </Button>
+      <ButtonLink to={`/items/${item.itemId}/reserve`} className="flex-1 px-0">
+        예약하기
+      </ButtonLink>
+    </div>
   );
 }
 
@@ -134,7 +162,11 @@ function NotFound() {
   );
 }
 
-/** SCR-05 물품 상세(REQ-011). 토큰을 보내 isOwner가 로그인 사용자 기준이다 */
+/**
+ * SCR-05 물품 상세(REQ-011). 토큰을 보내 isOwner가 로그인 사용자 기준이다.
+ * 모바일: 사진 → 제목·가격·보증금 → 판매자 → 설명 → 캘린더 → 거래 장소 + 하단 바.
+ * PC(xl): 왼쪽 사진 · 오른쪽 제목·가격·보증금·판매자·버튼, 그 아래 설명 → 캘린더 | 거래 장소(Figma 시안).
+ */
 export default function ItemDetailPage() {
   const { id } = useParams();
   // 올바른 id가 아니면 요청하지 않고 바로 "찾을 수 없어요"
@@ -159,20 +191,35 @@ export default function ItemDetailPage() {
   }
   return (
     <>
-      <ItemImageCarousel images={item.images} name={item.name}>
-        <BackButton className="absolute top-2 left-2 bg-white/90 text-ink hover:bg-white" />
-      </ItemImageCarousel>
-      <ItemOwnerRow owner={item.owner} />
-      <div className="flex flex-col gap-6 pb-8">
-        <ItemSummary item={item} />
-        <ItemCalendar itemId={item.itemId} />
-        <ItemTradePlace
-          address={item.address}
-          latitude={item.latitude}
-          longitude={item.longitude}
-        />
+      <div className="xl:grid xl:grid-cols-[480px_1fr] xl:items-start xl:gap-12 xl:pt-8">
+        <ItemImageCarousel images={item.images} name={item.name}>
+          <BackButton className="absolute top-2 left-2 bg-white/90 text-ink hover:bg-white xl:hidden" />
+        </ItemImageCarousel>
+        <div className="flex flex-col gap-6 pt-6 xl:pt-2">
+          <ItemHeading item={item} />
+          <ItemOwnerCard owner={item.owner} />
+          <div className="hidden xl:block">
+            <DetailActions item={item} />
+          </div>
+        </div>
       </div>
-      <DetailBar item={item} />
+      <div className="flex flex-col gap-7 pt-6 pb-8 xl:mt-10 xl:border-t xl:border-line xl:pt-8 xl:pb-12">
+        <ItemDescription description={item.description} />
+        <div className="flex flex-col gap-7 border-t border-line pt-7 xl:grid xl:grid-cols-2 xl:items-start xl:gap-12 xl:border-t-0 xl:pt-0">
+          <ItemCalendar itemId={item.itemId} />
+          <div className="border-t border-line pt-7 xl:border-t-0 xl:pt-0">
+            <ItemTradePlace
+              address={item.address}
+              latitude={item.latitude}
+              longitude={item.longitude}
+            />
+          </div>
+        </div>
+      </div>
+      {/* 모바일 하단 고정 바. PC는 오른쪽 열에 같은 버튼이 있다 */}
+      <BottomActionBar barClassName="xl:hidden">
+        <DetailActions item={item} />
+      </BottomActionBar>
     </>
   );
 }

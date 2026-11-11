@@ -44,11 +44,14 @@ function ChevronDownIcon() {
   );
 }
 
-/** 내 동네 이름(시안 "연수동 ▾") → /regions, 우측 검색 아이콘 → /search. 알림 아이콘은 알림 화면(2순위)이 없어 두지 않는다 */
+/**
+ * 모바일 홈 헤더: 내 동네 이름(시안 "연수동 ▾") → /regions, 우측 검색 아이콘 → /search. 알림 아이콘은 알림 화면(2순위)이 없어 두지 않는다.
+ * PC(xl)는 AppLayout 상단 헤더에 동네·검색이 있어 숨긴다.
+ */
 function HomeHeader({ region }) {
   const { regionName } = region;
   return (
-    <header className="sticky top-0 z-10 -mx-4 flex h-14 items-center justify-between border-b border-divider bg-white px-4">
+    <header className="sticky top-0 z-10 -mx-4 flex h-14 items-center justify-between border-b border-divider bg-white px-4 xl:hidden">
       <Link
         to="/regions"
         aria-label={regionName ? `동네 설정, 현재 ${regionName}` : '동네 설정'}
@@ -97,7 +100,7 @@ function Feed({ regionId }) {
 
   return (
     <>
-      <div className="sticky top-14 z-10 -mx-4 bg-white px-4">
+      <div className="sticky top-14 z-10 -mx-4 bg-white px-4 xl:top-16 xl:py-2">
         <CategoryChips categoryId={categoryId} onChange={handleCategoryChange} />
       </div>
       <ItemListView
@@ -111,6 +114,7 @@ function Feed({ regionId }) {
             : '이 카테고리에는 물품이 없어요'
         }
         emptyDescription="다른 카테고리를 골라 보거나 검색해 보세요"
+        layout="grid"
       />
     </>
   );
@@ -127,8 +131,8 @@ export default function HomePage() {
       ) : (
         <RegionGate region={region} />
       )}
-      {/* 등록 화면은 로그인이 필요해 RequireAuth가 비회원을 로그인으로 보낸다(로그인 뒤 돌아온다) */}
-      <FloatingActionButton to="/items/new" label="물품 등록" />
+      {/* 등록 화면은 로그인이 필요해 RequireAuth가 비회원을 로그인으로 보낸다(로그인 뒤 돌아온다). PC는 상단 헤더의 버튼을 쓴다 */}
+      <FloatingActionButton to="/items/new" label="물품 등록" className="xl:hidden" />
     </>
   );
 }

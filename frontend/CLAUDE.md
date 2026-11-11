@@ -27,7 +27,7 @@
 ```
 src/
 ├── app/            라우터, QueryClientProvider, 레이아웃(하단 탭 / PC 헤더)
-│   └── layout/         AppLayout, PageHeader, BackButton, BottomActionBar, FloatingActionButton
+│   └── layout/         AppLayout, DesktopHeader(PC 상단 헤더), PageHeader, BackButton, BottomActionBar, FloatingActionButton
 ├── pages/          화면 단위 (SCR-xx와 1:1)
 ├── dev/            개발 서버 전용 화면(`/dev/ui` 공통 UI 미리보기, 빌드에서 제외)
 ├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review)
@@ -44,7 +44,7 @@ src/
 │   ├── ws/         STOMP 클라이언트 싱글톤
 │   ├── ui/         Button, ButtonLink, Badge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Tabs, Thumbnail, InfiniteListFooter, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
 │   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), listParams(페이지·탭 쿼리), queryState(조회 실패 표시), validators(회원 입력, 글자 수는 코드 포인트), formErrors(오류 문구 함수·필드 오류 붙이기)
-│   └── hooks/      useInfiniteScroll, useTabParam, useRefetchErrorToast, useSubmitErrorHandler, useDebouncedValue
+│   └── hooks/      useInfiniteScroll, useTabParam, useRefetchErrorToast, useSubmitErrorHandler, useDebouncedValue, useMediaQuery
 ├── mocks/          MSW 핸들러 (Swagger 응답 형태 그대로)
 └── styles/
 ```
@@ -150,8 +150,9 @@ export const RENTAL_STATUS = {
 - queryKey: 피드 `['items', 'feed', {regionId, categoryId}]`(`itemKeys.feedList`, 커서 방식 `useInfiniteQuery`), 검색 `['items', 'search', {regionId, ...조건}]`(`itemKeys.searchList`, page 방식), 상세 `['items', itemId]`, 카테고리 `['categories']`(`staleTime` 10분). 카테고리·동네가 바뀌면 키가 달라져 처음 페이지부터 다시 받는다. 마지막 페이지(`hasNext` false)에서는 `getNextCursorParam`(`shared/lib/listParams.js`)이 undefined를 돌려 더 부르지 않는다.
 - **홈 카테고리 칩은 URL `?category=`**(`readCategoryParam`), 검색 조건(`q`·`category`·`sort`·`minPrice`·`maxPrice`·`startDate`·`endDate`·`availableOnly`)은 전부 URL 쿼리에 둔다(`features/item/searchParams.js`: 읽을 때마다 걸러 틀린 값은 없는 것으로, 기본값은 주소에 넣지 않음). 없는 카테고리(`?category=9999`)는 카테고리 목록을 받은 뒤 "전체"로 본다(`useCategoryFilter`, 목록을 받는 동안은 요청하지 않음). 바꿀 때는 replace. 같은 값이 queryKey가 된다. 키워드는 제출(엔터·검색 버튼)할 때만 반영하고, 키워드·카테고리·가격·기간·대여 가능만 중 하나도 없으면 조회하지 않는다(정렬만으로는 조회하지 않음).
 - 검색 필터(정렬·일 대여료·대여 희망 기간·대여 가능한 물품만)는 "필터" 버튼 → BottomSheet 하나(`SearchFilterSheet`)에 모으고, 카테고리는 칩. 가격 한도는 `features/item/constants.js` `ITEM_PRICE_PER_DAY`(policies `item.price-per-day`), 기간은 기존 `Calendar`(범위 선택, 최대 `RENTAL_PERIOD.MAX_DAYS`)에 `buildFilterDaysInRange`(넘겨 볼 수 있는 달 전체, 오늘부터 선택 가능)를 넘긴다.
-- 카드 표시(`itemDisplay.js`): 일 대여료 0원 → "무료"(policies `item.price-per-day`: 0원 등록 허용), 보증금 0원 → 보증금 줄을 그리지 않음, "대여 중" 배지(`isRenting`)는 카드에만(`Badge tone="green"`). 관심·채팅 수, 신뢰 점수·거래 횟수, 지도, "이런 물품은 어때요?", 알림 아이콘은 2·3순위라 그리지 않는다.
-- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 카카오맵(보기 전용, 저장된 위경도에 마커) + 주소 텍스트, 지도를 못 불러오거나 좌표가 없으면 주소 텍스트만(REQ-030). 내 물품(`isOwner`)이면 예약하기 대신 수정·삭제 버튼. 없는·삭제된 물품과 잘못된 id는 ErrorState + 홈(`features/item/itemId.js` `parseItemId`: 양의 안전한 정수가 아니면 요청하지 않음). 이미지는 스와이프, 키보드 화살표, 이전·다음 버튼(터치 기기에서는 숨김)으로 넘긴다.
+- 카드 표시(`itemDisplay.js`): 일 대여료 0원 → "무료"(policies `item.price-per-day`: 0원 등록 허용), 보증금 0원 → 보증금 줄·태그를 그리지 않음, "대여 중" 배지(`isRenting`)는 카드에만(`Badge tone="green"`). 신뢰 점수·거래 횟수, 지도, "이런 물품은 어때요?", 알림 아이콘(홈 헤더)은 2·3순위라 그리지 않는다.
+- 홈은 사진 그리드(`ItemListView layout="grid"`: 모바일 2열, xl 4열, 카드 테두리·구분선 없음), 검색은 한 줄 목록(`layout` 기본 `list`). 그리드 카드는 정사각형 사진 → 제목 → 가격 → "동네 · 경과 시간" → 보증금 회색 태그(`Badge tone="gray"`) + 관심·채팅 수(표시만, 채팅 0은 숨김). 사진 위 하트는 관심 등록(REQ-022, 2순위) 전까지 그리지 않는다.
+- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 카카오맵(보기 전용, 저장된 위경도에 마커) + 주소 텍스트, 지도를 못 불러오거나 좌표가 없으면 주소 텍스트만(REQ-030). 내 물품(`isOwner`)이면 예약하기 대신 수정·삭제 버튼. 버튼 줄은 하트 · 채팅하기(outline) · 예약하기(primary, 더 넓게) — 관심(REQ-022)·채팅(REQ-026)은 2순위라 하트·채팅하기는 누르면 "준비 중인 기능이에요" 토스트만 띄운다. 배치는 모바일: 사진 → 제목·가격·보증금 → 판매자 카드 → 설명 → 캘린더 → 거래 장소 + 하단 바(버튼 줄만, 가격은 본문에), PC(xl): 왼쪽 사진(정사각형) · 오른쪽 제목·가격·보증금·판매자 카드·버튼 줄, 그 아래 설명 → 캘린더 | 거래 장소, 하단 바 없음. 없는·삭제된 물품과 잘못된 id는 ErrorState + 홈(`features/item/itemId.js` `parseItemId`: 양의 안전한 정수가 아니면 요청하지 않음). 이미지는 스와이프, 키보드 화살표, 이전·다음 버튼(터치 기기에서는 숨김)으로 넘긴다.
 - 로그인·로그아웃은 `queryClient.clear()`로 이전 사용자의 `['items', id]`(isOwner)를 지운다. 단, 로그아웃은 홈으로 먼저 이동한 뒤 AT를 지우므로 홈이 내 정보를 다시 부르면 서버가 이미 세션을 끝낸 경우 401 → 로그인 화면으로 가 버린다. 그래서 홈·검색은 `useMe({ enabled: 로그인 여부, refetchOnMount: refetchIfInvalidated })`로 이미 받은 내 정보를 **무효화됐을 때만** 다시 받는다(대표 동네를 바꾸면 무효화되고, `/regions`에는 구독자가 없어 홈에 들어올 때 받는다. 받는 동안은 이전 동네 대신 로딩). 로그아웃 경로는 무효화를 거치지 않는다. 로그아웃 직후에는 이전 내 정보가 남아 있어도 `resolveFeedRegion`이 로그인 여부(AT)가 false면 보지 않는다.
 - 오류 문구는 `features/item/errorMessages.js` 한 곳(code → 문구).
 
@@ -164,7 +165,7 @@ export const RENTAL_STATUS = {
 
 ## UI 규칙
 - 모바일 우선(360px~). 데스크톱은 중앙 정렬 최대 폭 컨테이너.
-- 사용감은 **기존 동네 중고거래 앱과 최대한 비슷하게**: 카드형 피드, 하단 탭, 상세 하단 고정 바(관심 · 가격/보증금 · 채팅하기 · 예약하기), 채팅 상단 물품 요약, 우측 하단 "+ 물품 등록" 버튼. (특정 서비스 로고·브랜드 요소를 복제하지 않는다)
+- 사용감은 **기존 동네 중고거래 앱과 최대한 비슷하게**: 카드형 피드, 하단 탭, 상세 하단 고정 바(관심 · 채팅하기 · 예약하기, 모바일만), 채팅 상단 물품 요약, 우측 하단 "+ 물품 등록" 버튼. (특정 서비스 로고·브랜드 요소를 복제하지 않는다)
 - 가격: `12,000원/일`, 보증금 `보증금 50,000원`. 경과 시간: `3분 전`, `2일 전` (bumpedAt 기준).
 - 이미지: 목록은 thumbnailUrl + `loading="lazy"`. 등록·수정·인계·반납은 `ImageUploader`(장수·용량·형식은 `ITEM_IMAGES`·`INSPECTION_IMAGES`로 넘김). 순서 변경은 썸네일 아래 줄의 앞으로·대표로·뒤로 버튼(첫 장 = 대표, 사진 위에는 삭제만). 드래그는 넣지 않는다(모바일 브라우저가 HTML5 drag&drop을 지원하지 않음). 필요해지면 해당 화면 브랜치에서 PC 전용으로 검토.
 - 캘린더: AVAILABLE/BOOKED/UNAVAILABLE 3색 구분, 범위 선택, 1~30일 제한을 UI에서도 안내(`Calendar`, 기간은 `RENTAL_PERIOD`·라벨은 `RENTAL_DAY_STATUS`로 넘김).
@@ -173,12 +174,13 @@ export const RENTAL_STATUS = {
 - 본인 물품 상세에서는 예약하기 대신 수정·관리 버튼.
 - 물품 가격(itemPrice)은 등록·수정 화면에서만 입력, 상세에 표시하지 않는다. 등록 시 권장 보증금 범위를 보증금 입력란 아래 안내.
 - 접근성: 버튼에 텍스트 또는 aria-label, 터치 영역 44px 이상.
-- 디자인 기준은 `docs/design/`(정확한 값은 `mockups/*.html` 인라인 스타일, PNG는 전체 모양 참고). 시안과 명세가 다르면 명세가 우선이고 사용자에게 확인한다.
+- 디자인 기준은 `docs/design/`(정확한 값은 `mockups/*.html` 인라인 스타일, PNG는 전체 모양 참고). 단, SCR-03 홈·SCR-05 상세와 PC 상단 헤더는 저장소 밖 Figma 시안을 따랐다(`chore/fe-design-refactor`). 지금 모양과 시안 값 차이는 `design-system.md` §5·§6. 시안과 명세가 다르면 명세가 우선이고 사용자에게 확인한다.
 - 지금 코드가 쓰는 토큰·공통 컴포넌트·레이아웃 패턴과 정리 대상 목록은 `docs/design/design-system.md`. 새 화면은 그 문서의 패턴을 먼저 찾아 쓴다.
 - 색·글자 크기는 `styles/index.css`의 `@theme` 토큰만 쓴다(색: `primary`·`primary-soft`·`accent`·`accent-strong`·`ink`·`ink-muted`·`surface`·`line`·`divider`·`danger` 등, 글자: `text-title`·`heading`·`body`·`price`·`caption`. 토큰 밖 크기는 다음 예외만 허용: `text-xs` 12px(배지·보조 글씨), `text-sm` 14px(작은 버튼 `sm`·토스트·캘린더 날짜와 월 표시), `text-lg` 18px(헤더 제목), `text-[11px]`(하단 탭 라벨). 그 밖의 직접 값(`text-[15px]` 등)은 쓰지 않는다 — `/dev` 미리보기 예외). Tailwind 기본 팔레트(gray·red 등)를 직접 쓰지 않는다. 모서리는 입력 8px(`rounded-lg`), 이미지 썸네일 10px(`rounded-[10px]`), 카드·버튼 12px(`rounded-xl`), 칩·배지 full.
 - Button variant는 시안 5가지에 맞춘다: `primary`(채움) · `outline`(주 색상 외곽선) · `secondary`(회색 면) · `danger`(위험 **외곽선**) · 비활성(`disabled`). 크기 기본 `md` 48px, 좁은 곳은 `sm` 44px.
 - 토스트: `import { toast } from '../shared/ui'` → `toast.show({ message, tone })`(tone `default`·`danger`). `<Toaster />`는 App에 한 곳만 있다. 모달 안의 오류는 토스트 대신 모달 안에 표시(모달이 top layer라 토스트가 가려짐).
-- 하단 고정 바가 있는 화면은 라우트에 `handle: { hideTabBar: true }`를 달면 AppLayout이 하단 탭을 숨긴다. 바는 `BottomActionBar`(본문이 가려지지 않게 자리도 확보).
+- 하단 고정 바가 있는 화면은 라우트에 `handle: { hideTabBar: true }`를 달면 AppLayout이 하단 탭을 숨긴다. 바는 `BottomActionBar`(본문이 가려지지 않게 자리도 확보). PC에서 바를 숨길 때는 `barClassName="xl:hidden"`(다른 요소로 감싸면 sticky가 풀린다).
+- PC(xl) 상단 헤더는 `DesktopHeader`: 로고 → 검색 상자(`/search` 링크) → 동네 ▾(`useFeedRegion`, `/regions`) → 알림·채팅·나의 대여 → "+ 물품 등록". 동네 때문에 내 정보를 부르므로 `useMediaQuery(XL_MEDIA_QUERY)`로 PC에서만 그린다. 홈의 모바일 헤더와 FAB는 xl에서 숨긴다.
 - 날짜: 대여 기간(`startDate`·`endDate`, 캘린더)은 `"YYYY-MM-DD"` 문자열로만 다루고 `shared/lib/date.js`로 계산한다. `new Date('YYYY-MM-DD')`를 쓰지 않는다(UTC 자정이라 시간대에 따라 하루 밀림). 오늘 날짜는 `todayInSeoul()`. 서버 일시(오프셋 없음)는 `parseServerDateTime`이 서울 시각으로 해석.
 - 정책 수치(장수·용량·기간)는 shared/ui에 기본값으로 두지 않는다. `features/*/constants.js`에 policies.md 키 주석과 함께 두고 props로 넘긴다.
 

@@ -2,34 +2,38 @@ import { useKakaoMap } from '../../../shared/hooks/useKakaoMap';
 import { formatElapsed } from '../../../shared/lib/format';
 import { Skeleton } from '../../../shared/ui';
 import { ITEM_CONDITION } from '../constants';
+import { getDepositText, getPriceParts } from '../itemDisplay';
 import KakaoPlaceMap from './KakaoPlaceMap';
 
 function MemberAvatar({ url }) {
   if (url) {
     return (
-      <img src={url} alt="" className="size-10 shrink-0 rounded-full bg-placeholder object-cover" />
+      <img src={url} alt="" className="size-11 shrink-0 rounded-full bg-placeholder object-cover" />
     );
   }
-  return <div aria-hidden="true" className="size-10 shrink-0 rounded-full bg-primary-soft" />;
+  return <div aria-hidden="true" className="size-11 shrink-0 rounded-full bg-primary-soft" />;
 }
 
-/** 제공자 줄. 거래 횟수·신뢰 점수는 1순위 응답에 없어 그리지 않는다(신뢰 점수는 REQ-054, 3순위) */
-export function ItemOwnerRow({ owner }) {
+/** 판매자 카드(테두리 상자, 닉네임 + 동네). 거래 횟수·신뢰 점수는 1순위 응답에 없어 그리지 않는다(신뢰 점수는 REQ-054, 3순위) */
+export function ItemOwnerCard({ owner }) {
   return (
-    <section aria-label="제공자" className="flex items-center gap-3 border-b border-divider py-4">
+    <section
+      aria-label="제공자"
+      className="flex items-center gap-3 rounded-xl border border-line p-4"
+    >
       <MemberAvatar url={owner.profileImageUrl} />
-      <div className="flex min-w-0 flex-col">
+      <div className="flex min-w-0 items-baseline gap-2">
         <span className="truncate font-semibold">{owner.nickname}</span>
         {owner.regionName && (
-          <span className="truncate text-caption text-ink-muted">{owner.regionName}</span>
+          <span className="shrink-0 text-xs text-ink-subtle">{owner.regionName}</span>
         )}
       </div>
     </section>
   );
 }
 
-/** 제목·"카테고리 · 상태 · 경과 시간"·설명(줄바꿈 유지) */
-export function ItemSummary({ item }) {
+/** 제목·"카테고리 · 상태 · 경과 시간"·일 대여료·보증금 */
+export function ItemHeading({ item }) {
   const meta = [
     item.categoryName,
     ITEM_CONDITION[item.condition]?.label,
@@ -37,11 +41,30 @@ export function ItemSummary({ item }) {
   ]
     .filter(Boolean)
     .join(' · ');
+  const price = getPriceParts(item.pricePerDay);
   return (
-    <section className="flex flex-col gap-1 pt-5">
-      <h1 className="text-title">{item.name}</h1>
-      <p className="text-caption text-ink-muted">{meta}</p>
-      <p className="mt-3 text-body break-words whitespace-pre-wrap">{item.description}</p>
+    <section className="flex flex-col">
+      <h1 className="text-title break-words">{item.name}</h1>
+      <p className="mt-1 text-caption text-ink-subtle">{meta}</p>
+      <p className="mt-4 text-title tabular-nums">
+        {price.amount}
+        {price.unit && (
+          <span className="ml-1 text-caption font-medium text-ink-muted">{price.unit}</span>
+        )}
+      </p>
+      <p className="mt-1.5 text-caption font-semibold text-accent-strong tabular-nums">
+        {getDepositText(item.deposit) ?? '보증금 없음'}
+      </p>
+    </section>
+  );
+}
+
+/** 물품 설명(줄바꿈 유지) */
+export function ItemDescription({ description }) {
+  return (
+    <section className="flex flex-col gap-3">
+      <h2 className="text-price">물품 설명</h2>
+      <p className="text-body break-words whitespace-pre-wrap text-ink-muted">{description}</p>
     </section>
   );
 }
@@ -85,9 +108,9 @@ export function ItemTradePlace({ address, latitude, longitude }) {
         ) : (
           <Skeleton className="h-48 rounded-xl" />
         ))}
-      <div className="flex items-center gap-3 rounded-xl bg-primary-soft px-4 py-5">
+      <div className="flex items-center gap-3 rounded-xl border border-line px-4 py-4">
         <PinIcon />
-        <span className="text-body break-words">{address}</span>
+        <span className="text-body font-medium break-words">{address}</span>
       </div>
     </section>
   );
