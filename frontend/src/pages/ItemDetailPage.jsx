@@ -123,7 +123,7 @@ function OwnerActions({ item }) {
   );
 }
 
-/** 관심(하트) · 채팅하기(외곽선) · 예약하기(채움, 더 넓게). 내 물품이면 수정·삭제. PC는 오른쪽 열, 모바일은 하단 바 */
+/** 하단 바 버튼 줄: 관심(하트) · 채팅하기(외곽선) · 예약하기(채움, 더 넓게). 내 물품이면 수정·삭제 */
 function DetailActions({ item }) {
   if (item.isOwner) {
     return <OwnerActions item={item} />;
@@ -165,7 +165,7 @@ function NotFound() {
 /**
  * SCR-05 물품 상세(REQ-011). 토큰을 보내 isOwner가 로그인 사용자 기준이다.
  * 모바일: 사진 → 제목·가격·보증금 → 판매자 → 설명 → 캘린더 → 거래 장소 + 하단 바.
- * PC(xl): 왼쪽 사진 · 오른쪽 제목·가격·보증금·판매자·버튼, 그 아래 설명 → 캘린더 | 거래 장소(Figma 시안).
+ * PC(xl): 왼쪽 사진 · 오른쪽 제목·가격·보증금·판매자, 그 아래 설명 → 캘린더 | 거래 장소 + 하단 바(Figma 시안).
  */
 export default function ItemDetailPage() {
   const { id } = useParams();
@@ -198,12 +198,9 @@ export default function ItemDetailPage() {
         <div className="flex flex-col gap-6 pt-6 xl:pt-2">
           <ItemHeading item={item} />
           <ItemOwnerCard owner={item.owner} />
-          <div className="hidden xl:block">
-            <DetailActions item={item} />
-          </div>
         </div>
       </div>
-      <div className="flex flex-col gap-7 pt-6 pb-8 xl:mt-10 xl:border-t xl:border-line xl:pt-8 xl:pb-12">
+      <div className="flex flex-col gap-7 pt-6 pb-8 xl:mt-10 xl:border-t xl:border-line xl:pt-8">
         <ItemDescription description={item.description} />
         <div className="flex flex-col gap-7 border-t border-line pt-7 xl:grid xl:grid-cols-2 xl:items-start xl:gap-12 xl:border-t-0 xl:pt-0">
           <ItemCalendar itemId={item.itemId} />
@@ -216,8 +213,8 @@ export default function ItemDetailPage() {
           </div>
         </div>
       </div>
-      {/* 모바일 하단 고정 바. PC는 오른쪽 열에 같은 버튼이 있다 */}
-      <BottomActionBar barClassName="xl:hidden">
+      {/* 하단 고정 바(모바일·PC 같음, 확정 캡처) */}
+      <BottomActionBar>
         <DetailActions item={item} />
       </BottomActionBar>
     </>

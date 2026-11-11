@@ -135,7 +135,7 @@
 | 하단 탭 | 높이 64, `border-t border-line`, 5칸(홈·검색·채팅·알림·나의 대여), 라벨 11px, 선택 시 아이콘 채움 + `font-semibold text-ink` | 시안(`Main.html` 64)과 같음 |
 | `PageHeader` | sticky, 높이 56, `BackButton` + 제목 `text-lg font-bold` + 오른쪽 `action` | 시안 헤더(56, 18/700)와 같음 |
 | `BackButton` | 44 원형 아이콘 버튼. 앱 안 기록이 없으면 홈으로 | 상세는 이미지 위에 `bg-white/90`로 띄운다 |
-| `BottomActionBar` | sticky 하단, `border-t border-line`, `px-4 pt-3 pb-4` + safe-area. `barClassName`은 바 자체에(예: 상세 `xl:hidden`) | `hideTabBar` 화면 전용 |
+| `BottomActionBar` | sticky 하단, `border-t border-line`, `px-4 pt-3 pb-4` + safe-area | `hideTabBar` 화면 전용 |
 | `FloatingActionButton` | 오른쪽 아래 알약 버튼(높이 52, `primary`, 그림자), 하단 탭 위 | 홈 "+ 물품 등록"(모바일만, PC는 헤더 버튼) |
 | 홈 헤더 | `PageHeader` 대신 직접 만든 sticky 헤더(동네 이름 `text-title` ▾ + 검색 아이콘). 모바일만(xl은 `DesktopHeader`) | 시안도 별도 모양 → 7.2 #20 유지 결정 |
 | 인증 화면 | `AuthPageLayout`(AppLayout 밖, `max-w-md`, `PageHeader` 포함) | SCR-01 |
@@ -177,7 +177,7 @@
 | 02 | 동네 (`RegionPage`) | `PageHeader` | 하단 탭 | 목록·검색, `EmptyState`, 안내 상자 |
 | 03 | 홈 (`HomePage`) | 직접 만든 홈 헤더(모바일), `DesktopHeader`(PC) | 하단 탭 + FAB(모바일) | `CategoryChips`(Chip), `ItemListView layout="grid"`(모바일 2열 `gap-x-3 gap-y-6`, xl 4열 `gap-x-4 gap-y-8`), 그리드 `ItemCard`(정사각형 사진 → 제목 `text-body` 2줄 → 가격 → 동네·시간 `text-xs`(xl `text-caption`) `ink-subtle` → 보증금 `Badge gray` + 관심·채팅 수), 그리드 Skeleton |
 | 04 | 검색 (`SearchPage`) | `PageHeader` | 하단 탭 | 검색창, Chip, `SearchFilterSheet`(BottomSheet), `EmptyState` |
-| 05 | 물품 상세 (`ItemDetailPage`) | 이미지 위 `BackButton`(모바일) | `BottomActionBar`(하트 · 채팅하기 · 예약하기, 모바일만) | 캐러셀(모바일 꽉 참, xl 정사각형 `rounded-xl`), `ItemHeading`(제목 · 메타 · 가격 `text-title` · 보증금), `ItemOwnerCard`(테두리 상자), `ItemDescription`, `Calendar`, 거래 장소(흰 바탕 + 테두리 상자), `ConfirmModal`(삭제). xl: `grid-cols-[480px_1fr] gap-12`, 오른쪽 열에 버튼 줄, 아래 설명 → 캘린더 \| 거래 장소 2열 |
+| 05 | 물품 상세 (`ItemDetailPage`) | 이미지 위 `BackButton`(모바일) | `BottomActionBar`(하트 · 채팅하기 · 예약하기, 모바일·PC) | 캐러셀(모바일 꽉 참, xl 정사각형 `rounded-xl`), `ItemHeading`(제목 · 메타 · 가격 `text-title` · 보증금), `ItemOwnerCard`(테두리 상자), `ItemDescription`, `Calendar`, 거래 장소(흰 바탕 + 테두리 상자), `ConfirmModal`(삭제). xl: `grid-cols-[480px_1fr] gap-12`, 아래 설명 → 캘린더 \| 거래 장소 2열 |
 | 06 | 물품 등록·수정 (`ItemFormPage`) | `PageHeader` | `BottomActionBar` | `ItemForm`(TextField·ImageUploader·Calendar·지도) |
 | 07 | 예약·결제 (`RentalReservePage`, `Payment*Page`) | `PageHeader` | `BottomActionBar` | `Calendar`, `AmountSummary`, 안내 상자, `ErrorState` |
 | 08 | 대여 상세 (`RentalDetailPage`) | `PageHeader` + 상태 `Badge` | `RentalActionBar`(BottomActionBar) | `RentalStepBar`, 시트(인계·반납·이상), `InspectionRecords` |
@@ -191,13 +191,12 @@ SCR-09~11·13~16은 아직 없다(채팅·알림 탭은 `ComingSoonPage`).
 | 항목 | 시안 | 코드 | 판단 |
 | --- | --- | --- | --- |
 | 버튼 높이 | 48 (`RentalDetail` 하단 바만 50) | md 48 / sm 44 | 디자인 시스템 48 유지 |
-| 칩 | 34, 13px, 선택 ink 채움 | `h-8.5` 34, caption | 같음 |
+| 칩 | 34, 13px, 선택 ink 채움(Figma는 primary 채움) | `h-8.5` 34, caption, 선택 `primary` 채움 | Figma를 따름(`chore/fe-design-refactor`, 모든 Chip) |
 | 배지 | 12/600, `4px 10px` | `text-xs font-semibold px-2.5 py-1` | 같음 |
 | 하단 탭 | 64, 11px | 64, 11px | 같음 |
 | 화면 헤더 | 56, 제목 18/700 | 56, `text-lg font-bold` | 같음 |
 | 물품 카드(검색 목록) | 사진 104, 글 사이 3px, 단위 `/일` 13/500 muted | 사진 104(`size-26`), `gap-0.5`(2px), 단위 `text-caption font-medium` muted | 단위 같음(7.3 #22 해결), 간격 1px 차이 유지 |
 | 홈 그리드 카드 (Figma) | 사진 모서리 16, 가격 18/700, 단위 12/400, 보조 11px(모바일)·13px(PC), 보증금 태그 모서리 4·`#F1F0EC`, 사진 위 하트 | 모서리 10(썸네일 규칙), `text-price` 16, 단위 `text-caption`, `text-xs`·`text-caption`, `Badge gray`(full·`surface`), 하트 없음 | 가장 가까운 토큰. 하트는 REQ-022 때 |
-| 홈 칩 (Figma) | 선택 칩 `primary` 채움 | `Chip` 선택 `ink` 채움 | 검색과 같이 쓰는 공통 Chip이라 유지 — 바꾸려면 사용자 확인 |
 | 상세 (Figma) | 제목 22·20/600, 가격 28·26/700, 단위 15/400, 사진 모서리 16, 섹션 제목 17/600, 버튼 44·모서리 8·14px, 판매자 프로필 `#E5EFEA`, 보증금 회색, 설명 14px | 제목·가격 `text-title`(22/700), 단위 `text-caption`, `rounded-xl`, `text-price`(16/700), `Button md`(48·12·15px), `primary-soft`, 보증금 `accent-strong`(§2.1 의미 유지), 설명 `text-body` `ink-muted` | 가장 가까운 토큰 |
 | PC 헤더 (Figma) | 로고 아이콘 36, 검색 상자 `#F1F0EC`, 메뉴 14px, 알림 빨간 점 | 텍스트 로고, `surface`, `text-sm`, 점 없음(알림 2순위) | 로고 이미지 없음 |
 | 상세 캐러셀 번호 | 12px, `3px 9px`, ink 72%(Figma 11px, `4px 10px`, ink 80%) | `text-xs font-medium`, `px-2.5 py-1`, `ink/60` | 크기 맞춤(7.3 #24 해결), 색은 7.1 #8 예외 |
