@@ -106,7 +106,7 @@ function DesktopHeaderContent() {
         {/* 검색 화면으로 가는 링크(입력은 검색 화면에서). 모양만 시안의 둥근 검색 상자 */}
         <Link
           to="/search"
-          className={`flex h-10 max-w-140 flex-1 items-center gap-2 rounded-full bg-surface px-4 text-sm text-ink-subtle hover:text-ink-muted ${FOCUS}`}
+          className={`flex h-11 max-w-140 flex-1 items-center gap-2 rounded-full bg-surface px-4 text-sm text-ink-muted hover:text-ink ${FOCUS}`}
         >
           <SearchIcon />
           검색
@@ -131,7 +131,7 @@ function DesktopHeaderContent() {
           </nav>
           <Link
             to="/items/new"
-            className={`flex h-10 shrink-0 items-center gap-1 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover ${FOCUS}`}
+            className={`flex h-11 shrink-0 items-center gap-1 rounded-full bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-hover ${FOCUS}`}
           >
             <PlusIcon />
             물품 등록

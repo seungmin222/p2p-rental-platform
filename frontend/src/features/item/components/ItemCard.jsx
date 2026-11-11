@@ -55,7 +55,7 @@ function Counts({ wishCount, chatCount }) {
   const wish = wishCount ?? 0;
   const chat = chatCount ?? 0;
   return (
-    <span className="flex shrink-0 items-center gap-2 text-xs text-ink-subtle tabular-nums">
+    <span className="flex shrink-0 items-center gap-2 text-xs text-ink-muted tabular-nums">
       <span className="flex items-center gap-0.5" aria-label={`관심 ${wish}`}>
         <HeartIcon />
         <span aria-hidden="true">{wish}</span>
@@ -93,7 +93,7 @@ function GridItemCard({ item }) {
       <span className="mt-1">
         <PriceLine pricePerDay={item.pricePerDay} />
       </span>
-      <span className="mt-1 truncate text-xs text-ink-subtle xl:text-caption">
+      <span className="mt-1 truncate text-xs text-ink-muted xl:text-caption">
         {getCardMeta(item.regionName, item.bumpedAt)}
       </span>
       <div className="mt-1.5 flex items-center justify-between gap-2">

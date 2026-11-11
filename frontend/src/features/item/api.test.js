@@ -144,7 +144,7 @@ describe('toItemCard', () => {
     chatCount: 2,
   };
 
-  it('카드가 쓰는 필드만 옮긴다 — 관심·채팅 수는 2순위라 옮기지 않는다', () => {
+  it('카드가 쓰는 필드만 옮긴다 — 관심·채팅 수는 홈 카드 표시용으로 옮긴다', () => {
     expect(toItemCard(summary)).toEqual({
       itemId: 201,
       name: '원터치 텐트',
@@ -154,6 +154,15 @@ describe('toItemCard', () => {
       pricePerDay: 12000,
       deposit: 60000,
       isRenting: true,
+      wishCount: 3,
+      chatCount: 2,
+    });
+  });
+
+  it('관심·채팅 수가 없으면 0', () => {
+    expect(toItemCard({ ...summary, wishCount: undefined, chatCount: undefined })).toMatchObject({
+      wishCount: 0,
+      chatCount: 0,
     });
   });
 

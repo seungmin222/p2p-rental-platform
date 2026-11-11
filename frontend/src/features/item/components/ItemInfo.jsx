@@ -25,7 +25,7 @@ export function ItemOwnerCard({ owner }) {
       <div className="flex min-w-0 items-baseline gap-2">
         <span className="truncate font-semibold">{owner.nickname}</span>
         {owner.regionName && (
-          <span className="shrink-0 text-xs text-ink-subtle">{owner.regionName}</span>
+          <span className="shrink-0 text-xs text-ink-muted">{owner.regionName}</span>
         )}
       </div>
     </section>
@@ -45,7 +45,7 @@ export function ItemHeading({ item }) {
   return (
     <section className="flex flex-col">
       <h1 className="text-title break-words">{item.name}</h1>
-      <p className="mt-1 text-caption text-ink-subtle">{meta}</p>
+      <p className="mt-1 text-caption text-ink-muted">{meta}</p>
       <p className="mt-4 text-title tabular-nums">
         {price.amount}
         {price.unit && (

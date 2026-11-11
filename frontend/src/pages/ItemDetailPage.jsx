@@ -134,7 +134,7 @@ function DetailActions({ item }) {
         type="button"
         aria-label="관심 등록(준비 중)"
         onClick={showComingSoon}
-        className="mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary"
+        className="mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <HeartIcon />
       </button>
