@@ -1,5 +1,12 @@
 # chore/fe-design-refactor 결정 기록
 
+## 요약
+
+- API 변경 없음. 홈(SCR-03)·상세(SCR-05)·PC 헤더를 Figma 시안에 맞춘 프론트 정리: 홈 사진 그리드(`ItemListView`/`ItemCard` `layout="grid"`), 상세 2열 + 하단 고정 바(하트·채팅하기는 "준비 중" 토스트), 선택 칩 `primary` 채움(공통 `Chip`).
+- 새 파일: `frontend/src/app/layout/DesktopHeader.jsx`(PC 전용 헤더), `frontend/src/app/layout/AppLogo.jsx`, `frontend/src/shared/hooks/useMediaQuery.js`.
+- `toItemCard`가 `wishCount`·`chatCount`를 옮긴다(홈 카드 표시만). 작은 보조 글씨는 `ink-muted`, `ink-subtle`은 placeholder·비활성·요일만.
+- 남은 일: 홈 카드 하트·상세 하트·채팅하기 연결은 REQ-022·REQ-026 브랜치, PC 헤더 알림 빨간 점은 알림(2순위) 때. 시안과 다른 값·규칙 밖 예외는 `docs/design/design-system.md` §6·§7.1.
+
 ## 결정
 
 - **범위는 SCR-03 홈·SCR-05 상세와 PC 상단 헤더를 저장소 밖 Figma 시안(Figma Make 소스 + 확정 캡처 PC 1280·모바일 390)에 맞추는 것으로 정했다.** 기능·문구·금액 표기·API 필드는 그대로다. 시안 소스는 값만 참고하고 저장소에 넣지 않았다. (사용자 승인)
