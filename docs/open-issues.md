@@ -57,6 +57,7 @@
 | 49 | ✅ | 알림 | erd.md는 `notifications.event_id` 단일 유니크인데, REQ-031·#48은 `OVERDUE:{rentalId}`·`AI_COMPARE_DONE:{rentalId}`를 양측에 같은 키로 보낸다. 단일 유니크면 두 번째 회원의 알림이 저장되지 않는다 | (사용자 결정) 유니크를 `(member_id, event_id)`로 바꾼다(`uk_notifications_member_id_event_id`). event_id 형식(`{TYPE}:{targetId}[:{추가키}]`)과 양측 같은 키는 그대로. 반영: erd.md, notification.md |
 | 50 | ⬜ | 알림 | 알림 표시 문구(`notifications.content`)가 명세에 없다 | (임시, 기획 확인 전) 종류마다 고정 문구 하나(`notification/service/NotificationContentTemplate`). 물품명 등 인자는 넣지 않는다. 기획이 문구를 정하면 그 파일만 바꾸고, 인자가 필요하면 발행 포트에 args를 더한다. 이미 저장된 알림의 문구는 바뀌지 않는다 |
 | 51 | ✅ | 문의 | REQ-063 문의 `type`·`status` 값, 분쟁 접수 조건, 내용 글자 수·목록 페이지 크기가 명세에 없다 | (2026-11-12 사용자 결정) `InquiryType` = `GENERAL`·`DISPUTE`, `InquiryStatus` = `RECEIVED`·`IN_PROGRESS`·`RESOLVED`(state-machines §5). 분쟁은 rentalId 필수, 그 대여의 대여자·제공자만, PENDING_PAYMENT는 409 `INQUIRY_DISPUTE_NOT_ALLOWED`, 같은 회원·대여에 RESOLVED가 아닌 분쟁이 있으면 409 `INQUIRY_DISPUTE_ALREADY_OPEN`(상대방은 따로 접수 가능). `inquiry.content-max` 1,000자(공백만 불가), `inquiry.page` 20 고정. 정산 목록에 `heldTotal` 추가. 알림은 보내지 않는다(관리자 처리 결과 알림은 057) |
+| 52 | ✅ | AI·카테고리 | REQ-067은 "없으면 `ETC` + category_suggestions에 후보 기록"인데, erd.md의 category_suggestions는 item_id를 가지며 AI 추천은 물품 등록 전이라 item_id가 없다. 기록 시점이 명세에 없다 | (2026-11-12 사용자 결정) 추천 시점(`POST /api/items/ai-category`)에 PENDING으로 기록한다. item_id는 NULL 허용, 요청 회원 `member_id`를 추가(V16). 등록 후 item과 잇지 않는다. 검토(APPROVED·REJECTED)는 REQ-057 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

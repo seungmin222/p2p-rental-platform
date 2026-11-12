@@ -1,5 +1,6 @@
 package com.team7.rental.ai.client;
 
+import java.time.Duration;
 import java.util.List;
 
 /** ANTHROPIC_API_KEY가 없을 때(로컬 기본). 호출하지 않고 실패로 끝내 결과는 FAILED, 거래 흐름은 그대로다 */
@@ -14,6 +15,11 @@ public class DisabledAiClient implements AiClient {
 	@Override
 	public String compare(List<AiImage> handoverImages, List<AiImage> returnImages) {
 		throw new AiClientException("ANTHROPIC_API_KEY가 없어 AI 비교를 하지 않는다");
+	}
+
+	@Override
+	public String recommendCategory(List<AiImage> images, List<CategoryOption> categories, Duration timeout) {
+		throw new AiClientException("ANTHROPIC_API_KEY가 없어 AI 카테고리 추천을 하지 않는다");
 	}
 
 	@Override

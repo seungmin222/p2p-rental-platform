@@ -35,6 +35,7 @@
 
 ## REQ-067 AI 물품 등록 보조 [3]
 사진 업로드 → 카테고리(**활성 카테고리 code 중에서만**, 없으면 `ETC` + category_suggestions에 후보 기록), 제목·설명 초안, 유사 물품 기준 적정 대여가·보증금 제안. 사용자가 수정 후 등록.
+- 구현 현황: 카테고리 추천만 `POST /api/items/ai-category`로 구현(사진은 저장하지 않음, 결과 `DONE`·`FAILED`·`LIMIT_EXCEEDED`). 후보 기록 시점은 open-issues #52. 제목·설명 초안과 대여가·보증금 제안(`/api/items/ai-draft`)은 미구현.
 
 ## REQ-068 AI 금지 품목·부적절 콘텐츠 판별 [3]
 등록 사진·설명 분석 → 금지 품목(`policies.md` §2)·부적절 게시물 탐지 → 관리자 검토 대상으로 분류(자동 삭제 아님).

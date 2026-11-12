@@ -19,7 +19,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * AI 응답 텍스트 → 고정 스키마(docs/domains/ai.md REQ-040) 검증. 하나라도 어긋나면 empty이고 부르는 쪽이 다시 부른다(ai.compare.max-retry).
+ * AI 응답 텍스트 → 고정 스키마(docs/domains/ai.md REQ-040) 검증. 하나라도 어긋나면 empty이고 부르는 쪽이 다시 부른다(ai.max-retry).
  * <ul>
  *   <li>키는 changed·changeTypes·confidence·description·regions 다섯 개만, 모두 있어야 한다</li>
  *   <li>changeTypes는 허용 값만, 중복 없음. changed=false면 changeTypes·regions가 비어 있고, true면 changeTypes가 하나 이상</li>
@@ -135,7 +135,8 @@ public class AiCompareParser {
 		return keys;
 	}
 
-	private static String stripCodeFence(String text) {
+	/** 카테고리 추천 파서(AiCategoryParser)도 쓴다 */
+	static String stripCodeFence(String text) {
 		if (!text.startsWith("```") || !text.endsWith("```") || text.length() < 6) {
 			return text;
 		}

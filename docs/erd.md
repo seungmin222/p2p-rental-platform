@@ -207,7 +207,7 @@ erDiagram
 
 ## 관리·기타 [3]
 
-**category_suggestions** — id, item_id, suggested_name, status, reviewed_by
+**category_suggestions** (REQ-067, 검토는 057) — id, item_id NULL FK→items, member_id FK→members, suggested_name VARCHAR(30), status(`CategorySuggestionStatus`), reviewed_by NULL FK→members, created_at, updated_at. 인덱스 `(status, id)`(검토 목록) — 생성됨(`V16`). AI 카테고리 추천이 ETC를 고르면 등록 전에 PENDING으로 기록해 item_id가 비어 있다(open-issues #52)
 **inquiries** — id, member_id FK→members, rental_id NULL FK→rentals, type(`InquiryType`), content VARCHAR(1000), status(`InquiryStatus`), created_at, updated_at. 인덱스 `(member_id, id)`(내 문의 목록), `(rental_id, status)`(열린 분쟁 검사) — 생성됨(`V15`). 분쟁(DISPUTE)은 rental_id 필수(서비스 검사)
 **appointments** (REQ-051) — id, room_id, rental_id NULL, type(HANDOVER/RETURN), scheduled_at, place, latitude, longitude
 
@@ -227,4 +227,5 @@ erDiagram
 | `pwreset:{token}` | 비밀번호 재설정 | 30분 |
 | `pwreset:rate:{email}` | 요청 제한 | 5분 |
 | `ai:usage:{yyyyMM}` | AI 호출 월 사용량 카운터 | 해당 월 말 + 1일 |
+| `ai:category:{memberId}:{yyyyMMdd}` | 회원의 하루 AI 카테고리 추천 횟수 (`ai.category.per-member-daily`) | 다음 날 끝 |
 | `shedlock:*` | ShedLock 배치 락 | lockAtMostFor |

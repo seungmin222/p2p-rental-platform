@@ -59,7 +59,8 @@
 | 3 | GET | /api/search/popular · /api/search/recent | 인기·최근 검색어 | X·O | 046 |
 | 3 | GET | /api/items/{itemId}/related | 다른 물품·비슷한 물품 | X | 047 |
 | 3 | GET | /api/search/suggest?q= | 자동완성 | X | 064 |
-| 3 | POST | /api/items/ai-draft | AI 등록 보조 | O | 067 |
+| 3 | POST | /api/items/ai-category | AI 카테고리 추천 (multipart, 사진 저장 안 함) | O | 067 |
+| 3 | POST | /api/items/ai-draft | AI 등록 보조: 제목·설명 초안, 대여가·보증금 제안 (미구현, 카테고리 추천은 위 API) | O | 067 |
 
 ## 대여
 

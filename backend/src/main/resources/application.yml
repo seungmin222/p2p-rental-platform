@@ -62,7 +62,7 @@ app:
     max-tokens: 1024
     # 검증 목표 30초 이내 (ai.md). 요청 한 번의 제한 시간
     timeout: 30s
-    # SDK 재시도(429·5xx·연결 오류, 과금 안 됨). 응답 형식 오류 재시도(ai.compare.max-retry)와 별개
+    # SDK 재시도(429·5xx·연결 오류, 과금 안 됨). 응답 형식 오류 재시도(ai.max-retry)와 별개
     sdk-max-retries: 2
   jwt:
     # 32바이트(256bit) 미만이면 기동 실패 (JwtProvider)
@@ -247,15 +247,20 @@ app:
       # item.item-price.max: 0 ~ 10,000,000원, 대여자에게 비공개 (REQ-006)
       item-price-max: 10000000
     ai:
-      # ai.monthly-limit: 월 1,000건, 재시도도 1건. 넘으면 AI 없이 진행 (REQ-040)
+      # ai.monthly-limit: 월 1,000건, 기능 공통, 재시도도 1건. 넘으면 AI 없이 진행 (REQ-040·067)
       monthly-limit: 1000
+      # ai.max-retry: 응답 형식 오류면 최대 2회 재시도 (REQ-040·067)
+      max-retry: 2
+      # ai.image-max-long-side: 보내기 전 긴 변 1024px로 축소 (REQ-040·067, 명세 외)
+      image-max-long-side: 1024
       compare:
-        # ai.compare.max-retry: 응답 형식 오류면 최대 2회 재시도 (REQ-040)
-        max-retry: 2
         # ai.compare.processing-timeout-minutes: 10분 넘게 PROCESSING이면 응답에서 FAILED (REQ-040, 명세 외)
         processing-timeout-minutes: 10
-        # ai.compare.image-max-long-side: 보내기 전 긴 변 1024px로 축소 (REQ-040, 명세 외)
-        image-max-long-side: 1024
+      category:
+        # ai.category.timeout-seconds: 요청 하나에서 AI를 기다리는 총 시간 20초, 재시도 포함 (REQ-067, 명세 외)
+        timeout-seconds: 20
+        # ai.category.per-member-daily: 회원당 하루 10회. 넘으면 LIMIT_EXCEEDED (REQ-067, 명세 외)
+        per-member-daily: 10
 
 springdoc:
   # @RestControllerAdvice의 응답(400·401·500…)을 모든 API에 붙이지 않는다. 에러 응답은 @ApiErrorCodes로만 선언

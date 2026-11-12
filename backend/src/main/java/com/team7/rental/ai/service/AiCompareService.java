@@ -32,9 +32,9 @@ import lombok.extern.slf4j.Slf4j;
  * 호출은 그 사이에 한다.
  * <ol>
  *   <li>맡기: 반납 기록이 비어 있을 때만 PROCESSING (대여 건당 1회, 같은 메시지가 두 번 와도 한 번만 부른다)</li>
- *   <li>사진 읽기 + 축소 (ai.compare.image-max-long-side)</li>
+ *   <li>사진 읽기 + 축소 (ai.image-max-long-side)</li>
  *   <li>호출마다 월 한도를 먼저 잡는다(재시도 포함). 넘으면 부르지 않고 LIMIT_EXCEEDED</li>
- *   <li>응답 형식이 틀리면 ai.compare.max-retry번까지 다시 부른다. 그래도 틀리면 FAILED. 호출 실패(키 없음·API 오류·거절)는 다시 부르지 않고 FAILED</li>
+ *   <li>응답 형식이 틀리면 ai.max-retry번까지 다시 부른다. 그래도 틀리면 FAILED. 호출 실패(키 없음·API 오류·거절)는 다시 부르지 않고 FAILED</li>
  *   <li>저장 후 DONE이면 양측에 AI_COMPARE_DONE (FAILED·LIMIT_EXCEEDED는 알리지 않는다, open-issues #48)</li>
  * </ol>
  * 어디서 실패해도 대여 상태는 건드리지 않는다. 맡은 뒤 서버가 죽으면 PROCESSING으로 남고 응답에서 일정 시간 뒤 FAILED로 보인다(open-issues #46).
@@ -82,7 +82,7 @@ public class AiCompareService {
 		List<AiImage> handoverImages = load(target.handoverImageUrls());
 		List<AiImage> returnImages = load(target.returnImageUrls());
 		String model = aiClient.model();
-		int attempts = 1 + policyProperties.ai().compare().maxRetry();
+		int attempts = 1 + policyProperties.ai().maxRetry();
 		for (int attempt = 1; attempt <= attempts; attempt++) {
 			if (!aiUsageCounter.tryAcquire()) {
 				log.info("AI monthly limit exceeded: rentalId={}", target.rentalId());
@@ -106,7 +106,7 @@ public class AiCompareService {
 	}
 
 	private List<AiImage> load(List<String> urls) {
-		int maxLongSide = policyProperties.ai().compare().imageMaxLongSide();
+		int maxLongSide = policyProperties.ai().imageMaxLongSide();
 		return urls.stream()
 			.map(url -> {
 				ScaledImage scaled = imageProcessor.downscale(fileStorage.read(fileStorage.keyOf(url)), maxLongSide);

@@ -1,5 +1,6 @@
 package com.team7.rental.support;
 
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Primary;
 
 import com.team7.rental.ai.client.AiClient;
 import com.team7.rental.ai.client.AiImage;
+import com.team7.rental.ai.client.CategoryOption;
 
 /**
  * Claude 대신 쓰는 AI 클라이언트 (REQ-040). 넣어 둔 응답을 순서대로 돌려주고, 비면 {@link #VALID}. 응답 대신 예외를 넣으면 그 예외를 던진다.
@@ -44,6 +46,13 @@ public class FakeAiClient implements AiClient {
 			throw exception;
 		}
 		return (String)next;
+	}
+
+	/** 카테고리 추천(REQ-067)은 테스트를 이번 브랜치에서 쓰지 않아 넣어 둔 응답 없이 ETC만 돌려준다 */
+	@Override
+	public String recommendCategory(List<AiImage> images, List<CategoryOption> categories, Duration timeout) {
+		return """
+			{"categoryCode": "ETC", "suggestedName": null}""";
 	}
 
 	@Override
