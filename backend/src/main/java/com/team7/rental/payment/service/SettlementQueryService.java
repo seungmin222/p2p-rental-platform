@@ -40,6 +40,7 @@ public class SettlementQueryService {
 		Map<Long, RentalSummary> rentals = rentalSummaryReader.getSummaries(rentalIds);
 		return new SettlementListResponse(
 			settlementRepository.sumPayoutAmount(memberId, SettlementStatus.SCHEDULED),
+			settlementRepository.sumPayoutAmount(memberId, SettlementStatus.HELD),
 			settlementRepository.sumPayoutAmount(memberId, SettlementStatus.PAID),
 			PageResponse.of(settlements,
 				settlement -> SettlementResponse.of(settlement, rentalOf(rentals, settlement))));

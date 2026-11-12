@@ -92,7 +92,8 @@
   - 손상 차감액은 수리비 보전이라 수수료를 떼지 않는다
 - scheduledDate = 완료(취소)일(`completed_at`/`canceled_at`의 날짜) + 영업일 2일 (주말만 제외)
 - 배치(매일): `SCHEDULED AND scheduledDate <= 오늘` → PAID (실제 송금 없음)
-- 분쟁 진행 중(문의 REQ-063 접수) → HELD
+- 분쟁 진행 중(문의 REQ-063 접수) → HELD. 정산이 생기기 전에 접수한 분쟁이면 정산을 HELD로 만든다. PAID는 그대로. 종료는 관리자 처리(REQ-057). 보증금 상태와는 독립(state-machines §3)
+- `GET /api/members/me/settlements` 합계: scheduledTotal(SCHEDULED)·heldTotal(HELD)·paidTotal(PAID)
 - `GET /api/members/me/settlements`: 지급 예정·완료 금액 합계, 정산별 수수료 내역(gross·fee·deduction·payout). 본인이 제공자인 정산만, 최신 순, `settlement.page` 고정
 - 실제 계좌 송금·출금 신청은 범위 외(보고서 명시)
 

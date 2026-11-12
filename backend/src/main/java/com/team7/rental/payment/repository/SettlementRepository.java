@@ -22,6 +22,11 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
 
 	Optional<Settlement> findByRentalId(Long rentalId);
 
+	/** 대여의 정산 id. 엔티티를 영속성 컨텍스트에 올리지 않아, 뒤이은 {@link #findByIdForUpdate}가 락 뒤의 최신 상태를 읽는다 */
+	@Query("select s.id from Settlement s where s.rentalId = :rentalId")
+	Optional<Long> findIdByRentalId(@Param("rentalId")
+	Long rentalId);
+
 	/** 지급 배치 대상 id: SCHEDULED이고 scheduledDate ≤ today. id 순 */
 	@Query("""
 		select s.id from Settlement s

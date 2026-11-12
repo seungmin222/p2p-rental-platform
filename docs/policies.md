@@ -76,6 +76,8 @@
 | `feed.page` / `search.page` / `notification.page` / `rental-history.page` / `my-items.page` / `item-rentals.page` / `payment-history.page` / `settlement.page` | 20건 (`search.page`·`notification.page`·`rental-history.page`·`my-items.page`·`item-rentals.page`·`payment-history.page`·`settlement.page`는 요청에서 size를 받지 않는 고정값) | 009, 010, 032, 019, 020, 033, 039 |
 | `review.write-deadline-days` | 거래 완료 후 7일 (completed_at + 7일 정각까지 포함) | 034, 019 |
 | `review.content.max` | 300자 | 034 |
+| `inquiry.content-max` | 1,000자 (공백만은 불가) | 063 |
+| `inquiry.page` | 20건 (요청에서 size를 받지 않는 고정값) | 063 |
 | `trust.initial` / 범위 | 50점 / 0~100, 0.5 단위 | 054 |
 | `trust.delta` | 후기 BEST +2 / GOOD +1 / BAD −2, 칭찬 1개 +0.5(후기당 최대 +1.5), 연체 1일 −3(건당 최대 −10), 노쇼 −5, 신고 확정 −10 | 054 |
 | `penalty.restriction` | 최근 30일 대여자 사유 취소 3회 또는 노쇼 2회 → 14일 예약 제한 | 062 |

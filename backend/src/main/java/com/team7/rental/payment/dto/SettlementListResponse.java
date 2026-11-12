@@ -9,6 +9,9 @@ public record SettlementListResponse(
 	@Schema(description = "지급 예정(SCHEDULED) 지급액 합계(원). 보류(HELD)는 포함하지 않는다", example = "27000")
 	long scheduledTotal,
 
+	@Schema(description = "보류(HELD, 분쟁 진행 중) 지급액 합계(원). 분쟁이 끝나면 지급 예정으로 돌아간다", example = "0")
+	long heldTotal,
+
 	@Schema(description = "지급 완료(PAID) 지급액 합계(원)", example = "60500")
 	long paidTotal,
 

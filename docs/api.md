@@ -127,5 +127,6 @@
 | --- | --- | --- | --- | --- | --- |
 | 3 | POST | /api/reports | 신고 | O | 055 |
 | 3 | POST/DELETE | /api/blocks | 차단 | O | 056 |
-| 3 | POST/GET | /api/inquiries | 문의·분쟁 | O | 063 |
+| 3 | POST | /api/inquiries | 문의·분쟁 접수 (분쟁이면 정산 보류) | O | 063 |
+| 3 | GET | /api/inquiries?page= | 내 문의 목록·처리 상태 | O | 063 |
 | 3 | GET/PATCH | /api/admin/members · /items · /reports · /disputes · /categories · /category-suggestions | 관리자 (보증금 확정 2개 API는 위 결제 섹션에서 2순위로 먼저 구현) | A | 057 |

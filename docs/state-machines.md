@@ -118,6 +118,10 @@ stateDiagram-v2
 
 `[거래 완료] → SCHEDULED → (영업일+2 배치) → PAID`, `SCHEDULED ⇄ HELD` (분쟁 접수/종료).
 
+- 분쟁(`InquiryType.DISPUTE`) 접수 시 그 대여의 정산이 SCHEDULED면 HELD. 정산이 아직 없으면 정산을 만들 때 열린(RESOLVED가 아닌) 분쟁이 있으면 처음부터 HELD. PAID는 바꾸지 않는다(open-issues #9).
+- HELD → SCHEDULED: 그 대여의 분쟁이 모두 RESOLVED가 될 때(관리자 처리, REQ-057). 지급 예정일은 그대로라 지났으면 다음 지급 배치가 지급한다.
+- 지급 배치는 SCHEDULED만 고르므로 HELD는 지급되지 않는다. 정산 HELD는 보증금 상태(§2 `HELD`)와 서로 영향을 주지 않는다.
+
 정산 생성 시점: 거래 완료(대여료+연장료+연체료+손상 차감액 기준) 또는 **취소 수수료가 발생한 취소**(수수료 금액 기준). 수수료 없는 취소는 정산을 만들지 않는다.
 
 ## 4. 결제 상태 `PaymentStatus` (구현 제안)
@@ -161,6 +165,8 @@ stateDiagram-v2
 | `CategorySuggestionStatus` | `PENDING`, `APPROVED`, `REJECTED` |
 | `AiCompareStatus` | `PROCESSING`(비교 중), `DONE`(완료), `FAILED`(실패), `LIMIT_EXCEEDED`(월 한도 초과) — AI 상태 비교 진행(`item_inspections.ai_result.status`, REQ-040). 비교 전은 값 없음(NULL). `PROCESSING`이 `ai.compare.processing-timeout-minutes`를 넘으면 응답에서 `FAILED` |
 | `AiChangeType` | `SCRATCH`, `STAIN`, `MISSING_PART`, `BROKEN`, `OTHER` — AI 비교 출력 changeTypes (ai.md REQ-040) |
+| `InquiryType` | `GENERAL`(일반 문의), `DISPUTE`(분쟁 — rentalId 필수, 접수 시 정산 보류 §3) — `inquiries.type` (REQ-063) |
+| `InquiryStatus` | `RECEIVED`(접수), `IN_PROGRESS`(처리 중), `RESOLVED`(처리 완료) — `inquiries.status`. 접수 시 RECEIVED, 이후 전이는 관리자(REQ-057) |
 | `ReturnChecklistItem` | `NO_EXTERIOR_DAMAGE`(외관 파손 없음), `ALL_PARTS_INCLUDED`(구성품 전부), `NO_CONTAMINATION`(오염 없음), `WORKS_NORMALLY`(정상 작동), `CONSUMABLES_RESTORED`(충전·소모품 원상 복구) |
 
 ### NotificationType

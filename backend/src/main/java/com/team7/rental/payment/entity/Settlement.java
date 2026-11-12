@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 제공자 정산 원장 (REQ-039). 대여당 하나이고 실제 송금은 하지 않는다. {@code [생성] → SCHEDULED → PAID}(state-machines.md §3).
- * SCHEDULED ⇄ HELD는 문의(REQ-063)를 만들 때 메서드를 더한다. 지급 배치는 SCHEDULED만 고르므로 HELD가 생겨도 지급되지 않는다.
+ * {@code SCHEDULED ⇄ HELD}는 분쟁 접수/종료(REQ-063). 지급 배치는 SCHEDULED만 고르므로 HELD는 지급되지 않는다.
  */
 @Getter
 @Entity
@@ -94,5 +94,34 @@ public class Settlement extends BaseTimeEntity {
 		}
 		this.status = SettlementStatus.PAID;
 		this.paidAt = now;
+	}
+
+	/**
+	 * SCHEDULED → HELD (분쟁 접수, REQ-063). 지급 예정일은 그대로 두어, 풀리면 예정일이 지났어도 다음 지급 배치가 지급한다.
+	 *
+	 * @throws IllegalStateException SCHEDULED가 아닐 때. 호출하는 쪽이 {@link #isHoldable}로 먼저 거른다
+	 */
+	public void hold() {
+		if (!isHoldable()) {
+			throw new IllegalStateException("보류할 수 없는 정산입니다: id=" + id + ", status=" + status);
+		}
+		this.status = SettlementStatus.HELD;
+	}
+
+	/** 분쟁으로 보류할 수 있는지: SCHEDULED. 이미 HELD(다른 분쟁)이거나 PAID면 그대로 둔다 */
+	public boolean isHoldable() {
+		return status == SettlementStatus.SCHEDULED;
+	}
+
+	/**
+	 * HELD → SCHEDULED (분쟁 종료). 부르는 곳은 관리자 분쟁 처리(REQ-057)에서 만든다. 대여에 열린 분쟁이 모두 끝났을 때만 부른다.
+	 *
+	 * @throws IllegalStateException HELD가 아닐 때
+	 */
+	public void release() {
+		if (status != SettlementStatus.HELD) {
+			throw new IllegalStateException("보류 중인 정산이 아닙니다: id=" + id + ", status=" + status);
+		}
+		this.status = SettlementStatus.SCHEDULED;
 	}
 }

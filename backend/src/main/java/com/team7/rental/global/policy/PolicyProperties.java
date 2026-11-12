@@ -82,7 +82,22 @@ public record PolicyProperties(
 	Ai ai,
 	/** notification.page: 알림 목록 페이지 크기 (REQ-032). size 파라미터를 받지 않는다 */
 	@Valid @NotNull
-	PageSize notification) {
+	PageSize notification,
+	@Valid @NotNull
+	Inquiry inquiry) {
+
+	/**
+	 * 문의·분쟁 (REQ-063)
+	 *
+	 * @param contentMax 문의 내용 최대 글자 수 (inquiry.content-max). inquiries.content VARCHAR(1000)과 같게
+	 * @param page 내 문의 목록 페이지 크기 (inquiry.page). 요청에서 size를 받지 않는다
+	 */
+	public record Inquiry(
+		@Positive
+		int contentMax,
+		@Positive
+		int page) {
+	}
 
 	public record PageSize(@Positive
 	int page) {
