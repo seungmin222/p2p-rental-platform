@@ -111,6 +111,11 @@ app:
     # notification.page: 알림 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-032)
     notification:
       page: 20
+    inquiry:
+      # inquiry.content-max: 문의 내용 최대 글자 수, 공백만은 불가 (REQ-063). inquiries.content VARCHAR(1000)과 같게
+      content-max: 1000
+      # inquiry.page: 내 문의 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-063)
+      page: 20
     view-count:
       dedupe-hours: 24
     profile:

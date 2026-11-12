@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.global.policy.PolicyProperties;
@@ -41,6 +42,7 @@ public class SettlementTxService implements RentalSettlementPort {
 	private final SettlementRepository settlementRepository;
 	private final PaymentRepository paymentRepository;
 	private final PolicyProperties policyProperties;
+	private final SettlementDisputePort settlementDisputePort;
 
 	@Override
 	public void createForCompletion(Long rentalId, Long ownerId, int overdueFee, LocalDateTime completedAt) {
@@ -73,8 +75,31 @@ public class SettlementTxService implements RentalSettlementPort {
 		if (amount.payout() == 0) {
 			return;
 		}
-		settlementRepository.save(Settlement.schedule(rentalId, ownerId, source, amount,
-			BusinessDays.plus(baseAt.toLocalDate(), policyProperties.settlement().payoutDelayBusinessDays())));
+		Settlement settlement = Settlement.schedule(rentalId, ownerId, source, amount,
+			BusinessDays.plus(baseAt.toLocalDate(), policyProperties.settlement().payoutDelayBusinessDays()));
+		if (settlementDisputePort.hasOpenDispute(rentalId)) {
+			// 정산이 생기기 전에 접수된 분쟁(REQ-063, open-issues #9): 처음부터 보류
+			settlement.hold();
+		}
+		settlementRepository.save(settlement);
+	}
+
+	/**
+	 * 분쟁 접수 시 그 대여의 정산을 보류한다 (REQ-063): SCHEDULED → HELD. 이미 HELD·PAID거나 정산이 아직 없으면 그대로 둔다
+	 * (없으면 정산을 만들 때 {@link SettlementDisputePort}로 보류된다). 호출하는 쪽이 대여 행 락을 잡고 있어 그사이 정산이 생기지 않는다.
+	 * 지급 배치와 겹치지 않게 정산 행 락을 잡고 다시 본다. id는 잠금 읽기(FOR SHARE)로 찾아 스냅샷 시점에 기대지 않는다(엔티티를 먼저 읽으면 락 쿼리가 옛 상태를 돌려준다).
+	 *
+	 * @return 이번에 보류했으면 true
+	 */
+	@Transactional(propagation = Propagation.MANDATORY)
+	public boolean holdForDispute(Long rentalId) {
+		Optional<Settlement> settlement = settlementRepository.findIdByRentalId(rentalId)
+			.flatMap(settlementRepository::findByIdForUpdate);
+		if (settlement.isEmpty() || !settlement.get().isHoldable()) {
+			return false;
+		}
+		settlement.get().hold();
+		return true;
 	}
 
 	/** 지급 배치 대상 id: SCHEDULED이고 지급 예정일 ≤ today */

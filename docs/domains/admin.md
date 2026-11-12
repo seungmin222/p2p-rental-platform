@@ -13,6 +13,10 @@
 
 ## REQ-063 문의 및 분쟁 접수
 문의·분쟁 접수(rental 연결 가능), 처리 상태 조회. 분쟁 접수 시 해당 건 정산 HELD.
+- `POST /api/inquiries`: type `GENERAL`(rentalId 선택)·`DISPUTE`(rentalId 필수). 대여를 연결하면 본인이 대여자·제공자여야 한다(403 `RENTAL_NOT_PARTICIPANT`, 없으면 404 `RENTAL_NOT_FOUND`). 내용은 공백만 불가, `inquiry.content-max` 이하
+- 분쟁: PENDING_PAYMENT 대여는 409 `INQUIRY_DISPUTE_NOT_ALLOWED`. 같은 회원·대여에 RESOLVED가 아닌 분쟁이 있으면 409 `INQUIRY_DISPUTE_ALREADY_OPEN`(상대방은 따로 접수 가능). 대여 행 락 안에서 접수해 대여 완료(정산 생성)와 한 줄로 선다. 정산 보류 규칙은 state-machines §3
+- `GET /api/inquiries?page=`: 내 문의 최신 접수 순, `inquiry.page` 고정
+- 알림 없음. 처리(IN_PROGRESS·RESOLVED, 답변)와 분쟁 종료 시 정산 HELD → SCHEDULED는 REQ-057
 
 ## REQ-058 대여 요청 게시
 원하는 물품·기간을 요청 글로 → 보유한 이웃이 응답(Peerby 모델). 별도 엔티티(rental_requests) 필요.

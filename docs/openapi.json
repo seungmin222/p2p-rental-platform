@@ -28,6 +28,10 @@
       "name": "Member"
     },
     {
+      "description": "관리자·문의",
+      "name": "Admin"
+    },
+    {
       "description": "알림",
       "name": "Notification"
     },
@@ -500,6 +504,236 @@
         "summary": "카테고리 목록 (REQ-006)",
         "tags": [
           "Item"
+        ]
+      }
+    },
+    "/api/inquiries": {
+      "get": {
+        "description": "본인이 접수한 문의·분쟁, 최신 접수 순. 처리 상태(status)를 함께 준다. 페이지 크기는 policies.md inquiry.page로 고정이다.",
+        "operationId": "getMyInquiries",
+        "parameters": [
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseInquiryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "내 문의 목록 (REQ-063)",
+        "tags": [
+          "Admin"
+        ]
+      },
+      "post": {
+        "description": "일반 문의(GENERAL)는 대여 연결이 선택, 분쟁(DISPUTE)은 필수다. 대여를 연결하면 본인이 대여자·제공자여야 한다. 분쟁은 결제 대기(PENDING_PAYMENT) 대여에는 접수할 수 없고, 같은 대여에 처리 완료(RESOLVED)되지 않은 본인 분쟁이 있으면 409다. 분쟁을 접수하면 그 대여의 정산이 보류(HELD)되고 (정산이 아직 없으면 정산이 생길 때 보류), 이미 지급된 정산은 그대로다. 처리 상태는 RECEIVED로 시작하고 관리자가 바꾼다.",
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InquiryCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseInquiryResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INQUIRY_DISPUTE_ALREADY_OPEN": {
+                    "summary": "이 대여에 처리 중인 분쟁이 이미 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "INQUIRY_DISPUTE_ALREADY_OPEN",
+                        "details": [],
+                        "message": "이 대여에 처리 중인 분쟁이 이미 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "INQUIRY_DISPUTE_NOT_ALLOWED": {
+                    "summary": "결제가 끝난 대여만 분쟁을 접수할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "INQUIRY_DISPUTE_NOT_ALLOWED",
+                        "details": [],
+                        "message": "결제가 끝난 대여만 분쟁을 접수할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "INQUIRY_DISPUTE_ALREADY_OPEN, INQUIRY_DISPUTE_NOT_ALLOWED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "문의·분쟁 접수 (REQ-063)",
+        "tags": [
+          "Admin"
         ]
       }
     },
@@ -6561,6 +6795,20 @@
           }
         }
       },
+      "ApiResponseInquiryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/InquiryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseItemCreateResponse": {
         "type": "object",
         "properties": {
@@ -6749,6 +6997,20 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/NotificationReadAllResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponsePageResponseInquiryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponseInquiryResponse"
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -7392,6 +7654,80 @@
             "description": "새 이미지: images 파일 파트에서의 순번 (0부터)",
             "example": 0,
             "minimum": 0
+          }
+        }
+      },
+      "InquiryCreateRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "문의 내용. 공백만은 불가, policies.md inquiry.content-max(1,000자) 이하",
+            "example": "반납 후 상태 확인 결과에 이의가 있습니다.",
+            "minLength": 1
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "연결할 대여 ID. 분쟁이면 필수, 일반 문의는 선택. 본인이 대여자·제공자인 대여만",
+            "example": 10
+          },
+          "type": {
+            "type": "string",
+            "description": "문의 종류: GENERAL 일반 문의, DISPUTE 분쟁(rentalId 필수, 접수 시 그 대여의 정산 보류)",
+            "enum": [
+              "GENERAL",
+              "DISPUTE"
+            ]
+          }
+        },
+        "required": [
+          "content",
+          "type"
+        ]
+      },
+      "InquiryResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "문의 내용",
+            "example": "반납 후 상태 확인 결과에 이의가 있습니다."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "접수 시각",
+            "example": "2026-11-12T15:20:00"
+          },
+          "inquiryId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "문의 ID",
+            "example": 1
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "연결한 대여 ID. 없으면 null",
+            "example": 10
+          },
+          "status": {
+            "type": "string",
+            "description": "처리 상태: RECEIVED 접수, IN_PROGRESS 처리 중, RESOLVED 처리 완료",
+            "enum": [
+              "RECEIVED",
+              "IN_PROGRESS",
+              "RESOLVED"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "문의 종류: GENERAL 일반 문의, DISPUTE 분쟁",
+            "enum": [
+              "GENERAL",
+              "DISPUTE"
+            ]
           }
         }
       },
@@ -8321,6 +8657,40 @@
             "type": "string",
             "description": "제공자의 대표 동네 이름. 없으면 null",
             "example": "송도1동"
+          }
+        }
+      },
+      "PageResponseInquiryResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/InquiryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
           }
         }
       },
@@ -9605,6 +9975,12 @@
       "SettlementListResponse": {
         "type": "object",
         "properties": {
+          "heldTotal": {
+            "type": "integer",
+            "format": "int64",
+            "description": "보류(HELD, 분쟁 진행 중) 지급액 합계(원). 분쟁이 끝나면 지급 예정으로 돌아간다",
+            "example": 0
+          },
           "paidTotal": {
             "type": "integer",
             "format": "int64",

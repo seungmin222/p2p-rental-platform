@@ -22,6 +22,15 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
 
 	Optional<Settlement> findByRentalId(Long rentalId);
 
+	/**
+	 * 대여의 정산 id. 엔티티를 영속성 컨텍스트에 올리지 않아, 뒤이은 {@link #findByIdForUpdate}가 락 뒤의 최신 상태를 읽는다. 잠금
+	 * 읽기(FOR SHARE)라 REPEATABLE READ 스냅샷이 대여 행 락보다 먼저 잡혔어도 락을 기다리는 동안 커밋된 정산을 본다.
+	 */
+	@Lock(LockModeType.PESSIMISTIC_READ)
+	@Query("select s.id from Settlement s where s.rentalId = :rentalId")
+	Optional<Long> findIdByRentalId(@Param("rentalId")
+	Long rentalId);
+
 	/** 지급 배치 대상 id: SCHEDULED이고 scheduledDate ≤ today. id 순 */
 	@Query("""
 		select s.id from Settlement s

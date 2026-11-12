@@ -104,7 +104,11 @@ public enum ErrorCode {
 
 	// 알림 (REQ-032)
 	NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
-	NOTIFICATION_NOT_OWNER(HttpStatus.FORBIDDEN, "본인의 알림만 처리할 수 있습니다.");
+	NOTIFICATION_NOT_OWNER(HttpStatus.FORBIDDEN, "본인의 알림만 처리할 수 있습니다."),
+
+	// 문의·분쟁 (REQ-063)
+	INQUIRY_DISPUTE_NOT_ALLOWED(HttpStatus.CONFLICT, "결제가 끝난 대여만 분쟁을 접수할 수 있습니다."),
+	INQUIRY_DISPUTE_ALREADY_OPEN(HttpStatus.CONFLICT, "이 대여에 처리 중인 분쟁이 이미 있습니다.");
 
 	private final HttpStatus status;
 	private final String message;

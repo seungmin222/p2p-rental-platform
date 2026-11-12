@@ -20,6 +20,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V12 | `V12__create_rental_extensions.sql` | `feat/rental-extension` | 머지 |
 | V13 | `V13__add_ai_result_to_item_inspections.sql` | `feat/ai-compare` | 머지 |
 | V14 | `V14__create_notifications.sql` | `feat/notification` | 머지 |
+| V15 | `V15__create_inquiries.sql` | `feat/admin-inquiry` | 머지 |
 
 ## 규칙
 
@@ -206,7 +207,7 @@ erDiagram
 ## 관리·기타 [3]
 
 **category_suggestions** — id, item_id, suggested_name, status, reviewed_by
-**inquiries** — id, member_id, rental_id NULL, type, content, status
+**inquiries** — id, member_id FK→members, rental_id NULL FK→rentals, type(`InquiryType`), content VARCHAR(1000), status(`InquiryStatus`), created_at, updated_at. 인덱스 `(member_id, id)`(내 문의 목록), `(rental_id, status)`(열린 분쟁 검사) — 생성됨(`V15`). 분쟁(DISPUTE)은 rental_id 필수(서비스 검사)
 **appointments** (REQ-051) — id, room_id, rental_id NULL, type(HANDOVER/RETURN), scheduled_at, place, latitude, longitude
 
 ## Redis 키 규약

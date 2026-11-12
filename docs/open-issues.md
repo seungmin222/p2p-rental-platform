@@ -14,7 +14,7 @@
 | 6 | ✅ | 검색 | "대여 가능만 보기"의 의미 | 대여 희망 기간이 있으면 그 기간 기준, 없으면 "오늘 이후 가능 기간이 남아 있고 오늘이 예약되어 있지 않음" |
 | 7 | ⬜ | 대여 | 연체 중인 물품에 다음 예약자가 있으면 다음 예약을 이행할 수 없음 | (제안) 다음 예약자에게 알림 + 다음 예약자 단독 취소 시 수수료 없이 전액 환불, 페널티 미반영 |
 | 8 | ✅ | 대여 | 1순위 단계에서 제공자 '이상' 판정 | 판정만 기록하고 COMPLETED (차감 흐름은 2순위) |
-| 9 | ✅ | 정산 | 정산 HELD 트리거 | 정산 생성 후 문의(REQ-063) 분쟁 접수 시에만 HELD |
+| 9 | ✅ | 정산 | 정산 HELD 트리거 | 문의(REQ-063) 분쟁 접수 시에만 HELD. (2026-11-12 사용자 결정으로 변경) 정산이 생기기 전에 접수한 분쟁도 보류한다: 정산을 만들 때 그 대여에 RESOLVED가 아닌 분쟁이 있으면 처음부터 HELD. 이미 PAID면 그대로. 종료(HELD → SCHEDULED)는 그 대여의 분쟁이 모두 RESOLVED일 때 관리자 처리(REQ-057)에서. 바꾼 이유: 대여 중·반납 대기에 접수한 분쟁의 대금이 완료 직후 지급되지 않게 |
 | 10 | ✅ | 정산 | "영업일 +2"의 공휴일 처리 | 주말만 제외(공휴일 무시), 보고서에 명시 |
 | 11 | ✅ | API | 검색 API에 기준 동네 파라미터 없음 | `regionId`, `range` 추가 (비회원도 전달) |
 | 12 | ✅ | 파일 | 이미지 업로드 방식 | 서버 경유 multipart (서버에서 썸네일 생성). 저장소는 `FileStorage`(운영 S3, 로컬 디스크) |
@@ -56,6 +56,7 @@
 | 48 | ✅ | AI | 비교가 실패하거나 한도를 넘었을 때도 `AI_COMPARE_DONE`을 보낼지 명세에 없다(ai.md는 "결과 저장 → 양측 알림"만) | (사용자 결정) `DONE`일 때만 양측에 보낸다. `FAILED`·`LIMIT_EXCEEDED`는 알리지 않는다(화면은 "AI 결과 없음"). event_id는 `AI_COMPARE_DONE:{rentalId}`, 양측 같은 키(OVERDUE와 같음) |
 | 49 | ✅ | 알림 | erd.md는 `notifications.event_id` 단일 유니크인데, REQ-031·#48은 `OVERDUE:{rentalId}`·`AI_COMPARE_DONE:{rentalId}`를 양측에 같은 키로 보낸다. 단일 유니크면 두 번째 회원의 알림이 저장되지 않는다 | (사용자 결정) 유니크를 `(member_id, event_id)`로 바꾼다(`uk_notifications_member_id_event_id`). event_id 형식(`{TYPE}:{targetId}[:{추가키}]`)과 양측 같은 키는 그대로. 반영: erd.md, notification.md |
 | 50 | ⬜ | 알림 | 알림 표시 문구(`notifications.content`)가 명세에 없다 | (임시, 기획 확인 전) 종류마다 고정 문구 하나(`notification/service/NotificationContentTemplate`). 물품명 등 인자는 넣지 않는다. 기획이 문구를 정하면 그 파일만 바꾸고, 인자가 필요하면 발행 포트에 args를 더한다. 이미 저장된 알림의 문구는 바뀌지 않는다 |
+| 51 | ✅ | 문의 | REQ-063 문의 `type`·`status` 값, 분쟁 접수 조건, 내용 글자 수·목록 페이지 크기가 명세에 없다 | (2026-11-12 사용자 결정) `InquiryType` = `GENERAL`·`DISPUTE`, `InquiryStatus` = `RECEIVED`·`IN_PROGRESS`·`RESOLVED`(state-machines §5). 분쟁은 rentalId 필수, 그 대여의 대여자·제공자만, PENDING_PAYMENT는 409 `INQUIRY_DISPUTE_NOT_ALLOWED`, 같은 회원·대여에 RESOLVED가 아닌 분쟁이 있으면 409 `INQUIRY_DISPUTE_ALREADY_OPEN`(상대방은 따로 접수 가능). `inquiry.content-max` 1,000자(공백만 불가), `inquiry.page` 20 고정. 정산 목록에 `heldTotal` 추가. 알림은 보내지 않는다(관리자 처리 결과 알림은 057) |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 
