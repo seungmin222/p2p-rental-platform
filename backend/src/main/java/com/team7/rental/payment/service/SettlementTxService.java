@@ -87,7 +87,7 @@ public class SettlementTxService implements RentalSettlementPort {
 	/**
 	 * 분쟁 접수 시 그 대여의 정산을 보류한다 (REQ-063): SCHEDULED → HELD. 이미 HELD·PAID거나 정산이 아직 없으면 그대로 둔다
 	 * (없으면 정산을 만들 때 {@link SettlementDisputePort}로 보류된다). 호출하는 쪽이 대여 행 락을 잡고 있어 그사이 정산이 생기지 않는다.
-	 * 지급 배치와 겹치지 않게 정산 행 락을 잡고 다시 본다. 정산이 없을 때 FOR UPDATE의 갭 락을 피하려고 id만 일반 읽기로 찾는다(엔티티를 먼저 읽으면 락 쿼리가 옛 상태를 돌려준다).
+	 * 지급 배치와 겹치지 않게 정산 행 락을 잡고 다시 본다. id는 잠금 읽기(FOR SHARE)로 찾아 스냅샷 시점에 기대지 않는다(엔티티를 먼저 읽으면 락 쿼리가 옛 상태를 돌려준다).
 	 *
 	 * @return 이번에 보류했으면 true
 	 */
