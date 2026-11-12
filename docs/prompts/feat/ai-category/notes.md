@@ -14,9 +14,10 @@
 - **한도**: 월 한도는 040과 같은 `ai:usage:{yyyyMM}`을 호출마다(재시도 포함) 센다. 회원 하루 10회(`ai.category.per-member-daily`, Redis `ai:category:{memberId}:{yyyyMMdd}`)는 추천 요청 단위로 센다. 회원 한도를 먼저 잡아, 넘은 요청은 월 한도를 쓰지 않는다. 사진 검증에 실패한 요청은 어느 쪽도 세지 않는다.
 - **정책 키 공통화**: `ai.compare.max-retry` → `ai.max-retry`, `ai.compare.image-max-long-side` → `ai.image-max-long-side`(값은 그대로). 040과 067이 같은 값을 쓰기 때문이다. `ai.compare.processing-timeout-minutes`는 비교 전용이라 그대로 둔다.
 - 키가 없으면(`DisabledAiClient`) 호출하지 않고 `FAILED`이지만, 040과 같게 하루·월 카운터는 이미 올라간 뒤다.
+- **테스트 범위**: 단위·통합 테스트는 이 브랜치에서 쓴다(처음엔 테스트 전체를 미뤘으나, 사용자가 "미룬다"는 동시성·부하 테스트만 뜻했다고 정정, 2026-11-12). `AiCategoryIntegrationTest`(API·Redis 카운터·EXPIRETIME·category_suggestions·400·401), `AiCategoryServiceTest`(nanoTime 기준 전체 제한 시간·Redis/기록 실패·ETC 없음, 제한 시간은 `@Positive`라 1초로 두고 첫 호출을 1.1초 지연), `AiCategoryParserTest`. `FakeAiClient`는 카테고리 추천 응답·호출 기록을 상태 비교와 따로 둔다.
 
 ## 남은 일
 - REQ-067 잔여: 제목·설명 초안(`item.name.max` 50자·`description.max` 2,000자), 유사 물품 기준 대여가·보증금 제안(`/api/items/ai-draft`). 가격 근거(DB 통계 vs AI)와 표본 최소 개수는 그때 정한다.
-- 미룬 테스트(이번 브랜치는 테스트 코드 없음, `FakeAiClient.recommendCategory`는 항상 ETC·후보 없음을 돌려준다): ① 목록 code → DONE, 후보 기록 없음 ② 목록 밖 code → ETC + 후보 이름 + category_suggestions PENDING 1행 ③ ETC + suggestedName null → 기록 없음 ④ 형식 오류 2회 후 성공 / 3회 모두 실패 → FAILED, 월 카운터 3 증가 ⑤ 클라이언트 예외 → FAILED ⑥ 월 한도 초과 → LIMIT_EXCEEDED ⑦ 회원 하루 11번째 → LIMIT_EXCEEDED, 월 카운터 그대로 ⑧ 사진 0장·11장·형식 오류·용량 초과 → 400, 카운터 그대로 ⑨ 시간 초과(남은 시간 0) → FAILED ⑩ `AiCategoryParser` 키·타입·코드 펜스·30자 자르기 ⑪ 비로그인 401.
+- 동시성·부하 테스트(같은 회원·여러 회원이 동시에 요청할 때 하루·월 카운터가 한도를 정확히 지키는지, 동기 20초 요청이 몰릴 때 응답 시간·스레드 점유)는 미뤘다. 카운터는 Lua 한 번의 INCR이라 원자적이고, 부하는 실제 Claude 지연이 있어야 의미가 있어 `docs/experiments/` 성능 실험 때 함께 잰다.
 - 프론트: 등록 화면(SCR)에서 사진 선택 후 호출해 카테고리를 미리 채우고, `ETC`면 후보 이름을 안내. 별도 프론트 브랜치.
 - 관리자 후보 검토(REQ-057): `idx_category_suggestions_status_id`로 PENDING 목록.
