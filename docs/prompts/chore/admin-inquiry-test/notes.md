@@ -1,5 +1,10 @@
 # chore/admin-inquiry-test 결정 기록 (REQ-063 후속 테스트)
 
+## 요약
+- API 변경 없음(테스트만). REQ-063 후속 테스트: 동시성을 뺀 `feat/admin-inquiry` "후속 테스트 시나리오" 전부.
+- 새 파일: `backend/src/test/.../admin/controller/InquiryIntegrationTest`(검증·권한·에러 코드·목록), `.../admin/controller/DisputeSettlementHoldIntegrationTest`(정산 HELD 전이·heldTotal). `payment/entity/SettlementTest`에 hold·release 전이 추가.
+- 운영 코드 변경 없음. 남은 일: 분쟁 접수 × 지급 배치 `pay()` 동시성 테스트(성능 실험 때).
+
 ## 결정
 - **범위**: `feat/admin-inquiry` notes.md의 "후속 테스트 시나리오" 중 동시성(분쟁 접수 × 지급 배치 `pay()`)을 뺀 전부. 사용자 결정에 따라 미루는 것은 동시성·부하 테스트뿐이다.
 - **나눈 방식**
