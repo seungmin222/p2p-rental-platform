@@ -1091,6 +1091,113 @@
         ]
       }
     },
+    "/api/items/ai-category": {
+      "post": {
+        "description": "물품 사진을 보고 활성 카테고리 중 하나를 추천한다. 참고용이며 사진은 저장하지 않는다(등록은 POST /api/items로 사진을 다시 보낸다). multipart: images 파일들, 장수·형식·용량은 policies.md item.images. 사진 오류만 400이고, AI를 쓸 수 없으면 200에 status FAILED(키 없음·호출 실패·시간 초과 ai.category.timeout-seconds) 또는 LIMIT_EXCEEDED(월 한도 ai.monthly-limit, 회원당 하루 ai.category.per-member-daily)와 null 필드를 준다. 맞는 카테고리가 없으면 ETC와 새 카테고리 후보 이름(suggestedCategoryName)을 주고 후보를 관리자 검토용으로 기록한다.",
+        "operationId": "recommendCategory",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAiCategoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "IMAGE_COUNT_INVALID": {
+                    "summary": "이미지 장수가 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_COUNT_INVALID",
+                        "details": [],
+                        "message": "이미지 장수가 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_INVALID_TYPE": {
+                    "summary": "jpg 또는 png 이미지만 업로드할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_INVALID_TYPE",
+                        "details": [],
+                        "message": "jpg 또는 png 이미지만 업로드할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "IMAGE_SIZE_EXCEEDED": {
+                    "summary": "이미지 용량이 너무 큽니다.",
+                    "value": {
+                      "error": {
+                        "code": "IMAGE_SIZE_EXCEEDED",
+                        "details": [],
+                        "message": "이미지 용량이 너무 큽니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "IMAGE_COUNT_INVALID, IMAGE_INVALID_TYPE, IMAGE_SIZE_EXCEEDED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "AI 카테고리 추천 (REQ-067)",
+        "tags": [
+          "Item"
+        ]
+      }
+    },
     "/api/items/deposit-guide": {
       "get": {
         "description": "물품 가격 × 카테고리별 권장 비율(policies.md §4), 원 미만 절사. 안내만 하고, 범위를 벗어난 보증금도 등록할 수 있다. 없는 카테고리는 400 COMMON_INVALID_INPUT(details categoryId).",
@@ -6691,6 +6798,42 @@
           }
         }
       },
+      "AiCategoryResponse": {
+        "type": "object",
+        "description": "AI 카테고리 추천 결과. 참고용이며 사용자가 고칠 수 있다",
+        "properties": {
+          "categoryCode": {
+            "type": "string",
+            "description": "추천 카테고리 code (활성 카테고리 중 하나, 맞는 것이 없으면 ETC)",
+            "example": "CAMPING"
+          },
+          "categoryId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "추천 카테고리 ID (물품 등록 categoryId에 그대로 쓴다)",
+            "example": 1
+          },
+          "categoryName": {
+            "type": "string",
+            "description": "추천 카테고리 이름",
+            "example": "캠핑·아웃도어"
+          },
+          "status": {
+            "type": "string",
+            "description": "결과 상태. DONE이 아니면 나머지 필드는 null",
+            "enum": [
+              "DONE",
+              "FAILED",
+              "LIMIT_EXCEEDED"
+            ]
+          },
+          "suggestedCategoryName": {
+            "type": "string",
+            "description": "categoryCode가 ETC일 때 AI가 낸 새 카테고리 후보 이름. 없으면 null",
+            "example": "악기"
+          }
+        }
+      },
       "AiCompareResult": {
         "type": "object",
         "properties": {
@@ -6722,6 +6865,20 @@
             "items": {
               "$ref": "#/components/schemas/Region"
             }
+          }
+        }
+      },
+      "ApiResponseAiCategoryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AiCategoryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
           }
         }
       },

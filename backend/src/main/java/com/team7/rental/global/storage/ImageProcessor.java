@@ -60,7 +60,7 @@ public class ImageProcessor {
 	}
 
 	/**
-	 * 이미 저장된(검증·재인코딩된) 이미지를 긴 변 기준으로 줄인다. 외부 API에 보내기 전 토큰 절약용(REQ-040 ai.compare.image-max-long-side).
+	 * 이미 저장된(검증·재인코딩된) 이미지를 긴 변 기준으로 줄인다. 외부 API에 보내기 전 토큰 절약용(REQ-040 ai.image-max-long-side).
 	 * 작으면 그대로 돌려준다.
 	 *
 	 * @throws BusinessException IMAGE_INVALID_TYPE jpg/png가 아니거나 디코딩할 수 없을 때
@@ -74,6 +74,28 @@ public class ImageProcessor {
 		if (longSide <= maxLongSide) {
 			return new ScaledImage(format, content);
 		}
+		return new ScaledImage(format, encode(image, format, scaleDownTo(maxLongSide, longSide)));
+	}
+
+	/**
+	 * 업로드 파일을 {@link #process}와 같은 순서로 검증한 뒤 긴 변 기준으로 줄여 저장 없이 돌려준다(REQ-067 카테고리 추천). 작아도 항상 다시
+	 * 인코딩해 EXIF 회전을 픽셀에 반영하고 메타데이터(GPS 등)를 외부 API에 보내지 않는다.
+	 *
+	 * @throws BusinessException IMAGE_INVALID_TYPE·IMAGE_SIZE_EXCEEDED
+	 */
+	public ScaledImage resizeUpload(MultipartFile file, DataSize maxSize, int maxLongSide) {
+		if (file == null || file.isEmpty()) {
+			throw new BusinessException(ErrorCode.IMAGE_INVALID_TYPE);
+		}
+		if (file.getSize() > maxSize.toBytes()) {
+			throw new BusinessException(ErrorCode.IMAGE_SIZE_EXCEEDED);
+		}
+		byte[] content = readBytes(file);
+		ImageFormat format = ImageFormat.detect(content)
+			.orElseThrow(() -> new BusinessException(ErrorCode.IMAGE_INVALID_TYPE));
+		checkPixelCount(content);
+		BufferedImage image = decode(content, format);
+		int longSide = Math.max(image.getWidth(), image.getHeight());
 		return new ScaledImage(format, encode(image, format, scaleDownTo(maxLongSide, longSide)));
 	}
 

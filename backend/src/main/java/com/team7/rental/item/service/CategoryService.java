@@ -47,6 +47,15 @@ public class CategoryService {
 		return cachedCategories;
 	}
 
+	/** AI 카테고리 추천(REQ-067)의 선택지. code를 응답에 쓰므로 화면용 목록과 따로 둔다. 관리자 변경이 바로 보이도록 캐시하지 않는다 */
+	public List<CategoryCode> getActiveCategoryCodes() {
+		return categories.findByIsActiveTrueOrderBySortOrderAscIdAsc().stream()
+			.map(c -> new CategoryCode(c.getId(), c.getCode(), c.getName())).toList();
+	}
+
+	public record CategoryCode(Long id, String code, String name) {
+	}
+
 	/** 관리자 카테고리 변경(REQ-057) 구현 시 커밋 후 호출한다. */
 	public synchronized void evictCache() {
 		cachedCategories = null;

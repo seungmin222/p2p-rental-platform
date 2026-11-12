@@ -1,11 +1,13 @@
 package com.team7.rental.ai.client;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import com.anthropic.client.AnthropicClient;
+import com.anthropic.core.RequestOptions;
 import com.anthropic.errors.AnthropicException;
 import com.anthropic.models.messages.Base64ImageSource;
 import com.anthropic.models.messages.ContentBlockParam;
@@ -26,10 +28,13 @@ import lombok.extern.slf4j.Slf4j;
 public class ClaudeAiClient implements AiClient {
 
 	private final AnthropicClient client;
+	/** 카테고리 추천용: 사용자가 기다리는 요청이라 SDK 재시도를 끄고 제한 시간은 호출마다 준다 */
+	private final AnthropicClient noRetryClient;
 	private final AiProperties properties;
 
 	public ClaudeAiClient(AnthropicClient client, AiProperties properties) {
 		this.client = client;
+		this.noRetryClient = client.withOptions(options -> options.maxRetries(0));
 		this.properties = properties;
 	}
 
@@ -41,8 +46,32 @@ public class ClaudeAiClient implements AiClient {
 		} catch (AnthropicException e) {
 			throw new AiClientException("Claude 호출 실패: " + e.getClass().getSimpleName(), e);
 		}
+		return textOf(message, "compare");
+	}
+
+	@Override
+	public String recommendCategory(List<AiImage> images, List<CategoryOption> categories, Duration timeout) {
+		List<ContentBlockParam> blocks = new ArrayList<>();
+		images.forEach(image -> blocks.add(image(image)));
+		blocks.add(text(CategoryPrompt.instruction(images.size(), categories)));
+		MessageCreateParams params = MessageCreateParams.builder()
+			.model(properties.model())
+			.maxTokens(properties.maxTokens())
+			.system(CategoryPrompt.SYSTEM)
+			.addUserMessageOfContentBlockParams(blocks)
+			.build();
+		Message message;
+		try {
+			message = noRetryClient.messages().create(params, RequestOptions.builder().timeout(timeout).build());
+		} catch (AnthropicException e) {
+			throw new AiClientException("Claude 호출 실패: " + e.getClass().getSimpleName(), e);
+		}
+		return textOf(message, "category");
+	}
+
+	private String textOf(Message message, String purpose) {
 		StopReason stopReason = message.stopReason().orElse(null);
-		log.info("Claude compare: model={}, stopReason={}, inputTokens={}, outputTokens={}", properties.model(),
+		log.info("Claude {}: model={}, stopReason={}, inputTokens={}, outputTokens={}", purpose, properties.model(),
 			stopReason, message.usage().inputTokens(), message.usage().outputTokens());
 		if (StopReason.REFUSAL.equals(stopReason)) {
 			throw new AiClientException("Claude가 요청을 거절했다");
