@@ -46,7 +46,7 @@
 - 양측 동의 취소: 수락·거절 모두 양측에 `CANCEL_AGREEMENT_RESULT`(수락 때 `RESERVATION_CANCELED`는 따로 보내지 않음). 48시간 만료는 보내지 않는다
 - 반납 요청: 제공자 대리 접수면 보내지 않는다
 - 상태 확인 결과: 제공자 판정·자동 확인 모두 대여자에게. 보증금 반환(`DEPOSIT_REFUNDED`)은 PG 환불이 성공했을 때만(반환액 0원·보증금 없음은 보내지 않음)
-- 인계 리마인더(`HANDOVER_REMINDER`): 리마인더 배치(rental.md REQ-017) 미구현이라 아직 보내지 않는다
+- 인계 리마인더(`HANDOVER_REMINDER`): 리마인더 배치(rental.md REQ-017)가 대여자·제공자에게 같은 event_id `HANDOVER_REMINDER:{rentalId}`로 보낸다(OVERDUE와 같은 방식)
 
 ## 3순위
 - **REQ-052 키워드 알림**: 물품 등록 시 같은 동네 범위 키워드 구독자에게 `KEYWORD_MATCHED` (등록 트랜잭션 밖, 비동기)
