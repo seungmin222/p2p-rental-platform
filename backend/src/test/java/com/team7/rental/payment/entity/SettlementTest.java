@@ -53,6 +53,60 @@ class SettlementTest {
 			.isInstanceOf(IllegalStateException.class);
 	}
 
+	@Test
+	@DisplayName("분쟁 보류: SCHEDULED → HELD이고 지급 예정일은 그대로이며, 예정일이 지나도 지급 대상이 아니다")
+	void hold() {
+		Settlement settlement = scheduled();
+
+		assertThat(settlement.isHoldable()).isTrue();
+		settlement.hold();
+
+		assertThat(settlement.getStatus()).isEqualTo(SettlementStatus.HELD);
+		assertThat(settlement.getScheduledDate()).isEqualTo(SCHEDULED_DATE);
+		assertThat(settlement.isPayable(SCHEDULED_DATE.plusDays(30))).isFalse();
+		assertThatThrownBy(() -> settlement.pay(SCHEDULED_DATE.atStartOfDay()))
+			.isInstanceOf(IllegalStateException.class);
+	}
+
+	@Test
+	@DisplayName("이미 HELD이거나 PAID면 보류할 수 없다")
+	void holdRejected() {
+		Settlement held = scheduled();
+		held.hold();
+		Settlement paid = scheduled();
+		paid.pay(SCHEDULED_DATE.atStartOfDay());
+
+		assertThat(held.isHoldable()).isFalse();
+		assertThat(paid.isHoldable()).isFalse();
+		assertThatThrownBy(held::hold).isInstanceOf(IllegalStateException.class);
+		assertThatThrownBy(paid::hold).isInstanceOf(IllegalStateException.class);
+		assertThat(paid.getStatus()).isEqualTo(SettlementStatus.PAID);
+	}
+
+	@Test
+	@DisplayName("분쟁 종료: HELD → SCHEDULED이고, 예정일이 지났으면 바로 지급 대상이다")
+	void release() {
+		Settlement settlement = scheduled();
+		settlement.hold();
+
+		settlement.release();
+
+		assertThat(settlement.getStatus()).isEqualTo(SettlementStatus.SCHEDULED);
+		assertThat(settlement.getScheduledDate()).isEqualTo(SCHEDULED_DATE);
+		assertThat(settlement.isPayable(SCHEDULED_DATE.plusDays(1))).isTrue();
+	}
+
+	@Test
+	@DisplayName("HELD가 아니면(SCHEDULED·PAID) 보류를 풀 수 없다")
+	void releaseRejected() {
+		Settlement scheduled = scheduled();
+		Settlement paid = scheduled();
+		paid.pay(SCHEDULED_DATE.atStartOfDay());
+
+		assertThatThrownBy(scheduled::release).isInstanceOf(IllegalStateException.class);
+		assertThatThrownBy(paid::release).isInstanceOf(IllegalStateException.class);
+	}
+
 	private Settlement scheduled() {
 		return Settlement.schedule(1L, 2L, SettlementSource.COMPLETED,
 			SettlementAmount.ofCompletion(30_000, 0, 15_000, 20_000, 10), SCHEDULED_DATE);
