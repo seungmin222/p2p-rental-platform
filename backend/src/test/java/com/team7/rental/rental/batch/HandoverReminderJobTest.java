@@ -136,6 +136,24 @@ class HandoverReminderJobTest extends IntegrationTestSupport {
 		assertThat(notificationPort.sent()).isEmpty();
 	}
 
+	@Test
+	@DisplayName("한 건의 알림 발송이 실패해도 나머지 대상 건은 계속 보내고 배치가 끝난다")
+	void continuesAfterOneFailure() {
+		// given
+		Rental failing = reserved(TODAY.minusDays(1));
+		Rental ok = reserved(TODAY.minusDays(2));
+		notificationPort.failOnTarget(failing.getId());
+
+		// when
+		int sent = job.remindDue(NOW);
+
+		// then
+		assertThat(sent).isEqualTo(1);
+		assertThat(notificationPort.sent()).extracting(Sent::targetId).containsOnly(ok.getId()).hasSize(2);
+		assertThat(notificationRepository.findAll()).extracting(notification -> notification.getTargetId())
+			.containsOnly(ok.getId());
+	}
+
 	private Rental reserved(LocalDate start) {
 		return rentalFixture.createRental(item, renter, RentalStatus.RESERVED, start, start.plusDays(2));
 	}
