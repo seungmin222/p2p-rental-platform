@@ -102,6 +102,11 @@ public enum ErrorCode {
 	DEDUCTION_PROPOSAL_NOT_FOUND(HttpStatus.NOT_FOUND, "응답할 차감 제안이 없습니다."),
 	DEDUCTION_PROPOSAL_CLOSED(HttpStatus.CONFLICT, "이미 응답했거나 응답 기한이 지난 차감 제안입니다."),
 
+	// 채팅 (REQ-026·027)
+	CHAT_OWN_ITEM(HttpStatus.BAD_REQUEST, "본인 물품에는 채팅할 수 없습니다."),
+	CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "채팅방을 찾을 수 없습니다."),
+	CHAT_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "채팅방 참여자만 이용할 수 있습니다."),
+
 	// 알림 (REQ-032)
 	NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
 	NOTIFICATION_NOT_OWNER(HttpStatus.FORBIDDEN, "본인의 알림만 처리할 수 있습니다."),

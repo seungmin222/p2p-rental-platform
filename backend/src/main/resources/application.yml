@@ -40,6 +40,9 @@ server:
     max-swallow-size: 110MB
 
 app:
+  stomp:
+    # 채팅·알림 STOMP 브로커 릴레이(RabbitMQ rabbitmq_stomp) 포트 (REQ-027). 호스트·계정은 spring.rabbitmq.*를 같이 쓴다
+    relay-port: ${RABBITMQ_STOMP_PORT:61613}
   redis:
     command-timeout: 1s
     connect-timeout: 1s
@@ -116,6 +119,9 @@ app:
       content-max: 1000
       # inquiry.page: 내 문의 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-063)
       page: 20
+    chat:
+      # chat.message.max: 채팅 메시지 최대 글자 수, 공백만은 불가 (REQ-027). chat_messages.content VARCHAR(1000)과 같게
+      message-max: 1000
     view-count:
       dedupe-hours: 24
     profile:

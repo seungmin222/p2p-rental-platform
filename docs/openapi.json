@@ -36,6 +36,10 @@
       "name": "Notification"
     },
     {
+      "description": "채팅",
+      "name": "Chat"
+    },
+    {
       "description": "관리자",
       "name": "Admin"
     }
@@ -504,6 +508,124 @@
         "summary": "카테고리 목록 (REQ-006)",
         "tags": [
           "Item"
+        ]
+      }
+    },
+    "/api/chat-rooms": {
+      "post": {
+        "description": "(물품, 요청자)당 방은 1개다. 없으면 만들고 201, 이미 있으면 그 방을 200으로 돌려준다(동시에 요청해도 1개만 생긴다). 새로 만들 때만 물품 채팅 수(chatCount)가 1 오른다. 숨김 물품도 가능하고, 없거나 삭제된 물품은 404, 본인 물품은 400이다. 메시지는 WebSocket /ws(STOMP)에서 /topic/chat-rooms.{roomId}를 구독하고 /pub/chat-rooms/{roomId}로 보낸다.",
+        "operationId": "create_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRoomCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseChatRoomCreateResponse"
+                }
+              }
+            },
+            "description": "이미 있던 방"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseChatRoomCreateResponse"
+                }
+              }
+            },
+            "description": "새 방을 만들었다"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "CHAT_OWN_ITEM": {
+                    "summary": "본인 물품에는 채팅할 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "CHAT_OWN_ITEM",
+                        "details": [],
+                        "message": "본인 물품에는 채팅할 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "CHAT_OWN_ITEM, COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "채팅방 생성 또는 기존 방 반환 (REQ-026)",
+        "tags": [
+          "Chat"
         ]
       }
     },
@@ -6910,6 +7032,20 @@
           }
         }
       },
+      "ApiResponseChatRoomCreateResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ChatRoomCreateResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseCursorResponseItemSummaryResponse": {
         "type": "object",
         "properties": {
@@ -7537,6 +7673,50 @@
             "format": "int32",
             "description": "표시 순서 (작을수록 앞)",
             "example": 1
+          }
+        }
+      },
+      "ChatRoomCreateRequest": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대화할 물품 ID. 본인 물품은 불가",
+            "example": 7,
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "itemId"
+        ]
+      },
+      "ChatRoomCreateResponse": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 7
+          },
+          "ownerId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 소유자(제공자) 회원 ID",
+            "example": 2
+          },
+          "renterId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 희망자(방을 만든 회원) ID",
+            "example": 5
+          },
+          "roomId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "채팅방 ID. STOMP 구독 /topic/chat-rooms.{roomId}, 전송 /pub/chat-rooms/{roomId}",
+            "example": 3
           }
         }
       },

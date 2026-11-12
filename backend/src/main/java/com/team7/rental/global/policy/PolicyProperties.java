@@ -84,7 +84,19 @@ public record PolicyProperties(
 	@Valid @NotNull
 	PageSize notification,
 	@Valid @NotNull
-	Inquiry inquiry) {
+	Inquiry inquiry,
+	@Valid @NotNull
+	Chat chat) {
+
+	/**
+	 * 채팅 (REQ-027)
+	 *
+	 * @param messageMax 메시지 최대 글자 수 (chat.message.max). chat_messages.content VARCHAR(1000)과 같게
+	 */
+	public record Chat(
+		@Positive @Max(1000)
+		int messageMax) {
+	}
 
 	/**
 	 * 문의·분쟁 (REQ-063)

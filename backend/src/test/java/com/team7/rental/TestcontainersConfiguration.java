@@ -5,6 +5,7 @@ import static com.team7.rental.support.IntegrationTestSupport.*;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.mysql.MySQLContainer;
 import org.testcontainers.rabbitmq.RabbitMQContainer;
@@ -22,7 +23,13 @@ class TestcontainersConfiguration {
 	@Bean
 	@ServiceConnection
 	RabbitMQContainer rabbitContainer() {
-		return new RabbitMQContainer(RABBITMQ_IMAGE);
+		return rabbitMqWithStomp();
+	}
+
+	@Bean
+	DynamicPropertyRegistrar stompRelayPort(RabbitMQContainer rabbitContainer) {
+		return registry -> registry.add("app.stomp.relay-port",
+			() -> rabbitContainer.getMappedPort(RABBITMQ_STOMP_PORT));
 	}
 
 	@Bean

@@ -187,8 +187,8 @@ erDiagram
 ## 채팅 [2]
 
 **chat_rooms** — id, item_id, renter_id, owner_id, last_message_at, last_message_preview, UK(item_id, renter_id)
-**chat_room_members** — room_id, member_id, last_read_message_id, PK(room_id, member_id). **읽음 처리의 유일한 기준**
-**chat_messages** — id, room_id, sender_id NULL(SYSTEM), type, content, sent_at
+**chat_room_members** — room_id, member_id, last_read_message_id, PK(room_id, member_id), INDEX(member_id). **읽음 처리의 유일한 기준**. 방 생성 시 대여자·소유자 두 행
+**chat_messages** — id, room_id, sender_id NULL(SYSTEM), type(TEXT·SYSTEM), content VARCHAR(1000), sent_at, INDEX(room_id, id)
 - 인덱스 `(room_id, id DESC)` 커서 조회
 - 안 읽은 수 = `count(id > last_read_message_id AND sender_id != me)`. 메시지별 "읽음" 표시는 상대의 last_read_message_id와 비교해 계산한다(메시지마다 read_at을 따로 두지 않음).
 

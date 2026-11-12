@@ -77,6 +77,8 @@ public class SecurityConfig {
 				auth.requestMatchers(MEMBER_ONLY_OVERLAPPING).authenticated()
 					.requestMatchers("/api/admin/**").hasRole("ADMIN")
 					.requestMatchers("/api/auth/**").permitAll()
+					// WebSocket 핸드셰이크. 인증은 STOMP CONNECT 프레임의 AT로 한다 (StompAuthChannelInterceptor)
+					.requestMatchers("/ws", "/ws/**").permitAll()
 					.requestMatchers(HttpMethod.POST, "/api/members").permitAll()
 					.requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
 					.anyRequest().authenticated();
