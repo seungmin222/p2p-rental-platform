@@ -21,6 +21,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V13 | `V13__add_ai_result_to_item_inspections.sql` | `feat/ai-compare` | 머지 |
 | V14 | `V14__create_notifications.sql` | `feat/notification` | 머지 |
 | V15 | `V15__create_inquiries.sql` | `feat/admin-inquiry` | 머지 |
+| V16 | `V16__create_category_suggestions.sql` | `feat/ai-category` | 작업 중 |
 
 ## 규칙
 
