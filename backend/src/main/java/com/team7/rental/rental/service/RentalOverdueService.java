@@ -15,7 +15,7 @@ import com.team7.rental.rental.service.RentalOverdueTxService.ReminderTarget;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 연체 감지·반납 리마인더 (REQ-023·031). 전환은 {@link RentalOverdueTxService}의 건별 트랜잭션에서 하고, 알림은 커밋 뒤에 보낸다.
+ * 연체 감지·반납 리마인더·인계 리마인더 (REQ-023·031·017). 전환은 {@link RentalOverdueTxService}의 건별 트랜잭션에서 하고, 알림은 커밋 뒤에 보낸다.
  * <p>
  * 커밋과 발행 사이에 서버가 멈추면 그 건의 연체 알림은 빠진다(다음 회차에는 이미 OVERDUE라 대상이 아니다).
  * notification.md "실시간 실패 시 재전송하지 않는다"와 같은 수준으로 받아들인다. 결정은 docs/prompts/feat/rental-overdue/notes.md
@@ -56,5 +56,18 @@ public class RentalOverdueService {
 	public void sendReturnReminder(ReminderTarget target) {
 		rentalNotificationPort.send(target.renterId(), Type.RETURN_REMINDER, TargetType.RENTAL, target.rentalId(),
 			RentalNotificationPort.returnReminderEventId(target.rentalId(), target.endDate()));
+	}
+
+	public List<Participants> findHandoverReminderTargets(LocalDate today) {
+		return rentalOverdueTxService.findHandoverReminderTargets(today);
+	}
+
+	/** 대여자·제공자에게 HANDOVER_REMINDER (같은 event_id {@code HANDOVER_REMINDER:{rentalId}}). 상태는 바꾸지 않는다 */
+	public void sendHandoverReminder(Participants target) {
+		String eventId = RentalNotificationPort.rentalEventId(Type.HANDOVER_REMINDER, target.rentalId());
+		rentalNotificationPort.send(target.renterId(), Type.HANDOVER_REMINDER, TargetType.RENTAL, target.rentalId(),
+			eventId);
+		rentalNotificationPort.send(target.ownerId(), Type.HANDOVER_REMINDER, TargetType.RENTAL, target.rentalId(),
+			eventId);
 	}
 }

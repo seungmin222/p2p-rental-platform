@@ -64,6 +64,20 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, RentalSea
 	List<Long> findOverdueTargetIds(@Param("today")
 	LocalDate today);
 
+	/**
+	 * 인계 리마인더(REQ-017) 대상: RESERVED이고 from &lt;= startDate &lt; to. id 순.
+	 * to = 오늘(시작일이 지났는데 인계 없음), from = 오늘 - handover.auto-cancel-days(같은 회차에 자동 취소되는 건 제외)
+	 */
+	@Query("""
+		select r from Rental r
+		where r.status = com.team7.rental.rental.entity.RentalStatus.RESERVED
+			and r.startDate >= :from and r.startDate < :to
+		order by r.id
+		""")
+	List<Rental> findHandoverReminderTargets(@Param("from")
+	LocalDate from, @Param("to")
+	LocalDate to);
+
 	/** 반납 리마인더(REQ-031) 대상: status이고 endDate가 그날인 대여. id 순. 인덱스 (status, end_date) */
 	List<Rental> findAllByStatusAndEndDateOrderById(RentalStatus status, LocalDate endDate);
 

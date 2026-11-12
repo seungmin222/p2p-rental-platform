@@ -95,7 +95,8 @@ try {
 - item_inspections(phase=HANDOVER) 저장 — **이후 수정 불가**
 - → RENTING, `handed_over_at=now`, 대여자 알림
 - 대여자는 대여 상세에서 인계 사진 확인, 이의는 채팅으로
-- 리마인더 배치[2]: 매일 09:00, startDate 다음 날까지 인계 확인 없음(RESERVED, startDate < 오늘) → 양측 `HANDOVER_REMINDER` 알림 1회. 시작일 + 3일이 지나면 위의 자동 취소
+- 리마인더 배치[2]: 매일 09:00, startDate 다음 날까지 인계 확인 없음(RESERVED, startDate < 오늘) → 양측 `HANDOVER_REMINDER` 알림 1회(event_id `HANDOVER_REMINDER:{rentalId}`). 시작일 + 3일이 지나면 위의 자동 취소
+  - 구현 해석: 대상은 `RESERVED AND 오늘 - handover.auto-cancel-days ≤ start_date < 오늘`. 하한은 같은 09:00 회차에 자동 취소되는 건을 빼기 위함이고, 범위 안에서 매일 다시 조회되지만 event_id가 대여당 하나라 1회만 저장된다(배치를 빠뜨린 날은 다음 날 따라잡는다)
 
 ## REQ-018 반납 요청 및 상태 확인 [1]
 
@@ -175,5 +176,5 @@ try {
 - 상태 전이: 허용 전이 전부 성공 + 대표적인 불허 전이(COMPLETED→RENTING 등) 409
 - 취소 수수료: 시작일 3일 전 / 2일 전 / 전날 / 제공자 취소 경계
 - 연체료: 0일, 1일, 보증금 초과 상한, 보증금 0원
-- 연체 배치·반납 리마인더 멱등성(두 번 돌려도 알림 1회)
+- 연체 배치·반납 리마인더·인계 리마인더 멱등성(두 번 돌려도 알림 1회)
 - 3일 자동 확인 배치, 시작일+3일 자동 취소 배치

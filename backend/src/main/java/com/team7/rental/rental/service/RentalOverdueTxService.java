@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
@@ -17,7 +18,7 @@ import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
 
 import lombok.RequiredArgsConstructor;
 
-/** 연체 전환·반납 리마인더 대상 조회의 트랜잭션 부분 (REQ-023·031). 알림 발행은 커밋 뒤 {@link RentalOverdueService}가 한다 */
+/** 연체 전환·반납·인계 리마인더 대상 조회의 트랜잭션 부분 (REQ-023·031·017). 알림 발행은 커밋 뒤 {@link RentalOverdueService}가 한다 */
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -26,6 +27,7 @@ public class RentalOverdueTxService {
 	private final RentalRepository rentalRepository;
 	private final RentalStatusHistoryRepository rentalStatusHistoryRepository;
 	private final RentalExtensionRepository rentalExtensionRepository;
+	private final PolicyProperties policyProperties;
 
 	public List<Long> findOverdueTargetIds(LocalDate today) {
 		return rentalRepository.findOverdueTargetIds(today);
@@ -58,6 +60,19 @@ public class RentalOverdueTxService {
 	public List<ReminderTarget> findReturnReminderTargets(LocalDate today) {
 		return rentalRepository.findAllByStatusAndEndDateOrderById(RentalStatus.RENTING, today.plusDays(1)).stream()
 			.map(rental -> new ReminderTarget(rental.getId(), rental.getRenterId(), rental.getEndDate()))
+			.toList();
+	}
+
+	/**
+	 * 인계 리마인더 대상: RESERVED이고 오늘 - handover.auto-cancel-days &lt;= startDate &lt; 오늘.
+	 * 하한은 같은 09:00 회차에 자동 취소(startDate &lt; 오늘 - auto-cancel-days)되는 건에 리마인더가 먼저 가지 않게 한다.
+	 * 하한 안에서 매일 다시 조회되지만 event_id가 대여당 하나라 알림은 1회다(배치를 하루 빠뜨려도 다음 날 보낸다)
+	 */
+	public List<Participants> findHandoverReminderTargets(LocalDate today) {
+		return rentalRepository
+			.findHandoverReminderTargets(today.minusDays(policyProperties.handover().autoCancelDays()), today)
+			.stream()
+			.map(rental -> new Participants(rental.getId(), rental.getRenterId(), rental.getOwnerId()))
 			.toList();
 	}
 

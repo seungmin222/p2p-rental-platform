@@ -1,7 +1,9 @@
 package com.team7.rental.support;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.boot.test.context.TestComponent;
 import org.springframework.context.annotation.Primary;
@@ -22,6 +24,7 @@ public class FakeRentalNotificationPort implements RentalNotificationPort {
 	}
 
 	private final List<Sent> sent = new ArrayList<>();
+	private final Set<Long> failingTargetIds = new HashSet<>();
 	private final RentalNotificationAdapter delegate;
 
 	public FakeRentalNotificationPort(RentalNotificationAdapter delegate) {
@@ -31,6 +34,9 @@ public class FakeRentalNotificationPort implements RentalNotificationPort {
 	@Override
 	public void send(Long memberId, Type type, TargetType targetType, Long targetId, String eventId) {
 		synchronized (this) {
+			if (failingTargetIds.contains(targetId)) {
+				throw new IllegalStateException("Injected notification failure: targetId=" + targetId);
+			}
 			sent.add(new Sent(memberId, type, targetType, targetId, eventId));
 		}
 		delegate.send(memberId, type, targetType, targetId, eventId);
@@ -40,7 +46,13 @@ public class FakeRentalNotificationPort implements RentalNotificationPort {
 		return List.copyOf(sent);
 	}
 
+	/** 이 targetId로 오는 발행 요청은 기록·저장하지 않고 예외를 던진다(배치의 건별 실패 격리 검증용) */
+	public synchronized void failOnTarget(Long targetId) {
+		failingTargetIds.add(targetId);
+	}
+
 	public synchronized void reset() {
 		sent.clear();
+		failingTargetIds.clear();
 	}
 }

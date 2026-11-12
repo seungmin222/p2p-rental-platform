@@ -23,6 +23,8 @@ public interface RentalNotificationPort {
 		RESERVATION_CONFIRMED,
 		PAYMENT_COMPLETED,
 		RESERVATION_CANCELED,
+		/** 인계 리마인더(REQ-017). 양측에 같은 eventId {@code HANDOVER_REMINDER:{rentalId}} — 매일 다시 조회해도 1회 */
+		HANDOVER_REMINDER,
 		CANCEL_AGREEMENT_REQUESTED,
 		CANCEL_AGREEMENT_RESULT,
 		HANDOVER_CONFIRMED,
@@ -67,7 +69,7 @@ public interface RentalNotificationPort {
 		return Type.RETURN_REMINDER.name() + ":" + rentalId + ":" + endDate;
 	}
 
-	/** 한 대여에 한 번인 알림 키 {@code {TYPE}:{rentalId}} (예약 확정·결제 완료·예약 취소·인계·반납 요청·상태 확인·보증금 반환·보류, 미반납 신고, AI 비교) */
+	/** 한 대여에 한 번인 알림 키 {@code {TYPE}:{rentalId}} (예약 확정·결제 완료·예약 취소·인계 리마인더·인계·반납 요청·상태 확인·보증금 반환·보류, 미반납 신고, AI 비교) */
 	static String rentalEventId(Type type, Long rentalId) {
 		return type.name() + ":" + rentalId;
 	}
