@@ -1,5 +1,12 @@
 # feat/ai-category 결정 기록
 
+## 요약
+- 구현: `POST /api/items/ai-category`(multipart `images`, 사진 저장 안 함) → 활성 카테고리 중 추천, 결과 `DONE`·`FAILED`·`LIMIT_EXCEEDED`. ETC면 후보 이름을 `category_suggestions`에 PENDING 기록(V16, item_id NULL·member_id 추가).
+- 주요 파일: `ai/controller/AiCategoryController`, `ai/service/AiCategoryService`·`AiCategoryParser`·`AiUsageCounter.tryAcquireCategory`, `ai/client/CategoryPrompt`, `item/entity/CategorySuggestion`, `item/service/CategorySuggestionService`, `CategoryService.getActiveCategoryCodes`, `ImageProcessor.resizeUpload`.
+- 정책 키 `ai.compare.max-retry`·`image-max-long-side` → `ai.max-retry`·`ai.image-max-long-side`. 새 키 `ai.category.timeout-seconds`(20)·`per-member-daily`(10).
+- 테스트: `AiCategoryIntegrationTest`·`AiCategoryServiceTest`·`AiCategoryParserTest`, `FakeAiClient.respondCategory`. 동시성·부하 테스트는 미룸.
+- 남은 일: REQ-067 제목·설명 초안·대여가·보증금 제안(`/api/items/ai-draft`), 프론트 등록 화면 연동, 관리자 후보 검토(057).
+
 ## 범위
 - 처음에는 REQ-067 전체(`feat/ai-item-assist`, `/api/items/ai-draft`)로 계획했으나, 시연이 쉬운 **카테고리 추천만** 하기로 줄였다(2026-11-12 사용자 결정). 브랜치 이름도 `feat/ai-category`로 바꿨다. 제목·설명 초안, 대여가·보증금 제안은 남은 일이다.
 
