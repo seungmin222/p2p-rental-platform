@@ -1,5 +1,11 @@
 # feat/admin-inquiry 결정 기록 (REQ-063)
 
+## 요약
+- API: `POST /api/inquiries`(일반 문의·분쟁 접수), `GET /api/inquiries`(내 문의 목록). 정산 목록 합계에 `heldTotal` 추가. Flyway `V15__create_inquiries.sql`.
+- 분쟁 접수 시 정산 SCHEDULED → HELD(`SettlementTxService.holdForDispute`), 정산 생성 전 접수면 `SettlementDisputePort`로 처음부터 HELD. 포트 구현은 `admin/service/InquiryDisputeReader`.
+- 주요 파일: `admin/`(controller·service·repository·entity·dto), `rental/service/RentalParticipantReader`, `payment/service/SettlementDisputePort`.
+- 남은 일: 관리자 문의 처리·분쟁 종료(057, `Settlement.release()` 호출, IN_PROGRESS·RESOLVED 전이), 이 브랜치 테스트 코드(아래 "후속 테스트 시나리오").
+
 ## 정해진 값 (2026-11-12 사용자 결정, open-issues #51·#9)
 - Enum: `InquiryType` = `GENERAL`·`DISPUTE`, `InquiryStatus` = `RECEIVED`·`IN_PROGRESS`·`RESOLVED`. 이번 브랜치는 RECEIVED만 만든다.
 - 정책 값: `inquiry.content-max` 1,000자(공백만 불가), `inquiry.page` 20 고정.
