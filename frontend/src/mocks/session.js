@@ -68,7 +68,12 @@ export function reissueMockSession() {
  * 보호 API 목(members/me)과 물품 상세의 isOwner, 대여·결제 목의 "나"가 쓴다(대여 목은 AT가 없으면 MOCK_ME로 본다).
  */
 export function authenticateMockRequest(request) {
-  const token = readBearerToken(request.headers.get('Authorization'));
+  return authenticateMockAuthorization(request.headers.get('Authorization'));
+}
+
+/** Authorization 헤더 값으로 인증(STOMP CONNECT 목도 쓴다). 현재 AT가 아니면 null */
+export function authenticateMockAuthorization(authorization) {
+  const token = readBearerToken(authorization);
   if (token === null || token !== currentAccessToken) {
     return null;
   }

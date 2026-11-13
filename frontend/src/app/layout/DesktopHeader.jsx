@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router';
 
+import ChatUnreadBadge from '../../features/chat/components/UnreadBadge';
 import { useFeedRegion } from '../../features/item/useFeedRegion';
 import { useMediaQuery, XL_MEDIA_QUERY } from '../../shared/hooks/useMediaQuery';
 import { Skeleton } from '../../shared/ui';
@@ -122,6 +123,7 @@ function DesktopHeaderContent() {
                       <>
                         <NavIcon name={item.icon} active={isActive} />
                         {item.label}
+                        {item.badge === 'chat' && <ChatUnreadBadge />}
                       </>
                     )}
                   </NavLink>

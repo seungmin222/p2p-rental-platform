@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 
 import BackButton from '../app/layout/BackButton';
 import BottomActionBar from '../app/layout/BottomActionBar';
 import PageHeader from '../app/layout/PageHeader';
+import { toLoginPath } from '../app/loginPath';
+import { getErrorMessage as getChatErrorMessage } from '../features/chat/errorMessages';
+import { useCreateChatRoom } from '../features/chat/queries';
 import DeleteItemModal from '../features/item/components/DeleteItemModal';
 import ItemImageCarousel from '../features/item/components/ItemImageCarousel';
 import {
@@ -17,6 +20,7 @@ import { parseItemId } from '../features/item/itemId';
 import { useItemDetail } from '../features/item/queries';
 import { RENTAL_DAY_STATUS } from '../features/rental/constants';
 import { useCalendarDays } from '../features/rental/queries';
+import { useAuthStore } from '../shared/api';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { monthOf, todayInSeoul } from '../shared/lib/date';
 import { isInitialLoadError } from '../shared/lib/queryState';
@@ -89,7 +93,7 @@ function HeartIcon() {
   );
 }
 
-// 관심(REQ-022)·채팅(REQ-026)은 2순위라 아직 없다. 시안 자리는 두고 누르면 안내만 한다
+// 관심(REQ-022)은 아직 없다. 시안 자리는 두고 누르면 안내만 한다
 function showComingSoon() {
   toast.show({ message: '준비 중인 기능이에요' });
 }
@@ -123,6 +127,39 @@ function OwnerActions({ item }) {
   );
 }
 
+/**
+ * 채팅하기(REQ-026): 방을 만들거나 기존 방을 받아 그 방으로 간다. 비회원은 로그인 화면으로(돌아올 경로 = 이 상세).
+ * 응답이 오기 전에 화면을 떠났으면 옮기지 않는다.
+ */
+function ChatButton({ itemId }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isLoggedIn = useAuthStore((state) => state.accessToken !== null);
+  const createRoom = useCreateChatRoom();
+
+  function handleClick() {
+    if (!isLoggedIn) {
+      navigate(toLoginPath(location.pathname + location.search));
+      return;
+    }
+    createRoom.mutate(itemId, {
+      onSuccess: ({ roomId }) => navigate(`/chats/${roomId}`),
+      onError: (error) => toast.show({ message: getChatErrorMessage(error), tone: 'danger' }),
+    });
+  }
+
+  return (
+    <Button
+      variant="outline"
+      className="flex-[0.72] px-0"
+      isLoading={createRoom.isPending}
+      onClick={handleClick}
+    >
+      채팅하기
+    </Button>
+  );
+}
+
 /** 하단 바 버튼 줄: 관심(하트) · 채팅하기(외곽선) · 예약하기(채움, 더 넓게). 내 물품이면 수정·삭제 */
 function DetailActions({ item }) {
   if (item.isOwner) {
@@ -138,9 +175,7 @@ function DetailActions({ item }) {
       >
         <HeartIcon />
       </button>
-      <Button variant="outline" className="flex-[0.72] px-0" onClick={showComingSoon}>
-        채팅하기
-      </Button>
+      <ChatButton itemId={item.itemId} />
       <ButtonLink to={`/items/${item.itemId}/reserve`} className="flex-1 px-0">
         예약하기
       </ButtonLink>

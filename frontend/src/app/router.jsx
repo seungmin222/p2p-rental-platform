@@ -1,5 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 
+import ChatListPage from '../pages/ChatListPage';
+import ChatRoomPage from '../pages/ChatRoomPage';
 import ComingSoonPage from '../pages/ComingSoonPage';
 import HomePage from '../pages/HomePage';
 import ItemDetailPage from '../pages/ItemDetailPage';
@@ -20,6 +22,7 @@ import SignupPage from '../pages/SignupPage';
 import { clearLocalSession } from '../features/auth/queries';
 import { watchPageRestore } from '../features/payment/startPayment';
 import { setUnauthorizedHandler } from '../shared/api';
+import { startStompSession } from '../shared/ws';
 import { queryClient } from './queryClient';
 import AppLayout from './layout/AppLayout';
 import { toLoginPath } from './loginPath';
@@ -45,7 +48,7 @@ const devRoutes = import.meta.env.DEV
     ]
   : [];
 
-// 구현한 화면만 등록한다(frontend/CLAUDE.md "화면 ↔ 라우트"). 아직 없는 2순위 탭(채팅·알림)은 "준비 중"으로 연결.
+// 구현한 화면만 등록한다(frontend/CLAUDE.md "화면 ↔ 라우트"). 아직 없는 2순위 탭(알림)은 "준비 중"으로 연결.
 export const router = createBrowserRouter([
   // SCR-01
   { path: '/login', element: <LoginPage /> },
@@ -57,7 +60,6 @@ export const router = createBrowserRouter([
       { path: '/search', element: <SearchPage /> }, // SCR-04
       { path: '/regions', element: <RegionPage /> }, // SCR-02 (비회원 임시 동네 선택 가능)
       { path: '/items/:id', element: <ItemDetailPage />, handle: hideTabBar }, // SCR-05
-      { path: '/chats', element: <ComingSoonPage /> }, // SCR-09 (2순위)
       { path: '/notifications', element: <ComingSoonPage /> }, // SCR-11 (2순위)
       {
         element: <RequireAuth />,
@@ -68,6 +70,8 @@ export const router = createBrowserRouter([
           { path: '/payments/success', element: <PaymentSuccessPage />, handle: hideTabBar }, // SCR-07
           { path: '/payments/fail', element: <PaymentFailPage />, handle: hideTabBar }, // SCR-07
           { path: '/rentals/:id', element: <RentalDetailPage />, handle: hideTabBar }, // SCR-08
+          { path: '/chats', element: <ChatListPage /> }, // SCR-09
+          { path: '/chats/:roomId', element: <ChatRoomPage />, handle: hideTabBar }, // SCR-10
           // SCR-12
           { path: '/me', element: <MyPage /> },
           { path: '/me/rentals', element: <MyRentalsPage /> },
@@ -85,10 +89,15 @@ watchPageRestore(queryClient);
 
 // 재발급 실패 시 새로고침 없이 로그인 화면으로 보내고, 돌아올 경로를 넘긴다.
 // 로그아웃과 같이 캐시도 지운다 — 남겨 두면 비회원으로 돌아온 화면에 이전 사용자의 isOwner·내 정보가 보인다
-setUnauthorizedHandler(() => {
+function handleUnauthorized() {
   const { pathname, search } = router.state.location;
   if (pathname !== '/login') {
     router.navigate(toLoginPath(pathname + search), { replace: true });
   }
   clearLocalSession(queryClient);
-});
+}
+
+setUnauthorizedHandler(handleUnauthorized);
+
+// STOMP(채팅 실시간)는 로그인 동안만 연결한다. 연결 중 재발급이 실패하면 REST와 같이 처리
+startStompSession({ onUnauthorized: handleUnauthorized });

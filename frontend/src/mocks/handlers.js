@@ -1,5 +1,7 @@
 // 도메인별 핸들러는 각 화면 브랜치에서 추가한다. 처리하지 않는 요청은 실제 서버로 넘어간다(bypass).
 import { authHandlers } from './auth';
+import { chatHandlers } from './chat';
+import { chatStompHandlers } from './chatStomp';
 import { feedHandlers } from './feed';
 import { itemHandlers } from './item';
 import { itemWriteHandlers } from './itemWrite';
@@ -16,6 +18,8 @@ export const handlers = [
   ...regionHandlers,
   ...rentalHandlers,
   ...paymentHandlers,
+  ...chatHandlers,
+  ...chatStompHandlers,
   ...feedHandlers,
   ...itemWriteHandlers,
   ...itemHandlers,
