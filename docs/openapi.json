@@ -8482,8 +8482,12 @@
             "format": "int64"
           },
           "senderId": {
-            "type": "integer",
-            "format": "int64"
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "보낸 회원 ID. SYSTEM 메시지는 null"
           },
           "sentAt": {
             "type": "string",
