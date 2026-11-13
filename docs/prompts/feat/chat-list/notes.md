@@ -1,5 +1,11 @@
 # feat/chat-list 결정 기록 (REQ-028·029)
 
+## 요약
+- API: `GET /api/chat-rooms`(전체·정렬 COALESCE(last_message_at, created_at)), `GET /api/chat-rooms/{id}`(상대·물품·최근 대여 건·counterpartLastReadMessageId), `GET /api/chat-rooms/{id}/messages?cursor=`(50건), `GET /api/chat-rooms/unread-count`, STOMP `/pub/chat-rooms/{id}/read` → 상대 `/user/queue/chat-reads`.
+- 새 파일: `chat/service/ChatQueryService`, `ChatReadService`, `chat/repository/ChatMessageCursor`, `chat/dto/ChatRoom{Summary,Detail}Response` 등, 테스트 `ChatListIntegrationTest`.
+- 목록 갱신 이벤트(`/user/queue/chat-rooms`)에 unreadCount·totalUnreadCount를 추가했다. GET 내역 조회는 읽음을 바꾸지 않는다.
+- 남은 일: 탈퇴 상대에게 보내기 서버 차단(REQ-043), 프론트 채팅 목록·방 화면 연동.
+
 ## 정해진 값 (2026-11-13 사용자 승인)
 - **목록은 페이지 없이 전체 반환.** 실시간 이벤트로 순서가 계속 바뀌는 목록이라 page 방식이면 항목이 밀리고, policies.md에 채팅 목록 크기 값이 없다.
 - **메시지가 없는 방도 목록에 넣고 `COALESCE(last_message_at, created_at) DESC, id DESC`로 정렬.** 대여자가 만든 방을 다시 찾을 수 있게.
