@@ -1,5 +1,11 @@
 # feat/fe-chat 결정 기록 (SCR-09·10, REQ-026–029 프론트)
 
+## 요약
+- 화면: SCR-09 채팅 목록(`/chats`, `pages/ChatListPage.jsx`), SCR-10 채팅방(`/chats/:roomId`, `pages/ChatRoomPage.jsx`), 상세 "채팅하기"·하단 탭·PC 헤더 안 읽은 수 배지. 쓰는 API: `GET /api/chat-rooms`·`/{id}`·`/{id}/messages`, `POST /api/chat-rooms`, STOMP `/pub/chat-rooms/{id}/messages`·`/read`.
+- STOMP 공통 모듈 `shared/ws`(`stompClient.js` 앱 전체 연결 하나·구독 receipt·AUTH 거부 3회 제한, `useStompSubscription`, `stompStatusStore`). 채팅 로직은 `features/chat`(`useChatRoomSession.js`, `queries.js`, `chatCache.js`), MSW 가짜 STOMP 서버는 `mocks/chatStomp.js`.
+- 남은 일: `/user/queue/notifications` 구독은 알림 브랜치가 `useStompSubscription`으로 건다. 사진(050)·약속(051)·차단(056)·SYSTEM 메시지 생성은 미구현.
+- 백엔드에 알릴 것: openapi.json `ChatMessageResponse.senderId` nullable 표시 누락. 연결 끊김 뒤 저장된 메시지가 실패로 보이는 한계는 clientMessageId를 서버가 저장하지 않아서다.
+
 ## 정해진 값 (2026-11-13 사용자 승인)
 - **STOMP는 `@stomp/stompjs` 7.5.0 하나, SockJS 없음.** 승인 시점 최신 안정판(2026-10-15, 의존성 없음). vite에 `/ws` 프록시가 이미 있고 운영 Nginx도 같은 출처라 폴백이 필요 없다.
 - **목은 MSW `ws.link('/ws')` 가짜 STOMP 서버까지 만든다.** 백엔드 없이 채팅 화면 전체(실시간·읽음·거부·재연결)를 확인하려고. 프레임 읽기·쓰기는 `mocks/stompFrame.js`, 서버 흉내는 `mocks/chatStomp.js`.
