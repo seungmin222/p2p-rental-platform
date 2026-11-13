@@ -44,6 +44,7 @@ public class RentalQueryService {
 	private final MemberQueryService memberQueryService;
 	private final OverdueFeeCalculator overdueFeeCalculator;
 	private final RentalDepositQueryPort rentalDepositQueryPort;
+	private final RentalReviewQueryPort rentalReviewQueryPort;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
@@ -68,10 +69,14 @@ public class RentalQueryService {
 			.findOpen(rentalId, LocalDateTime.now(clock))
 			.filter(agreement -> rental.getStatus() == RentalStatus.RESERVED)
 			.orElse(null);
+		// 후기 작성 여부는 상태와 상관없이 조회해 쿼리 수를 일정하게 둔다
+		boolean reviewWritten = rentalReviewQueryPort.isWritten(rentalId, memberId);
+		boolean canWriteReview = !reviewWritten
+			&& rental.canWriteReview(LocalDateTime.now(clock), policyProperties.review().writeDeadlineDays());
 		return RentalDetailResponse.of(rental, rental.roleOf(memberId), item, counterpartId,
 			memberQueryService.getNickname(counterpartId), activeCancelAgreement, memberId,
 			overdueFeeCalculator.displayFee(rental, LocalDate.now(clock)),
-			rentalDepositQueryPort.findDepositInfo(rentalId).orElse(null));
+			rentalDepositQueryPort.findDepositInfo(rentalId).orElse(null), canWriteReview, reviewWritten);
 	}
 
 	/**

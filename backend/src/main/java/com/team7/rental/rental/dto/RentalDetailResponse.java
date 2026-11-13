@@ -108,16 +108,24 @@ public record RentalDetailResponse(
 	RentalDepositInfo.Deduction deduction,
 
 	@Schema(description = "가장 최근 차감 제안(상태 무관, REQ-049). 대여자는 status PROPOSED이고 respondDeadline 전이면 proposalId로 수락·거절한다. 없으면 null")
-	RentalDepositInfo.Proposal latestDeductionProposal) {
+	RentalDepositInfo.Proposal latestDeductionProposal,
+
+	@Schema(description = "조회한 회원이 지금 후기를 쓸 수 있는지 (REQ-034). 거래 완료(COMPLETED) 후 policies.md review.write-deadline-days 이내(기한 정각 포함)이고 아직 쓰지 않았으면 true")
+	boolean canWriteReview,
+
+	@Schema(description = "조회한 회원이 이 대여에 후기를 이미 썼는지 (REQ-034)")
+	boolean reviewWritten) {
 
 	/**
 	 * @param activeCancelAgreement 진행 중인 동의 취소 요청. 없으면 null
 	 * @param overdueFee 현재까지 또는 확정 연체료 (OverdueFeeCalculator#displayFee)
 	 * @param depositInfo 승인된 결제의 보증금 정보. 없으면 null
+	 * @param canWriteReview 후기 작성 기간이고 아직 쓰지 않았으면 true
+	 * @param reviewWritten 조회한 회원이 이 대여에 후기를 썼으면 true
 	 */
 	public static RentalDetailResponse of(Rental rental, RentalRole myRole, ItemSummary item, Long counterpartId,
 		String counterpartNickname, RentalCancelAgreement activeCancelAgreement, Long memberId, int overdueFee,
-		RentalDepositInfo depositInfo) {
+		RentalDepositInfo depositInfo, boolean canWriteReview, boolean reviewWritten) {
 		return new RentalDetailResponse(
 			rental.getId(),
 			rental.getStatus(),
@@ -148,7 +156,9 @@ public record RentalDetailResponse(
 			depositInfo != null && depositInfo.refundPending(),
 			depositInfo == null ? null : depositInfo.heldAt(),
 			depositInfo == null ? null : depositInfo.deduction(),
-			depositInfo == null ? null : depositInfo.latestProposal());
+			depositInfo == null ? null : depositInfo.latestProposal(),
+			canWriteReview,
+			reviewWritten);
 	}
 
 	public record RentalItem(

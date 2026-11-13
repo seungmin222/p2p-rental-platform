@@ -406,10 +406,16 @@ public record PolicyProperties(
 
 	/**
 	 * @param writeDeadlineDays 거래 완료(completed_at) 후 후기 작성 기한 일수 (review.write-deadline-days)
+	 * @param contentMax 후기 내용 최대 글자 수 (review.content.max). reviews.content VARCHAR(300)과 같게
+	 * @param page 받은 후기 목록(REQ-034) 페이지 크기 (review.page). 요청에서 size를 받지 않는다
 	 */
 	public record Review(
 		@Positive
-		int writeDeadlineDays) {
+		int writeDeadlineDays,
+		@Positive
+		int contentMax,
+		@Positive
+		int page) {
 	}
 
 	/**

@@ -6,9 +6,10 @@
 `POST /api/rentals/{rentalId}/reviews { satisfaction, compliments[], content? }`
 - satisfaction: `BAD`/`GOOD`/`BEST` 필수, compliments 다중 선택, content ≤300자
 - 가드: rental COMPLETED, 작성자가 당사자(대여자→제공자, 제공자→대여자), `completed_at` + 7일 이내, (rental, writer) 1회
-- 예외: 당사자 아님 403, 이미 작성 409 `REVIEW_ALREADY_WRITTEN`, 기한 경과 400 `REVIEW_DEADLINE_PASSED`
-- 상대에게 `REVIEW_RECEIVED` 알림. 상대 프로필 후기 목록에 노출
-- 칭찬 항목 초기값(`ComplimentType`): 시간 약속을 잘 지켜요(ON_TIME), 물품 상태가 설명과 같아요(AS_DESCRIBED), 깨끗하게 사용했어요(CLEAN_USE). 대여자용/제공자용 구분이 필요하면 착수 시 결정
+- 예외: 당사자 아님 403 `RENTAL_NOT_PARTICIPANT`, COMPLETED 아님 409 `RENTAL_INVALID_TRANSITION`, 이미 작성 409 `REVIEW_ALREADY_WRITTEN`(동시 작성은 유니크 위반을 같은 409로), 기한 경과 400 `REVIEW_DEADLINE_PASSED`. 검사 순서는 대여 → 당사자 → 상태 → 기한 → 1회
+- 상대에게 `REVIEW_RECEIVED` 알림(대상 RENTAL, 키 `REVIEW_RECEIVED:{rentalId}`). 상대 프로필 후기 목록에 노출
+- 받은 후기 목록 `GET /api/members/{id}/reviews?page=`: 비회원 조회 가능, 최신순, `review.page` 고정. 항목에 작성자(닉네임·프로필 사진, 탈퇴면 null), 작성자 역할 `writerRole`(RENTER/OWNER), 만족도·칭찬·내용·작성 시각. 없는 회원 404 `MEMBER_NOT_FOUND`
+- 칭찬 항목 초기값(`ComplimentType`): 시간 약속을 잘 지켜요(ON_TIME), 물품 상태가 설명과 같아요(AS_DESCRIBED), 깨끗하게 사용했어요(CLEAN_USE). 대여자·제공자 공통 목록(open-issues #15)
 
 ## REQ-054 신뢰 점수 [3] (후기와 함께 설계)
 - 초기값·범위·가감 규칙은 `policies.md` `trust.*`가 기준이다. 소수 0.5 단위 → `DECIMAL(4,1)`

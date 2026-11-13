@@ -27,7 +27,7 @@
 | 1 | DELETE | /api/members/me/regions/{id} | 동네 삭제 | O | 004 |
 | 3 | PATCH | /api/members/me/regions/{id}/range | 범위 설정 | O | 042 |
 | 2 | GET | /api/members/{id} | 사용자 프로필 | X | 021 |
-| 2 | GET | /api/members/{id}/reviews | 받은 후기 | X | 021, 034 |
+| 2 | GET | /api/members/{id}/reviews?page= | 받은 후기(최신순, 작성자 역할 writerRole) | X | 021, 034 |
 | 2 | GET | /api/members/{id}/items | 등록 물품 | X | 021 |
 | 2 | POST | /api/auth/password-reset | 재설정 메일 | X | 036 |
 | 2 | POST | /api/auth/password-reset/confirm | 재설정 | X | 036 |
@@ -80,7 +80,7 @@
 | 1 | GET | /api/members/me/items?tab=&page= | 내 물품 관리 | O | 020 |
 | 1 | GET | /api/items/{itemId}/rentals?page= | 물품별 예약 현황(제공자) | O | 020 |
 | 2 | POST | /api/rentals/{id}/extensions | 연장 요청. 연장료 > 0이고 결제를 켰으면 결제 대기(기간 선점), 아니면 바로 확정 | O | 038 |
-| 2 | POST | /api/rentals/{id}/reviews | 후기 작성 | O | 034 |
+| 2 | POST | /api/rentals/{id}/reviews | 후기 작성. 상대에게 REVIEW_RECEIVED 알림 | O | 034 |
 
 > 원 명세는 인계 사진 등록을 `POST /api/rentals/{id}/inspections`로도 표기한다. 인계 확인과 사진 등록은 한 요청이어야 하므로 `PATCH /handover`(multipart) 하나로 합쳤다(`open-issues.md` #4).
 

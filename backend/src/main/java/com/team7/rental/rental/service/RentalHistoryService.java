@@ -35,6 +35,7 @@ public class RentalHistoryService {
 	private final RentalRepository rentalRepository;
 	private final ItemQueryService itemQueryService;
 	private final MemberQueryService memberQueryService;
+	private final RentalReviewQueryPort rentalReviewQueryPort;
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
@@ -52,12 +53,18 @@ public class RentalHistoryService {
 		Map<Long, ItemSummary> items = itemQueryService.getSummaries(itemIds);
 		Map<Long, String> nicknames = memberQueryService.getNicknames(ownerIds);
 		int reviewDeadlineDays = policyProperties.review().writeDeadlineDays();
+		// 작성 기간 안의 건만 후기 작성 여부를 확인한다(없으면 쿼리를 내지 않는다)
+		Set<Long> reviewWritten = rentalReviewQueryPort.findWrittenRentalIds(memberId, rows.stream()
+			.filter(row -> Rental.canWriteReview(row.status(), row.completedAt(), now, reviewDeadlineDays))
+			.map(RentalHistoryRow::rentalId)
+			.toList());
 
-		return PageResponse.of(rows, row -> toResponse(row, items, nicknames, now, reviewDeadlineDays));
+		return PageResponse.of(rows,
+			row -> toResponse(row, items, nicknames, now, reviewDeadlineDays, reviewWritten));
 	}
 
 	private RentalHistoryResponse toResponse(RentalHistoryRow row, Map<Long, ItemSummary> items,
-		Map<Long, String> nicknames, LocalDateTime now, int reviewDeadlineDays) {
+		Map<Long, String> nicknames, LocalDateTime now, int reviewDeadlineDays, Set<Long> reviewWritten) {
 		// 대여가 FK로 참조하는 행이고 물품·회원은 소프트 삭제라 없으면 데이터 오류다(getSummary·getNickname과 같은 처리)
 		ItemSummary item = items.get(row.itemId());
 		String nickname = nicknames.get(row.ownerId());
@@ -72,8 +79,8 @@ public class RentalHistoryService {
 			row.startDate(),
 			row.endDate(),
 			(long)row.rentalFee() + row.deposit(),
-			// "후기 미작성" 조건은 feat/review(REQ-034)에서 더한다
-			Rental.canWriteReview(row.status(), row.completedAt(), now, reviewDeadlineDays));
+			Rental.canWriteReview(row.status(), row.completedAt(), now, reviewDeadlineDays)
+				&& !reviewWritten.contains(row.rentalId()));
 	}
 
 	/**

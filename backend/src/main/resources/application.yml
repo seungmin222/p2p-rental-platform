@@ -222,6 +222,10 @@ app:
     review:
       # review.write-deadline-days: 거래 완료(completed_at) 후 후기 작성 기한 (REQ-034, 빌린 내역 canWriteReview REQ-019)
       write-deadline-days: 7
+      # review.content.max: 후기 내용 최대 글자 수 (REQ-034). reviews.content VARCHAR(300)과 같게
+      content-max: 300
+      # review.page: 받은 후기 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-034)
+      page: 20
     rental-history:
       # rental-history.page: 빌린 내역 페이지 크기. size 파라미터를 받지 않는다 (REQ-019)
       page: 20

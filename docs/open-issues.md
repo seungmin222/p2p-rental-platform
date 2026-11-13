@@ -20,7 +20,7 @@
 | 12 | ✅ | 파일 | 이미지 업로드 방식 | 서버 경유 multipart (서버에서 썸네일 생성). 저장소는 `FileStorage`(운영 S3, 로컬 디스크) |
 | 13 | ✅ | 취소 | 시작일 이후 양측 동의 취소 흐름 | 한쪽 요청 → 상대 동의 시 취소, 요청은 48시간 후 만료. `rental_cancel_agreements` |
 | 14 | ✅ | STOMP | 목적지 접두사 확정 | 앱 `/pub/**`, 개인 큐 `/user/queue/*`, 방 구독은 `/topic/chat-rooms.{roomId}`. RabbitMQ STOMP 브로커 릴레이는 `/topic/`·`/queue/` 등 정해진 접두사만 받고 토픽 라우팅 키 구분자가 점이라 `/sub/...`를 쓸 수 없다(`feat/chat-core`). api.md·chat.md·architecture.md 반영 |
-| 15 | ⬜ | 후기 | 칭찬 항목을 대여자용/제공자용으로 나눌지 | (제안) 공통 목록으로 시작 |
+| 15 | ✅ | 후기 | 칭찬 항목을 대여자용/제공자용으로 나눌지 | 공통 목록(`ON_TIME`·`AS_DESCRIBED`·`CLEAN_USE`)으로 시작. 방향에 맞지 않는 항목도 서버가 막지 않는다(feat/review) |
 | 16 | ✅ | API | itemPrice는 "소유자 수정 화면 응답만 예외"인데 그 화면을 채울 조회 API가 없음 | `GET /api/members/me/items/{itemId}`(소유자 전용, Item 태그, REQ-007). itemPrice·가능 기간·이미지 id 포함. 남의 물품 403 `ITEM_NOT_OWNER`, 없음·삭제 404 `ITEM_NOT_FOUND`. 물품 수정 응답도 같은 형태 |
 | 17 | ✅ | API | 409 충돌 목록(`ITEM_PERIOD_CONFLICT` 충돌 기간, `ITEM_HAS_ACTIVE_RENTAL` 해당 건)을 실을 자리. 대여 쪽 선례 없음 | 공통 `ErrorResponse`를 바꾸지 않고 `error.details`에 한 건씩 `{ field, reason }`: field는 `availablePeriods`/`rentals`, reason은 화면에 그대로 보일 문구(예: `2026-11-03 ~ 2026-11-05`). 프론트는 reason을 나열만 한다 |
 | 18 | ✅ | API | item.md의 이미지 오류 `FILE_INVALID`와 이미 있는 `IMAGE_*` 코드 | `IMAGE_COUNT_INVALID`·`IMAGE_INVALID_TYPE`·`IMAGE_SIZE_EXCEEDED`를 물품·프로필에도 쓴다. item.md 수정 |

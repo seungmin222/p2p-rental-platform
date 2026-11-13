@@ -35,6 +35,11 @@ public class MemberQueryService {
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
+	/** 탈퇴 회원도 행이 남아 있으므로 true다(받은 후기 목록 REQ-034의 404 판정용) */
+	public boolean exists(Long memberId) {
+		return memberRepository.existsById(memberId);
+	}
+
 	/**
 	 * @throws IllegalStateException 회원이 없을 때. 호출하는 쪽이 FK로 참조한 회원이라 데이터 오류다
 	 */

@@ -34,6 +34,7 @@ public enum ErrorCode {
 	IMAGE_COUNT_INVALID(HttpStatus.BAD_REQUEST, "이미지 장수가 올바르지 않습니다."),
 
 	// 회원·동네
+	MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
 	MEMBER_EMAIL_DUPLICATED(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."),
 	MEMBER_NICKNAME_DUPLICATED(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
 	MEMBER_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "현재 비밀번호가 일치하지 않습니다."),
@@ -110,6 +111,10 @@ public enum ErrorCode {
 	// 알림 (REQ-032)
 	NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
 	NOTIFICATION_NOT_OWNER(HttpStatus.FORBIDDEN, "본인의 알림만 처리할 수 있습니다."),
+
+	// 후기 (REQ-034)
+	REVIEW_ALREADY_WRITTEN(HttpStatus.CONFLICT, "이미 후기를 작성했습니다."),
+	REVIEW_DEADLINE_PASSED(HttpStatus.BAD_REQUEST, "후기 작성 기간이 지났습니다."),
 
 	// 문의·분쟁 (REQ-063)
 	INQUIRY_DISPUTE_NOT_ALLOWED(HttpStatus.CONFLICT, "결제가 끝난 대여만 분쟁을 접수할 수 있습니다."),

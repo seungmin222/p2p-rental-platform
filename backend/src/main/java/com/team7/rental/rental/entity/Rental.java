@@ -183,7 +183,7 @@ public class Rental extends BaseTimeEntity {
 	 * 후기 작성 기간인지: COMPLETED이고 now ≤ completedAt + deadlineDays(review.write-deadline-days). 정확히 기한 시각이면 아직 작성할 수
 	 * 있다. COMPLETED인데 completedAt이 없는 깨진 행은 false다. 빌린 내역(REQ-019)은 엔티티 대신 조회 컬럼으로 부른다.
 	 * <p>
-	 * "후기 미작성" 조건은 후기 테이블이 생기는 feat/review(REQ-034)에서 호출하는 쪽에 더한다.
+	 * "후기 미작성" 조건은 호출하는 쪽이 {@code RentalReviewQueryPort}로 더한다(REQ-034).
 	 */
 	public static boolean canWriteReview(RentalStatus status, LocalDateTime completedAt, LocalDateTime now,
 		int deadlineDays) {
