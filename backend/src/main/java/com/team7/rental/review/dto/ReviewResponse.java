@@ -26,7 +26,7 @@ public record ReviewResponse(
 	@Schema(description = "칭찬 항목 (Enum 선언 순서). 없으면 빈 배열")
 	List<ComplimentType> compliments,
 
-	@Schema(description = "후기 내용. 없으면 null", example = "깨끗하게 잘 썼어요.")
+	@Schema(description = "후기 내용. 없으면 null", example = "깨끗하게 잘 썼어요.", nullable = true)
 	String content,
 
 	@Schema(description = "작성 시각", example = "2026-11-14T10:00:00")

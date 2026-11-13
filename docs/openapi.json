@@ -10600,7 +10600,10 @@
             }
           },
           "content": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "후기 내용. 없으면 null",
             "example": "깨끗하게 잘 썼어요."
           },
@@ -11394,7 +11397,10 @@
             }
           },
           "content": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "후기 내용. 없으면 null",
             "example": "깨끗하게 잘 썼어요."
           },
@@ -11570,12 +11576,18 @@
             "example": 3
           },
           "nickname": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "닉네임. 탈퇴한 작성자면 null(화면이 \"탈퇴한 사용자\"로 표시)",
             "example": "캠핑러"
           },
           "profileImageUrl": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "프로필 이미지 URL. 없거나 탈퇴한 작성자면 null"
           }
         }
