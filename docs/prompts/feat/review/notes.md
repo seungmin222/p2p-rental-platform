@@ -1,5 +1,11 @@
 # feat/review 결정 기록
 
+## 요약
+- API: `POST /api/rentals/{rentalId}/reviews`(작성), `GET /api/members/{memberId}/reviews`(받은 후기, `review.page` 고정). 대여 상세에 `canWriteReview`·`reviewWritten` 추가, 빌린 내역 `canWriteReview`에 미작성 조건 반영.
+- 주요 파일: `review/` 패키지(`ReviewService`·`ReviewTxService`·`ReviewQueryService`·`ReviewNotificationListener`), `rental/service/RentalReviewQueryPort`·`RentalParticipantReader`, `V18__create_review_tables.sql`. 새 ErrorCode `MEMBER_NOT_FOUND`.
+- 다음: 신뢰 점수(054)는 `ReviewWrittenEvent`를 구독해 trust_score_events를 쌓는다. 프로필(021)은 `MEMBER_NOT_FOUND`를 재사용하고 탈퇴 회원 후기 목록 공개 여부를 정한다. 프론트 SCR-14(후기 작성)·프로필 받은 후기 목록은 미구현.
+- `AiCategoryIntegrationTest` 5개 실패는 develop에서도 재현(이 브랜치와 무관).
+
 REQ-034 거래 후기(백엔드). 프론트 SCR-14 화면과 신뢰 점수(054)는 범위 밖. 마이그레이션 `V18__create_review_tables.sql`.
 
 ## 스키마
