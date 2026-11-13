@@ -1,24 +1,26 @@
 # 채팅 (chat)
 
-담당: 신수정(B) · 화면: SCR-09, 10 · 엔티티: chat_rooms, chat_messages, (chat_room_members 제안)
+담당: 신수정(B) · 화면: SCR-09, 10 · 엔티티: chat_rooms, chat_messages, chat_room_members
 
 ## 구조
 - Spring WebSocket + STOMP, 엔드포인트 `/ws` (SockJS 폴백은 선택)
 - **RabbitMQ STOMP 브로커 릴레이** (`enableStompBrokerRelay`, RabbitMQ `rabbitmq_stomp` 플러그인 필요) → 서버가 여러 대여도 구독자에게 전달
 - 인증: STOMP CONNECT 헤더 `Authorization: Bearer <AT>` → `ChannelInterceptor`에서 검증, Principal = memberId
-- 구독 인가: `SUBSCRIBE /sub/chat-rooms/{id}` 시 참여자 여부 검사, 아니면 거부
-- 목적지(제안): SEND `/pub/chat-rooms/{id}`(메시지), `/pub/chat-rooms/{id}/read`(읽음) · SUB `/sub/chat-rooms/{id}`, `/user/queue/chat-rooms`(목록 갱신 이벤트), `/user/queue/notifications`(알림)
+- 구독 인가: `SUBSCRIBE /topic/chat-rooms.{id}` 시 참여자 여부 검사, 아니면 ERROR 프레임(`CHAT_NOT_PARTICIPANT`·`CHAT_ROOM_NOT_FOUND`)으로 거부하고 연결을 닫는다. 개인 큐 외 다른 목적지 구독, 브로커 목적지로 바로 SEND도 거부(`AUTH_FORBIDDEN`)
+- 목적지(확정, open-issues #14): SEND `/pub/chat-rooms/{id}`(메시지), `/pub/chat-rooms/{id}/read`(읽음) · SUB `/topic/chat-rooms.{id}`, `/user/queue/chat-rooms`(목록 갱신 이벤트), `/user/queue/notifications`(알림), `/user/queue/errors`(SEND 거부 회신). 본문은 `docs/api.md` "STOMP 메시지"
+- 한 세션의 프레임은 받은 순서대로 처리하고 보낸 순서대로 내보낸다(연속 SEND의 저장 순서 보장)
 
 ## REQ-026 채팅방 생성 [2 필수]
 `POST /api/chat-rooms { itemId }`
 - (item, renter) 당 1개. 있으면 기존 방 반환(200), 없으면 생성(201). UK(item_id, renter_id)로 동시 생성 경합 방지
-- 본인 물품이면 400 `CHAT_OWN_ITEM`. 비회원은 프론트에서 로그인 유도
-- 생성 시 item.chatCount + 1
+- 본인 물품이면 400 `CHAT_OWN_ITEM`. 없거나 삭제(DELETED)된 물품은 404 `ITEM_NOT_FOUND`, 숨김(HIDDEN) 물품은 생성 가능. 비회원은 프론트에서 로그인 유도
+- 생성 시 item.chatCount + 1 (새로 만들 때만). 방을 만들 때 chat_room_members에 대여자·소유자 두 행을 넣는다
 - 차단 관계면 생성 불가(REQ-056 이후)
 
 ## REQ-027 실시간 메시지 송수신 [2 필수]
 - SEND payload `{ type: "TEXT", content }` (≤1,000자)
-- 서버: 참여자 검증 → DB 저장 → room.lastMessageAt·preview 갱신 → `/sub/chat-rooms/{id}`로 브로드캐스트(브로커 릴레이 경유) → 상대방 `/user/queue/chat-rooms`에 목록 갱신 이벤트
+- 서버: 참여자 검증 → DB 저장 → room.lastMessageAt·preview 갱신 → 커밋 뒤 `/topic/chat-rooms.{id}`로 브로드캐스트(브로커 릴레이 경유) → 상대방 `/user/queue/chat-rooms`에 목록 갱신 이벤트. 전파 실패는 재전송하지 않는다(DB 기준)
+- 거부(비참여자·형식 오류)는 저장하지 않고 보낸 세션의 `/user/queue/errors`로 회신, 연결은 유지
 - 메시지 응답에 서버 생성 id·sentAt 포함. 클라이언트는 임시 id로 낙관적 표시 후 교체
 - 연결 끊김: 클라이언트 자동 재연결 + 재연결 시 마지막 메시지 id 이후를 REST로 보충 조회
 - **다중 서버 검증**: 인스턴스 2개에서 A는 서버1, B는 서버2에 붙어도 메시지 전달되는지 통합 테스트

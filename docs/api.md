@@ -107,9 +107,19 @@
 | 2 | GET | /api/chat-rooms/{id} | 방 정보 (상대, 물품 요약, 최근 대여 건 상태 — 상단 바 표시용) | O | 026, 028 |
 | 2 | GET | /api/chat-rooms/{id}/messages?cursor= | 내역(50건) | O | 028 |
 | 2 | GET | /api/chat-rooms/unread-count | 전체 안 읽은 수 | O | 029 |
-| 2 | WS | /ws (STOMP) | SEND `/pub/chat-rooms/{id}`, `/pub/chat-rooms/{id}/read` · SUB `/sub/chat-rooms/{id}`, `/user/queue/notifications`(채팅 STOMP 구현 때 연결, 그 전에는 알림 목록 API로만 확인), `/user/queue/chat-rooms`(목록 갱신) | O | 027, 029, 032 |
+| 2 | WS | /ws (STOMP) | CONNECT 헤더 `Authorization: Bearer <AT>` · SEND `/pub/chat-rooms/{id}`(027), `/pub/chat-rooms/{id}/read`(029) · SUB `/topic/chat-rooms.{id}`(방 메시지, 참여자만), `/user/queue/chat-rooms`(목록 갱신), `/user/queue/notifications`(알림), `/user/queue/errors`(SEND 거부 회신) · 거부된 CONNECT·SUBSCRIBE는 ERROR 프레임(`message` = 에러 코드) 후 연결 종료. 본문 형태는 아래 "STOMP 메시지" | O | 027, 029, 032 |
 | 3 | POST | /api/chat-rooms/{id}/images | 사진 전송 | O | 050 |
 | 3 | POST | /api/chat-rooms/{id}/appointments | 약속 잡기 | O | 051 |
+
+### STOMP 메시지 (Swagger에 나오지 않아 여기 적는다, 027)
+
+| 목적지 | 방향 | 본문 |
+| --- | --- | --- |
+| `/pub/chat-rooms/{id}` | SEND | `{ type: "TEXT", content, clientMessageId? }` — content 공백만 불가·`chat.message.max` 이하, clientMessageId는 낙관적 표시용 임시 ID(저장 안 함) |
+| `/topic/chat-rooms.{id}` | MESSAGE | `{ messageId, roomId, senderId, type, content, sentAt, clientMessageId }` — 보낸 사람도 받는다. SYSTEM은 senderId null |
+| `/user/queue/chat-rooms` | MESSAGE | `{ roomId, lastMessageId, lastMessagePreview, lastMessageAt }` — 메시지를 받은 쪽(상대방)에게 |
+| `/user/queue/notifications` | MESSAGE | 알림 목록 API의 항목과 같은 형태(`NotificationResponse`) |
+| `/user/queue/errors` | MESSAGE | `{ clientMessageId, error: { code, message, details } }` — 보낸 세션에만, 연결 유지. 코드: `COMMON_INVALID_INPUT`, `CHAT_ROOM_NOT_FOUND`, `CHAT_NOT_PARTICIPANT` |
 
 ## 알림
 

@@ -8,6 +8,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.mysql.MySQLContainer;
@@ -48,13 +50,48 @@ public abstract class IntegrationTestSupport {
 	@ServiceConnection(name = "redis")
 	static final GenericContainer<?> REDIS = new GenericContainer<>(REDIS_IMAGE).withExposedPorts(6379);
 
+	/** RabbitMQ STOMP 포트 (rabbitmq_stomp 플러그인, 채팅·알림 브로커 릴레이) */
+	public static final int RABBITMQ_STOMP_PORT = 61613;
+
 	@ServiceConnection
-	static final RabbitMQContainer RABBITMQ = new RabbitMQContainer(RABBITMQ_IMAGE);
+	static final RabbitMQContainer RABBITMQ = rabbitMqWithStomp();
 
 	static {
 		MYSQL.start();
 		REDIS.start();
 		RABBITMQ.start();
+	}
+
+	/** infra/docker-compose.local.yml과 같게 rabbitmq_stomp를 켜고 STOMP 포트를 연다 */
+	public static RabbitMQContainer rabbitMqWithStomp() {
+		RabbitMQContainer container = new RabbitMQContainer(RABBITMQ_IMAGE)
+			.withCommand("bash", "-c", "rabbitmq-plugins enable --offline rabbitmq_stomp && rabbitmq-server");
+		container.addExposedPort(RABBITMQ_STOMP_PORT);
+		return container;
+	}
+
+	/** STOMP 브로커 릴레이 포트. 호스트·계정은 @ServiceConnection(spring.rabbitmq.*)을 같이 쓴다 */
+	@DynamicPropertySource
+	static void stompRelayProperties(DynamicPropertyRegistry registry) {
+		registry.add("app.stomp.relay-port", () -> RABBITMQ.getMappedPort(RABBITMQ_STOMP_PORT));
+	}
+
+	/**
+	 * 같은 컨테이너에 붙는 두 번째 애플리케이션 인스턴스용 접속 정보 (다중 서버 검증, REQ-027).
+	 * {@code SpringApplicationBuilder#properties}에 그대로 넘긴다.
+	 */
+	public static String[] sharedContainerProperties() {
+		return new String[] {
+			"spring.datasource.url=" + MYSQL.getJdbcUrl(),
+			"spring.datasource.username=" + MYSQL.getUsername(),
+			"spring.datasource.password=" + MYSQL.getPassword(),
+			"spring.data.redis.host=" + REDIS.getHost(),
+			"spring.data.redis.port=" + REDIS.getMappedPort(6379),
+			"spring.rabbitmq.host=" + RABBITMQ.getHost(),
+			"spring.rabbitmq.port=" + RABBITMQ.getAmqpPort(),
+			"spring.rabbitmq.username=" + RABBITMQ.getAdminUsername(),
+			"spring.rabbitmq.password=" + RABBITMQ.getAdminPassword(),
+			"app.stomp.relay-port=" + RABBITMQ.getMappedPort(RABBITMQ_STOMP_PORT)};
 	}
 
 	@Autowired

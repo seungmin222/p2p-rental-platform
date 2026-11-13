@@ -170,6 +170,17 @@ public class ItemQueryService {
 	}
 
 	/**
+	 * 채팅방 생성 대상 물품의 소유자 (REQ-026). 숨김(HIDDEN) 물품도 허용한다(이미 대화 중인 상대와 같은 규칙). 없음·삭제는 404.
+	 *
+	 * @throws BusinessException ITEM_NOT_FOUND
+	 */
+	public Long getChatOwnerId(Long itemId) {
+		return itemRepository.findById(itemId).filter(value -> value.getStatus() != ItemStatus.DELETED)
+			.map(Item::getOwnerId)
+			.orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
+	}
+
+	/**
 	 * 예약 대상 물품. 공개 여부는 {@link #validateVisible}과 같은 규칙이다.
 	 *
 	 * @throws BusinessException ITEM_NOT_FOUND

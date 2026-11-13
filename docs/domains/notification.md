@@ -14,7 +14,7 @@
 - event_id 규칙: `{TYPE}:{targetId}[:{추가키}]` 예) `OVERDUE:123`, `RETURN_REQUESTED:123`, `DEDUCTION_PROPOSED:123:{proposalId}`
 - API: 목록(최신순 20건 커서), 개별 읽음, 모두 읽음, 안 읽은 수(`GET /api/notifications/unread-count`)
 - 알림 설정(REQ-053) 구현 후에는 수신 거부 종류 미발송
-- 실시간 전달(`/user/queue/notifications`)은 채팅(REQ-026~029)의 STOMP 설정과 함께 연결한다. 그 전에는 저장만 하고 목록·안 읽은 수 API로 확인한다(`NotificationPushPort` 빈 구현)
+- 실시간 전달(`/user/queue/notifications`)은 채팅 STOMP 설정(REQ-027, `feat/chat-core`)으로 연결됐다(`StompNotificationPushPort`). 접속 중이 아니면 보내지 않고 목록·안 읽은 수 API로 확인한다
 
 ## REQ-031 연체 알림 [2 필수]
 연체 배치(rental.md REQ-023)가 대여자·제공자 각각에게 `OVERDUE` 발행. event_id `OVERDUE:{rentalId}`로 매시 재검사에도 1회만.

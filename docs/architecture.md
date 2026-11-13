@@ -41,11 +41,11 @@
 
 | 용도 | 경로 |
 | --- | --- |
-| 채팅 메시지 | 클라이언트 → STOMP `/pub/chat-rooms/{roomId}` → 서버(저장) → RabbitMQ 브로커 릴레이 → `/sub/chat-rooms/{roomId}` 구독자 |
+| 채팅 메시지 | 클라이언트 → STOMP `/pub/chat-rooms/{roomId}` → 서버(저장, 커밋 뒤 전파) → RabbitMQ 브로커 릴레이 → `/topic/chat-rooms.{roomId}` 구독자 |
 | 알림 | DB `notifications`에 **먼저 저장** → 접속 중이면 `/user/queue/notifications`로 전달. 실시간 전달 실패 시 재전송하지 않음(목록 API로 확인) |
 | AI 상태 비교 | 반납 요청 시 RabbitMQ 작업 큐에 적재 → 워커가 Claude API 호출 → 결과 저장 → 알림 |
 
-STOMP 목적지 접두사(`/pub`, `/sub`)는 구현 제안이며 백엔드·프론트가 함께 정한다. 확정 시 `docs/api.md`에 기록.
+STOMP 목적지는 확정(open-issues #14): 앱 `/pub/**`, 방 구독 `/topic/chat-rooms.{roomId}`, 개인 큐 `/user/queue/*`. RabbitMQ STOMP는 `/topic/`·`/queue/` 등 정해진 접두사만 받고 토픽 라우팅 키 구분자가 점이라 방 구독만 이 형태다. 목록은 `docs/api.md` 채팅.
 
 ## 4. API 공통 규약
 

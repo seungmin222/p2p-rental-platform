@@ -46,6 +46,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	// STOMP 브로커 릴레이(RabbitMQ)의 TCP 클라이언트 (REQ-027). 버전은 Spring Boot BOM 관리
+	implementation 'io.projectreactor.netty:reactor-netty-core'
 	implementation 'org.flywaydb:flyway-mysql'
 
 	// API 문서 (Swagger)

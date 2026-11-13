@@ -12,4 +12,10 @@ public interface ItemRepository extends JpaRepository<Item, Long>, ItemListingRe
 	Long id,
 		@org.springframework.data.repository.query.Param("count")
 		int count);
+
+	/** 채팅방을 새로 만들 때 한 번 (REQ-026). 동시 생성에도 빠지지 않게 원자적으로 올린다 */
+	@org.springframework.data.jpa.repository.Modifying
+	@org.springframework.data.jpa.repository.Query("update Item i set i.chatCount = i.chatCount + 1 where i.id = :id")
+	int increaseChatCount(@org.springframework.data.repository.query.Param("id")
+	Long id);
 }
