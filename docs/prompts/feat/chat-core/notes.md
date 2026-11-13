@@ -5,6 +5,7 @@
 - 주요 파일: `chat/`(entity·repository·dto·event, service `ChatRoomService`·`ChatRoomTxService`·`ChatMessageService`·`ChatBroadcastListener`·`ChatDestinations`, controller `ChatRoomController`·`ChatMessageController`), `global/config/WebSocketConfig`(RabbitMQ 브로커 릴레이), `global/security/StompAuthChannelInterceptor`, `notification/service/StompNotificationPushPort`, `item/service/ItemChatCountWriter`. 테스트 `support/StompTestClient`, `chat/controller/*IntegrationTest`(다중 서버 포함).
 - 남은 일(feat/chat-list, 028·029): `GET /api/chat-rooms`·`/{id}`(방 정보·최근 대여 상태, 이번에 미룸)·`/{id}/messages`(재연결 보충 조회)·`/unread-count`, `/pub/chat-rooms/{id}/read` → `chat_room_members.last_read_message_id` 갱신(커질 때만, 엔티티 메서드 추가) + 읽음 이벤트. 목록 갱신 이벤트(`ChatRoomUpdateResponse`)에 안 읽은 수를 더할지 그때 정한다.
 - 남은 일(기타): 대여 상태 변경 SYSTEM 메시지(chat.md SCR-10, `ChatMessageType.SYSTEM`만 있음), 차단(056) 시 생성 불가. 프론트는 STOMP 연결·임시 메시지 교체(clientMessageId)·`/user/queue/errors` 처리가 필요하다.
+- 남은 일(경합, 이번에 넘김): `ItemRepository.increaseChatCount`가 DELETED를 거르지 않아, 삭제 확인과 카운트 증가 사이에 물품이 삭제되면 삭제된 물품에 방이 생길 수 있다(가능성 낮음).
 
 ## 정해진 값 (2026-11-12 사용자 승인)
 - **방 구독 목적지는 `/topic/chat-rooms.{roomId}`** (open-issues #14 종료). RabbitMQ STOMP 브로커 릴레이는 `/topic/`·`/queue/`·`/exchange/` 등 정해진 접두사만 받아 `/sub/...`가 거부되고, 토픽 라우팅 키 구분자가 점이다. 서버가 `/sub`를 바꿔 주는 방식은 클라이언트가 받는 MESSAGE의 destination이 달라 헷갈려 버렸다. `/pub/**`·`/user/queue/*`는 그대로다.
@@ -23,6 +24,7 @@
 - **SEND 거부는 연결을 끊지 않고 `/user/queue/errors`로 회신**(`{ clientMessageId, error }`, `@SendToUser(broadcast = false)`로 보낸 세션에만). 클라이언트가 임시 메시지를 실패 표시할 수 있게 clientMessageId를 돌려준다.
 - **type은 TEXT만 받는다.** SYSTEM은 서버만 만든다(클라이언트가 보내면 400).
 - **수신·발행 순서 보존을 켰다**(`setPreserveReceiveOrder`, `setPreservePublishOrder`). 기본 스레드 풀에서는 같은 세션의 연속 SEND가 다른 순서로 저장됐다(테스트에서 확인).
+- **다중 서버 테스트(`ChatMultiInstanceIntegrationTest`)는 서버 간 `/user` 전달 결과만 본다.** `setUserRegistryBroadcast`·`setUserDestinationBroadcast` 경로를 각각 검증하지는 않는다(레지스트리 동기화 타이밍에 따라 어느 경로로 가는지가 달라져서).
 
 ## STOMP 인증·인가
 - **`StompAuthChannelInterceptor`(clientInboundChannel)**: CONNECT는 REST와 같은 `JwtProvider.parseAccessToken`, Principal 이름 = memberId. SUBSCRIBE는 방 토픽이면 참여자 검사, 아니면 정해진 개인 큐 3개만. SEND는 `/pub/`만(브로커 목적지로 바로 보내 검증을 건너뛰는 것 차단). AT 만료는 CONNECT 때만 본다.

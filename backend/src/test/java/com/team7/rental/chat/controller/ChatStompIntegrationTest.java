@@ -94,12 +94,14 @@ class ChatStompIntegrationTest extends IntegrationTestSupport {
 			new LinkedBlockingQueue<>());
 		assertThat(strangerConnection.errors().poll(TIMEOUT_SECONDS, TimeUnit.SECONDS))
 			.isEqualTo("CHAT_NOT_PARTICIPANT");
+		assertDisconnected(strangerConnection);
 
 		Connection renterConnection = connect(bearerToken(renter.getId()));
 		renterConnection.subscribeAsync("/topic/chat-rooms.999999", ChatMessageResponse.class,
 			new LinkedBlockingQueue<>());
 		assertThat(renterConnection.errors().poll(TIMEOUT_SECONDS, TimeUnit.SECONDS))
 			.isEqualTo("CHAT_ROOM_NOT_FOUND");
+		assertDisconnected(renterConnection);
 	}
 
 	@Test
@@ -108,11 +110,22 @@ class ChatStompIntegrationTest extends IntegrationTestSupport {
 		Connection subscriber = connect(bearerToken(renter.getId()));
 		subscriber.subscribeAsync("/topic/chat-rooms.*", Object.class, new LinkedBlockingQueue<>());
 		assertThat(subscriber.errors().poll(TIMEOUT_SECONDS, TimeUnit.SECONDS)).isEqualTo("AUTH_FORBIDDEN");
+		assertDisconnected(subscriber);
 
 		Connection sender = connect(bearerToken(renter.getId()));
 		sender.send("/topic/chat-rooms." + roomId, textMessage("우회", "tmp-0"));
 		assertThat(sender.errors().poll(TIMEOUT_SECONDS, TimeUnit.SECONDS)).isEqualTo("AUTH_FORBIDDEN");
+		assertDisconnected(sender);
 		assertThat(messageCount()).isZero();
+	}
+
+	// ERROR 프레임 뒤 서버가 연결을 닫기까지 비동기라 잠깐 기다린다.
+	private void assertDisconnected(Connection connection) throws InterruptedException {
+		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(TIMEOUT_SECONDS);
+		while (connection.isConnected() && System.nanoTime() < deadline) {
+			Thread.sleep(50);
+		}
+		assertThat(connection.isConnected()).isFalse();
 	}
 
 	@Test
