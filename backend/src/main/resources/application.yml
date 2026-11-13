@@ -122,6 +122,8 @@ app:
     chat:
       # chat.message.max: 채팅 메시지 최대 글자 수, 공백만은 불가 (REQ-027). chat_messages.content VARCHAR(1000)과 같게
       message-max: 1000
+      # chat.history.page: 메시지 내역 한 번에 가져오는 건수. size 파라미터를 받지 않는다 (REQ-028)
+      history-page: 50
     view-count:
       dedupe-hours: 24
     profile:

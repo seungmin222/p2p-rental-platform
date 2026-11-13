@@ -13,6 +13,8 @@ public final class ChatDestinations {
 	public static final String ROOM_TOPIC_PREFIX = "/topic/chat-rooms.";
 	/** 상대방 목록 갱신 이벤트 */
 	public static final String ROOM_UPDATES_QUEUE = "/queue/chat-rooms";
+	/** 상대의 읽음 이벤트 (REQ-029) */
+	public static final String READS_QUEUE = "/queue/chat-reads";
 	/** STOMP SEND 처리 오류 회신 (보낸 세션에만) */
 	public static final String ERRORS_QUEUE = "/queue/errors";
 	/** 알림 실시간 전달 (REQ-032) */

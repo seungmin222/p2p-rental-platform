@@ -44,6 +44,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
 	private static final String BEARER_PREFIX = "Bearer ";
 	private static final Set<String> USER_QUEUES = Set.of(
 		WebSocketConfig.USER_PREFIX + ChatDestinations.ROOM_UPDATES_QUEUE,
+		WebSocketConfig.USER_PREFIX + ChatDestinations.READS_QUEUE,
 		WebSocketConfig.USER_PREFIX + ChatDestinations.ERRORS_QUEUE,
 		WebSocketConfig.USER_PREFIX + ChatDestinations.NOTIFICATIONS_QUEUE);
 

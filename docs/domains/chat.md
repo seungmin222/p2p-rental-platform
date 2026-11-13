@@ -7,7 +7,7 @@
 - **RabbitMQ STOMP 브로커 릴레이** (`enableStompBrokerRelay`, RabbitMQ `rabbitmq_stomp` 플러그인 필요) → 서버가 여러 대여도 구독자에게 전달
 - 인증: STOMP CONNECT 헤더 `Authorization: Bearer <AT>` → `ChannelInterceptor`에서 검증, Principal = memberId
 - 구독 인가: `SUBSCRIBE /topic/chat-rooms.{id}` 시 참여자 여부 검사, 아니면 ERROR 프레임(`CHAT_NOT_PARTICIPANT`·`CHAT_ROOM_NOT_FOUND`)으로 거부하고 연결을 닫는다. 개인 큐 외 다른 목적지 구독, 브로커 목적지로 바로 SEND도 거부(`AUTH_FORBIDDEN`)
-- 목적지(확정, open-issues #14): SEND `/pub/chat-rooms/{id}`(메시지), `/pub/chat-rooms/{id}/read`(읽음) · SUB `/topic/chat-rooms.{id}`, `/user/queue/chat-rooms`(목록 갱신 이벤트), `/user/queue/notifications`(알림), `/user/queue/errors`(SEND 거부 회신). 본문은 `docs/api.md` "STOMP 메시지"
+- 목적지(확정, open-issues #14): SEND `/pub/chat-rooms/{id}`(메시지), `/pub/chat-rooms/{id}/read`(읽음) · SUB `/topic/chat-rooms.{id}`, `/user/queue/chat-rooms`(목록 갱신 이벤트), `/user/queue/chat-reads`(상대 읽음), `/user/queue/notifications`(알림), `/user/queue/errors`(SEND 거부 회신). 본문은 `docs/api.md` "STOMP 메시지"
 - 한 세션의 프레임은 받은 순서대로 처리하고 보낸 순서대로 내보낸다(연속 SEND의 저장 순서 보장)
 
 ## REQ-026 채팅방 생성 [2 필수]
@@ -30,7 +30,7 @@
 - `GET /api/chat-rooms/{id}/messages?cursor=`: 최신 50건, 커서로 이전 조회
 - 읽음: 방 입장 또는 `/pub/chat-rooms/{id}/read {lastMessageId}` → 내 `chat_room_members.last_read_message_id` 갱신(값이 커질 때만) → 상대에게 읽음 이벤트. 메시지별 읽음 표시는 상대의 last_read_message_id와 비교해 계산한다
 - 하단 탭 전체 안 읽은 수: `GET /api/chat-rooms/unread-count` + 실시간 이벤트로 갱신
-- 안 읽은 수 = `count(id > last_read_message_id AND sender_id != me)`. 읽음 기준은 `chat_room_members` 하나뿐이다(메시지별 read_at 컬럼 없음)
+- 안 읽은 수 = `count(id > last_read_message_id AND (sender_id IS NULL OR sender_id != me))` — SYSTEM 메시지(sender_id NULL)도 센다. 읽음 기준은 `chat_room_members` 하나뿐이다(메시지별 read_at 컬럼 없음)
 - 예외: 참여자 아님 403, 상대 탈퇴 → "탈퇴한 사용자" + 전송 비활성화
 - 축소 순서상 028·029는 022 다음으로 축소 가능하지만, 채팅방에 들어갈 진입점(목록)은 최소한으로라도 필요
 

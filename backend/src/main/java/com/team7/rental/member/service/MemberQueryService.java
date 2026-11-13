@@ -65,7 +65,31 @@ public class MemberQueryService {
 			.flatMap(mr -> regionRepository.findById(mr.getRegionId()))
 			.map(com.team7.rental.member.entity.Region::getName).orElse(null);
 		return new com.team7.rental.member.dto.MemberPublicSummary(member.getId(), member.getNickname(),
-			member.getProfileImageUrl(), regionName);
+			member.getProfileImageUrl(), regionName, member.getStatus() == MemberStatus.WITHDRAWN);
+	}
+
+	/**
+	 * {@link #getPublicSummary}의 일괄 조회판(채팅 목록 REQ-028). 쿼리는 회원 수와 상관없이 3개(회원·대표 동네·동네)다.
+	 *
+	 * @return 회원 ID → 요약. 없는 ID는 담지 않는다(없는 경우의 처리는 호출하는 쪽이 정한다)
+	 */
+	public Map<Long, com.team7.rental.member.dto.MemberPublicSummary> getPublicSummaries(Collection<Long> memberIds) {
+		if (memberIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, Long> primaryRegionIds = memberRegionRepository.findByMemberIdInAndIsPrimaryTrue(memberIds).stream()
+			.collect(Collectors.toMap(com.team7.rental.member.entity.MemberRegion::getMemberId,
+				com.team7.rental.member.entity.MemberRegion::getRegionId, (first, second) -> first));
+		// 대표 동네가 없는 회원은 get(null)이 되므로 null 키 조회가 되는 HashMap을 쓴다
+		Map<Long, String> regionNames = primaryRegionIds.isEmpty() ? new java.util.HashMap<>()
+			: regionRepository.findAllById(primaryRegionIds.values()).stream()
+				.collect(Collectors.toMap(com.team7.rental.member.entity.Region::getId,
+					com.team7.rental.member.entity.Region::getName));
+		return memberRepository.findAllById(memberIds).stream()
+			.collect(Collectors.toMap(Member::getId, member -> new com.team7.rental.member.dto.MemberPublicSummary(
+				member.getId(), member.getNickname(), member.getProfileImageUrl(),
+				regionNames.get(primaryRegionIds.get(member.getId())),
+				member.getStatus() == MemberStatus.WITHDRAWN)));
 	}
 
 	/** 물품 등록과 대표 동네 변경을 같은 회원 락으로 직렬화한다. 호출자의 쓰기 트랜잭션에 참여한다. */

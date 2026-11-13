@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.item.dto.ItemSummary;
 import com.team7.rental.item.service.ItemQueryService;
+import com.team7.rental.rental.dto.RentalBrief;
 import com.team7.rental.rental.dto.RentalDetailResponse.RentalItem;
 import com.team7.rental.rental.dto.RentalSummary;
 import com.team7.rental.rental.entity.Rental;
@@ -18,7 +20,10 @@ import com.team7.rental.rental.repository.RentalRepository;
 
 import lombok.RequiredArgsConstructor;
 
-/** 다른 도메인 목록용 대여 요약 일괄 조회. 쿼리는 대여 수와 상관없이 3개(대여·물품·대표 이미지)다. 빈 목록이면 쿼리를 내지 않는다 */
+/**
+ * 다른 도메인용 대여 요약. 목록용 일괄 조회는 대여 수와 상관없이 쿼리 3개(대여·물품·대표 이미지)이고 빈 목록이면 쿼리를 내지 않는다.
+ * 채팅방 상단 바용 최근 대여 건 조회(REQ-028)도 여기서 한다.
+ */
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -50,5 +55,16 @@ public class RentalSummaryReader {
 				rental.getCancelFee()));
 		}
 		return summaries;
+	}
+
+	/**
+	 * (물품, 대여자) 조합의 가장 최근 대여 건(id 최대, CANCELED 포함). 채팅방 상단 바(SCR-10)가 쓴다.
+	 *
+	 * @return 대여한 적이 없으면 empty
+	 */
+	public Optional<RentalBrief> findLatest(Long itemId, Long renterId) {
+		return rentalRepository.findFirstByItemIdAndRenterIdOrderByIdDesc(itemId, renterId)
+			.map(rental -> new RentalBrief(rental.getId(), rental.getStatus(), rental.getStartDate(),
+				rental.getEndDate()));
 	}
 }

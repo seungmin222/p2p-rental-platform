@@ -14,4 +14,7 @@ public interface MemberRegionRepository extends JpaRepository<MemberRegion, Long
 	Optional<MemberRegion> findByIdAndMemberId(Long id, Long memberId);
 
 	Optional<MemberRegion> findFirstByMemberIdAndIsPrimaryTrue(Long memberId);
+
+	/** 여러 회원의 대표 동네 (목록 화면용 일괄 조회) */
+	List<MemberRegion> findByMemberIdInAndIsPrimaryTrue(java.util.Collection<Long> memberIds);
 }

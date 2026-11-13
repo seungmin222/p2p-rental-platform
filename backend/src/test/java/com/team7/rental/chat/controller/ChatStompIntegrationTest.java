@@ -20,6 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.team7.rental.chat.dto.ChatErrorResponse;
 import com.team7.rental.chat.dto.ChatMessageResponse;
+import com.team7.rental.chat.dto.ChatReadResponse;
 import com.team7.rental.chat.dto.ChatRoomUpdateResponse;
 import com.team7.rental.chat.entity.ChatMessageType;
 import com.team7.rental.chat.service.ChatRoomService;
@@ -36,7 +37,7 @@ import com.team7.rental.support.StompTestClient.Connection;
 
 /**
  * 실시간 메시지 송수신 (REQ-027): 실제 서버 포트 + RabbitMQ STOMP 브로커 릴레이.
- * CONNECT 인증, 비참여자 SUBSCRIBE·SEND 거부, 송수신, 목록 갱신 이벤트, 알림 실시간 전달(REQ-032).
+ * CONNECT 인증, 비참여자 SUBSCRIBE·SEND 거부, 송수신, 목록 갱신 이벤트, 알림 실시간 전달(REQ-032), 읽음(REQ-029).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ChatStompIntegrationTest extends IntegrationTestSupport {
@@ -161,6 +162,8 @@ class ChatStompIntegrationTest extends IntegrationTestSupport {
 		assertThat(update.roomId()).isEqualTo(roomId);
 		assertThat(update.lastMessageId()).isEqualTo(received.messageId());
 		assertThat(update.lastMessagePreview()).isEqualTo("내일 빌릴 수 있을까요?");
+		assertThat(update.unreadCount()).isEqualTo(1);
+		assertThat(update.totalUnreadCount()).isEqualTo(1);
 
 		Map<String, Object> room = jdbcTemplate.queryForMap(
 			"SELECT last_message_preview, last_message_at FROM chat_rooms WHERE id = ?", roomId);
@@ -228,6 +231,65 @@ class ChatStompIntegrationTest extends IntegrationTestSupport {
 		assertThat(pushed).isNotNull();
 		assertThat(pushed.type()).isEqualTo(NotificationType.OVERDUE);
 		assertThat(pushed.targetId()).isEqualTo(10L);
+	}
+
+	@Test
+	@DisplayName("읽음을 보내면 내 읽음 위치가 바뀌고 상대의 /user/queue/chat-reads로 이벤트가 간다. 같거나 작은 값은 이벤트가 없다")
+	void readEvent() throws Exception {
+		Connection ownerConnection = connect(bearerToken(owner.getId()));
+		Connection renterConnection = connect(bearerToken(renter.getId()));
+		BlockingQueue<ChatMessageResponse> ownerRoom = ownerConnection.subscribe("/topic/chat-rooms." + roomId,
+			ChatMessageResponse.class);
+		BlockingQueue<ChatReadResponse> renterReads = renterConnection.subscribe("/user/queue/chat-reads",
+			ChatReadResponse.class);
+
+		renterConnection.send("/pub/chat-rooms/" + roomId, textMessage("첫 메시지", "tmp-1"));
+		renterConnection.send("/pub/chat-rooms/" + roomId, textMessage("두 번째", "tmp-2"));
+		ChatMessageResponse first = ownerRoom.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+		ChatMessageResponse second = ownerRoom.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+		assertThat(second).isNotNull();
+
+		ownerConnection.send("/pub/chat-rooms/" + roomId + "/read", Map.of("lastMessageId", second.messageId()));
+		ChatReadResponse read = renterReads.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+		assertThat(read).isNotNull();
+		assertThat(read.roomId()).isEqualTo(roomId);
+		assertThat(read.memberId()).isEqualTo(owner.getId());
+		assertThat(read.lastReadMessageId()).isEqualTo(second.messageId());
+		assertThat(lastRead(owner.getId())).isEqualTo(second.messageId());
+
+		ownerConnection.send("/pub/chat-rooms/" + roomId + "/read", Map.of("lastMessageId", first.messageId()));
+		assertThat(renterReads.poll(1, TimeUnit.SECONDS)).isNull();
+		assertThat(lastRead(owner.getId())).isEqualTo(second.messageId());
+	}
+
+	@Test
+	@DisplayName("비참여자의 읽음은 /user/queue/errors로 CHAT_NOT_PARTICIPANT, 그 방 메시지가 아니면 COMMON_INVALID_INPUT(연결 유지)")
+	void readRejected() throws Exception {
+		Connection strangerConnection = connect(bearerToken(stranger.getId()));
+		BlockingQueue<ChatErrorResponse> strangerErrors = strangerConnection.subscribe("/user/queue/errors",
+			ChatErrorResponse.class);
+		Connection ownerConnection = connect(bearerToken(owner.getId()));
+		BlockingQueue<ChatErrorResponse> ownerErrors = ownerConnection.subscribe("/user/queue/errors",
+			ChatErrorResponse.class);
+
+		strangerConnection.send("/pub/chat-rooms/" + roomId + "/read", Map.of("lastMessageId", 1));
+		ChatErrorResponse error = strangerErrors.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+		assertThat(error).isNotNull();
+		assertThat(error.error().code()).isEqualTo("CHAT_NOT_PARTICIPANT");
+		assertThat(strangerConnection.isConnected()).isTrue();
+
+		ownerConnection.send("/pub/chat-rooms/" + roomId + "/read", Map.of("lastMessageId", 999_999));
+		ChatErrorResponse invalid = ownerErrors.poll(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+		assertThat(invalid).isNotNull();
+		assertThat(invalid.error().code()).isEqualTo("COMMON_INVALID_INPUT");
+		assertThat(lastRead(owner.getId())).isNull();
+		assertThat(ownerConnection.isConnected()).isTrue();
+	}
+
+	private Long lastRead(Long memberId) {
+		return jdbcTemplate.queryForObject(
+			"SELECT last_read_message_id FROM chat_room_members WHERE room_id = ? AND member_id = ?", Long.class,
+			roomId, memberId);
 	}
 
 	private Connection connect(String authorization) {

@@ -89,13 +89,16 @@ public record PolicyProperties(
 	Chat chat) {
 
 	/**
-	 * 채팅 (REQ-027)
+	 * 채팅 (REQ-027·028)
 	 *
 	 * @param messageMax 메시지 최대 글자 수 (chat.message.max). chat_messages.content VARCHAR(1000)과 같게
+	 * @param historyPage 메시지 내역 한 번에 가져오는 건수 (chat.history.page, REQ-028). 요청에서 size를 받지 않는다
 	 */
 	public record Chat(
 		@Positive @Max(1000)
-		int messageMax) {
+		int messageMax,
+		@Positive
+		int historyPage) {
 	}
 
 	/**

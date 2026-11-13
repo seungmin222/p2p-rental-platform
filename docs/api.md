@@ -103,21 +103,23 @@
 | 순위 | Method | Path | 설명 | 인증 | REQ |
 | --- | --- | --- | --- | --- | --- |
 | 2 | POST | /api/chat-rooms | 생성 또는 기존 방 반환 (itemId) | O | 026 |
-| 2 | GET | /api/chat-rooms | 목록 | O | 028 |
-| 2 | GET | /api/chat-rooms/{id} | 방 정보 (상대, 물품 요약, 최근 대여 건 상태 — 상단 바 표시용) | O | 026, 028 |
-| 2 | GET | /api/chat-rooms/{id}/messages?cursor= | 내역(50건) | O | 028 |
+| 2 | GET | /api/chat-rooms | 목록(페이지 없이 전체, 마지막 메시지 시각 최신순) | O | 028 |
+| 2 | GET | /api/chat-rooms/{id} | 방 정보 (상대, 물품 요약, 최근 대여 건 상태 — 상단 바 표시용, 상대의 읽음 위치) | O | 026, 028 |
+| 2 | GET | /api/chat-rooms/{id}/messages?cursor= | 내역(최신순 `chat.history.page`건, 읽음은 바꾸지 않음) | O | 028 |
 | 2 | GET | /api/chat-rooms/unread-count | 전체 안 읽은 수 | O | 029 |
-| 2 | WS | /ws (STOMP) | CONNECT 헤더 `Authorization: Bearer <AT>` · SEND `/pub/chat-rooms/{id}`(027), `/pub/chat-rooms/{id}/read`(029) · SUB `/topic/chat-rooms.{id}`(방 메시지, 참여자만), `/user/queue/chat-rooms`(목록 갱신), `/user/queue/notifications`(알림), `/user/queue/errors`(SEND 거부 회신) · 거부된 CONNECT·SUBSCRIBE와 `/pub/` 밖 목적지로 보낸 SEND(`AUTH_FORBIDDEN`)·로그인 없이 보낸 SEND(`AUTH_UNAUTHORIZED`)는 ERROR 프레임(`message` = 에러 코드) 후 연결 종료(`/pub/` SEND의 업무 거부는 연결 유지, `/user/queue/errors` 회신). 본문 형태는 아래 "STOMP 메시지" | O | 027, 029, 032 |
+| 2 | WS | /ws (STOMP) | CONNECT 헤더 `Authorization: Bearer <AT>` · SEND `/pub/chat-rooms/{id}`(027), `/pub/chat-rooms/{id}/read`(029) · SUB `/topic/chat-rooms.{id}`(방 메시지, 참여자만), `/user/queue/chat-rooms`(목록 갱신), `/user/queue/chat-reads`(상대 읽음), `/user/queue/notifications`(알림), `/user/queue/errors`(SEND 거부 회신) · 거부된 CONNECT·SUBSCRIBE와 `/pub/` 밖 목적지로 보낸 SEND(`AUTH_FORBIDDEN`)·로그인 없이 보낸 SEND(`AUTH_UNAUTHORIZED`)는 ERROR 프레임(`message` = 에러 코드) 후 연결 종료(`/pub/` SEND의 업무 거부는 연결 유지, `/user/queue/errors` 회신). 본문 형태는 아래 "STOMP 메시지" | O | 027, 029, 032 |
 | 3 | POST | /api/chat-rooms/{id}/images | 사진 전송 | O | 050 |
 | 3 | POST | /api/chat-rooms/{id}/appointments | 약속 잡기 | O | 051 |
 
-### STOMP 메시지 (Swagger에 나오지 않아 여기 적는다, 027)
+### STOMP 메시지 (Swagger에 나오지 않아 여기 적는다, 027·029)
 
 | 목적지 | 방향 | 본문 |
 | --- | --- | --- |
 | `/pub/chat-rooms/{id}` | SEND | `{ type: "TEXT", content, clientMessageId? }` — content 공백만 불가·`chat.message.max` 이하, clientMessageId는 낙관적 표시용 임시 ID(저장 안 함) |
+| `/pub/chat-rooms/{id}/read` | SEND | `{ lastMessageId }` — 화면에 표시한 그 방의 가장 최근 메시지 ID(그 방 메시지가 아니면 `COMMON_INVALID_INPUT`). 읽음 위치는 커질 때만 바뀌고, 바뀌면 상대에게 `/user/queue/chat-reads` |
 | `/topic/chat-rooms.{id}` | MESSAGE | `{ messageId, roomId, senderId, type, content, sentAt, clientMessageId }` — 보낸 사람도 받는다. SYSTEM은 senderId null |
-| `/user/queue/chat-rooms` | MESSAGE | `{ roomId, lastMessageId, lastMessagePreview, lastMessageAt }` — 메시지를 받은 쪽(상대방)에게 |
+| `/user/queue/chat-rooms` | MESSAGE | `{ roomId, lastMessageId, lastMessagePreview, lastMessageAt, unreadCount, totalUnreadCount }` — 메시지를 받은 쪽(상대방)에게. 두 수는 받는 쪽의 그 방·전체 안 읽은 수(커밋 직후 기준) |
+| `/user/queue/chat-reads` | MESSAGE | `{ roomId, memberId, lastReadMessageId }` — 읽은 사람의 상대에게. 받은 쪽은 이 값 이하인 내 메시지를 '읽음'으로 표시 |
 | `/user/queue/notifications` | MESSAGE | 알림 목록 API의 항목과 같은 형태(`NotificationResponse`) |
 | `/user/queue/errors` | MESSAGE | `{ clientMessageId, error: { code, message, details } }` — 보낸 세션에만, 연결 유지. 코드: `COMMON_INVALID_INPUT`, `CHAT_ROOM_NOT_FOUND`, `CHAT_NOT_PARTICIPANT` |
 
