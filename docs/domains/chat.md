@@ -26,12 +26,12 @@
 - **다중 서버 검증**: 인스턴스 2개에서 A는 서버1, B는 서버2에 붙어도 메시지 전달되는지 통합 테스트
 
 ## REQ-028 / REQ-029 목록·내역·읽음 [2]
-- `GET /api/chat-rooms`: 상대 프로필 사진·닉네임·동네, 물품 썸네일(삭제 시 "삭제된 물품"), 마지막 메시지·시각, 안 읽은 수. lastMessageAt DESC
+- `GET /api/chat-rooms`: 상대 프로필 사진·닉네임·동네, 물품 썸네일(삭제 시 "삭제된 물품"), 마지막 메시지·시각, 안 읽은 수. 메시지가 없는 방도 포함하고 `COALESCE(last_message_at, created_at) DESC, id DESC`로 정렬
 - `GET /api/chat-rooms/{id}/messages?cursor=`: 최신 50건, 커서로 이전 조회
-- 읽음: 방 입장 또는 `/pub/chat-rooms/{id}/read {lastMessageId}` → 내 `chat_room_members.last_read_message_id` 갱신(값이 커질 때만) → 상대에게 읽음 이벤트. 메시지별 읽음 표시는 상대의 last_read_message_id와 비교해 계산한다
+- 읽음: 내역을 표시한 뒤 클라이언트가 `/pub/chat-rooms/{id}/read {lastMessageId}`를 보낸다(GET 내역 조회는 읽음을 바꾸지 않음) → 내 `chat_room_members.last_read_message_id` 갱신(값이 커질 때만) → 상대에게 읽음 이벤트. 메시지별 읽음 표시는 상대의 last_read_message_id와 비교해 계산한다
 - 하단 탭 전체 안 읽은 수: `GET /api/chat-rooms/unread-count` + 실시간 이벤트로 갱신
 - 안 읽은 수 = `count(id > last_read_message_id AND (sender_id IS NULL OR sender_id != me))` — SYSTEM 메시지(sender_id NULL)도 센다. 읽음 기준은 `chat_room_members` 하나뿐이다(메시지별 read_at 컬럼 없음)
-- 예외: 참여자 아님 403, 상대 탈퇴 → "탈퇴한 사용자" + 전송 비활성화
+- 예외: 참여자 아님 403, 상대 탈퇴 → "탈퇴한 사용자" + 전송 비활성화(전송 비활성화는 화면 처리, 서버 차단은 REQ-043 구현 시)
 - 축소 순서상 028·029는 022 다음으로 축소 가능하지만, 채팅방에 들어갈 진입점(목록)은 최소한으로라도 필요
 
 ## 채팅방 상단 대여 상태 (SCR-10)
