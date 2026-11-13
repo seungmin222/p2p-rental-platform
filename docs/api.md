@@ -107,7 +107,7 @@
 | 2 | GET | /api/chat-rooms/{id} | 방 정보 (상대, 물품 요약, 최근 대여 건 상태 — 상단 바 표시용) | O | 026, 028 |
 | 2 | GET | /api/chat-rooms/{id}/messages?cursor= | 내역(50건) | O | 028 |
 | 2 | GET | /api/chat-rooms/unread-count | 전체 안 읽은 수 | O | 029 |
-| 2 | WS | /ws (STOMP) | CONNECT 헤더 `Authorization: Bearer <AT>` · SEND `/pub/chat-rooms/{id}`(027), `/pub/chat-rooms/{id}/read`(029) · SUB `/topic/chat-rooms.{id}`(방 메시지, 참여자만), `/user/queue/chat-rooms`(목록 갱신), `/user/queue/notifications`(알림), `/user/queue/errors`(SEND 거부 회신) · 거부된 CONNECT·SUBSCRIBE는 ERROR 프레임(`message` = 에러 코드) 후 연결 종료. 본문 형태는 아래 "STOMP 메시지" | O | 027, 029, 032 |
+| 2 | WS | /ws (STOMP) | CONNECT 헤더 `Authorization: Bearer <AT>` · SEND `/pub/chat-rooms/{id}`(027), `/pub/chat-rooms/{id}/read`(029) · SUB `/topic/chat-rooms.{id}`(방 메시지, 참여자만), `/user/queue/chat-rooms`(목록 갱신), `/user/queue/notifications`(알림), `/user/queue/errors`(SEND 거부 회신) · 거부된 CONNECT·SUBSCRIBE와 `/pub/` 밖 목적지로 보낸 SEND(`AUTH_FORBIDDEN`)·로그인 없이 보낸 SEND(`AUTH_UNAUTHORIZED`)는 ERROR 프레임(`message` = 에러 코드) 후 연결 종료(`/pub/` SEND의 업무 거부는 연결 유지, `/user/queue/errors` 회신). 본문 형태는 아래 "STOMP 메시지" | O | 027, 029, 032 |
 | 3 | POST | /api/chat-rooms/{id}/images | 사진 전송 | O | 050 |
 | 3 | POST | /api/chat-rooms/{id}/appointments | 약속 잡기 | O | 051 |
 
