@@ -13,8 +13,10 @@ import org.springframework.stereotype.Controller;
 
 import com.team7.rental.chat.dto.ChatErrorResponse;
 import com.team7.rental.chat.dto.ChatMessageSendRequest;
+import com.team7.rental.chat.dto.ChatReadRequest;
 import com.team7.rental.chat.service.ChatDestinations;
 import com.team7.rental.chat.service.ChatMessageService;
+import com.team7.rental.chat.service.ChatReadService;
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.global.response.ErrorResponse;
@@ -24,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * STOMP 메시지 송신 (REQ-027). SEND {@code /pub/chat-rooms/{roomId}} → 저장 → 커밋 뒤 {@code /topic/chat-rooms.{roomId}}로 전파.
+ * 읽음 (REQ-029). SEND {@code /pub/chat-rooms/{roomId}/read} → 읽음 위치 갱신 → 커밋 뒤 상대의 {@code /user/queue/chat-reads}로 전파.
  * 거부는 연결을 끊지 않고 보낸 세션의 {@code /user/queue/errors}로 {@link ChatErrorResponse}를 회신한다.
  */
 @Slf4j
@@ -32,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ChatMessageController {
 
 	private final ChatMessageService chatMessageService;
+	private final ChatReadService chatReadService;
 
 	@MessageMapping("/chat-rooms/{roomId}")
 	public void send(@DestinationVariable
@@ -41,6 +45,17 @@ public class ChatMessageController {
 			chatMessageService.send(Long.valueOf(principal.getName()), roomId, request);
 		} catch (BusinessException e) {
 			throw new ChatSendException(request.clientMessageId(), e);
+		}
+	}
+
+	@MessageMapping("/chat-rooms/{roomId}/read")
+	public void read(@DestinationVariable
+	Long roomId, @Payload
+	ChatReadRequest request, Principal principal) {
+		try {
+			chatReadService.markRead(Long.valueOf(principal.getName()), roomId, request);
+		} catch (BusinessException e) {
+			throw new ChatSendException(null, e);
 		}
 	}
 

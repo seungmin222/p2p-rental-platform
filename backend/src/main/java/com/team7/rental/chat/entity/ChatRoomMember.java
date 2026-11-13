@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 채팅방 참여자별 읽음 위치. 읽음 처리의 유일한 기준이다(erd.md). 방을 만들 때 대여자·소유자 두 행을 넣고,
- * last_read_message_id 갱신은 목록·읽음(REQ-028·029)에서 메서드를 더한다.
+ * 읽음(REQ-029)은 {@link #markRead}로 앞으로만 옮긴다.
  */
 @Getter
 @Entity
@@ -36,6 +36,19 @@ public class ChatRoomMember extends BaseTimeEntity implements Persistable<ChatRo
 		member.roomId = roomId;
 		member.memberId = memberId;
 		return member;
+	}
+
+	/**
+	 * 읽음 위치를 앞으로만 옮긴다 (REQ-029). 늦게 도착한 읽음 요청이 값을 되돌리지 않는다.
+	 *
+	 * @return 값이 바뀌었으면 true
+	 */
+	public boolean markRead(Long messageId) {
+		if (lastReadMessageId != null && messageId <= lastReadMessageId) {
+			return false;
+		}
+		this.lastReadMessageId = messageId;
+		return true;
 	}
 
 	@Override
