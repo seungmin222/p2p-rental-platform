@@ -17,8 +17,8 @@
 - 사람은 백엔드 로컬 서버의 `/swagger-ui.html`에서 직접 호출해 볼 수 있다.
 
 ## 스택
-**확정**: React · Vite · JavaScript(JSX) · Tailwind CSS v4(`@tailwindcss/vite`) · **TanStack Query**(서버 상태) · React Router · Zustand(인증·동네 등 클라이언트 상태) · axios · MSW(목 API) · Vitest(단위 테스트) · react-hook-form(폼)
-**제안**(쓰는 브랜치에서 확정): @stomp/stompjs · 토스페이먼츠 결제창 SDK(API 개별 연동, 결제위젯 아님) · 카카오맵 JS SDK. dayjs는 쓰지 않는다(날짜는 `shared/lib/date.js`)
+**확정**: React · Vite · JavaScript(JSX) · Tailwind CSS v4(`@tailwindcss/vite`) · **TanStack Query**(서버 상태) · React Router · Zustand(인증·동네 등 클라이언트 상태) · axios · MSW(목 API) · Vitest(단위 테스트) · react-hook-form(폼) · @stomp/stompjs(채팅 실시간, `feat/fe-chat`)
+**제안**(쓰는 브랜치에서 확정): 토스페이먼츠 결제창 SDK(API 개별 연동, 결제위젯 아님) · 카카오맵 JS SDK. dayjs는 쓰지 않는다(날짜는 `shared/lib/date.js`)
 
 - 의존성은 **실제로 쓰는 브랜치에서** 추가한다(미리 설치하지 않는다). 버전은 exact로 고정하고 `package-lock.json`을 커밋한다.
 
@@ -34,6 +34,7 @@ src/
 │   ├── auth/           로그인·가입·로그아웃(api·queries·constants·errorMessages, components/)
 │   ├── region/         동네(api·queries·constants·errorMessages·geolocation·guestRegionStore·myRegions·regionStatus, components/)
 │   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay·itemId·itemForm·kakaoPlace, components/)
+│   ├── chat/           채팅(api·queries·constants·errorMessages·chatCache·messageView·pendingMessages·activeRoom·useChatRoomSession, components/)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
 │       ├── queries.js      useQuery/useMutation 훅 + queryKey
@@ -41,7 +42,7 @@ src/
 │       └── constants.js    상태 라벨·탭 매핑
 ├── shared/
 │   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화, 토큰 재발급, authStore(AT), multipart(toMultipart)
-│   ├── ws/         STOMP 클라이언트 싱글톤
+│   ├── ws/         STOMP 클라이언트 싱글톤(stompClient: 연결·구독 등록·publish), 연결 상태 스토어, useStompSubscription
 │   ├── ui/         Button, ButtonLink, Badge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Tabs, Thumbnail, InfiniteListFooter, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
 │   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), listParams(페이지·탭 쿼리), queryState(조회 실패 표시), validators(회원 입력, 글자 수는 코드 포인트), formErrors(오류 문구 함수·필드 오류 붙이기)
 │   └── hooks/      useInfiniteScroll, useTabParam, useRefetchErrorToast, useSubmitErrorHandler, useDebouncedValue, useMediaQuery
@@ -70,7 +71,7 @@ src/
 | 15 | 약관·정책 | `/terms/:type` | 037 | 2 |
 | 16 | 관리자 | `/admin/*` | 057 | 3 |
 
-- 현재 순위의 라우트만 등록한다. 현재 순위보다 높은 순위 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(1순위 단계: 채팅·알림 탭).
+- 현재 순위의 라우트만 등록한다. 아직 만들지 않은 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(지금은 알림 탭). 채팅(`/chats`, `/chats/:roomId`)은 `RequireAuth` 안이다.
 - 하단 탭(모바일): 홈 · 검색 · 채팅 · 알림 · 나의 대여. PC(≥1280px)는 상단 헤더 메뉴로 같은 구성.
 - 인증 필요 라우트는 `RequireAuth`로 감싸고, 비로그인 시 `/login?redirect=...`. redirect는 `app/loginPath.js` `getSafeRedirect`로 거른다: `/`로 시작하고 `//`·`/\`로 시작하지 않으며 제어 문자가 없을 때만, `/login`·`/signup`이면 무시(오픈 리다이렉트 방지).
 - 홈·검색의 동네는 `features/item/homeRegion.js` `resolveFeedRegion`이 정한다: 로그인(AT 있음)이면 `/members/me`의 `primaryRegion`(인증이 만료·미인증이어도 피드는 보여 준다), 비회원이면 localStorage `rental.guestRegion`(`features/region/guestRegionStore.js`). 둘 다 없으면(로그인했는데 대표 동네가 없는 경우 포함) 피드 대신 안내 + `/regions` 버튼을 보이고 **자동으로 옮기지 않는다**(`/regions`에서 뒤로 가기를 누르면 홈으로 돌아와 다시 옮겨지는 루프가 생긴다). 로그인한 사용자에게는 임시 동네를 쓰지 않는다.
@@ -101,10 +102,11 @@ src/
 - 목록 탭은 `shared/ui/Tabs` + URL `?tab=`(`useTabParam`, 바꿀 때 replace, 모르는 값이면 기본 탭) — 상세에 갔다가 뒤로 오면 같은 탭.
 
 ## 실시간 (STOMP)
-- 로그인 후 `shared/ws`의 싱글톤 클라이언트 연결, `connectHeaders: { Authorization: 'Bearer ' + AT }`. 토큰 재발급 시 재연결.
-- 구독: `/user/queue/notifications`(알림 배지·토스트), `/user/queue/chat-rooms`(목록·안 읽은 수), 채팅방 진입 시 `/sub/chat-rooms/{id}`.
-- 수신 이벤트로 TanStack Query 캐시를 직접 갱신(`setQueryData`)하거나 invalidate.
-- 자동 재연결 + 재연결 후 놓친 메시지는 REST로 보충.
+- `shared/ws/stompClient.js` 싱글톤(@stomp/stompjs, `/ws`, SockJS 없음). `app/router.jsx`가 `startStompSession`을 한 번 불러 authStore에 묶는다: AT가 생기면 연결, 지워지면(로그아웃·재발급 실패) 끊는다. **재발급으로 AT만 바뀌면 다시 연결하지 않는다**(서버는 만료를 CONNECT 때만 본다). 연결 직전(`beforeConnect`)에 최신 AT를 `connectHeaders`에 넣는다.
+- CONNECT가 ERROR `AUTH_UNAUTHORIZED`로 거부되면 다음 연결 전에 `reissueAccessToken()`(single-flight) → 실패하면 REST와 같은 unauthorized 핸들러(로그인 화면 + `clearLocalSession`).
+- 자동 재연결(1초부터 두 배씩, 최대 30초). 구독은 `subscribe(destination, handler, { onReady, onError })`로 등록해 두면 연결마다 다시 건다. 구독마다 receipt를 달아 `onReady`(서버가 받음)를 알리고, 거부 ERROR의 `receipt-id`로 그 구독만 빼서 거부가 반복되지 않게 한다. 화면은 `useStompSubscription(destination, handler)`(destination이 null이면 구독 안 함). 연결 상태는 `useStompStatus()`(Zustand, UI 표시용).
+- 구독: `/user/queue/chat-rooms`(목록·안 읽은 수, `AppLayout`에서 로그인 동안), 채팅방 화면에서 `/topic/chat-rooms.{id}`·`/user/queue/chat-reads`·`/user/queue/errors`. `/user/queue/notifications`는 알림 화면 브랜치에서 같은 훅으로 건다(아직 구독하지 않음).
+- 수신 이벤트로 TanStack Query 캐시를 직접 갱신(`setQueryData`)하거나 invalidate. 재연결 후 놓친 메시지는 REST로 보충(채팅방 규칙 참고).
 
 ## 상태 표시
 `docs/state-machines.md`의 Enum 코드 → 라벨·색을 `features/*/constants.js` 한 곳에서 매핑.
@@ -152,9 +154,22 @@ export const RENTAL_STATUS = {
 - 검색 필터(정렬·일 대여료·대여 희망 기간·대여 가능한 물품만)는 "필터" 버튼 → BottomSheet 하나(`SearchFilterSheet`)에 모으고, 카테고리는 칩. 가격 한도는 `features/item/constants.js` `ITEM_PRICE_PER_DAY`(policies `item.price-per-day`), 기간은 기존 `Calendar`(범위 선택, 최대 `RENTAL_PERIOD.MAX_DAYS`)에 `buildFilterDaysInRange`(넘겨 볼 수 있는 달 전체, 오늘부터 선택 가능)를 넘긴다.
 - 카드 표시(`itemDisplay.js`): 일 대여료 0원 → "무료"(policies `item.price-per-day`: 0원 등록 허용), 보증금 0원 → 보증금 줄·태그를 그리지 않음, "대여 중" 배지(`isRenting`)는 카드에만(`Badge tone="green"`). 신뢰 점수·거래 횟수, 지도, "이런 물품은 어때요?", 알림 아이콘(홈 헤더)은 2·3순위라 그리지 않는다.
 - 홈은 사진 그리드(`ItemListView layout="grid"`: 모바일 2열, xl 4열, 카드 테두리·구분선 없음), 검색은 한 줄 목록(`layout` 기본 `list`). 그리드 카드는 정사각형 사진 → 제목 → 가격 → "동네 · 경과 시간" → 보증금 회색 태그(`Badge tone="gray"`) + 관심·채팅 수(표시만, 채팅 0은 숨김). 사진 위 하트는 관심 등록(REQ-022, 2순위) 전까지 그리지 않는다.
-- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 카카오맵(보기 전용, 저장된 위경도에 마커) + 주소 텍스트, 지도를 못 불러오거나 좌표가 없으면 주소 텍스트만(REQ-030). 내 물품(`isOwner`)이면 예약하기 대신 수정·삭제 버튼. 버튼 줄은 하트 · 채팅하기(outline) · 예약하기(primary, 더 넓게) — 관심(REQ-022)·채팅(REQ-026)은 2순위라 하트·채팅하기는 누르면 "준비 중인 기능이에요" 토스트만 띄운다. 배치는 모바일: 사진 → 제목·가격·보증금 → 판매자 카드 → 설명 → 캘린더 → 거래 장소, PC(xl): 왼쪽 사진(정사각형) · 오른쪽 제목·가격·보증금·판매자 카드, 그 아래 설명 → 캘린더 | 거래 장소. 버튼 줄은 모바일·PC 모두 하단 고정 바(가격은 본문에 있어 바에 넣지 않는다). 없는·삭제된 물품과 잘못된 id는 ErrorState + 홈(`features/item/itemId.js` `parseItemId`: 양의 안전한 정수가 아니면 요청하지 않음). 이미지는 스와이프, 키보드 화살표, 이전·다음 버튼(터치 기기에서는 숨김)으로 넘긴다.
+- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 카카오맵(보기 전용, 저장된 위경도에 마커) + 주소 텍스트, 지도를 못 불러오거나 좌표가 없으면 주소 텍스트만(REQ-030). 내 물품(`isOwner`)이면 예약하기 대신 수정·삭제 버튼. 버튼 줄은 하트 · 채팅하기(outline) · 예약하기(primary, 더 넓게) — 관심(REQ-022)은 아직 없어 하트는 누르면 "준비 중인 기능이에요" 토스트만 띄우고, 채팅하기는 채팅 화면 규칙대로 방으로 간다. 배치는 모바일: 사진 → 제목·가격·보증금 → 판매자 카드 → 설명 → 캘린더 → 거래 장소, PC(xl): 왼쪽 사진(정사각형) · 오른쪽 제목·가격·보증금·판매자 카드, 그 아래 설명 → 캘린더 | 거래 장소. 버튼 줄은 모바일·PC 모두 하단 고정 바(가격은 본문에 있어 바에 넣지 않는다). 없는·삭제된 물품과 잘못된 id는 ErrorState + 홈(`features/item/itemId.js` `parseItemId`: 양의 안전한 정수가 아니면 요청하지 않음). 이미지는 스와이프, 키보드 화살표, 이전·다음 버튼(터치 기기에서는 숨김)으로 넘긴다.
 - 로그인·로그아웃은 `queryClient.clear()`로 이전 사용자의 `['items', id]`(isOwner)를 지운다. 단, 로그아웃은 홈으로 먼저 이동한 뒤 AT를 지우므로 홈이 내 정보를 다시 부르면 서버가 이미 세션을 끝낸 경우 401 → 로그인 화면으로 가 버린다. 그래서 홈·검색은 `useMe({ enabled: 로그인 여부, refetchOnMount: refetchIfInvalidated })`로 이미 받은 내 정보를 **무효화됐을 때만** 다시 받는다(대표 동네를 바꾸면 무효화되고, `/regions`에는 구독자가 없어 홈에 들어올 때 받는다. 받는 동안은 이전 동네 대신 로딩). 로그아웃 경로는 무효화를 거치지 않는다. 로그아웃 직후에는 이전 내 정보가 남아 있어도 `resolveFeedRegion`이 로그인 여부(AT)가 false면 보지 않는다.
 - 오류 문구는 `features/item/errorMessages.js` 한 곳(code → 문구).
+
+### 채팅 화면 규칙 (SCR-09 `/chats` · SCR-10 `/chats/:roomId`)
+- queryKey: 목록 `['chats', 'list']`·전체 안 읽은 수 `['chats', 'unread-count']`(둘 다 `staleTime: 0` — 다른 기기에서 읽은 것은 이벤트가 없어 화면에 들어올 때마다 다시 받는다), 방 정보 `['chats', 'rooms', roomId]`, 내역 `['chats', 'rooms', roomId, 'messages']`(`useInfiniteQuery` 커서, `staleTime: Infinity`·`gcTime: 0` — 방에 있는 동안은 실시간·보충으로 고치고, 나가면 버린다).
+- 목록 갱신: `/user/queue/chat-rooms` 이벤트(상대가 보낸 메시지)로 그 방의 마지막 메시지·안 읽은 수를 고쳐 맨 앞으로, 목록에 없는 방이면 목록 무효화, 전체 수는 `totalUnreadCount`로 바꾼다. **지금 보고 있는 방**(`activeRoom.js`)이면 이벤트의 안 읽은 수를 더하지 않는다(서버 수는 커밋 직후 기준이라 읽음과 엇갈린다). 내가 보낸 메시지는 이벤트가 없어 방 토픽으로 돌아온 메시지로 목록을 고친다(`chatCache.js` 순수 함수, 테스트).
+- 채팅방(`useChatRoomSession`): 방 정보를 받은 뒤 방 토픽을 구독한다. 받은 메시지는 messageId로 중복을 걸러 내역 첫 페이지에 합친다. **구독이 서버에 받아들여진 뒤(`onReady`, 재연결마다) 내역이 있으면 첫 페이지부터 이미 가진 id가 나올 때까지 REST로 보충**한다 — 그 뒤의 메시지는 토픽으로 오므로 사이가 비지 않는다.
+- 보내기: `clientMessageId`(임시 id)를 붙여 SEND하고 화면 상태(`pendingMessages.js` reducer)에 "보내는 중"으로 그린다. 같은 clientMessageId가 토픽으로 돌아오면 지운다. `/user/queue/errors`로 거부되거나 연결이 끊긴 상태에서 보내면 "실패" + 다시 보내기·삭제. **연결이 끊기면 보내는 중인 것을 모두 실패로 바꾼다**(서버가 clientMessageId를 저장하지 않아 보충 조회로 짝을 못 맞춘다). 시간 제한은 두지 않는다.
+- 읽음: 화면이 보이고(`visibilityState`) 연결돼 있을 때, 내역의 가장 큰 messageId가 지난번에 보낸 값보다 크면 `/pub/chat-rooms/{id}/read { lastMessageId }`. 보낸 뒤 목록의 그 방을 0으로, 전체 수에서 그 방 수만큼 뺀다. 내 메시지의 '읽음'은 방 정보의 `counterpartLastReadMessageId` 이하인 것, `/user/queue/chat-reads`가 오면 그 값으로 방 정보 캐시를 고친다.
+- 말풍선 줄은 `messageView.js` `buildMessageRows`(날짜 줄, SYSTEM 안내 줄, 같은 사람·같은 분 묶음의 마지막에만 시각). 스크롤: 처음과 내가 보낼 때 맨 아래, 새 메시지는 맨 아래를 보고 있을 때만 따라감, 위 끝에서 이전 페이지를 불러오면 보던 자리 유지(`MessageList`).
+- 상단 바(`ChatItemBar`): 최근 대여 건이 있으면 상태 `Badge`(`RENTAL_STATUS`) + 기간 + "대여 상세", 없으면 대여자에게만 "예약하기"(삭제된 물품이면 없음). 상대 탈퇴는 "탈퇴한 사용자" + 입력 비활성, 삭제된 물품은 "삭제된 물품"(링크 없음).
+- 입력: Enter 보내기(한글 조합 중 제외)·Shift+Enter 줄바꿈, 공백만이면 안 보냄, `CHAT_MESSAGE_MAX`(policies `chat.message.max`, 코드 포인트) 초과면 글자 수를 빨갛게 보이고 막는다.
+- 물품 상세 "채팅하기": 비회원이면 `/login?redirect=<상세>`, 회원이면 `POST /api/chat-rooms`(200·201) → `/chats/{roomId}`. 관심(하트)은 아직 "준비 중" 토스트.
+- 배지: 하단 탭·PC 헤더 "채팅"에 `ChatUnreadBadge`(로그인했을 때만 부름, `UNREAD_BADGE_MAX` 99 넘으면 "99+").
+- 사진(050)·약속(051)·차단(056)은 3순위라 없다. 시안의 신뢰 점수·일 대여료는 응답에 없어 그리지 않는다.
 
 ### 동네 화면 규칙 (SCR-02, `/regions`)
 - 로그인하면 `MyRegionManager`(내 동네 목록 `MyRegionList` + 추가), 아니면 `GuestRegionPicker`(임시 동네 하나). 검색·현재 위치로 찾기는 둘이 `RegionFinder`를 같이 쓴다.
@@ -207,4 +222,5 @@ export const RENTAL_STATUS = {
 - `npm run lint`, `npm run test`, `npm run build`가 통과해야 PR (CI도 같은 순서).
 - 작업 중에는 바꾼 부분의 테스트만 돌린다(`npx vitest run <파일>`). 전체 테스트는 PR 직전 한 번, 출력은 실패 요약만 본다(`npx vitest run --reporter=dot`). 빌드 로그를 통째로 읽지 않는다.
 - 결제 플래그 `VITE_PAYMENT_ENABLED`는 백엔드 `payment-enabled`와 맞춘다. false면 결제 화면 없이 "예약 완료 → 대여 상세"로 바로 이동한다.
+- **채팅 목**(`mocks/chat.js` REST + `mocks/chatStomp.js` MSW `ws.link('/ws')` 가짜 STOMP 서버, 시드 표는 `mocks/chatSeed.js` 맨 위): user1 기준 방 7개(안 읽음·SYSTEM 안내·대여 전 "예약하기"·내가 제공자·메시지 없음·탈퇴한 상대·120건 페이지 넘김·삭제된 물품). 메모리라 새로고침하면 시드로 돌아간다. 내가 보내면 1.5초 뒤 상대가 읽고 3초 뒤 자동 답장한다(상대가 같은 탭에 접속해 있지 않을 때). 내용을 `/fail`로 보내면 서버 거부(`/user/queue/errors`)를 흉내 낸다. 콘솔 `window.__mockChat.disconnect()`로 연결을 끊어 재연결·보충·보내는 중 실패를, `system(roomId, content)`로 SYSTEM 안내 메시지를 볼 수 있다. 같은 탭 안의 연결끼리만 전달된다(다른 탭·계정은 서로 못 받는다).
 - **결제 목**: 대여·결제 목은 `sessionStorage`(`mock.rentalDb`)에 저장해 결제창에 다녀와도 남는다. 콘솔 `window.__mockPayment.reset()`으로 시드로 되돌리고, `failNext(code)`로 다음 승인·반환 한 번을 실패시킨다(`mocks/paymentScenario.js`). 승인·환불은 토스를 부르지 않는 목 응답이고 결제창만 실제다.

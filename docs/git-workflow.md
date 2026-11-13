@@ -54,6 +54,7 @@
 | `feat/fe-item-map` | 030: SCR-06 카카오맵 주소·장소 검색·지도로 거래 장소 선택, SCR-05 지도 마커 (지도 탐색·거리순 065는 제외) | FE |
 | `docs/fe-design-system` | 현재 프론트 디자인(토큰·공통 컴포넌트·레이아웃 패턴) 문서화와 정리 대상 목록: `docs/design/design-system.md` | FE |
 | `chore/fe-design-refactor` | `docs/design/design-system.md` "정리 대상" 리팩터링 (`docs/fe-design-system` 머지 후 착수, "사용자 확인" 항목은 확인 후) | FE |
+| `feat/fe-chat` | SCR-09 채팅 목록, SCR-10 채팅방(026–029): STOMP 공통 모듈(`shared/ws`), 하단 탭·PC 헤더 안 읽은 수 배지, 상세 "채팅하기" 연결 (사진 050·약속 051·차단 056·알림 화면 제외) | FE |
 
 `feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
 

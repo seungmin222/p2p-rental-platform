@@ -7,7 +7,7 @@
 - **이 문서의 기준 값은 현재 토큰(`frontend/src/styles/index.css`의 `@theme`)이다.** 시안(`mockups/*.html`)과 값이 다르면 표의 "시안" 열에 시안 값을 적고 "차이" 열에 표시만 한다. 어느 쪽으로 맞출지는 "정리 대상"에서 항목별로 정한다.
 - 사용 규칙(쓸 수 있는 토큰·예외 크기·모서리·Button variant 등)은 `frontend/CLAUDE.md` "UI 규칙"이 원문이다. 이 문서는 그 규칙이 코드에서 어떻게 쓰이는지를 보여 주고, 규칙 문장을 다시 적지 않는다.
 - 조사 범위: `frontend/src`의 `app/`·`shared/`·`features/`·`pages/`. `/dev`(미리보기)와 `mocks/`(목 이미지 자리 색)는 제외.
-- 시안이 있는 화면: SCR-03 홈(`Home.html`), 05 상세(`Detail.html`), 07 예약(`Booking.html`), 08 대여 상세(`RentalDetail.html`), 10 채팅방(`Chat.html`, 미구현). 디자인 시스템은 `Main.html`.
+- 시안이 있는 화면: SCR-03 홈(`Home.html`), 05 상세(`Detail.html`), 07 예약(`Booking.html`), 08 대여 상세(`RentalDetail.html`), 10 채팅방(`Chat.html`). 디자인 시스템은 `Main.html`.
 
 ## 2. 토큰
 
@@ -181,10 +181,14 @@
 | 06 | 물품 등록·수정 (`ItemFormPage`) | `PageHeader` | `BottomActionBar` | `ItemForm`(TextField·ImageUploader·Calendar·지도) |
 | 07 | 예약·결제 (`RentalReservePage`, `Payment*Page`) | `PageHeader` | `BottomActionBar` | `Calendar`, `AmountSummary`, 안내 상자, `ErrorState` |
 | 08 | 대여 상세 (`RentalDetailPage`) | `PageHeader` + 상태 `Badge` | `RentalActionBar`(BottomActionBar) | `RentalStepBar`, 시트(인계·반납·이상), `InspectionRecords` |
+| 09 | 채팅 목록 (`ChatListPage`) | 직접 만든 제목(`MyPage`와 같음), 본문 `max-w-2xl` | 하단 탭 | `ChatRoomListItem`(상대 원형 사진 48 · 닉네임 `font-semibold` · 동네·경과 시간 `text-xs` · 마지막 메시지 한 줄 `text-caption` · `CountBadge` · 물품 `Thumbnail` 48), `li` 사이 `divide-divider`, `Skeleton`, `EmptyState` |
+| 10 | 채팅방 (`ChatRoomPage`) | 직접 만든 헤더(`BackButton` + 상대 닉네임 `text-lg` + 동네 `text-caption`) | 입력창 `ChatComposer`(둥근 `surface` textarea + 48 원형 `primary` 보내기), 하단 탭 숨김 | 화면 높이 칼럼(`h-dvh`, PC는 헤더 64 뺌, `max-w-2xl` + 좌우 `border-line`), `ChatItemBar`(물품 `Thumbnail` 48 · 이름 · 대여 상태 `Badge`(`RENTAL_STATUS`) · 기간 · `ButtonLink sm`), `MessageList`(`bg-surface` 스크롤 영역, 말풍선 상대 흰 면+`border-line` 모서리 `4px 16px 16px 16px`·나 `primary` `16px 4px 16px 16px`, 최대 75%, `text-body`, 시각·읽음 `text-xs`, 날짜 줄 `text-xs` 가운데, SYSTEM은 `primary-soft` 알약 + 체크 아이콘, 위 끝 `InfiniteListFooter`), 연결 끊김 안내 `accent-soft` 띠 |
 | 12 | 나의 대여 (`MyPage`, `MyRentalsPage`, `MyItemsPage`, `MyProfilePage`) | `MyPage`·`MyProfilePage`는 직접 만든 제목, 목록은 `PageHeader` | 하단 탭 | `Tabs`, 목록 카드, `InfiniteListFooter`, `EmptyState` |
 | — | 준비 중·없는 페이지 (`ComingSoonPage`, `NotFoundPage`) | 직접 만든 제목 | 하단 탭 | 기본 팔레트 사용 → 7.1 |
 
-SCR-09~11·13~16은 아직 없다(채팅·알림 탭은 `ComingSoonPage`).
+SCR-11·13~16은 아직 없다(알림 탭은 `ComingSoonPage`). 하단 탭·PC 헤더의 "채팅"에는 전체 안 읽은 수 `ChatUnreadBadge`(빨간 `danger` 원, `text-xs`, 100 이상 "99+")가 붙는다.
+
+채팅 화면 시안(`Chat.html`)과 다른 점: 말풍선 14px·배지 11px은 `text-body`·`text-xs`(토큰 규칙), 헤더의 신뢰 점수·응답 시간(034·3순위)과 물품 일 대여료(방 정보 응답에 없음)는 그리지 않고, 약속 카드·사진·입력창의 캘린더·카메라 버튼(051·050, 3순위)도 없다.
 
 ## 6. 시안 대조 요약
 
