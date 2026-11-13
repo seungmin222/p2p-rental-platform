@@ -52,7 +52,8 @@ function NavButton({ direction, label, disabled, onClick }) {
 }
 
 /**
- * 상세 상단 이미지(가로 스와이프 + "n / N"). 이미지가 없으면 자리 면. 본문 폭을 넘어 화면 끝까지 채운다(-mx-4).
+ * 상세 상단 이미지(가로 스와이프 + "n / N"). 이미지가 없으면 자리 면. 모바일은 본문 폭을 넘어 화면 끝까지 채우고(-mx-4),
+ * PC(xl)는 왼쪽 열의 정사각형(모서리 12).
  * 스크롤 위치로 몇 번째인지 센다. children은 그 위에 얹는 요소(뒤로 가기 버튼).
  * 키보드는 사진 영역에 포커스를 두고 좌우 화살표로 넘긴다(브라우저 기본 스크롤은 snap과 겹쳐 방향에 따라 제자리로 돌아온다).
  */
@@ -84,7 +85,7 @@ export default function ItemImageCarousel({ images, name, children }) {
   }
 
   return (
-    <div className="relative -mx-4 aspect-[390/236] overflow-hidden bg-placeholder">
+    <div className="relative -mx-4 aspect-[390/236] overflow-hidden bg-placeholder xl:mx-0 xl:aspect-square xl:rounded-xl">
       {images.length === 0 ? (
         <ImagePlaceholder />
       ) : (
@@ -127,7 +128,7 @@ export default function ItemImageCarousel({ images, name, children }) {
         <span
           role="img"
           aria-label={`사진 ${index + 1} / ${images.length}`}
-          className="absolute right-3 bottom-3 rounded-full bg-ink/60 px-3 py-1 text-caption font-semibold text-white tabular-nums"
+          className="absolute right-3 bottom-3 rounded-full bg-ink/60 px-2.5 py-1 text-xs font-medium text-white tabular-nums"
         >
           {index + 1} / {images.length}
         </span>

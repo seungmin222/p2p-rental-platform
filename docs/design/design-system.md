@@ -130,13 +130,14 @@
 
 | 요소 | 모양 | 비고 |
 | --- | --- | --- |
-| `AppLayout` | 세로 flex, 본문 `max-w-5xl px-4`. PC(xl, ≥1280)는 상단 헤더(높이 64, 로고 + 주 메뉴), 모바일은 하단 탭 | 라우트 `handle.hideTabBar`면 하단 탭과 아래 여백을 뺀다 |
+| `AppLayout` | 세로 flex, 본문 `max-w-5xl px-4`. PC(xl, ≥1280)는 상단 헤더 `DesktopHeader`, 모바일은 하단 탭 | 라우트 `handle.hideTabBar`면 하단 탭과 아래 여백을 뺀다 |
+| `DesktopHeader` | sticky, 높이 64, 내용은 본문과 같은 `max-w-5xl`. 로고 마크 `AppLogo`(36, `rounded-xl`, `primary` 면 + 흰 텐트 선 아이콘) → 둥근 `surface` 검색 상자(`/search` 링크, 최대 560) → 동네 ▾ → 알림·채팅·나의 대여(아이콘 22 + `text-sm`) → "+ 물품 등록" 알약(높이 44, `primary`). 검색 상자 높이 44, 글씨 `ink-muted` | Figma 시안. `useMediaQuery`로 PC에서만 그린다(동네 이름에 내 정보 조회) |
 | 하단 탭 | 높이 64, `border-t border-line`, 5칸(홈·검색·채팅·알림·나의 대여), 라벨 11px, 선택 시 아이콘 채움 + `font-semibold text-ink` | 시안(`Main.html` 64)과 같음 |
 | `PageHeader` | sticky, 높이 56, `BackButton` + 제목 `text-lg font-bold` + 오른쪽 `action` | 시안 헤더(56, 18/700)와 같음 |
 | `BackButton` | 44 원형 아이콘 버튼. 앱 안 기록이 없으면 홈으로 | 상세는 이미지 위에 `bg-white/90`로 띄운다 |
 | `BottomActionBar` | sticky 하단, `border-t border-line`, `px-4 pt-3 pb-4` + safe-area | `hideTabBar` 화면 전용 |
-| `FloatingActionButton` | 오른쪽 아래 알약 버튼(높이 52, `primary`, 그림자), 하단 탭 위 | 홈 "+ 물품 등록" |
-| 홈 헤더 | `PageHeader` 대신 직접 만든 sticky 헤더(동네 이름 `text-title` + 알림 아이콘) | 시안도 별도 모양 |
+| `FloatingActionButton` | 오른쪽 아래 알약 버튼(높이 52, `primary`, 그림자), 하단 탭 위 | 홈 "+ 물품 등록"(모바일만, PC는 헤더 버튼) |
+| 홈 헤더 | `PageHeader` 대신 직접 만든 sticky 헤더(동네 이름 `text-title` ▾ + 검색 아이콘). 모바일만(xl은 `DesktopHeader`) | 시안도 별도 모양 → 7.2 #20 유지 결정 |
 | 인증 화면 | `AuthPageLayout`(AppLayout 밖, `max-w-md`, `PageHeader` 포함) | SCR-01 |
 
 ### 4.2 목록·상태
@@ -174,9 +175,9 @@
 | --- | --- | --- | --- | --- |
 | 01 | 로그인·가입 (`LoginPage`, `SignupPage`) | `AuthPageLayout`(PageHeader) | 없음 | `TextField`, `Button` fullWidth |
 | 02 | 동네 (`RegionPage`) | `PageHeader` | 하단 탭 | 목록·검색, `EmptyState`, 안내 상자 |
-| 03 | 홈 (`HomePage`) | 직접 만든 홈 헤더 | 하단 탭 + FAB | `CategoryChips`(Chip), `ItemListView`(ItemCard), Skeleton |
+| 03 | 홈 (`HomePage`) | 직접 만든 홈 헤더(모바일), `DesktopHeader`(PC) | 하단 탭 + FAB(모바일) | `CategoryChips`(Chip), `ItemListView layout="grid"`(모바일 2열 `gap-x-3 gap-y-6`, xl 4열 `gap-x-4 gap-y-8`), 그리드 `ItemCard`(정사각형 사진 → 제목 `text-body` 2줄 → 가격 → 동네·시간 `text-xs`(xl `text-caption`) `ink-muted` → 보증금 `Badge gray` + 관심·채팅 수), 그리드 Skeleton |
 | 04 | 검색 (`SearchPage`) | `PageHeader` | 하단 탭 | 검색창, Chip, `SearchFilterSheet`(BottomSheet), `EmptyState` |
-| 05 | 물품 상세 (`ItemDetailPage`) | 이미지 위 `BackButton` | `BottomActionBar`(가격·보증금 + 예약하기) | 캐러셀, `Calendar`, `ConfirmModal`(삭제) |
+| 05 | 물품 상세 (`ItemDetailPage`) | 이미지 위 `BackButton`(모바일) | `BottomActionBar`(하트 · 채팅하기 · 예약하기, 모바일·PC) | 캐러셀(모바일 꽉 참, xl 정사각형 `rounded-xl`), `ItemHeading`(제목 · 메타 · 가격 `text-title` · 보증금), `ItemOwnerCard`(테두리 상자), `ItemDescription`, `Calendar`, 거래 장소(흰 바탕 + 테두리 상자), `ConfirmModal`(삭제). xl: `grid-cols-[480px_1fr] gap-12`, 아래 설명 → 캘린더 \| 거래 장소 2열 |
 | 06 | 물품 등록·수정 (`ItemFormPage`) | `PageHeader` | `BottomActionBar` | `ItemForm`(TextField·ImageUploader·Calendar·지도) |
 | 07 | 예약·결제 (`RentalReservePage`, `Payment*Page`) | `PageHeader` | `BottomActionBar` | `Calendar`, `AmountSummary`, 안내 상자, `ErrorState` |
 | 08 | 대여 상세 (`RentalDetailPage`) | `PageHeader` + 상태 `Badge` | `RentalActionBar`(BottomActionBar) | `RentalStepBar`, 시트(인계·반납·이상), `InspectionRecords` |
@@ -190,14 +191,18 @@ SCR-09~11·13~16은 아직 없다(채팅·알림 탭은 `ComingSoonPage`).
 | 항목 | 시안 | 코드 | 판단 |
 | --- | --- | --- | --- |
 | 버튼 높이 | 48 (`RentalDetail` 하단 바만 50) | md 48 / sm 44 | 디자인 시스템 48 유지 |
-| 칩 | 34, 13px, 선택 ink 채움 | `h-8.5` 34, caption | 같음 |
+| 칩 | 34, 13px, 선택 ink 채움(Figma는 primary 채움) | `h-8.5` 34, caption, 선택 `primary` 채움 | Figma를 따름(`chore/fe-design-refactor`, 모든 Chip) |
 | 배지 | 12/600, `4px 10px` | `text-xs font-semibold px-2.5 py-1` | 같음 |
 | 하단 탭 | 64, 11px | 64, 11px | 같음 |
 | 화면 헤더 | 56, 제목 18/700 | 56, `text-lg font-bold` | 같음 |
-| 물품 카드 | 사진 104, 글 사이 3px, 단위 `/일` 13/500 muted | 사진 104(`size-26`), `gap-0.5`(2px), 단위 `text-body`(15/400) muted | 다름 → 7.3 |
-| 상세 캐러셀 번호 | 12px, `3px 9px`, ink 72% | `text-caption font-semibold`, `px-3 py-1`, `ink/60` | 다름 → 7.3 |
+| 물품 카드(검색 목록) | 사진 104, 글 사이 3px, 단위 `/일` 13/500 muted | 사진 104(`size-26`), `gap-0.5`(2px), 단위 `text-caption font-medium` muted | 단위 같음(7.3 #22 해결), 간격 1px 차이 유지 |
+| 홈 그리드 카드 (Figma) | 사진 모서리 16, 가격 18/700, 단위 12/400, 보조 11px(모바일)·13px(PC), 보증금 태그 모서리 4·`#F1F0EC`, 사진 위 하트 | 모서리 10(썸네일 규칙), `text-price` 16, 단위 `text-caption`, `text-xs`·`text-caption`, `Badge gray`(full·`surface`), 하트 없음 | 가장 가까운 토큰. 하트는 REQ-022 때 |
+| 상세 (Figma) | 제목 22·20/600, 가격 28·26/700, 단위 15/400, 사진 모서리 16, 섹션 제목 17/600, 버튼 44·모서리 8·14px, 판매자 프로필 `#E5EFEA`, 보증금 회색, 설명 14px | 제목·가격 `text-title`(22/700), 단위 `text-caption`, `rounded-xl`, `text-price`(16/700), `Button md`(48·12·15px), `primary-soft`, 보증금 `accent-strong`(§2.1 의미 유지), 설명 `text-body` `ink-muted` | 가장 가까운 토큰 |
+| PC 헤더 (Figma) | 로고 아이콘 36, 검색 상자 `#F1F0EC`, 메뉴 14px, 알림 빨간 점 | `AppLogo`(인라인 SVG), `surface`, `text-sm`, 점 없음(알림 2순위) | 로고 같음 |
+| 상세 캐러셀 번호 | 12px, `3px 9px`, ink 72%(Figma 11px, `4px 10px`, ink 80%) | `text-xs font-medium`, `px-2.5 py-1`, `ink/60` | 크기 맞춤(7.3 #24 해결), 색은 7.1 #8 예외 |
 | 상세 섹션 제목 | 16/700 | `text-price`(16/700) | 값 같음, 토큰 의미 다름 → 7.3 |
-| 캘린더 날짜 칸 | 패딩 8(약 34) | 높이 44 | 터치 영역 규칙(44)으로 코드 유지 |
+| 캘린더 날짜 칸 | 패딩 8(약 34), Figma 36 | 높이 44 | 터치 영역 규칙(44)으로 코드 유지 |
+| 캘린더 색 (Figma) | 예약됨 초록 채움 원·초록 범례 점 | 예약 가능 `ink`, 예약됨 `ink-faint` 취소선, 예약 불가 `ink-disabled`, 고른 기간만 `primary` | 사용자 규칙 우선(초록은 선택 기간만). 범례 3종은 같은 "1" 글자 모양 |
 | 대여 단계 점 | 12, 현재 단계 테두리 3px | `size-3`, `border-[3px]` | 같음(임의 값) |
 
 ## 7. 정리 대상
@@ -227,6 +232,8 @@ grep 결과 요약(`/dev` 제외): 규칙 밖 `text-[..]` 0건, 앱 코드 `#hex
 | 11 | P3 | `features/rental/components/RentalStepBar.jsx` | `border-[3px]` ×2 | 시안 3px | 유지(시안 값) |
 | 12 | P3 | `BackButton.jsx`, `NavIcon.jsx` | 아이콘 `size-[22px]` | 시안 아이콘 22 | 유지(시안 값) |
 | 13 | — | `shared/ui/buttonClassName.js` | `px-[22px]` | 시안 22 | 유지(시안 값) |
+| 14 | — | `pages/ItemDetailPage.jsx` | 채팅하기 버튼 `flex-[0.72]` | 시안 하단 바 비율(채팅하기 : 예약하기) | 유지(시안 비율, 규칙 밖 예외) — `chore/fe-design-refactor` |
+| 15 | — | `app/layout/DesktopHeader.jsx` | 검색 상자·"+ 물품 등록" `rounded-full` | 시안 알약 모양(모서리 규칙 밖) | 유지(시안 모양, 규칙 밖 예외) — `chore/fe-design-refactor` |
 
 ### 7.2 중복 UI (shared로 올릴 후보)
 
@@ -238,16 +245,16 @@ grep 결과 요약(`/dev` 제외): 규칙 밖 `text-[..]` 0건, 앱 코드 `#hex
 | 17 | P2 | `features/auth/components/ProfileSummary.jsx:54`, `features/region/components/RegionFinder.jsx:45` | 한 줄 "불러오지 못했어요 + 다시 시도" 알림을 각각 만듦 | `ErrorState`(큰 모양)만 있음 | `ErrorState`에 `inline` 모양을 두거나 `shared/ui/InlineError`로 합침 — 두 곳의 여백(`py-4`/`py-3`)이 달라 하나로 맞추면 모양이 바뀌므로 사용자 확인 |
 | 18 | P2 | `pages/RentalReservePage.jsx:50` | 물품 사진을 `div + img`로 직접 그림(이미지 없을 때 아이콘 없음) | `Thumbnail` | `Thumbnail className="size-13"`로 교체 — 이미지 없을 때 아이콘이 생기므로 사용자 확인 |
 | 19 | P2 | `ItemImageCarousel.jsx:36`, `HomePage.jsx:68`, `Modal.jsx`·`BottomSheet.jsx` 닫기, `BackButton.jsx` | 44 원형 아이콘 버튼 클래스(`flex size-11 items-center justify-center rounded-full … focus-visible`)를 곳곳에서 반복 | — | `shared/ui/IconButton`(aria-label 필수)으로 합침 |
-| 20 | P2 | `pages/HomePage.jsx:51` | 홈 헤더를 `PageHeader`와 같은 틀(sticky·56·divider)로 직접 만듦 | `PageHeader` | 16과 함께 `PageHeader`에 왼쪽 슬롯을 두면 합칠 수 있음. 홈 모양이 달라 유지도 가능 — 사용자 확인 |
+| 20 | ✅ 유지 | `pages/HomePage.jsx:51` | 홈 헤더를 `PageHeader`와 같은 틀(sticky·56·divider)로 직접 만듦 | `PageHeader` | 16과 함께 `PageHeader`에 왼쪽 슬롯을 두면 합칠 수 있음. 홈 모양이 달라 유지도 가능 — 사용자 확인. → `chore/fe-design-refactor`: 시안도 별도 모양이라 유지. 모바일만 보이고 PC는 `DesktopHeader` |
 | 21 | P2 | `features/item/components/ItemListView.jsx:10`, `pages/MyRentalsPage.jsx:30`, `pages/MyItemsPage.jsx:90` | 목록 스켈레톤 줄(`flex gap-3.5 border-b border-divider py-3.5` + Skeleton)을 화면마다 직접 만듦 | — | `shared/ui/ListSkeleton`(줄 수·사진 크기 props)으로 합침 |
 
 ### 7.3 시안과 다른 크기·간격·의미
 
 | # | 우선 | 파일 | 현재 값 | 시안 값 | 제안 |
 | --- | --- | --- | --- | --- | --- |
-| 22 | P1 | `features/item/components/ItemCard.jsx:34`, `pages/ItemDetailPage.jsx:105` | 가격 단위 `/일` `text-body font-normal`(15/400) | 13/500 muted | `text-caption font-medium`로 — 사용자 확인(보이는 크기 변경) |
+| 22 | ✅ 해결 | `features/item/components/ItemCard.jsx:34`, `pages/ItemDetailPage.jsx:105` | 가격 단위 `/일` `text-body font-normal`(15/400) | 13/500 muted | `text-caption font-medium`로 — `chore/fe-design-refactor`에서 반영(카드·상세 `ItemHeading`) |
 | 23 | P3 | `features/item/components/ItemCard.jsx:19` | 글 사이 `gap-0.5`(2px) | 3px | 유지(차이 1px) |
-| 24 | P1 | `features/item/components/ItemImageCarousel.jsx:130` | 번호 배지 `text-caption font-semibold px-3 py-1 bg-ink/60` | 12px, `3px 9px`, ink 72% | `text-xs px-2.5 py-0.5`로 시안에 맞춤 — 사용자 확인 |
+| 24 | ✅ 해결 | `features/item/components/ItemImageCarousel.jsx:130` | 번호 배지 `text-caption font-semibold px-3 py-1 bg-ink/60` | 12px, `3px 9px`, ink 72% | `text-xs px-2.5 py-0.5`로 시안에 맞춤 — `chore/fe-design-refactor`에서 `text-xs font-medium px-2.5 py-1`(Figma 세로 4px) |
 | 25 | P3 | `ItemDetailPage.jsx:51`, `RentalReservePage.jsx:219`, `ItemInfo.jsx:77` | 섹션 제목 h2에 `text-price` | 16/700 (값은 같음) | 값은 같으므로 유지. 의미가 섞이니 `@theme`에 `--text-section`(16/700)을 둘지 사용자 확인 |
 | 26 | P3 | `pages/HomePage.jsx:55` | 동네 이름 `text-title`(22) | 19/700 | 토큰 유지(19는 토큰 밖) |
 | 27 | P3 | `features/item/components/ItemInfo.jsx:42` | 물품명 `text-title`(22) | 21/700 | 토큰 유지 |

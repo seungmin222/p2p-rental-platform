@@ -23,7 +23,11 @@ export function searchItems(params) {
   return apiClient.get('/items', { params });
 }
 
-/** 피드·검색 카드(openapi.json ItemSummaryResponse 기준, 화면이 쓰는 필드만). 관심·채팅 수는 2순위라 옮기지 않는다 */
+/**
+ * 피드·검색 카드(openapi.json ItemSummaryResponse 기준, 화면이 쓰는 필드만).
+ * 관심·채팅 수는 홈 카드에 숫자로 표시만 하므로 옮긴다(누르는 관심·채팅 UI는 REQ-022·026, 2순위).
+ * 상세(toItemDetail)는 화면에 수를 그리지 않아 옮기지 않는다.
+ */
 export function toItemCard(item) {
   return {
     itemId: item.itemId,
@@ -34,6 +38,8 @@ export function toItemCard(item) {
     pricePerDay: item.pricePerDay,
     deposit: item.deposit,
     isRenting: item.isRenting === true,
+    wishCount: item.wishCount ?? 0,
+    chatCount: item.chatCount ?? 0,
   };
 }
 
