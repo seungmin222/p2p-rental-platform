@@ -10629,7 +10629,7 @@
             ]
           },
           "writer": {
-            "$ref": "#/components/schemas/Writer",
+            "$ref": "#/components/schemas/ReceivedReviewWriter",
             "description": "작성자"
           },
           "writerRole": {
@@ -10639,6 +10639,37 @@
               "RENTER",
               "OWNER"
             ]
+          }
+        }
+      },
+      "ReceivedReviewWriter": {
+        "type": "object",
+        "description": "후기 작성자",
+        "properties": {
+          "isWithdrawn": {
+            "type": "boolean",
+            "description": "탈퇴(WITHDRAWN) 회원이면 true"
+          },
+          "memberId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "작성자 회원 ID",
+            "example": 3
+          },
+          "nickname": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "닉네임. 탈퇴한 작성자면 null(화면이 \"탈퇴한 사용자\"로 표시)",
+            "example": "캠핑러"
+          },
+          "profileImageUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "프로필 이미지 URL. 없거나 탈퇴한 작성자면 null"
           }
         }
       },
@@ -11559,36 +11590,6 @@
             "format": "int64",
             "description": "안 읽은 알림 수 (상단 알림 아이콘 배지)",
             "example": 3
-          }
-        }
-      },
-      "Writer": {
-        "type": "object",
-        "properties": {
-          "isWithdrawn": {
-            "type": "boolean",
-            "description": "탈퇴(WITHDRAWN) 회원이면 true"
-          },
-          "memberId": {
-            "type": "integer",
-            "format": "int64",
-            "description": "작성자 회원 ID",
-            "example": 3
-          },
-          "nickname": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "닉네임. 탈퇴한 작성자면 null(화면이 \"탈퇴한 사용자\"로 표시)",
-            "example": "캠핑러"
-          },
-          "profileImageUrl": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "description": "프로필 이미지 URL. 없거나 탈퇴한 작성자면 null"
           }
         }
       }

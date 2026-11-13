@@ -32,6 +32,7 @@ public record ReceivedReviewResponse(
 	@Schema(description = "작성 시각", example = "2026-11-14T10:00:00")
 	LocalDateTime createdAt) {
 
+	@Schema(name = "ReceivedReviewWriter", description = "후기 작성자")
 	public record Writer(
 		@Schema(description = "작성자 회원 ID", example = "3")
 		Long memberId,
