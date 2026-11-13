@@ -84,6 +84,7 @@
 | 스켈레톤 기본 | `rounded-md` 6 | 시안 없음 | 규칙 밖 → 7.1 P3 |
 | 캘린더 범위 양 끝 | `rounded-l-full`·`rounded-r-full` | 999 0 0 999 | 같음 |
 | 예약 화면 물품 썸네일(52px) | `rounded-[10px]` | 8 | 다름 → 7.3 |
+| 채팅 말풍선(`MessageList`)·입력창(`ChatComposer`) | 내 말풍선 `rounded-[16px_4px_16px_16px]`, 상대 `rounded-[4px_16px_16px_16px]`, 입력창 `rounded-3xl` | 같음 | 규칙 밖, 시안을 따른 예외(`feat/fe-chat`) |
 
 ### 2.5 그림자
 

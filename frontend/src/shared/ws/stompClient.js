@@ -11,6 +11,9 @@ const AUTH_ERROR_CODE = 'AUTH_UNAUTHORIZED';
 // 재연결 간격: 1초부터 두 배씩, 30초까지(정책 값이 아닌 연결 설정)
 const RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
+// CONNECT가 AT 문제로 연속 거부될 때 재발급·재연결을 시도하는 횟수(정책 값이 아닌 연결 설정).
+// 넘으면 로그인 화면으로 보낸다. 재발급은 되는데 서버가 계속 거부하는 경우 무한 반복을 막는다
+const MAX_AUTH_RETRY = 3;
 
 function toBrokerUrl() {
   const { protocol, host } = window.location;
@@ -22,6 +25,8 @@ const registry = new Map();
 let subscriptionSequence = 0;
 // 직전 CONNECT가 AT 문제로 거부됐으면 다음 연결 전에 재발급한다
 let needsReissue = false;
+// 연속 AUTH 거부 횟수. 연결에 성공하면 0으로
+let authRejectCount = 0;
 let onUnauthorized = () => {};
 let client = null;
 
@@ -46,6 +51,7 @@ function subscribeEntry(key, entry) {
 
 function handleConnect() {
   needsReissue = false;
+  authRejectCount = 0;
   for (const [key, entry] of registry) {
     subscribeEntry(key, entry);
   }
@@ -55,6 +61,11 @@ function handleConnect() {
 function handleStompError(frame) {
   const code = frame.headers.message;
   if (code === AUTH_ERROR_CODE) {
+    authRejectCount += 1;
+    if (authRejectCount > MAX_AUTH_RETRY) {
+      giveUpUnauthorized();
+      return;
+    }
     needsReissue = true;
   }
   // 구독 거부: 그 구독을 빼서 다시 연결할 때 같은 거부가 반복되지 않게 한다
@@ -65,6 +76,12 @@ function handleStompError(frame) {
     registry.delete(key);
     entry.onError?.(code);
   }
+}
+
+// 재연결을 멈추고 REST와 같은 unauthorized 핸들러로 넘긴다
+function giveUpUnauthorized() {
+  disconnect();
+  onUnauthorized();
 }
 
 /** 연결 직전: 거부됐던 AT면 먼저 재발급(single-flight), 최신 AT를 헤더에 넣는다 */
@@ -112,6 +129,7 @@ function connect() {
 
 function disconnect() {
   needsReissue = false;
+  authRejectCount = 0;
   if (client?.active) {
     void client.deactivate();
   }

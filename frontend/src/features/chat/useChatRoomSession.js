@@ -8,6 +8,7 @@ import {
   useStompStatusStore,
   useStompSubscription,
 } from '../../shared/ws';
+import { toast } from '../../shared/ui';
 import { clearActiveChatRoom, setActiveChatRoom } from './activeRoom';
 import { fetchChatMessages } from './api';
 import { collectNewerMessages, getLatestMessageId, mergeMessages } from './chatCache';
@@ -63,7 +64,11 @@ export function useChatRoomSession(roomId, room) {
         applyOwnMessageToList(queryClient, message);
       }
     },
-    { onReady: () => setReadyCount((count) => count + 1) },
+    {
+      onReady: () => setReadyCount((count) => count + 1),
+      // 방 토픽 구독 거부(예: CHAT_NOT_PARTICIPANT): 실시간으로 받지 못하므로 알린다
+      onError: (code) => toast.show({ message: getErrorMessage(code), tone: 'danger' }),
+    },
   );
 
   useStompSubscription(room ? CHAT_DESTINATIONS.reads : null, (event) => {

@@ -144,7 +144,8 @@ export default function ChatRoomPage() {
       </div>
     );
   } else {
-    body = <RoomBody roomId={roomId} room={room.data} />;
+    // key: 방을 바꾸면 읽음 전송 기록·보내는 중 메시지를 새로 시작한다
+    body = <RoomBody key={roomId} roomId={roomId} room={room.data} />;
   }
 
   return (
