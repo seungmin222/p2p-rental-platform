@@ -23,7 +23,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V15 | `V15__create_inquiries.sql` | `feat/admin-inquiry` | 머지 |
 | V16 | `V16__create_category_suggestions.sql` | `feat/ai-category` | 머지 |
 | V17 | `V17__create_chat_tables.sql` | `feat/chat-core` | 머지 |
-| V18 | `V18__create_review_tables.sql` | `feat/review` | 작업 중 |
+| V18 | `V18__create_review_tables.sql` | `feat/review` | 머지 |
 
 ## 규칙
 
