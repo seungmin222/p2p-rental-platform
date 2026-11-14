@@ -1,3 +1,9 @@
+## 요약
+- GET /api/members/me/items/{itemId}(수정 화면), PATCH /api/items/{itemId}(수정), DELETE /api/items/{itemId}(소프트 삭제) 구현. API 경로·DTO·에러 코드 변경 없음.
+- 새 파일: item/service/ItemUpdateWriter.java, ItemDeleteWriter.java, rental/service/RentalDeletionBlockReader.java (backend/src/main/java/com/team7/rental 기준). RentalStatus에 BLOCKING_ITEM_DELETION·displayName() 추가.
+- 예약 생성이 락 안에서 물품 공개 여부·가능 기간을 다시 검사한다(RentalReservationTxService). 물품 락을 쓰는 새 기능은 이 재검사에 기대도 된다.
+- 남은 일: 검색(REQ-010, feat/item-feed-search)은 DELETED 제외 조건을 넣어야 한다. roadmap.md 004·005 행은 구현 완료인데 아직 "로직 미구현"으로 남아 있다.
+
 ## 결정
 - 수정 가능 범위: 가격·보증금·거래 장소는 진행 중·예정 대여가 있어도 바꿀 수 있다. 가격·보증금은 대여 건에 스냅샷이 있고, 대여·채팅 응답은 물품 주소를 쓰지 않기 때문이다. 막는 것은 점유 날짜를 빼는 가능 기간 수정뿐이다.
 - 기간 충돌 판정: 점유 기간(RentalOccupancyReader, 만료 전 결제 대기·결제 대기 연장 포함)의 날짜를 새 가능 기간들의 합집합이 모두 덮어야 한다. 이미 시작된 대여(과거 날짜)도 검사한다. 수정 DTO가 시작일 ≥ 오늘을 검사하지 않는 것과 맞춘다.
