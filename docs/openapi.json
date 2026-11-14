@@ -1856,7 +1856,7 @@
     },
     "/api/items/{itemId}": {
       "delete": {
-        "description": "미구현: 응답 형태만 확정. 등록자만. 소프트 삭제(status \u003d DELETED)라 과거 대여·채팅에는 \"삭제된 물품\"으로 남는다. PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED 대여가 있으면 409 ITEM_HAS_ACTIVE_RENTAL이고 error.details에 해당 건을 한 건씩 담는다: [{ field: \"rentals\", reason: \"2026-11-03 ~ 2026-11-05 대여 예정 (rentalId 12)\" }]. 검사와 삭제는 예약과 같은 물품 락 안에서 하므로 락을 못 잡으면 409 RENTAL_LOCK_TIMEOUT. data는 null.",
+        "description": "등록자만. 소프트 삭제(status \u003d DELETED)라 과거 대여·채팅에는 \"삭제된 물품\"으로 남는다. PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED 대여가 있으면 409 ITEM_HAS_ACTIVE_RENTAL이고 error.details에 해당 건을 한 건씩 담는다: [{ field: \"rentals\", reason: \"2026-11-03 ~ 2026-11-05 대여 예정 (rentalId 12)\" }]. 검사와 삭제는 예약과 같은 물품 락 안에서 하므로 락을 못 잡으면 409 RENTAL_LOCK_TIMEOUT. data는 null.",
         "operationId": "deleteItem",
         "parameters": [
           {
@@ -2074,7 +2074,7 @@
         ]
       },
       "patch": {
-        "description": "미구현: 응답 형태만 확정. 등록자만(403 ITEM_NOT_OWNER). 보낸 항목만 바꾼다. multipart: request part(Content-Type application/json, 필수) ItemUpdateRequest + images 파일들(새 이미지만). 이미지: imageOrder가 새 이미지 목록 전체다. 각 칸은 {imageId}(유지할 기존 이미지) 또는 {newImageIndex}(images 파트의 0부터 순번) 중 하나, 목록 순서 \u003d sortOrder, 목록에 없는 기존 이미지는 삭제. imageOrder가 null이면 이미지를 바꾸지 않으며 이때 images를 보내면 400 COMMON_INVALID_INPUT. imageOrder가 가리키지 않는 파일이 있거나 없는 newImageIndex·남의 imageId도 400 COMMON_INVALID_INPUT(details imageOrder). 최종 장수 policies.md item.images(어기면 IMAGE_COUNT_INVALID). 대여 가능 기간은 보낸 목록으로 교체하며, 대여 예정·진행 중 예약(PENDING_PAYMENT 만료 전·RESERVED·RENTING·OVERDUE)이 차지한 날짜를 빼면 409 ITEM_PERIOD_CONFLICT이고 error.details에 충돌 기간을 한 건씩 담는다: [{ field: \"availablePeriods\", reason: \"2026-11-03 ~ 2026-11-05\" }]. 기간 검사는 예약과 같은 물품 락 안에서 하므로 락을 못 잡으면 409 RENTAL_LOCK_TIMEOUT. 가격·보증금 변경은 이후 신규 예약부터 적용된다. 검사 순서: request part 검증 400 → 404 ITEM_NOT_FOUND → 403 ITEM_NOT_OWNER → 이미지 400 → 409. 응답은 수정 화면 조회와 같다.",
+        "description": "등록자만(403 ITEM_NOT_OWNER). 보낸 항목만 바꾼다. multipart: request part(Content-Type application/json, 필수) ItemUpdateRequest + images 파일들(새 이미지만). 이미지: imageOrder가 새 이미지 목록 전체다. 각 칸은 {imageId}(유지할 기존 이미지) 또는 {newImageIndex}(images 파트의 0부터 순번) 중 하나, 목록 순서 \u003d sortOrder, 목록에 없는 기존 이미지는 삭제. imageOrder가 null이면 이미지를 바꾸지 않으며 이때 images를 보내면 400 COMMON_INVALID_INPUT. imageOrder가 가리키지 않는 파일이 있거나 없는 newImageIndex·남의 imageId도 400 COMMON_INVALID_INPUT(details imageOrder). 최종 장수 policies.md item.images(어기면 IMAGE_COUNT_INVALID). 대여 가능 기간은 보낸 목록으로 교체하며, 대여 예정·진행 중 예약(PENDING_PAYMENT 만료 전·RESERVED·RENTING·OVERDUE)이 차지한 날짜를 빼면 409 ITEM_PERIOD_CONFLICT이고 error.details에 충돌 기간을 한 건씩 담는다: [{ field: \"availablePeriods\", reason: \"2026-11-03 ~ 2026-11-05\" }]. 기간 검사는 예약과 같은 물품 락 안에서 하므로 락을 못 잡으면 409 RENTAL_LOCK_TIMEOUT. 가격·보증금 변경은 이후 신규 예약부터 적용된다. 검사 순서: request part 검증 400 → 404 ITEM_NOT_FOUND → 403 ITEM_NOT_OWNER → 이미지 400 → 409. 응답은 수정 화면 조회와 같다.",
         "operationId": "updateItem",
         "parameters": [
           {
@@ -2889,7 +2889,7 @@
     },
     "/api/members/me/items/{itemId}": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. 등록자 전용. 물품 가격(itemPrice)·대여 가능 기간·이미지 ID를 포함해 수정 폼을 채운다. 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 ITEM_NOT_OWNER.",
+        "description": "등록자 전용. 물품 가격(itemPrice)·대여 가능 기간·이미지 ID를 포함해 수정 폼을 채운다. 없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 ITEM_NOT_OWNER.",
         "operationId": "getMyItemForEdit",
         "parameters": [
           {
