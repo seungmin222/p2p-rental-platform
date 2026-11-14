@@ -11,7 +11,7 @@
 | 3 | ✅ | 연장 | 연장 추가 결제 중 연장 기간 선점 | rental_extensions `PENDING_PAYMENT`(15분 만료)를 겹침 검사 대상에 포함 |
 | 4 | ✅ | API | 인계 사진 등록이 `PATCH /handover`와 `POST /inspections` 두 곳 | `PATCH /handover`(multipart) 하나로. `GET /inspections`는 조회 전용 |
 | 5 | ✅ | 결제 | 보증금 반환 실패 시 재시도·대여 상태 | RETURNED 유지, 10분 간격 최대 5회 후 관리자 확인 플래그 |
-| 6 | ✅ | 검색 | "대여 가능만 보기"의 의미 | 대여 희망 기간이 있으면 그 기간 기준, 없으면 "오늘 이후 가능 기간이 남아 있고 오늘이 예약되어 있지 않음" |
+| 6 | ✅ | 검색 | "대여 가능만 보기"의 의미 | 대여 희망 기간이 있으면 그 기간 기준, 없으면 "오늘 이후 가능 기간이 남아 있고 오늘이 예약되어 있지 않음". 구현 시 기간이 없으면 대여 중(RENTING·OVERDUE) 물품도 뺀다(종료일 지난 미반납 연체 때문, #53) |
 | 7 | ⬜ | 대여 | 연체 중인 물품에 다음 예약자가 있으면 다음 예약을 이행할 수 없음 | (제안) 다음 예약자에게 알림 + 다음 예약자 단독 취소 시 수수료 없이 전액 환불, 페널티 미반영 |
 | 8 | ✅ | 대여 | 1순위 단계에서 제공자 '이상' 판정 | 판정만 기록하고 COMPLETED (차감 흐름은 2순위) |
 | 9 | ✅ | 정산 | 정산 HELD 트리거 | 문의(REQ-063) 분쟁 접수 시에만 HELD. (2026-11-12 사용자 결정으로 변경) 정산이 생기기 전에 접수한 분쟁도 보류한다: 정산을 만들 때 그 대여에 RESOLVED가 아닌 분쟁이 있으면 처음부터 HELD. 이미 PAID면 그대로. 종료(HELD → SCHEDULED)는 그 대여의 분쟁이 모두 RESOLVED일 때 관리자 처리(REQ-057)에서. 바꾼 이유: 대여 중·반납 대기에 접수한 분쟁의 대금이 완료 직후 지급되지 않게 |
@@ -58,6 +58,7 @@
 | 50 | ⬜ | 알림 | 알림 표시 문구(`notifications.content`)가 명세에 없다 | (임시, 기획 확인 전) 종류마다 고정 문구 하나(`notification/service/NotificationContentTemplate`). 물품명 등 인자는 넣지 않는다. 기획이 문구를 정하면 그 파일만 바꾸고, 인자가 필요하면 발행 포트에 args를 더한다. 이미 저장된 알림의 문구는 바뀌지 않는다 |
 | 51 | ✅ | 문의 | REQ-063 문의 `type`·`status` 값, 분쟁 접수 조건, 내용 글자 수·목록 페이지 크기가 명세에 없다 | (2026-11-12 사용자 결정) `InquiryType` = `GENERAL`·`DISPUTE`, `InquiryStatus` = `RECEIVED`·`IN_PROGRESS`·`RESOLVED`(state-machines §5). 분쟁은 rentalId 필수, 그 대여의 대여자·제공자만, PENDING_PAYMENT는 409 `INQUIRY_DISPUTE_NOT_ALLOWED`, 같은 회원·대여에 RESOLVED가 아닌 분쟁이 있으면 409 `INQUIRY_DISPUTE_ALREADY_OPEN`(상대방은 따로 접수 가능). `inquiry.content-max` 1,000자(공백만 불가), `inquiry.page` 20 고정. 정산 목록에 `heldTotal` 추가. 알림은 보내지 않는다(관리자 처리 결과 알림은 057) |
 | 52 | ✅ | AI·카테고리 | REQ-067은 "없으면 `ETC` + category_suggestions에 후보 기록"인데, erd.md의 category_suggestions는 item_id를 가지며 AI 추천은 물품 등록 전이라 item_id가 없다. 기록 시점이 명세에 없다 | (2026-11-12 사용자 결정) 추천 시점(`POST /api/items/ai-category`)에 PENDING으로 기록한다. item_id는 NULL 허용, 요청 회원 `member_id`를 추가(V16). 등록 후 item과 잇지 않는다. 검토(APPROVED·REJECTED)는 REQ-057 |
+| 53 | ⬜ | 대여 | 기간 점유는 대여 날짜(시작일~종료일)로만 판정해서, 종료일이 지난 미반납 OVERDUE 물품도 오늘부터 예약을 받는다(#7과 같은 뿌리). 물건이 아직 돌아오지 않았는데 다음 대여자가 결제까지 할 수 있다 | (미결) 검색의 기간 없는 "대여 가능만 보기"는 RENTING·OVERDUE 물품을 따로 뺀다(feat/item-feed-search). 예약 생성·캘린더·기간 검색은 지금 판정 그대로 두었다. OVERDUE를 오늘까지 점유로 볼지, 예약을 막을지 결정 필요 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

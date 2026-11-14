@@ -73,7 +73,38 @@ public class ItemQueryService {
 
 	/** 동네 피드 (REQ-009). regionId가 없으면 회원의 대표 동네 */
 	public CursorResponse<ItemSummaryResponse> getFeed(ItemFeedRequest request, Long memberId) {
-		Long regionId = request.regionId();
+		var cursor = com.team7.rental.item.repository.ItemFeedCursor.decode(request.cursor());
+		var rows = itemRepository.findFeed(regions.getCenter(resolveRegionId(request.regionId(), memberId)),
+			policies.region().range().normalMeters(), request.categoryId(), cursor, policies.feed().page() + 1,
+			java.time.LocalDateTime.now(clock));
+		boolean hasNext = rows.size() > policies.feed().page();
+		var page = rows.subList(0, Math.min(rows.size(), policies.feed().page()));
+		var content = toSummaries(page);
+		String next = hasNext ? new com.team7.rental.item.repository.ItemFeedCursor(page.getLast().bumpedAt(),
+			page.getLast().itemId()).encode() : null;
+		return new CursorResponse<>(content, next, hasNext);
+	}
+
+	/**
+	 * 필터링 검색 (REQ-010). 위치 조건은 피드와 같다(regionId가 없으면 회원의 대표 동네, 범위는 REQ-042 전까지 NORMAL).
+	 * 페이지 크기는 search.page 고정.
+	 */
+	public PageResponse<ItemSummaryResponse> search(ItemSearchRequest request, Long memberId) {
+		String keyword = request.keyword() == null || request.keyword().isBlank() ? null : request.keyword().strip();
+		var condition = new com.team7.rental.item.repository.ItemSearchCondition(keyword, request.categoryId(),
+			request.minPrice(), request.maxPrice(), request.startDate(), request.endDate(),
+			Boolean.TRUE.equals(request.availableOnly()), request.sort());
+		var rows = itemRepository.search(regions.getCenter(resolveRegionId(request.regionId(), memberId)),
+			policies.region().range().normalMeters(), condition,
+			org.springframework.data.domain.PageRequest.of(request.page(), policies.search().page()),
+			java.time.LocalDateTime.now(clock));
+		var content = toSummaries(rows.getContent());
+		return PageResponse.of(new org.springframework.data.domain.PageImpl<>(content, rows.getPageable(),
+			rows.getTotalElements()));
+	}
+
+	/** 피드·검색의 기준 동네: 지정 regionId, 없으면 로그인 회원의 대표 동네. 비회원·대표 동네 없음이면 400(details regionId) */
+	private Long resolveRegionId(Long regionId, Long memberId) {
 		if (regionId == null && memberId != null) {
 			var primary = members.getMe(memberId).primaryRegion();
 			regionId = primary == null ? null : primary.regionId();
@@ -82,26 +113,17 @@ public class ItemQueryService {
 			throw new BusinessException(ErrorCode.COMMON_INVALID_INPUT,
 				List.of(new com.team7.rental.global.response.FieldErrorDetail("regionId", "기준 동네를 선택해 주세요.")));
 		}
-		var cursor = com.team7.rental.item.repository.ItemFeedCursor.decode(request.cursor());
-		var rows = itemRepository.findFeed(regions.getCenter(regionId), policies.region().range().normalMeters(),
-			request.categoryId(),
-			cursor, policies.feed().page() + 1, java.time.LocalDateTime.now(clock));
-		boolean hasNext = rows.size() > policies.feed().page();
-		var page = rows.subList(0, Math.min(rows.size(), policies.feed().page()));
-		var names = regions
-			.getNames(page.stream().map(com.team7.rental.item.repository.ItemListRow::regionId).distinct().toList());
-		var thumbnails = thumbnails(page);
-		var content = page.stream().map(row -> new ItemSummaryResponse(row.itemId(), row.name(),
-			thumbnails.get(row.itemId()), names.get(row.regionId()), row.pricePerDay(), row.deposit(),
-			row.wishCount(), row.chatCount(), row.renting(), row.bumpedAt())).toList();
-		String next = hasNext ? new com.team7.rental.item.repository.ItemFeedCursor(page.getLast().bumpedAt(),
-			page.getLast().itemId()).encode() : null;
-		return new CursorResponse<>(content, next, hasNext);
+		return regionId;
 	}
 
-	/** 필터링 검색 (REQ-010). regionId가 없으면 회원의 대표 동네 */
-	public PageResponse<ItemSummaryResponse> search(ItemSearchRequest request, Long memberId) {
-		throw new UnsupportedOperationException("미구현: feat/item-feed-search");
+	/** 목록 카드 변환 (피드·검색). 동네 이름·썸네일은 일괄 조회한다 */
+	private List<ItemSummaryResponse> toSummaries(List<com.team7.rental.item.repository.ItemListRow> rows) {
+		var names = regions
+			.getNames(rows.stream().map(com.team7.rental.item.repository.ItemListRow::regionId).distinct().toList());
+		var thumbnails = thumbnails(rows);
+		return rows.stream().map(row -> new ItemSummaryResponse(row.itemId(), row.name(),
+			thumbnails.get(row.itemId()), names.get(row.regionId()), row.pricePerDay(), row.deposit(),
+			row.wishCount(), row.chatCount(), row.renting(), row.bumpedAt())).toList();
 	}
 
 	/** 상세 (REQ-011). memberId는 비회원이면 null */

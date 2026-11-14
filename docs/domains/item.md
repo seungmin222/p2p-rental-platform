@@ -55,7 +55,7 @@
 - 조건: keyword(이름·설명), categoryId, minPrice~maxPrice(pricePerDay), startDate~endDate, availableOnly, sort(`ACCURACY` 기본 / `LATEST` / `PRICE_ASC`)
 - 범위: 설정 동네 범위 내로 한정(피드와 같은 위치 조건)
 - **대여 희망 기간 입력 시**: 그 기간 전체가 어떤 available_period 하나에 포함되고, ACTIVE_FOR_PERIOD 대여와 겹치지 않는 물품만
-- availableOnly: 오늘 기준 대여 가능한 물품 (정의 확정 필요 → open-issues #6)
+- availableOnly: 기간이 있으면 위 기간 조건과 같다. 기간이 없으면 오늘 이후 가능 기간이 남아 있고, 오늘이 점유되지 않았고, 대여 중(RENTING·OVERDUE, 피드 "대여 중" 배지와 같은 조건)이 아닌 물품 (open-issues #6, #53)
 - DELETED 제외(HIDDEN도 제외)
 - startDate > endDate → 400, minPrice > maxPrice → 400(details minPrice). keyword 길이는 제한하지 않는다(open-issues #28)
 - 로그인 회원 검색어 → 최근·인기 검색어 저장(REQ-046 구현 시)
