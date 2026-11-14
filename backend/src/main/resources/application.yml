@@ -107,6 +107,9 @@ app:
   policy:
     feed:
       page: 20
+    # search.page: 검색 페이지 크기. size 파라미터를 받지 않는다 (REQ-010)
+    search:
+      page: 20
     my-items:
       page: 20
     item-rentals:

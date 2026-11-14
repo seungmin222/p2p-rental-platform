@@ -138,7 +138,7 @@ public class ItemController {
 		return ApiResponse.ok(itemQueryService.getFeed(request, memberId));
 	}
 
-	@Operation(summary = "물품 검색 (REQ-010)", description = "미구현: 응답 형태만 확정. " + REGION_NOTE
+	@Operation(summary = "물품 검색 (REQ-010)", description = REGION_NOTE
 		+ "페이지 크기는 policies.md search.page로 고정(size를 받지 않음). 시작일·종료일은 둘 다 보내거나 둘 다 생략하고, 시작일 > 종료일이면 400(details endDate). minPrice > maxPrice면 400(details minPrice). keyword 길이는 제한하지 않는다.")
 	@ApiErrorCodes({COMMON_INVALID_INPUT})
 	@GetMapping

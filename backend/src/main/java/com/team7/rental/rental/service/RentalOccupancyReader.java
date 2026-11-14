@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 /**
  * 물품의 기간 점유를 모으는 유일한 곳. 예약 겹침 검사(REQ-013), 캘린더 BOOKED(REQ-012), 연장 겹침 검사(REQ-038)가 같이 쓴다.
  * 점유 = ACTIVE_FOR_PERIOD 대여(결제 대기는 만료 전만) + 만료 전 결제 대기 연장의 연장 기간. 트랜잭션은 호출하는 쪽을 따른다.
+ * 물품 검색(REQ-010, ItemListingRepositoryImpl.occupied)이 같은 조건을 쿼리로 다시 쓰므로, 점유 조건을 바꾸면 그쪽도 함께 바꾼다.
  */
 @Component
 @RequiredArgsConstructor

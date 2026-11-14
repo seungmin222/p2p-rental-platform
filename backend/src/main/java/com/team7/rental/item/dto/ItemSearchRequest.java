@@ -41,7 +41,7 @@ public record ItemSearchRequest(
 	@Schema(description = "대여 희망 종료일 (포함)", example = "2026-11-05")
 	LocalDate endDate,
 
-	@Schema(description = "대여 가능한 물품만. 기간을 보냈으면 그 기간 기준, 없으면 오늘 이후 가능 기간이 남아 있고 오늘이 예약되지 않은 물품 (open-issues #6)")
+	@Schema(description = "대여 가능한 물품만. 기간을 보냈으면 그 기간 기준, 없으면 오늘 이후 가능 기간이 남아 있고, 오늘이 점유되지 않았고, 대여 중(RENTING·OVERDUE)이 아닌 물품 (open-issues #6, #53)")
 	Boolean availableOnly,
 
 	@Schema(description = "정렬. 생략하면 ACCURACY(이름 일치 > 설명 일치 > 최신순)", defaultValue = "ACCURACY")
