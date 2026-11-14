@@ -1,6 +1,8 @@
 package com.team7.rental.item.service;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -281,6 +283,24 @@ class ItemEditDeleteIntegrationTest extends IntegrationTestSupport {
 			bearerToken(renter.getId())))
 			.andExpect(status().isOk()).andExpect(jsonPath("$.data.item.isDeleted").value(true));
 		assertThat(storage.read(storage.keyOf(first.getUrl()))).isNotEmpty();
+	}
+
+	@Test
+	@DisplayName("삭제한 물품은 피드(GET /api/items/feed)에서 빠진다")
+	void deletedItemLeavesFeed() throws Exception {
+		String regionId = owner.region().getId().toString();
+		mockMvc.perform(get("/api/items/feed").param("regionId", regionId))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[*].itemId", hasItem(item.getId().intValue())));
+
+		mockMvc.perform(delete("/api/items/{itemId}", item.getId()).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(ownerId())))
+			.andExpect(status().isOk());
+
+		mockMvc.perform(get("/api/items/feed").param("regionId", regionId))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[*].itemId",
+				not(hasItem(item.getId().intValue()))));
 	}
 
 	@ParameterizedTest

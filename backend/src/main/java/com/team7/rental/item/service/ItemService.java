@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -96,6 +97,8 @@ public class ItemService {
 			categories.requireActive(request.categoryId());
 		}
 		List<StoredFile> stored = new ArrayList<>();
+		// writer가 반환했다면 커밋된 것이다. 그 뒤 락 해제가 실패해도 커밋된 행이 새 파일을 가리키므로 지우지 않는다.
+		AtomicBoolean committed = new AtomicBoolean();
 		ItemUpdateWriter.Result result;
 		try {
 			List<ItemUpdateWriter.UploadedImage> uploaded = new ArrayList<>();
@@ -103,10 +106,15 @@ public class ItemService {
 				UploadedPair pair = upload(file, stored);
 				uploaded.add(new ItemUpdateWriter.UploadedImage(pair.original().url(), pair.thumbnail().url()));
 			}
-			result = rentalLockStrategy.executeWithItemLock(itemId,
-				() -> updateWriter.update(itemId, memberId, request, uploaded));
+			result = rentalLockStrategy.executeWithItemLock(itemId, () -> {
+				ItemUpdateWriter.Result written = updateWriter.update(itemId, memberId, request, uploaded);
+				committed.set(true);
+				return written;
+			});
 		} catch (RuntimeException failure) {
-			deleteQuietly(stored.stream().map(StoredFile::key).toList(), "물품 수정 실패 후 파일 정리 실패");
+			if (!committed.get()) {
+				deleteQuietly(stored.stream().map(StoredFile::key).toList(), "물품 수정 실패 후 파일 정리 실패");
+			}
 			throw failure;
 		}
 		List<String> removedKeys = new ArrayList<>();
