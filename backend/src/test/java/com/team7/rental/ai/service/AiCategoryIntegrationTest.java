@@ -41,7 +41,7 @@ import com.team7.rental.support.IntegrationTestSupport;
 /** AI 카테고리 추천 API (REQ-067). 실제 Redis 카운터와 category_suggestions를 확인한다. AI는 {@link FakeAiClient} */
 class AiCategoryIntegrationTest extends IntegrationTestSupport {
 
-	private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 12, 10, 0);
+	private static final LocalDateTime NOW = LocalDateTime.of(2099, 11, 12, 10, 0); // Redis EXPIREAT은 실제 시각과 비교하므로 미래 날짜로 고정
 	private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 	private static final String CAMPING = """
 		{"categoryCode": "CAMPING", "suggestedName": null}""";
@@ -290,9 +290,9 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 
 		// then: TTL은 실제 시각 기준이라 절대 만료 시각(EXPIRETIME, Redis 7)으로 본다
 		assertThat(expireTime(monthlyKey()))
-			.isEqualTo(LocalDate.of(2026, 12, 2).atStartOfDay(SEOUL).toEpochSecond());
+			.isEqualTo(LocalDate.of(2099, 12, 2).atStartOfDay(SEOUL).toEpochSecond());
 		assertThat(expireTime(dailyKey(NOW.toLocalDate())))
-			.isEqualTo(LocalDate.of(2026, 11, 14).atStartOfDay(SEOUL).toEpochSecond());
+			.isEqualTo(LocalDate.of(2099, 11, 14).atStartOfDay(SEOUL).toEpochSecond());
 	}
 
 	@Test

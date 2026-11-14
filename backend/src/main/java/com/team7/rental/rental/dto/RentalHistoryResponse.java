@@ -32,6 +32,6 @@ public record RentalHistoryResponse(
 	@Schema(description = "결제 금액 = 대여료 + 보증금 (예약 시점)", example = "80000")
 	long totalAmount,
 
-	@Schema(description = "후기 작성 가능 여부. 거래 완료(COMPLETED) 후 policies.md review.write-deadline-days 이내면 true")
+	@Schema(description = "후기 작성 가능 여부. 거래 완료(COMPLETED) 후 policies.md review.write-deadline-days 이내(기한 정각 포함)이고 아직 쓰지 않았으면 true")
 	boolean canWriteReview) {
 }

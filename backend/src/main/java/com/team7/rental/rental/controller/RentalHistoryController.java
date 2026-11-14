@@ -35,7 +35,7 @@ public class RentalHistoryController {
 	@Operation(summary = "빌린 내역 조회 (REQ-019)", description = "본인이 대여자인 건만. 탭별 상태: UPCOMING = PENDING_PAYMENT·RESERVED, "
 		+ "ONGOING = RENTING·OVERDUE·RETURNED, DONE = COMPLETED·CANCELED. "
 		+ "정렬은 모든 탭에서 OVERDUE 먼저, 그다음 startDate 내림차순, id 내림차순. 페이지 크기는 policies.md rental-history.page로 고정이다. "
-		+ "canWriteReview는 COMPLETED이고 completedAt + review.write-deadline-days 이내(정확히 기한 시각 포함)면 true다.")
+		+ "canWriteReview는 COMPLETED이고 completedAt + review.write-deadline-days 이내(정확히 기한 시각 포함)이고 본인이 아직 후기를 쓰지 않았으면 true다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED})
 	@GetMapping

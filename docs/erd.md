@@ -23,6 +23,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V15 | `V15__create_inquiries.sql` | `feat/admin-inquiry` | 머지 |
 | V16 | `V16__create_category_suggestions.sql` | `feat/ai-category` | 머지 |
 | V17 | `V17__create_chat_tables.sql` | `feat/chat-core` | 머지 |
+| V18 | `V18__create_review_tables.sql` | `feat/review` | 머지 |
 
 ## 규칙
 
@@ -200,8 +201,8 @@ erDiagram
 
 ## 신뢰 [2]/[3]
 
-**reviews** — id, rental_id, writer_id, target_id, satisfaction, content, created_at, UK(rental_id, writer_id)
-**review_compliments** — review_id, type
+**reviews** — id, rental_id, writer_id, target_id, satisfaction, content(NULL 가능, VARCHAR(300)), created_at, updated_at · UK(rental_id, writer_id) 1회 작성 · INDEX(target_id, id) 받은 후기 목록. 수정·삭제 없음
+**review_compliments** — review_id, type · PK(review_id, type). 후기와 함께 한 번만 저장하는 값 컬렉션이라 시각 컬럼이 없다(예외)
 **reports** [3] — id, reporter_id, target_type(ITEM/MEMBER/CHAT), target_id, reason, status
 **blocks** [3] — blocker_id, blocked_id, UK
 **trust_score_events** (구현 제안) [3] — member_id, reason, delta, source_id — 점수 재계산·감사용

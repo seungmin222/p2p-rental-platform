@@ -32,6 +32,10 @@
       "name": "Admin"
     },
     {
+      "description": "거래 후기",
+      "name": "Review"
+    },
+    {
       "description": "알림",
       "name": "Notification"
     },
@@ -3686,7 +3690,7 @@
     },
     "/api/members/me/rentals": {
       "get": {
-        "description": "본인이 대여자인 건만. 탭별 상태: UPCOMING \u003d PENDING_PAYMENT·RESERVED, ONGOING \u003d RENTING·OVERDUE·RETURNED, DONE \u003d COMPLETED·CANCELED. 정렬은 모든 탭에서 OVERDUE 먼저, 그다음 startDate 내림차순, id 내림차순. 페이지 크기는 policies.md rental-history.page로 고정이다. canWriteReview는 COMPLETED이고 completedAt + review.write-deadline-days 이내(정확히 기한 시각 포함)면 true다.",
+        "description": "본인이 대여자인 건만. 탭별 상태: UPCOMING \u003d PENDING_PAYMENT·RESERVED, ONGOING \u003d RENTING·OVERDUE·RETURNED, DONE \u003d COMPLETED·CANCELED. 정렬은 모든 탭에서 OVERDUE 먼저, 그다음 startDate 내림차순, id 내림차순. 페이지 크기는 policies.md rental-history.page로 고정이다. canWriteReview는 COMPLETED이고 completedAt + review.write-deadline-days 이내(정확히 기한 시각 포함)이고 본인이 아직 후기를 쓰지 않았으면 true다.",
         "operationId": "getRentalHistory",
         "parameters": [
           {
@@ -3878,6 +3882,94 @@
         "summary": "정산 내역 조회 (REQ-039)",
         "tags": [
           "Payment"
+        ]
+      }
+    },
+    "/api/members/{memberId}/reviews": {
+      "get": {
+        "description": "회원이 받은 후기, 최신 작성 순. 비회원도 볼 수 있다. writerRole로 대여자가 쓴 후기(RENTER)와 제공자가 쓴 후기(OWNER)를 구분한다. 탈퇴한 작성자는 닉네임·사진이 null이다. 페이지 크기는 policies.md review.page로 고정이다.",
+        "operationId": "getReceivedReviews",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseReceivedReviewResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MEMBER_NOT_FOUND": {
+                    "summary": "회원을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "MEMBER_NOT_FOUND",
+                        "details": [],
+                        "message": "회원을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "MEMBER_NOT_FOUND"
+          }
+        },
+        "summary": "받은 후기 목록 (REQ-034)",
+        "tags": [
+          "Review"
         ]
       }
     },
@@ -7193,6 +7285,176 @@
           "Rental"
         ]
       }
+    },
+    "/api/rentals/{rentalId}/reviews": {
+      "post": {
+        "description": "거래 완료(COMPLETED)된 대여의 당사자가 상대에게 후기를 쓴다(대여자→제공자, 제공자→대여자). completedAt + policies.md review.write-deadline-days(7일) 정각까지 쓸 수 있고, 한 대여에 회원당 1번이다. COMPLETED가 아니면 RENTAL_INVALID_TRANSITION. 저장되면 상대에게 REVIEW_RECEIVED 알림(대상 RENTAL)을 보낸다. 수정·삭제는 없다.",
+        "operationId": "write",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rentalId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReviewResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "REVIEW_DEADLINE_PASSED": {
+                    "summary": "후기 작성 기간이 지났습니다.",
+                    "value": {
+                      "error": {
+                        "code": "REVIEW_DEADLINE_PASSED",
+                        "details": [],
+                        "message": "후기 작성 기간이 지났습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, REVIEW_DEADLINE_PASSED"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_PARTICIPANT": {
+                    "summary": "대여 당사자만 이용할 수 있습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_PARTICIPANT",
+                        "details": [],
+                        "message": "대여 당사자만 이용할 수 있습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_PARTICIPANT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_NOT_FOUND": {
+                    "summary": "대여 내역을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_NOT_FOUND",
+                        "details": [],
+                        "message": "대여 내역을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "RENTAL_INVALID_TRANSITION": {
+                    "summary": "현재 대여 상태에서는 처리할 수 없는 요청입니다.",
+                    "value": {
+                      "error": {
+                        "code": "RENTAL_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 대여 상태에서는 처리할 수 없는 요청입니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "REVIEW_ALREADY_WRITTEN": {
+                    "summary": "이미 후기를 작성했습니다.",
+                    "value": {
+                      "error": {
+                        "code": "REVIEW_ALREADY_WRITTEN",
+                        "details": [],
+                        "message": "이미 후기를 작성했습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "RENTAL_INVALID_TRANSITION, REVIEW_ALREADY_WRITTEN"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "후기 작성 (REQ-034)",
+        "tags": [
+          "Review"
+        ]
+      }
     }
   },
   "components": {
@@ -7766,6 +8028,20 @@
           }
         }
       },
+      "ApiResponsePageResponseReceivedReviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponseReceivedReviewResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponsePageResponseRentalHistoryResponse": {
         "type": "object",
         "properties": {
@@ -7869,6 +8145,20 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/RentalExtensionResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseReviewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReviewResponse"
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -8192,8 +8482,12 @@
             "format": "int64"
           },
           "senderId": {
-            "type": "integer",
-            "format": "int64"
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "보낸 회원 ID. SYSTEM 메시지는 null"
           },
           "sentAt": {
             "type": "string",
@@ -9811,6 +10105,40 @@
           }
         }
       },
+      "PageResponseReceivedReviewResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/ReceivedReviewResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
+          }
+        }
+      },
       "PageResponseRentalHistoryResponse": {
         "type": "object",
         "properties": {
@@ -10256,6 +10584,95 @@
           }
         }
       },
+      "ReceivedReviewResponse": {
+        "type": "object",
+        "properties": {
+          "compliments": {
+            "type": "array",
+            "description": "칭찬 항목 (Enum 선언 순서). 없으면 빈 배열",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ON_TIME",
+                "AS_DESCRIBED",
+                "CLEAN_USE"
+              ]
+            }
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "후기 내용. 없으면 null",
+            "example": "깨끗하게 잘 썼어요."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "작성 시각",
+            "example": "2026-11-14T10:00:00"
+          },
+          "reviewId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "후기 ID",
+            "example": 1
+          },
+          "satisfaction": {
+            "type": "string",
+            "description": "만족도",
+            "enum": [
+              "BAD",
+              "GOOD",
+              "BEST"
+            ]
+          },
+          "writer": {
+            "$ref": "#/components/schemas/ReceivedReviewWriter",
+            "description": "작성자"
+          },
+          "writerRole": {
+            "type": "string",
+            "description": "작성자가 그 대여에서 맡은 역할: RENTER면 대여자가 쓴 후기(받은 회원은 제공자), OWNER면 제공자가 쓴 후기(받은 회원은 대여자)",
+            "enum": [
+              "RENTER",
+              "OWNER"
+            ]
+          }
+        }
+      },
+      "ReceivedReviewWriter": {
+        "type": "object",
+        "description": "후기 작성자",
+        "properties": {
+          "isWithdrawn": {
+            "type": "boolean",
+            "description": "탈퇴(WITHDRAWN) 회원이면 true"
+          },
+          "memberId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "작성자 회원 ID",
+            "example": 3
+          },
+          "nickname": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "닉네임. 탈퇴한 작성자면 null(화면이 \"탈퇴한 사용자\"로 표시)",
+            "example": "캠핑러"
+          },
+          "profileImageUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "프로필 이미지 URL. 없거나 탈퇴한 작성자면 null"
+          }
+        }
+      },
       "Region": {
         "type": "object",
         "properties": {
@@ -10470,6 +10887,10 @@
             "$ref": "#/components/schemas/ActiveCancelAgreement",
             "description": "진행 중인 양측 동의 취소 요청(REQUESTED이고 만료 전). 대여 예정(RESERVED)일 때만 채우고, 그 외 상태나 요청이 없으면 null"
           },
+          "canWriteReview": {
+            "type": "boolean",
+            "description": "조회한 회원이 지금 후기를 쓸 수 있는지 (REQ-034). 거래 완료(COMPLETED) 후 policies.md review.write-deadline-days 이내(기한 정각 포함)이고 아직 쓰지 않았으면 true"
+          },
           "cancelFee": {
             "type": "integer",
             "format": "int32",
@@ -10626,6 +11047,10 @@
             "format": "date-time",
             "description": "반납 요청(또는 미반납 신고) 시각"
           },
+          "reviewWritten": {
+            "type": "boolean",
+            "description": "조회한 회원이 이 대여에 후기를 이미 썼는지 (REQ-034)"
+          },
           "startDate": {
             "type": "string",
             "format": "date",
@@ -10732,7 +11157,7 @@
         "properties": {
           "canWriteReview": {
             "type": "boolean",
-            "description": "후기 작성 가능 여부. 거래 완료(COMPLETED) 후 policies.md review.write-deadline-days 이내면 true"
+            "description": "후기 작성 가능 여부. 거래 완료(COMPLETED) 후 policies.md review.write-deadline-days 이내(기한 정각 포함)이고 아직 쓰지 않았으면 true"
           },
           "endDate": {
             "type": "string",
@@ -10950,6 +11375,98 @@
             "type": "string",
             "description": "닉네임",
             "example": "텐트초보"
+          }
+        }
+      },
+      "ReviewCreateRequest": {
+        "type": "object",
+        "properties": {
+          "compliments": {
+            "type": "array",
+            "description": "칭찬 항목(다중 선택, 선택 안 해도 됨). ON_TIME 시간 약속을 잘 지켜요, AS_DESCRIBED 물품 상태가 설명과 같아요, CLEAN_USE 깨끗하게 사용했어요. 대여자·제공자 모두 같은 목록이다",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ON_TIME",
+                "AS_DESCRIBED",
+                "CLEAN_USE"
+              ]
+            }
+          },
+          "content": {
+            "type": "string",
+            "description": "후기 내용(선택). policies.md review.content.max(300자) 이하. 공백만이면 내용 없음으로 저장",
+            "example": "깨끗하게 잘 썼어요."
+          },
+          "satisfaction": {
+            "type": "string",
+            "description": "만족도: BAD 별로예요, GOOD 좋아요, BEST 최고예요",
+            "enum": [
+              "BAD",
+              "GOOD",
+              "BEST"
+            ]
+          }
+        },
+        "required": [
+          "satisfaction"
+        ]
+      },
+      "ReviewResponse": {
+        "type": "object",
+        "properties": {
+          "compliments": {
+            "type": "array",
+            "description": "칭찬 항목 (Enum 선언 순서). 없으면 빈 배열",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ON_TIME",
+                "AS_DESCRIBED",
+                "CLEAN_USE"
+              ]
+            }
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "후기 내용. 없으면 null",
+            "example": "깨끗하게 잘 썼어요."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "작성 시각",
+            "example": "2026-11-14T10:00:00"
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "대여 ID",
+            "example": 10
+          },
+          "reviewId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "후기 ID",
+            "example": 1
+          },
+          "satisfaction": {
+            "type": "string",
+            "description": "만족도",
+            "enum": [
+              "BAD",
+              "GOOD",
+              "BEST"
+            ]
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "후기를 받은 회원(상대 당사자) ID",
+            "example": 2
           }
         }
       },

@@ -33,6 +33,9 @@ import com.team7.rental.item.repository.ItemImageRepository;
 import com.team7.rental.member.entity.Member;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
+import com.team7.rental.review.entity.Review;
+import com.team7.rental.review.entity.Satisfaction;
+import com.team7.rental.review.repository.ReviewRepository;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
@@ -55,6 +58,9 @@ class RentalHistoryIntegrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private ItemImageRepository itemImageRepository;
+
+	@Autowired
+	private ReviewRepository reviewRepository;
 
 	private VerifiedMember owner;
 	private Member renter;
@@ -175,6 +181,26 @@ class RentalHistoryIntegrationTest extends IntegrationTestSupport {
 		assertThat(canWriteReviewOf(done, pastDeadline)).isFalse();
 		assertThat(canWriteReviewOf(done, canceled)).isFalse();
 		assertThat(canWriteReviewOf(ongoing, renting)).isFalse();
+	}
+
+	@Test
+	@DisplayName("canWriteReview: 기간 안이어도 본인이 후기를 썼으면 false(제공자가 쓴 후기는 상관없다), 확인 쿼리는 1개 더해진다")
+	void canWriteReviewAfterWritten() throws Exception {
+		// given
+		Rental written = createCompleted(NOW.minusDays(1), START);
+		Rental byOwnerOnly = createCompleted(NOW.minusDays(1), START.minusDays(1));
+		reviewRepository.save(Review.write(written.getId(), renter.getId(), owner.member().getId(), Satisfaction.GOOD,
+			List.of(), null));
+		reviewRepository.save(Review.write(byOwnerOnly.getId(), owner.member().getId(), renter.getId(),
+			Satisfaction.GOOD, List.of(), null));
+
+		// when
+		String done = perform(request("DONE")).andReturn().getResponse().getContentAsString();
+
+		// then: 대여 + 물품 + 대표 이미지 + 닉네임 + 후기 작성 여부
+		assertThat(canWriteReviewOf(done, written)).isFalse();
+		assertThat(canWriteReviewOf(done, byOwnerOnly)).isTrue();
+		assertThat(countQueries(request("DONE"))).isEqualTo(5);
 	}
 
 	@Test

@@ -155,7 +155,7 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	@DisplayName("결제 없는 상세 조회는 쿼리 6개로 끝난다(대여·물품 요약·대표 이미지·상대 닉네임·진행 중인 동의 취소·결제)")
+	@DisplayName("결제 없는 상세 조회는 쿼리 7개로 끝난다(대여·물품 요약·대표 이미지·상대 닉네임·진행 중인 동의 취소·결제·후기 작성 여부)")
 	void queryCount() throws Exception {
 		// given: 픽스처 저장이 섞이지 않게 요청 직전에 비운다
 		Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
@@ -167,6 +167,6 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 			.andExpect(status().isOk());
 
 		// then
-		assertThat(statistics.getPrepareStatementCount()).isEqualTo(6);
+		assertThat(statistics.getPrepareStatementCount()).isEqualTo(7);
 	}
 }
