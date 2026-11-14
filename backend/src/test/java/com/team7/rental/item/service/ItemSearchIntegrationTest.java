@@ -89,6 +89,21 @@ class ItemSearchIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("검색어의 '\\'와 이스케이프 문자 '!'도 문자 그대로 찾는다")
+	void keywordKeepsBackslashAndEscapeCharLiteral() {
+		var backslash = create("C:\\temp 케이블", "설명", 1000, now);
+		create("C:temp 케이블", "설명", 1000, now);
+		var bang = create("세일! 텐트", "설명", 1000, now);
+		create("세일 텐트", "설명", 1000, now);
+		var bangPercent = create("할인!% 담요", "설명", 1000, now);
+		create("할인!x 담요", "설명", 1000, now);
+
+		assertThat(ids(search(builder().keyword("C:\\temp")))).containsExactly(backslash.getId());
+		assertThat(ids(search(builder().keyword("세일!")))).containsExactly(bang.getId());
+		assertThat(ids(search(builder().keyword("!%")))).containsExactly(bangPercent.getId());
+	}
+
+	@Test
 	@DisplayName("최신순은 bumpedAt·id 내림차순, 가격순은 일 대여료 오름차순·id 내림차순이다")
 	void latestAndPriceOrders() {
 		var cheapOld = create("A", "설명", 1000, now.minusDays(2));
@@ -142,12 +157,17 @@ class ItemSearchIntegrationTest extends IntegrationTestSupport {
 		var extending = createWithPeriods("결제 대기 연장", period(today.minusDays(3), to));
 		Rental renting = rentalFixture.createRental(extending, renter, RentalStatus.RENTING, today.minusDays(3), today);
 		extensions.saveAndFlush(RentalExtension.pendingPayment(renting.getId(), today, from, 1000, now.plusMinutes(1)));
+		// 만료된 결제 대기 연장(expiresAt ≤ now)은 점유가 아니다
+		var expiredExtending = createWithPeriods("만료된 결제 대기 연장", period(today.minusDays(3), to));
+		Rental renting2 = rentalFixture.createRental(expiredExtending, renter, RentalStatus.RENTING,
+			today.minusDays(3), today);
+		extensions.saveAndFlush(RentalExtension.pendingPayment(renting2.getId(), today, from, 1000, now));
 
 		var result = search(builder().startDate(from).endDate(to).sort(ItemSortType.LATEST));
-		assertThat(ids(result)).containsExactly(ignored.getId(), exactFit.getId());
+		assertThat(ids(result)).containsExactly(expiredExtending.getId(), ignored.getId(), exactFit.getId());
 		// availableOnly를 함께 보내도 기간 기준 그대로
 		assertThat(ids(search(builder().startDate(from).endDate(to).availableOnly(true).sort(ItemSortType.LATEST))))
-			.containsExactly(ignored.getId(), exactFit.getId());
+			.containsExactly(expiredExtending.getId(), ignored.getId(), exactFit.getId());
 	}
 
 	@Test

@@ -1203,7 +1203,7 @@
     },
     "/api/items": {
       "get": {
-        "description": "미구현: 응답 형태만 확정. regionId를 생략하면 로그인 회원의 대표 동네를 쓰고, 비회원이거나 대표 동네가 없으면 400 COMMON_INVALID_INPUT(details regionId). range는 받지만 동네 범위 설정(REQ-042) 전에는 NORMAL로 처리한다(거리 policies.md region.range). 물품 거래 장소 좌표가 기준 동네 중심에서 범위 안인 AVAILABLE 물품만(HIDDEN·DELETED 제외). 페이지 크기는 policies.md search.page로 고정(size를 받지 않음). 시작일·종료일은 둘 다 보내거나 둘 다 생략하고, 시작일 \u003e 종료일이면 400(details endDate). minPrice \u003e maxPrice면 400(details minPrice). keyword 길이는 제한하지 않는다.",
+        "description": "regionId를 생략하면 로그인 회원의 대표 동네를 쓰고, 비회원이거나 대표 동네가 없으면 400 COMMON_INVALID_INPUT(details regionId). range는 받지만 동네 범위 설정(REQ-042) 전에는 NORMAL로 처리한다(거리 policies.md region.range). 물품 거래 장소 좌표가 기준 동네 중심에서 범위 안인 AVAILABLE 물품만(HIDDEN·DELETED 제외). 페이지 크기는 policies.md search.page로 고정(size를 받지 않음). 시작일·종료일은 둘 다 보내거나 둘 다 생략하고, 시작일 \u003e 종료일이면 400(details endDate). minPrice \u003e maxPrice면 400(details minPrice). keyword 길이는 제한하지 않는다.",
         "operationId": "searchItems",
         "parameters": [
           {
@@ -1314,13 +1314,13 @@
             }
           },
           {
-            "description": "대여 가능한 물품만. 기간을 보냈으면 그 기간 기준, 없으면 오늘 이후 가능 기간이 남아 있고 오늘이 예약되지 않은 물품 (open-issues #6)",
+            "description": "대여 가능한 물품만. 기간을 보냈으면 그 기간 기준, 없으면 오늘 이후 가능 기간이 남아 있고, 오늘이 점유되지 않았고, 대여 중(RENTING·OVERDUE)이 아닌 물품 (open-issues #6, #53)",
             "in": "query",
             "name": "availableOnly",
             "required": false,
             "schema": {
               "type": "boolean",
-              "description": "대여 가능한 물품만. 기간을 보냈으면 그 기간 기준, 없으면 오늘 이후 가능 기간이 남아 있고 오늘이 예약되지 않은 물품 (open-issues #6)"
+              "description": "대여 가능한 물품만. 기간을 보냈으면 그 기간 기준, 없으면 오늘 이후 가능 기간이 남아 있고, 오늘이 점유되지 않았고, 대여 중(RENTING·OVERDUE)이 아닌 물품 (open-issues #6, #53)"
             }
           },
           {

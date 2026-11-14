@@ -1,5 +1,5 @@
 ## 요약
-- GET /api/items(필터링 검색, REQ-010) 구현. API 경로·DTO·에러 코드 변경 없음(openapi.json 그대로).
+- GET /api/items(필터링 검색, REQ-010) 구현. API 경로·DTO 필드·에러 코드 변경 없음. openapi.json은 검색 설명 문구(미구현 표시 제거, availableOnly 대여 중 제외)만 재생성.
 - 바꾼 파일: item/repository/ItemListingRepositoryImpl.java(search), 새 ItemSearchCondition.java, item/service/ItemQueryService.java(search·resolveRegionId·toSummaries를 피드와 공유), PolicyProperties에 search.page 바인딩 (backend/src/main/java/com/team7/rental 기준).
 - 남은 일: 예약 생성·캘린더·기간 검색은 종료일이 지난 미반납 OVERDUE 물품도 오늘부터 받는다(open-issues #53, #7과 같은 뿌리). 결정 전까지 고치지 않았다.
 - 남은 일: 최근·인기 검색어(046), 자동완성(064), 거리순(065)은 하지 않았다. 046은 ItemQueryService.search에서 keyword를 넘기는 자리에 붙이면 된다. 차단 사용자 제외(056)는 search의 조건 목록에 더한다.
@@ -14,4 +14,4 @@
 - search.page(20)를 PolicyProperties에 바인딩했다(policies.md에는 이미 있었고 설정 키만 없었다).
 
 ## 검증
-- ItemSearchIntegrationTest(9개): 정확도순·검색어 없음 순서, %·_ 이스케이프, 최신순·가격순 동률, 카테고리·가격 범위, 기간(경계·가능 기간 밖·두 기간에 걸침·마지막 날 예약·취소/만료 결제 대기/완료 무시·결제 대기·결제 대기 연장), 기간 없는 availableOnly(기간 끝남·오늘 예약·미반납 연체·내일 예약), 범위 밖·숨김·삭제 제외와 대표 동네, 20건 페이지, 400 3종과 긴 검색어 200.
+- ItemSearchIntegrationTest(10개): 정확도순·검색어 없음 순서, %·_·\·! 이스케이프, 최신순·가격순 동률, 카테고리·가격 범위, 기간(경계·가능 기간 밖·두 기간에 걸침·마지막 날 예약·취소/만료 결제 대기/완료 무시·결제 대기·결제 대기 연장·만료된 결제 대기 연장 무시), 기간 없는 availableOnly(기간 끝남·오늘 예약·미반납 연체·내일 예약), 범위 밖·숨김·삭제 제외와 대표 동네, 20건 페이지, 400 3종과 긴 검색어 200.
