@@ -100,7 +100,8 @@ public class ItemListingRepositoryImpl implements ItemListingRepository {
 	/**
 	 * [startDate, endDate](양 끝 포함)를 대여할 수 있는지. 예약 생성(RentalReservationTxService.create)과 같은 판정이다:
 	 * 기간 전체가 가능 기간 하나에 들어가고(AvailablePeriod.isCovering), 점유 기간(RentalOccupancyReader)과 겹치지 않는다.
-	 * 점유 조건을 바꾸면 RentalRepository.findOccupying·RentalExtensionRepository.findPendingOccupying과 함께 바꾼다.
+	 * 점유 조건을 바꾸면 RentalRepository.findOccupying·RentalExtensionRepository.findPendingOccupying·Rental.occupiedEndDate와
+	 * 함께 바꾸고, ItemSearchIntegrationTest.periodOccupancyMatchesRentalOccupancyReader로 두 판정이 같은지 확인한다.
 	 */
 	private BooleanExpression rentableFor(LocalDate startDate, LocalDate endDate, LocalDateTime now) {
 		var covered = JPAExpressions.selectOne().from(itemAvailablePeriod)
@@ -112,7 +113,8 @@ public class ItemListingRepositoryImpl implements ItemListingRepository {
 
 	/**
 	 * 기간 없는 availableOnly (open-issues #6): 오늘 이후 가능 기간이 남아 있고 오늘이 점유되지 않았으며, 대여 중(RENTING·OVERDUE,
-	 * 피드 "대여 중" 배지와 같은 조건)이 아님. 종료일이 지난 미반납 OVERDUE는 날짜로는 오늘을 점유하지 않아 따로 뺀다.
+	 * 피드 "대여 중" 배지와 같은 조건)이 아님. 종료일이 지난 미반납 대여는 이제 점유가 오늘까지 늘어나 occupied로도 빠지지만(#53),
+	 * "대여 중" 배지와 같은 조건으로 맞추려고 renting() 제외를 그대로 둔다.
 	 */
 	private BooleanExpression availableToday(LocalDateTime now) {
 		LocalDate today = now.toLocalDate();
@@ -122,11 +124,19 @@ public class ItemListingRepositoryImpl implements ItemListingRepository {
 		return remaining.and(occupied(today, today, now).not()).and(renting().not());
 	}
 
-	/** RentalOccupancyReader와 같은 점유: ACTIVE_FOR_PERIOD 대여(결제 대기는 만료 전) + 만료 전 결제 대기 연장 기간 */
+	/**
+	 * RentalOccupancyReader와 같은 점유: ACTIVE_FOR_PERIOD 대여(결제 대기는 만료 전) + 만료 전 결제 대기 연장 기간.
+	 * 대여의 점유 끝은 Rental.occupiedEndDate(RENTING·OVERDUE는 max(endDate, 오늘), open-issues #53)라
+	 * "endDate &gt;= from OR (RENTING·OVERDUE AND 오늘 &gt;= from)"으로 쓴다. 오늘은 now의 날짜(Clock 기준)다.
+	 */
 	private BooleanExpression occupied(LocalDate from, LocalDate to, LocalDateTime now) {
+		BooleanExpression occupiedEndReaches = rental.endDate.goe(from);
+		if (!now.toLocalDate().isBefore(from)) {
+			occupiedEndReaches = occupiedEndReaches.or(rental.status.in(RentalStatus.RENTING, RentalStatus.OVERDUE));
+		}
 		var rentals = JPAExpressions.selectOne().from(rental)
 			.where(rental.itemId.eq(item.id), rental.status.in(RentalStatus.ACTIVE_FOR_PERIOD),
-				rental.startDate.loe(to), rental.endDate.goe(from),
+				rental.startDate.loe(to), occupiedEndReaches,
 				rental.status.ne(RentalStatus.PENDING_PAYMENT).or(rental.paymentExpiresAt.gt(now)))
 			.exists();
 		// 연장 기간은 [prevEndDate + 1, newEndDate]라 시작 조건은 prevEndDate < to

@@ -246,6 +246,26 @@ class ItemEditDeleteIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("종료일 지난 연체는 원래 대여 날짜만 검사해, 오늘까지 늘어난 점유가 가능 기간 밖이어도 수정할 수 있다 (open-issues #53)")
+	void overdueChecksOriginalRentalDates() throws Exception {
+		// given: [11/10, 11/12] 연체, 오늘 11/15
+		rentalFixture.createRental(item, renter, RentalStatus.OVERDUE, LocalDate.of(2026, 11, 10),
+			LocalDate.of(2026, 11, 12));
+		testClock.fixAt(LocalDateTime.of(2026, 11, 15, 12, 0));
+		String token = bearerToken(ownerId());
+
+		// when, then: 원래 대여 날짜를 덮으면 오늘(11/15)을 빼도 된다
+		mockMvc.perform(update("{\"availablePeriods\":[{\"startDate\":\"2026-11-03\",\"endDate\":\"2026-11-12\"}]}")
+			.header(HttpHeaders.AUTHORIZATION, token))
+			.andExpect(status().isOk());
+		// 원래 대여 날짜를 빼면 409
+		mockMvc.perform(update("{\"availablePeriods\":[{\"startDate\":\"2026-11-03\",\"endDate\":\"2026-11-11\"}]}")
+			.header(HttpHeaders.AUTHORIZATION, token))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.error.details[0].reason").value("2026-11-10 ~ 2026-11-12"));
+	}
+
+	@Test
 	@DisplayName("만료된 결제 대기·취소된 대여는 기간 점유가 아니어서 기간을 뺄 수 있다")
 	void expiredPendingAndCanceledDoNotConflict() throws Exception {
 		rentalFixture.createPendingPayment(item, renter, LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 12),

@@ -30,7 +30,7 @@
 `PATCH /api/items/{itemId}` — 변경 항목만
 - 소유자 검증(403 `ITEM_NOT_OWNER`)
 - 수정 화면은 `GET /api/members/me/items/{itemId}`(소유자 전용, itemPrice·가능 기간·이미지 id 포함)로 채운다(open-issues #16)
-- **대여 가능 기간 수정**: ACTIVE_FOR_PERIOD 대여가 차지한 날짜를 가능 기간에서 빼면 409 `ITEM_PERIOD_CONFLICT` + 충돌 기간 목록(`error.details`에 한 건씩, open-issues #17). 예약 생성과 **같은 락**(`lock:item:{id}`) 안에서 검사·저장
+- **대여 가능 기간 수정**: ACTIVE_FOR_PERIOD 대여가 차지한 날짜(원래 대여 날짜 [start, end]. 연체로 오늘까지 늘어난 점유 구간은 보지 않는다, open-issues #53)를 가능 기간에서 빼면 409 `ITEM_PERIOD_CONFLICT` + 충돌 기간 목록(`error.details`에 한 건씩, open-issues #17). 예약 생성과 **같은 락**(`lock:item:{id}`) 안에서 검사·저장
 - 가격·보증금 변경은 이후 신규 예약부터 적용(대여 건에 스냅샷 저장되어 있음)
 - 이미지 변경: 유지할 기존 이미지 id 목록 + 새 파일 + 순서 → `imageOrder` 하나로 표현(각 칸 `imageId` 또는 `newImageIndex`, 목록 순서 = sortOrder, 빠진 기존 이미지는 삭제, null이면 변경 없음)
 
@@ -54,8 +54,8 @@
 `GET /api/items?...&page=` — 비회원 가능, 페이지 기반 20건
 - 조건: keyword(이름·설명), categoryId, minPrice~maxPrice(pricePerDay), startDate~endDate, availableOnly, sort(`ACCURACY` 기본 / `LATEST` / `PRICE_ASC`)
 - 범위: 설정 동네 범위 내로 한정(피드와 같은 위치 조건)
-- **대여 희망 기간 입력 시**: 그 기간 전체가 어떤 available_period 하나에 포함되고, ACTIVE_FOR_PERIOD 대여와 겹치지 않는 물품만
-- availableOnly: 기간이 있으면 위 기간 조건과 같다. 기간이 없으면 오늘 이후 가능 기간이 남아 있고, 오늘이 점유되지 않았고, 대여 중(RENTING·OVERDUE, 피드 "대여 중" 배지와 같은 조건)이 아닌 물품 (open-issues #6, #53)
+- **대여 희망 기간 입력 시**: 그 기간 전체가 어떤 available_period 하나에 포함되고, ACTIVE_FOR_PERIOD 대여의 점유 구간(종료일 지난 RENTING·OVERDUE는 오늘까지, `state-machines.md` §1)과 겹치지 않는 물품만
+- availableOnly: 기간이 있으면 위 기간 조건과 같다. 기간이 없으면 오늘 이후 가능 기간이 남아 있고, 오늘이 점유되지 않았고, 대여 중(RENTING·OVERDUE, 피드 "대여 중" 배지와 같은 조건)이 아닌 물품 (open-issues #6). 종료일 지난 미반납은 오늘 점유로도 빠지지만 배지 조건과 맞추려고 대여 중 제외를 그대로 둔다(#53)
 - DELETED 제외(HIDDEN도 제외)
 - startDate > endDate → 400, minPrice > maxPrice → 400(details minPrice). keyword 길이는 제한하지 않는다(open-issues #28)
 - 로그인 회원 검색어 → 최근·인기 검색어 저장(REQ-046 구현 시)

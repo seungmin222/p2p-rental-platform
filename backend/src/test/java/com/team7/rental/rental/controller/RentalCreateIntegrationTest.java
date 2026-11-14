@@ -11,6 +11,8 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -240,6 +242,46 @@ class RentalCreateIntegrationTest extends IntegrationTestSupport {
 
 		// when, then
 		reserve(another.getId(), item.getId(), START, END).andExpect(status().isCreated());
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = RentalStatus.class, names = {"OVERDUE", "RENTING"})
+	@DisplayName("종료일이 지난 미반납 대여(연체, 배치 전 RENTING)는 오늘까지 점유해 오늘을 포함하면 409, 내일 시작은 예약된다 (open-issues #53)")
+	void unreturnedPastEndDateOccupiesUntilToday(RentalStatus status) throws Exception {
+		// given: [오늘-4, 오늘-2] 미반납
+		rentalFixture.createRental(item, renter, status, TODAY.minusDays(4), TODAY.minusDays(2));
+		Member another = fixture.createVerifiedMember().member();
+
+		// when, then
+		expectError(reserve(another.getId(), item.getId(), TODAY, TODAY), 409, "RENTAL_PERIOD_CONFLICT");
+		expectError(reserve(another.getId(), item.getId(), TODAY, TODAY.plusDays(2)), 409,
+			"RENTAL_PERIOD_CONFLICT");
+		reserve(another.getId(), item.getId(), TODAY.plusDays(1), TODAY.plusDays(2)).andExpect(status().isCreated());
+	}
+
+	@ParameterizedTest
+	@EnumSource(value = RentalStatus.class, names = {"RETURNED", "COMPLETED"})
+	@DisplayName("반납돼 연체를 벗어난 대여는 오늘을 점유하지 않는다")
+	void returnedReleasesToday(RentalStatus status) throws Exception {
+		// given
+		rentalFixture.createRental(item, renter, status, TODAY.minusDays(4), TODAY.minusDays(2));
+		Member another = fixture.createVerifiedMember().member();
+
+		// when, then
+		reserve(another.getId(), item.getId(), TODAY, TODAY).andExpect(status().isCreated());
+	}
+
+	@Test
+	@DisplayName("종료일 전인 RENTING은 원래 대여 날짜만 점유한다")
+	void rentingBeforeEndDateKeepsPeriod() throws Exception {
+		// given: [오늘-1, 오늘+1] 대여 중
+		rentalFixture.createRental(item, renter, RentalStatus.RENTING, TODAY.minusDays(1), TODAY.plusDays(1));
+		Member another = fixture.createVerifiedMember().member();
+
+		// when, then
+		expectError(reserve(another.getId(), item.getId(), TODAY.plusDays(1), TODAY.plusDays(2)), 409,
+			"RENTAL_PERIOD_CONFLICT");
+		reserve(another.getId(), item.getId(), TODAY.plusDays(2), TODAY.plusDays(3)).andExpect(status().isCreated());
 	}
 
 	@Test

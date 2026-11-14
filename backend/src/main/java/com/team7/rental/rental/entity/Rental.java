@@ -174,6 +174,21 @@ public class Rental extends BaseTimeEntity {
 		return status != RentalStatus.PENDING_PAYMENT || (paymentExpiresAt != null && paymentExpiresAt.isAfter(now));
 	}
 
+	/**
+	 * 기간 점유의 끝 날짜 (open-issues #53). 물건이 대여자에게 있는 RENTING·OVERDUE는 반납될 때까지 오늘을 점유하므로
+	 * max(endDate, today)이고, 그 외 상태는 endDate다. 연체 배치(00:05) 전에 종료일이 지난 RENTING도 같게 본다.
+	 * 점유 쿼리(RentalRepository.findOccupying, ItemListingRepositoryImpl.occupied)는 이 식을
+	 * "endDate &gt;= from OR (status IN (RENTING, OVERDUE) AND today &gt;= from)"로 옮겨 쓴다.
+	 */
+	public LocalDate occupiedEndDate(LocalDate today) {
+		return isWithRenter(status) && endDate.isBefore(today) ? today : endDate;
+	}
+
+	/** 물건이 대여자에게 있는 상태(RENTING·OVERDUE). 점유 끝이 오늘까지 늘어난다 */
+	public static boolean isWithRenter(RentalStatus status) {
+		return status == RentalStatus.RENTING || status == RentalStatus.OVERDUE;
+	}
+
 	/** {@link #canWriteReview(RentalStatus, LocalDateTime, LocalDateTime, int)}와 같은 판정. 후기 작성 가드(REQ-034)용 */
 	public boolean canWriteReview(LocalDateTime now, int deadlineDays) {
 		return canWriteReview(status, completedAt, now, deadlineDays);

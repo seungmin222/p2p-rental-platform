@@ -8,7 +8,7 @@
 ## REQ-012 대여 캘린더 조회 [1]
 `GET /api/items/{itemId}/calendar?month=YYYY-MM` (기본 이번 달)
 - 날짜별 `AVAILABLE`(예약 가능) / `BOOKED`(예약됨) / `UNAVAILABLE`(가능 기간 외 또는 지난 날짜)
-- BOOKED = ACTIVE_FOR_PERIOD 대여(PENDING_PAYMENT는 `payment_expires_at > now`인 것만)와 결제 대기 중인 연장 기간이 덮는 날짜
+- BOOKED = ACTIVE_FOR_PERIOD 대여의 점유 구간(PENDING_PAYMENT는 `payment_expires_at > now`인 것만, 종료일 지난 RENTING·OVERDUE는 오늘까지 — `state-machines.md` §1 점유 구간)과 결제 대기 중인 연장 기간이 덮는 날짜
 - 응답 예: `{ "month": "2026-10", "days": [{"date":"2026-10-01","status":"UNAVAILABLE"}, ...] }`
 - 없음/DELETED 404
 
@@ -30,7 +30,8 @@ if (!lock.tryLock(3, SECONDS)) throw BusinessException(RENTAL_LOCK_TIMEOUT)   //
 try {
    rentalTxService.create(...)   // 별도 빈의 @Transactional(isolation = READ_COMMITTED) 메서드
    ├─ 겹침 조회: status IN ACTIVE_FOR_PERIOD
-   │            AND start_date <= :newEnd AND end_date >= :newStart
+   │            AND start_date <= :newEnd AND 점유 끝 >= :newStart
+   │            (점유 끝: RENTING·OVERDUE는 max(end_date, 오늘), 그 외 end_date — open-issues #53)
    │            (PENDING_PAYMENT는 payment_expires_at > now 조건 추가)
    │            + 결제 대기 중 연장(rental_extensions PENDING_PAYMENT, 만료 전) 기간
    ├─ 있으면 409 RENTAL_PERIOD_CONFLICT "이미 예약된 기간입니다"
@@ -158,7 +159,7 @@ try {
 `POST /api/rentals/{id}/extensions { newEndDate }`
 - RENTING만(OVERDUE 불가 → 409 + 반납 안내), 대여자 본인. **종료일이 지난 RENTING(00:00 ~ 연체 배치 00:05 사이)도 연장 불가**(409 `RENTAL_EXTENSION_OVERDUE`). 그래서 연체 배치의 결제 대기 연장 건너뛰기는 연체 전환을 최대 15분(`payment.expire-minutes`)만 미룬다
 - extension_count < 2, (newEnd − 기존 end) ≤ 7일 → 위반 400
-- 기간 `(기존 end + 1) ~ newEnd`: available_period 안 + ACTIVE_FOR_PERIOD 대여(자기 자신 제외)·결제 대기 연장과 무겹침 → 겹치면 409 + **연장 가능한 최대 날짜** 안내
+- 기간 `(기존 end + 1) ~ newEnd`: available_period 안 + ACTIVE_FOR_PERIOD 대여의 점유 구간(자기 자신 제외, `state-machines.md` §1)·결제 대기 연장과 무겹침 → 겹치면 409 + **연장 가능한 최대 날짜** 안내
 - 검사는 예약과 같은 락(`lock:item:{itemId}`)
 - 추가 대여료 = pricePerDay(스냅샷) × 연장 일수, 보증금 유지
 - 흐름: rental_extensions(status=`PENDING_PAYMENT`, expires_at=now+15분) 생성 → 그 기간을 선점 → 결제(type=EXTENSION) → 승인 시 extension `CONFIRMED`, end_date 갱신, extension_count++, 양측 알림
@@ -173,6 +174,7 @@ try {
 - **동시성 테스트**: 100 스레드가 동일 물품·기간 예약 → 성공 1건. 2개 인스턴스(Testcontainers 또는 docker compose)로도 확인
 - 트랜잭션이 길어져도(지연 주입) 락이 커밋 전에 풀리지 않는지
 - 만료된 PENDING_PAYMENT 기간은 다시 예약 가능, 결제 대기 연장 기간은 예약 불가
+- 종료일 지난 미반납(OVERDUE, 배치 전 RENTING): 오늘 포함 예약 409·내일 시작 예약 가능, 캘린더 오늘 BOOKED, 반납 후 오늘 예약 가능 (open-issues #53)
 - 상태 전이: 허용 전이 전부 성공 + 대표적인 불허 전이(COMPLETED→RENTING 등) 409
 - 취소 수수료: 시작일 3일 전 / 2일 전 / 전날 / 제공자 취소 경계
 - 연체료: 0일, 1일, 보증금 초과 상한, 보증금 0원
