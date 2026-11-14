@@ -112,6 +112,9 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, RentalSea
 		LocalDate to, @Param("now")
 		LocalDateTime now);
 
+	/** 물품의 해당 상태 대여 (물품 삭제 검사 REQ-008). 시작일 순 */
+	List<Rental> findAllByItemIdAndStatusInOrderByStartDateAscIdAsc(Long itemId, Collection<RentalStatus> statuses);
+
 	/** (물품, 대여자)의 가장 최근 대여 건, 상태 무관 (채팅방 상단 바 REQ-028). 인덱스 (item_id, …) 사용 */
 	Optional<Rental> findFirstByItemIdAndRenterIdOrderByIdDesc(Long itemId, Long renterId);
 }

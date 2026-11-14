@@ -16,4 +16,24 @@ public enum RentalStatus {
 	 */
 	public static final Set<RentalStatus> ACTIVE_FOR_PERIOD = Collections.unmodifiableSet(
 		EnumSet.of(PENDING_PAYMENT, RESERVED, RENTING, OVERDUE));
+
+	/**
+	 * 물품 삭제(REQ-008)를 막는 상태. 결제 대기는 만료 여부와 상관없이 막는다(만료 배치가 CANCELED로 바꾸면 풀린다).
+	 * RETURNED는 상태 확인·보증금 처리가 남아 있어 막는다.
+	 */
+	public static final Set<RentalStatus> BLOCKING_ITEM_DELETION = Collections.unmodifiableSet(
+		EnumSet.of(PENDING_PAYMENT, RESERVED, RENTING, OVERDUE, RETURNED));
+
+	/** 화면 표시 이름 (state-machines.md §1, RETURNED는 화면 배지와 같게 '상태 확인 대기') */
+	public String displayName() {
+		return switch (this) {
+			case PENDING_PAYMENT -> "결제 대기";
+			case RESERVED -> "대여 예정";
+			case RENTING -> "대여 중";
+			case OVERDUE -> "연체";
+			case RETURNED -> "상태 확인 대기";
+			case COMPLETED -> "거래 완료";
+			case CANCELED -> "취소";
+		};
+	}
 }

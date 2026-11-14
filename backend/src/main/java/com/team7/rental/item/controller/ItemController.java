@@ -87,7 +87,7 @@ public class ItemController {
 		return ApiResponse.ok(itemQueryService.getDepositGuide(request));
 	}
 
-	@Operation(summary = "물품 수정 (REQ-007)", description = "미구현: 응답 형태만 확정. 등록자만(403 ITEM_NOT_OWNER). 보낸 항목만 바꾼다. "
+	@Operation(summary = "물품 수정 (REQ-007)", description = "등록자만(403 ITEM_NOT_OWNER). 보낸 항목만 바꾼다. "
 		+ "multipart: request part(Content-Type application/json, 필수) ItemUpdateRequest + images 파일들(새 이미지만). "
 		+ "이미지: imageOrder가 새 이미지 목록 전체다. 각 칸은 {imageId}(유지할 기존 이미지) 또는 {newImageIndex}(images 파트의 0부터 순번) 중 하나, "
 		+ "목록 순서 = sortOrder, 목록에 없는 기존 이미지는 삭제. imageOrder가 null이면 이미지를 바꾸지 않으며 이때 images를 보내면 400 COMMON_INVALID_INPUT. "
@@ -111,7 +111,7 @@ public class ItemController {
 		return ApiResponse.ok(itemService.update(itemId, memberId, request, images));
 	}
 
-	@Operation(summary = "물품 삭제 (REQ-008)", description = "미구현: 응답 형태만 확정. 등록자만. 소프트 삭제(status = DELETED)라 과거 대여·채팅에는 \"삭제된 물품\"으로 남는다. "
+	@Operation(summary = "물품 삭제 (REQ-008)", description = "등록자만. 소프트 삭제(status = DELETED)라 과거 대여·채팅에는 \"삭제된 물품\"으로 남는다. "
 		+ "PENDING_PAYMENT·RESERVED·RENTING·OVERDUE·RETURNED 대여가 있으면 409 ITEM_HAS_ACTIVE_RENTAL이고 error.details에 해당 건을 한 건씩 담는다: "
 		+ "[{ field: \"rentals\", reason: \"2026-11-03 ~ 2026-11-05 대여 예정 (rentalId 12)\" }]. "
 		+ "검사와 삭제는 예약과 같은 물품 락 안에서 하므로 락을 못 잡으면 409 RENTAL_LOCK_TIMEOUT. data는 null.")

@@ -43,4 +43,9 @@ public class ItemImage extends BaseTimeEntity {
 		image.sortOrder = sortOrder;
 		return image;
 	}
+
+	/** 수정(REQ-007) 시 순서만 바꾼다 */
+	public void changeSortOrder(int sortOrder) {
+		this.sortOrder = sortOrder;
+	}
 }

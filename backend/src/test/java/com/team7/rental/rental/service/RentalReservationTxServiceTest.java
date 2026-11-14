@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,7 +16,9 @@ import org.mockito.ArgumentCaptor;
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.global.policy.PolicyProperties;
+import com.team7.rental.item.dto.AvailablePeriod;
 import com.team7.rental.item.dto.ItemRentalTarget;
+import com.team7.rental.item.service.ItemQueryService;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
@@ -36,6 +39,7 @@ class RentalReservationTxServiceTest {
 	private final RentalRepository rentalRepository = mock(RentalRepository.class);
 	private final RentalStatusHistoryRepository historyRepository = mock(RentalStatusHistoryRepository.class);
 	private final RentalOccupancyReader occupancyReader = mock(RentalOccupancyReader.class);
+	private final ItemQueryService itemQueryService = mock(ItemQueryService.class);
 	private final PolicyProperties policyProperties = new PolicyProperties(null, null, null, null,
 		new PolicyProperties.Payment(EXPIRE_MINUTES), null, null, null, null, null, null, null, null, null, null, null,
 		null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
@@ -44,6 +48,8 @@ class RentalReservationTxServiceTest {
 	void setUp() {
 		given(rentalRepository.save(any(Rental.class))).willAnswer(invocation -> invocation.getArgument(0));
 		given(occupancyReader.isOccupied(any(), any(), any(), any())).willReturn(false);
+		given(itemQueryService.getAvailablePeriods(any()))
+			.willReturn(List.of(new AvailablePeriod(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30))));
 	}
 
 	@Test
@@ -96,6 +102,36 @@ class RentalReservationTxServiceTest {
 	}
 
 	@Test
+	@DisplayName("락을 기다리는 사이 물품이 삭제됐으면 ITEM_NOT_FOUND이고 저장하지 않는다")
+	void itemDeletedWhileWaitingForLock() {
+		// given
+		willThrow(new BusinessException(ErrorCode.ITEM_NOT_FOUND)).given(itemQueryService)
+			.validateVisible(PAID_ITEM.itemId(), RENTER_ID);
+
+		// when, then
+		assertThatThrownBy(() -> service(false).create(RENTER_ID, PAID_ITEM, START, END, NOW))
+			.isInstanceOf(BusinessException.class)
+			.extracting(e -> ((BusinessException)e).getErrorCode())
+			.isEqualTo(ErrorCode.ITEM_NOT_FOUND);
+		then(rentalRepository).should(never()).save(any());
+	}
+
+	@Test
+	@DisplayName("락을 기다리는 사이 가능 기간에서 빠졌으면 RENTAL_OUT_OF_AVAILABLE_PERIOD이고 저장하지 않는다")
+	void periodRemovedWhileWaitingForLock() {
+		// given
+		given(itemQueryService.getAvailablePeriods(PAID_ITEM.itemId()))
+			.willReturn(List.of(new AvailablePeriod(START, END.minusDays(1))));
+
+		// when, then
+		assertThatThrownBy(() -> service(false).create(RENTER_ID, PAID_ITEM, START, END, NOW))
+			.isInstanceOf(BusinessException.class)
+			.extracting(e -> ((BusinessException)e).getErrorCode())
+			.isEqualTo(ErrorCode.RENTAL_OUT_OF_AVAILABLE_PERIOD);
+		then(rentalRepository).should(never()).save(any());
+	}
+
+	@Test
 	@DisplayName("점유 중인 기간과 겹치면 RENTAL_PERIOD_CONFLICT이고 저장하지 않는다")
 	void conflict() {
 		// given
@@ -112,7 +148,6 @@ class RentalReservationTxServiceTest {
 
 	private RentalReservationTxService service(boolean paymentEnabled) {
 		return new RentalReservationTxService(rentalRepository, historyRepository, occupancyReader, policyProperties,
-			org.mockito.Mockito.mock(RentalNotificationPublisher.class),
-			paymentEnabled);
+			org.mockito.Mockito.mock(RentalNotificationPublisher.class), itemQueryService, paymentEnabled);
 	}
 }

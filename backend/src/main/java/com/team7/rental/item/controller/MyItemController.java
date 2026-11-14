@@ -50,7 +50,7 @@ public class MyItemController {
 	}
 
 	@Tag(name = "Item", description = "물품·피드·검색·카테고리")
-	@Operation(summary = "물품 수정 화면 조회 (REQ-007)", description = "미구현: 응답 형태만 확정. 등록자 전용. 물품 가격(itemPrice)·대여 가능 기간·이미지 ID를 포함해 수정 폼을 채운다. "
+	@Operation(summary = "물품 수정 화면 조회 (REQ-007)", description = "등록자 전용. 물품 가격(itemPrice)·대여 가능 기간·이미지 ID를 포함해 수정 폼을 채운다. "
 		+ "없거나 삭제된 물품은 404 ITEM_NOT_FOUND, 남의 물품은 403 ITEM_NOT_OWNER.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED, ITEM_NOT_FOUND, ITEM_NOT_OWNER})

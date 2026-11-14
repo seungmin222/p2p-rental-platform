@@ -131,9 +131,46 @@ public class ItemQueryService {
 			memberId != null && item.isOwnedBy(memberId), false);
 	}
 
-	/** 소유자 수정 화면 (REQ-007). itemPrice 포함 */
+	/**
+	 * 소유자 수정 화면 (REQ-007). itemPrice 포함. 숨김 물품도 허용한다.
+	 *
+	 * @throws BusinessException ITEM_NOT_FOUND(없음·삭제), ITEM_NOT_OWNER
+	 */
 	public ItemEditResponse getEditView(Long itemId, Long memberId) {
-		throw new UnsupportedOperationException("미구현: feat/item-crud");
+		return toEditResponse(getOwnedItem(itemId, memberId));
+	}
+
+	/**
+	 * 소유자가 수정·삭제할 물품. 숨김 물품도 허용한다.
+	 *
+	 * @throws BusinessException ITEM_NOT_FOUND(없음·삭제), ITEM_NOT_OWNER
+	 */
+	Item getOwnedItem(Long itemId, Long memberId) {
+		Item item = itemRepository.findById(itemId).filter(value -> !value.isDeleted())
+			.orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
+		if (!item.isOwnedBy(memberId)) {
+			throw new BusinessException(ErrorCode.ITEM_NOT_OWNER);
+		}
+		return item;
+	}
+
+	/** 물품의 현재 이미지 (sortOrder 순). 수정 요청의 imageId 검사용 */
+	List<ItemImage> getImages(Long itemId) {
+		return itemImageRepository.findAllByItemIdOrderBySortOrderAscIdAsc(itemId);
+	}
+
+	/** 수정 화면 조회와 수정 응답이 같이 쓴다. 기간은 시작일 순, 이미지는 sortOrder 순 */
+	ItemEditResponse toEditResponse(Item item) {
+		var periods = itemAvailablePeriodRepository.findAllByItemIdOrderByStartDate(item.getId()).stream()
+			.map(period -> new ItemEditResponse.Period(period.getStartDate(), period.getEndDate()))
+			.toList();
+		var images = itemImageRepository.findAllByItemIdOrderBySortOrderAscIdAsc(item.getId()).stream()
+			.map(image -> new com.team7.rental.item.dto.ItemImageResponse(image.getId(), image.getUrl(),
+				image.getThumbnailUrl()))
+			.toList();
+		return new ItemEditResponse(item.getId(), item.getName(), item.getDescription(), item.getCategoryId(),
+			item.getItemCondition(), item.getPricePerDay(), item.getItemPrice(), item.getDeposit(), periods, images,
+			item.getAddress(), item.getLatitude(), item.getLongitude(), item.getStatus());
 	}
 
 	/** 내 물품 관리 (REQ-020) */

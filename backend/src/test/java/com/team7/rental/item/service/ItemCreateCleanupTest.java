@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.util.unit.DataSize;
 
+import com.team7.rental.global.lock.RentalLockStrategy;
 import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.global.storage.FileStorage;
 import com.team7.rental.global.storage.ImageFormat;
@@ -42,7 +43,9 @@ class ItemCreateCleanupTest {
 		when(policies.item()).thenReturn(new PolicyProperties.Item(50, 2000,
 			new PolicyProperties.Item.Amount(1000, 1000000), new PolicyProperties.Item.Amount(1000, 3000000),
 			10000000, new PolicyProperties.Item.Images(1, 10, DataSize.ofMegabytes(10))));
-		service = new ItemService(members, categories, processor, storage, writer, validator, policies);
+		service = new ItemService(members, categories, processor, storage, writer, mock(ItemUpdateWriter.class),
+			mock(ItemDeleteWriter.class), mock(ItemQueryService.class), mock(RentalLockStrategy.class), validator,
+			policies);
 		when(validator.validate(request)).thenReturn(Set.of());
 		when(members.getMe(1L)).thenReturn(new MemberResponse(1L, "", "", null, null,
 			new MemberResponse.PrimaryRegion(1L, 1L, "동네", true, null, null), null));

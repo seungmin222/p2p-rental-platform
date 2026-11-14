@@ -115,4 +115,49 @@ public class Item extends BaseTimeEntity {
 	public boolean isOwnedBy(Long memberId) {
 		return ownerId.equals(memberId);
 	}
+
+	public boolean isDeleted() {
+		return status == ItemStatus.DELETED;
+	}
+
+	/**
+	 * 수정(REQ-007). null인 인자는 바꾸지 않는다. 입력 검증은 호출하는 서비스가 한다. 가격·보증금은 대여 건에 스냅샷이 있어 이후 신규 예약부터
+	 * 적용된다.
+	 */
+	public void update(String name, String description, Long categoryId, ItemCondition itemCondition,
+		Integer pricePerDay, Integer deposit, Integer itemPrice, String address, Double latitude, Double longitude) {
+		if (name != null) {
+			this.name = name;
+		}
+		if (description != null) {
+			this.description = description;
+		}
+		if (categoryId != null) {
+			this.categoryId = categoryId;
+		}
+		if (itemCondition != null) {
+			this.itemCondition = itemCondition;
+		}
+		if (pricePerDay != null) {
+			this.pricePerDay = pricePerDay;
+		}
+		if (deposit != null) {
+			this.deposit = deposit;
+		}
+		if (itemPrice != null) {
+			this.itemPrice = itemPrice;
+		}
+		if (address != null) {
+			this.address = address;
+		}
+		if (latitude != null && longitude != null) {
+			this.latitude = latitude;
+			this.longitude = longitude;
+		}
+	}
+
+	/** 소프트 삭제(REQ-008). 진행 중 대여 검사는 호출하는 쪽이 물품 락 안에서 한다 */
+	public void delete() {
+		this.status = ItemStatus.DELETED;
+	}
 }

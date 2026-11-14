@@ -12,6 +12,7 @@ import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.item.dto.ItemRentalTarget;
+import com.team7.rental.item.service.ItemQueryService;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
@@ -31,30 +32,40 @@ public class RentalReservationTxService {
 	private final RentalOccupancyReader rentalOccupancyReader;
 	private final PolicyProperties policyProperties;
 	private final RentalNotificationPublisher rentalNotificationPublisher;
+	private final ItemQueryService itemQueryService;
 	private final boolean paymentEnabled;
 
 	public RentalReservationTxService(RentalRepository rentalRepository,
 		RentalStatusHistoryRepository rentalStatusHistoryRepository, RentalOccupancyReader rentalOccupancyReader,
 		PolicyProperties policyProperties, RentalNotificationPublisher rentalNotificationPublisher,
-		@Value("${app.feature.payment-enabled}")
+		ItemQueryService itemQueryService, @Value("${app.feature.payment-enabled}")
 		boolean paymentEnabled) {
 		this.rentalRepository = rentalRepository;
 		this.rentalStatusHistoryRepository = rentalStatusHistoryRepository;
 		this.rentalOccupancyReader = rentalOccupancyReader;
 		this.policyProperties = policyProperties;
 		this.rentalNotificationPublisher = rentalNotificationPublisher;
+		this.itemQueryService = itemQueryService;
 		this.paymentEnabled = paymentEnabled;
 	}
 
 	/**
-	 * 입력 검증(기간·물품·동네·가능 기간)은 호출하는 쪽이 락 밖에서 끝낸다.
+	 * 입력 검증(기간·물품·동네·가능 기간)은 호출하는 쪽이 락 밖에서 끝낸다. 물품 공개 여부와 가능 기간은 락 안에서 한 번 더 본다:
+	 * 락을 기다리는 동안 물품 삭제(REQ-008)나 가능 기간 수정(REQ-007)이 같은 락으로 커밋됐을 수 있다.
 	 *
 	 * @param now 호출하는 쪽이 검증에 쓴 현재 시각. 결제 대기 만료·이력 시각에 같이 쓴다
-	 * @throws BusinessException RENTAL_PERIOD_CONFLICT: 점유 중인 기간과 겹칠 때
+	 * @throws BusinessException ITEM_NOT_FOUND(그사이 삭제·숨김), RENTAL_OUT_OF_AVAILABLE_PERIOD(그사이 가능 기간에서 빠짐),
+	 *     RENTAL_PERIOD_CONFLICT: 점유 중인 기간과 겹칠 때
 	 */
 	@Transactional(isolation = Isolation.READ_COMMITTED)
 	public Rental create(Long renterId, ItemRentalTarget item, LocalDate startDate, LocalDate endDate,
 		LocalDateTime now) {
+		itemQueryService.validateVisible(item.itemId(), renterId);
+		boolean isCovered = itemQueryService.getAvailablePeriods(item.itemId()).stream()
+			.anyMatch(period -> period.isCovering(startDate, endDate));
+		if (!isCovered) {
+			throw new BusinessException(ErrorCode.RENTAL_OUT_OF_AVAILABLE_PERIOD);
+		}
 		if (rentalOccupancyReader.isOccupied(item.itemId(), startDate, endDate, now)) {
 			throw new BusinessException(ErrorCode.RENTAL_PERIOD_CONFLICT);
 		}

@@ -29,6 +29,7 @@ import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.item.dto.ItemRentalTarget;
 import com.team7.rental.item.entity.Item;
+import com.team7.rental.item.service.ItemQueryService;
 import com.team7.rental.member.entity.Member;
 import com.team7.rental.rental.dto.RentalCreateRequest;
 import com.team7.rental.rental.entity.Rental;
@@ -122,10 +123,11 @@ class RentalLockReleaseTest extends IntegrationTestSupport {
 		SlowRentalReservationTxService slowRentalReservationTxService(RentalRepository rentalRepository,
 			RentalStatusHistoryRepository rentalStatusHistoryRepository, RentalOccupancyReader rentalOccupancyReader,
 			PolicyProperties policyProperties, RentalNotificationPublisher rentalNotificationPublisher,
+			ItemQueryService itemQueryService,
 			@Value("${app.feature.payment-enabled}")
 			boolean paymentEnabled) {
 			return new SlowRentalReservationTxService(rentalRepository, rentalStatusHistoryRepository,
-				rentalOccupancyReader, policyProperties, rentalNotificationPublisher, paymentEnabled);
+				rentalOccupancyReader, policyProperties, rentalNotificationPublisher, itemQueryService, paymentEnabled);
 		}
 	}
 
@@ -138,9 +140,10 @@ class RentalLockReleaseTest extends IntegrationTestSupport {
 		SlowRentalReservationTxService(RentalRepository rentalRepository,
 			RentalStatusHistoryRepository rentalStatusHistoryRepository, RentalOccupancyReader rentalOccupancyReader,
 			PolicyProperties policyProperties, RentalNotificationPublisher rentalNotificationPublisher,
+			ItemQueryService itemQueryService,
 			boolean paymentEnabled) {
 			super(rentalRepository, rentalStatusHistoryRepository, rentalOccupancyReader, policyProperties,
-				rentalNotificationPublisher, paymentEnabled);
+				rentalNotificationPublisher, itemQueryService, paymentEnabled);
 		}
 
 		// 상속된 @Transactional에 기대지 않고 다시 선언한다
