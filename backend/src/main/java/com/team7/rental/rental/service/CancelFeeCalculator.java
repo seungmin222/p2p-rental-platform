@@ -32,12 +32,13 @@ public class CancelFeeCalculator {
 	}
 
 	/**
-	 * 앞 대여 연체 예외(open-issues #7): 같은 물품의 앞 대여가 연체 중일 때 대여자 단독 취소는 시작일 전후와 상관없이 0.
+	 * 앞 대여 연체 예외(open-issues #7): 같은 물품의 앞 대여가 연체 중이고 시작일 ≤ 오늘이면 대여자 단독 취소는 0.
+	 * 시작일 전에는 앞 대여가 연체 중이어도 기존 수수료 표대로다({@link Rental#isPreviousOverdueExemptionCandidate}).
 	 *
 	 * @param previousRentalOverdue 같은 물품에 종료일이 지난 RENTING·OVERDUE 대여가 있는지
 	 */
 	public int calculate(Rental rental, CancelType type, LocalDate today, boolean previousRentalOverdue) {
-		if (type == CancelType.RENTER && previousRentalOverdue && rental.getStatus() == RentalStatus.RESERVED) {
+		if (type == CancelType.RENTER && previousRentalOverdue && rental.isPreviousOverdueExemptionCandidate(today)) {
 			return 0;
 		}
 		// 결제 대기는 시작일이 지났어도 0이다(자정 직전 생성). 날짜 검사보다 먼저 본다

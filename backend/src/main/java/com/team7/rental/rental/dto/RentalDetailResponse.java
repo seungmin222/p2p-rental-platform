@@ -116,8 +116,8 @@ public record RentalDetailResponse(
 	@Schema(description = "조회한 회원이 이 대여에 후기를 이미 썼는지 (REQ-034)")
 	boolean reviewWritten,
 
-	@Schema(description = "RESERVED이고 같은 물품의 앞 대여가 종료일이 지났는데 아직 반납되지 않았는지 (open-issues #7). "
-		+ "true인 동안 대여자는 시작일 전후와 상관없이 단독 취소(PATCH /api/rentals/{id}/cancel)를 수수료 없이 할 수 있다. 제공자 뷰에도 같은 값을 준다", example = "false")
+	@Schema(description = "RESERVED이고 시작일 ≤ 오늘이며 같은 물품의 앞 대여가 종료일이 지났는데 아직 반납되지 않았는지 (open-issues #7). "
+		+ "true인 동안 대여자는 단독 취소(PATCH /api/rentals/{id}/cancel)를 수수료 없이 할 수 있다. 시작일 전에는 false다. 제공자 뷰에도 같은 값을 준다", example = "false")
 	boolean previousRentalOverdue) {
 
 	/**
@@ -126,7 +126,7 @@ public record RentalDetailResponse(
 	 * @param depositInfo 승인된 결제의 보증금 정보. 없으면 null
 	 * @param canWriteReview 후기 작성 기간이고 아직 쓰지 않았으면 true
 	 * @param reviewWritten 조회한 회원이 이 대여에 후기를 썼으면 true
-	 * @param previousRentalOverdue RESERVED이고 같은 물품의 앞 대여가 연체 중이면 true
+	 * @param previousRentalOverdue RESERVED이고 시작일 ≤ 오늘이며 같은 물품의 앞 대여가 연체 중이면 true
 	 */
 	public static RentalDetailResponse of(Rental rental, RentalRole myRole, ItemSummary item, Long counterpartId,
 		String counterpartNickname, RentalCancelAgreement activeCancelAgreement, Long memberId, int overdueFee,

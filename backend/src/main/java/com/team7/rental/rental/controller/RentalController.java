@@ -94,7 +94,7 @@ public class RentalController {
 
 	@Operation(summary = "대여 단독 취소 (REQ-015)", description = "대여자·제공자가 결제 대기(PENDING_PAYMENT) 또는 시작일 전의 대여 예정(RESERVED)을 취소한다. "
 		+ "시작일이 지난 대여 예정은 409 RENTAL_CANCEL_NOT_ALLOWED이며 양측 동의 취소를 쓴다. "
-		+ "단, 같은 물품의 앞 대여가 연체 중이면(대여 상세 previousRentalOverdue=true) 대여자는 시작일 전후와 상관없이 수수료 없이 취소할 수 있다(open-issues #7). "
+		+ "단, 시작일이 지났고 같은 물품의 앞 대여가 연체 중이면(대여 상세 previousRentalOverdue=true) 대여자는 수수료 없이 단독 취소할 수 있다(open-issues #7). 시작일 전에는 앞 대여가 연체 중이어도 기존 수수료 표대로다. "
 		+ "대여자가 시작일 직전에 취소하면 cancelFee가 생긴다(policies.md cancel-fee.rate-percent, cancel-fee.free-until-days-before). "
 		+ "승인된 결제가 있으면 대여료 − 수수료 + 보증금을 환불한다. 환불이 실패해도 대여는 CANCELED이고 재시도 배치가 끝낸다. 결제가 없으면 수수료를 기록만 한다. reason=OTHER면 reasonText 필수(cancel.reason-text-max). 응답은 대여 상세와 같다.")
 	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)

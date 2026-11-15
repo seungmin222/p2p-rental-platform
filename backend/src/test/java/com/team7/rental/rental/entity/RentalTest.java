@@ -711,6 +711,20 @@ class RentalTest {
 		assertThat(rental.getCancelType()).isEqualTo(CancelType.RENTER);
 	}
 
+	@Test
+	@DisplayName("앞 대여 연체 예외 대상은 RESERVED이고 시작일 ≤ 오늘일 때뿐이다 (open-issues #7)")
+	void previousOverdueExemptionCandidate() {
+		// given
+		Rental rental = withStatus(RentalStatus.RESERVED);
+
+		// then
+		assertThat(rental.isPreviousOverdueExemptionCandidate(START.minusDays(1))).isFalse();
+		assertThat(rental.isPreviousOverdueExemptionCandidate(START)).isTrue();
+		assertThat(rental.isPreviousOverdueExemptionCandidate(START.plusDays(1))).isTrue();
+		assertThat(withStatus(RentalStatus.PENDING_PAYMENT).isPreviousOverdueExemptionCandidate(START)).isFalse();
+		assertThat(withStatus(RentalStatus.RENTING).isPreviousOverdueExemptionCandidate(START)).isFalse();
+	}
+
 	private void assertTransitionFails(ThrowingCallable transition, ErrorCode errorCode) {
 		assertThatThrownBy(transition)
 			.isInstanceOf(BusinessException.class)

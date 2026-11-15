@@ -61,7 +61,7 @@ try {
 - 당사자(대여자·제공자)만 → 아니면 403 `RENTAL_NOT_PARTICIPANT`. 없는 대여 404 `RENTAL_NOT_FOUND`
 - 가능: PENDING_PAYMENT, 또는 RESERVED **이고 오늘 < startDate**. 그 외 상태는 409 `RENTAL_INVALID_TRANSITION`
 - 오늘 ≥ startDate인 RESERVED(인계 안 됨): 단독 취소 409 `RENTAL_CANCEL_NOT_ALLOWED` → 양측 동의 취소로 안내
-- **앞 대여 연체 예외** (open-issues #7): 같은 물품에 종료일이 지난 RENTING·OVERDUE 대여(앞 대여)가 있으면 RESERVED의 **대여자** 단독 취소는 시작일 전후와 상관없이 허용하고 수수료 0, 전액 환불. 판정은 취소 요청 시점(대여 행 락 안)이며 앞 대여가 반납되면 기존 규칙으로 돌아간다. 사용자가 고른 사유는 rental에, 이력 reason은 `PREVIOUS_RENTAL_OVERDUE`. 제공자 단독 취소는 그대로. 대여 상세 `previousRentalOverdue`(RESERVED이고 앞 대여 연체 중이면 true, 양측 뷰 같음)로 화면이 취소 버튼을 보여 준다
+- **앞 대여 연체 예외** (open-issues #7): 같은 물품에 종료일이 지난 RENTING·OVERDUE 대여(앞 대여)가 있고 시작일 ≤ 오늘이면 RESERVED의 **대여자** 단독 취소를 허용하고 수수료 0, 전액 환불. 시작일 전에는 앞 대여가 연체 중이어도 기존 수수료 표대로다(배치 알림 대상과 같은 범위). 판정은 취소 요청 시점(대여 행 락 안)이며 앞 대여가 반납되면 기존 규칙으로 돌아간다. 사용자가 고른 사유는 rental에, 이력 reason은 `PREVIOUS_RENTAL_OVERDUE`. 제공자 단독 취소는 그대로. 대여 상세 `previousRentalOverdue`(RESERVED이고 시작일 ≤ 오늘이며 앞 대여 연체 중이면 true, 양측 뷰 같음)로 화면이 취소 버튼을 보여 준다
 - reason=OTHER면 reasonText 필수(200자) → 아니면 400 `COMMON_INVALID_INPUT`
 - `canceled_at`, `cancel_type`(RENTER / OWNER), 사유를 rental과 이력에 기록 (REQ-062 페널티 산정용)
 - **환불액**: `policies.md` §2 취소 수수료 표. 대여자 단독 취소가 시작일 2일 전~전날이면 대여료의 30%를 `cancel_fee`로 남기고 나머지와 보증금을 PG 부분 취소. 그 외는 전액 취소
@@ -180,7 +180,7 @@ try {
 - 종료일 지난 미반납(OVERDUE, 배치 전 RENTING): 오늘 포함 예약 409·내일 시작 예약 가능, 캘린더 오늘 BOOKED, 반납 후 오늘 예약 가능 (open-issues #53)
 - 상태 전이: 허용 전이 전부 성공 + 대표적인 불허 전이(COMPLETED→RENTING 등) 409
 - 취소 수수료: 시작일 3일 전 / 2일 전 / 전날 / 제공자 취소 경계
-- 앞 대여 연체(open-issues #7): 다음 예약자 알림 1회(재실행·매시 재검사), 시작일 전·결제 대기·앞 대여 반납 건은 대상 아님, 연체 중 대여자 단독 취소는 시작일 전날·당일 모두 수수료 0·전액 환불, 반납 뒤에는 기존 규칙, 제공자 단독 취소는 그대로
+- 앞 대여 연체(open-issues #7): 다음 예약자 알림 1회(재실행·매시 재검사), 시작일 전·결제 대기·앞 대여 반납 건은 대상 아님, 연체 중 대여자 단독 취소는 시작일 당일·이후 수수료 0·전액 환불(시작일 전날은 기존 30%·플래그 false), 반납 뒤에는 기존 규칙, 제공자 단독 취소는 그대로
 - 연체료: 0일, 1일, 보증금 초과 상한, 보증금 0원
 - 연체 배치·반납 리마인더·인계 리마인더 멱등성(두 번 돌려도 알림 1회)
 - 3일 자동 확인 배치, 시작일+3일 자동 취소 배치

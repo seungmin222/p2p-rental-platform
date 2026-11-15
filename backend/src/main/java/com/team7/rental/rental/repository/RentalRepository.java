@@ -71,7 +71,7 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, RentalSea
 	LocalDate today);
 
 	/**
-	 * 앞 대여 연체 알림(open-issues #7) 대상: RESERVED이고 startDate ≤ today이며 같은 물품의 앞 대여가 연체 중인 대여. id 순.
+	 * 앞 대여 연체 알림(open-issues #7) 대상: RESERVED이고 startDate ≤ today(Rental.isPreviousOverdueExemptionCandidate와 같은 조건)이며 같은 물품의 앞 대여가 연체 중인 대여. id 순.
 	 * 결제 대기(PENDING_PAYMENT)는 넣지 않는다(수수료 없이 취소되고, 결제가 승인되면 다음 회차에 대상이 된다).
 	 */
 	@Query("""

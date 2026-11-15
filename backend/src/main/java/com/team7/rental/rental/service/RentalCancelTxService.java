@@ -52,7 +52,7 @@ public class RentalCancelTxService {
 
 	/**
 	 * 단독 취소. 취소 종류는 요청자의 역할(RENTER·OWNER)로 정한다.
-	 * 대여자이고 같은 물품의 앞 대여가 연체 중이면 시작일 전후와 상관없이 수수료 없이 취소한다(open-issues #7).
+	 * 대여자이고 시작일 ≤ 오늘이며 같은 물품의 앞 대여가 연체 중이면 수수료 없이 취소한다(open-issues #7). 시작일 전은 기존 수수료 표대로다.
 	 *
 	 * @return 커밋 뒤 실행할 환불. 결제 대기·결제 없는 대여면 비어 있다
 	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_INVALID_TRANSITION,
@@ -65,8 +65,8 @@ public class RentalCancelTxService {
 		Rental rental = getParticipantRentalForUpdate(rentalId, memberId);
 		CancelType type = rental.roleOf(memberId) == RentalRole.RENTER ? CancelType.RENTER : CancelType.OWNER;
 		boolean wasReserved = rental.getStatus() == RentalStatus.RESERVED;
-		// 앞 대여 연체 예외(open-issues #7): 대여자 + RESERVED일 때만 조회한다. 앞 대여의 반납과는 락을 나누지 않는다(경합 시 어느 쪽 판정이든 허용 범위)
-		boolean previousRentalOverdue = type == CancelType.RENTER && wasReserved
+		// 앞 대여 연체 예외(open-issues #7): 대여자 + RESERVED·시작일 ≤ 오늘일 때만 조회한다. 앞 대여의 반납과는 락을 나누지 않는다(경합 시 어느 쪽 판정이든 허용 범위)
+		boolean previousRentalOverdue = type == CancelType.RENTER && rental.isPreviousOverdueExemptionCandidate(today)
 			&& rentalRepository.existsPreviousOverdue(rental.getItemId(), rentalId, today);
 		rental.validateCancelable(type, today, previousRentalOverdue);
 		int cancelFee = cancelFeeCalculator.calculate(rental, type, today, previousRentalOverdue);

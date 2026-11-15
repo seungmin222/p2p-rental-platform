@@ -23,10 +23,14 @@ import com.team7.rental.payment.entity.Payment;
 import com.team7.rental.payment.entity.PaymentStatus;
 import com.team7.rental.payment.repository.PaymentRepository;
 import com.team7.rental.rental.batch.OverdueDetectJob;
+import com.team7.rental.rental.entity.CancelAgreementStatus;
 import com.team7.rental.rental.entity.Rental;
+import com.team7.rental.rental.entity.RentalCancelAgreement;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.entity.RentalStatusHistory;
+import com.team7.rental.rental.repository.RentalCancelAgreementRepository;
 import com.team7.rental.rental.repository.RentalStatusHistoryRepository;
+import com.team7.rental.rental.service.RentalCancelTxService;
 import com.team7.rental.rental.service.RentalNotificationPort.TargetType;
 import com.team7.rental.rental.service.RentalNotificationPort.Type;
 import com.team7.rental.support.FakeRentalNotificationPort.Sent;
@@ -55,6 +59,12 @@ class PreviousRentalOverdueIntegrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private PaymentRepository paymentRepository;
+
+	@Autowired
+	private RentalCancelAgreementRepository agreementRepository;
+
+	@Autowired
+	private RentalCancelTxService cancelTxService;
 
 	private Member owner;
 	private Member previousRenter;
@@ -164,16 +174,67 @@ class PreviousRentalOverdueIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	@DisplayName("앞 대여 연체 중 시작일 전날 대여자 단독 취소도 수수료 없이 전액 환불이다(평소 30%)")
-	void renterCancelDayBeforeFree() throws Exception {
-		// given: 오늘 11/2, 앞 대여 종료일 11/1
+	@DisplayName("앞 대여 연체 중이어도 시작일 전날이면 플래그 false, 대여자 단독 취소는 기존 30% 수수료다")
+	void renterCancelDayBeforeKeepsFee() throws Exception {
+		// given: 오늘 11/2, 앞 대여 종료일 11/1(연체 중)
 		rentalFixture.createRental(item, previousRenter, RentalStatus.OVERDUE, START.minusDays(4), START.minusDays(2));
 		Payment payment = paymentFixture.createApproved(next);
 		testClock.fixAt(START.minusDays(1).atTime(9, 0));
+		detail(renter).andExpect(jsonPath("$.data.previousRentalOverdue").value(false));
+
+		// when, then
+		cancel(renter).andExpect(status().isOk()).andExpect(jsonPath("$.data.cancelFee").value(9_000));
+		assertThat(paymentRepository.findById(payment.getId()).orElseThrow().getRefundedAmount())
+			.isEqualTo(AMOUNT - 9_000);
+		assertThat(historyRepository.findAll()).singleElement()
+			.extracting(RentalStatusHistory::getReason)
+			.isNotEqualTo(RentalStatusHistory.REASON_PREVIOUS_RENTAL_OVERDUE);
+	}
+
+	@Test
+	@DisplayName("앞 대여 연체 중 시작일 다음 날에도 플래그 true, 대여자 단독 취소는 수수료 0이다")
+	void renterCancelAfterStartFree() throws Exception {
+		// given
+		rentalFixture.createRental(item, previousRenter, RentalStatus.OVERDUE, START.minusDays(4), START.minusDays(1));
+		testClock.fixAt(START.plusDays(1).atTime(9, 0));
+		detail(renter).andExpect(jsonPath("$.data.previousRentalOverdue").value(true));
 
 		// when, then
 		cancel(renter).andExpect(status().isOk()).andExpect(jsonPath("$.data.cancelFee").value(0));
-		assertThat(paymentRepository.findById(payment.getId()).orElseThrow().getRefundedAmount()).isEqualTo(AMOUNT);
+	}
+
+	@Test
+	@DisplayName("동의 취소 요청(REQUESTED)이 진행 중이어도 면제 단독 취소는 된다. 남은 요청은 수락 시 409 INVALID_TRANSITION, 상세에 안 보이고 만료로 닫힌다")
+	void exemptCancelWithOpenAgreement() throws Exception {
+		// given: 시작일 당일, 대여자가 동의 취소를 요청해 둔 상태
+		rentalFixture.createRental(item, previousRenter, RentalStatus.OVERDUE, START.minusDays(4), START.minusDays(1));
+		LocalDateTime now = START.atTime(9, 0);
+		testClock.fixAt(now);
+		mockMvc.perform(post("/api/rentals/{id}/cancel-agreements", next.getId())
+			.header(HttpHeaders.AUTHORIZATION, bearerToken(renter.getId()))
+			.contentType(MediaType.APPLICATION_JSON).content("{\"reason\": \"SCHEDULE_CHANGE\"}"))
+			.andExpect(status().isCreated());
+		RentalCancelAgreement agreement = agreementRepository.findAll().getFirst();
+
+		// when: 면제 단독 취소
+		cancel(renter).andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.status").value("CANCELED"))
+			.andExpect(jsonPath("$.data.cancelType").value("RENTER"))
+			.andExpect(jsonPath("$.data.cancelFee").value(0))
+			.andExpect(jsonPath("$.data.activeCancelAgreement").doesNotExist());
+
+		// then: 제공자가 남은 요청을 수락해도 대여는 이미 CANCELED라 409이고 요청은 그대로 REQUESTED
+		mockMvc.perform(patch("/api/rentals/{id}/cancel-agreements/{agreementId}", next.getId(), agreement.getId())
+			.header(HttpHeaders.AUTHORIZATION, bearerToken(owner.getId()))
+			.contentType(MediaType.APPLICATION_JSON).content("{\"action\": \"ACCEPT\"}"))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.error.code").value("RENTAL_INVALID_TRANSITION"));
+		assertThat(agreementRepository.findById(agreement.getId()).orElseThrow().getStatus())
+			.isEqualTo(CancelAgreementStatus.REQUESTED);
+		// 만료 배치가 기존대로 닫는다
+		assertThat(cancelTxService.expireOverdue(agreement.getExpiresAt())).isEqualTo(1);
+		assertThat(agreementRepository.findById(agreement.getId()).orElseThrow().getStatus())
+			.isEqualTo(CancelAgreementStatus.EXPIRED);
 	}
 
 	@Test

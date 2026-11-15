@@ -74,9 +74,9 @@ public class RentalQueryService {
 		boolean canWriteReview = !reviewWritten
 			&& rental.canWriteReview(LocalDateTime.now(clock), policyProperties.review().writeDeadlineDays());
 		LocalDate today = LocalDate.now(clock);
-		// 앞 대여 연체(open-issues #7). 값은 RESERVED일 때만 쓰지만 조회는 상태와 상관없이 해 쿼리 수를 일정하게 둔다
+		// 앞 대여 연체(open-issues #7). 값은 RESERVED·시작일 ≤ 오늘일 때만 쓰지만 조회는 상태와 상관없이 해 쿼리 수를 일정하게 둔다
 		boolean previousRentalOverdue = rentalRepository.existsPreviousOverdue(rental.getItemId(), rentalId, today)
-			&& rental.getStatus() == RentalStatus.RESERVED;
+			&& rental.isPreviousOverdueExemptionCandidate(today);
 		return RentalDetailResponse.of(rental, rental.roleOf(memberId), item, counterpartId,
 			memberQueryService.getNickname(counterpartId), activeCancelAgreement, memberId,
 			overdueFeeCalculator.displayFee(rental, today),
