@@ -47,11 +47,14 @@ public class RentalOccupancyReader {
 	/**
 	 * 대여 가능 기간 수정 검사(REQ-007)용. 점유하는 대여는 {@link #findOccupied}와 같지만, 대여 기간은 연체로 늘어난 구간 없이
 	 * 원래 대여 날짜 [startDate, endDate]로 돌려준다. 늘어난 구간은 원래 가능 기간 밖일 수 있어서, 넣으면 연체 한 건으로 물품 수정이
-	 * 모두 막히기 때문이다(open-issues #53). 결제 대기 연장 기간은 그대로 담는다
+	 * 모두 막히기 때문이다(open-issues #53). 결제 대기 연장 기간은 그대로 담는다. 쿼리는 늘어난 구간으로 고르므로, 원래 날짜가
+	 * [from, to]와 겹치는 것만 한 번 더 거른다(좁은 범위로 불려도 범위 밖 연체 건이 섞이지 않게)
 	 */
 	public List<OccupiedPeriod> findBookedDates(Long itemId, LocalDate from, LocalDate to, LocalDateTime now) {
 		return collect(itemId, from, to, now, null,
-			rental -> new OccupiedPeriod(rental.getStartDate(), rental.getEndDate()));
+			rental -> new OccupiedPeriod(rental.getStartDate(), rental.getEndDate())).stream()
+			.filter(period -> period.overlaps(from, to))
+			.toList();
 	}
 
 	private List<OccupiedPeriod> collect(Long itemId, LocalDate from, LocalDate to, LocalDateTime now,
@@ -77,6 +80,11 @@ public class RentalOccupancyReader {
 
 		public boolean contains(LocalDate date) {
 			return !date.isBefore(startDate) && !date.isAfter(endDate);
+		}
+
+		/** [from, to]와 하루라도 겹치면 true (양 끝 포함) */
+		public boolean overlaps(LocalDate from, LocalDate to) {
+			return !startDate.isAfter(to) && !endDate.isBefore(from);
 		}
 	}
 }

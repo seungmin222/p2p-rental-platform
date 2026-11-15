@@ -112,7 +112,22 @@ class RentalOccupancyReaderIntegrationTest extends IntegrationTestSupport {
 		assertThat(rentalOccupancyReader.isOccupied(item.getId(), today.plusDays(1), today.plusDays(3), later))
 			.isFalse();
 		// 물품 수정 검사용은 원래 대여 날짜 그대로
-		assertThat(rentalOccupancyReader.findBookedDates(item.getId(), today, today, later))
+		assertThat(rentalOccupancyReader.findBookedDates(item.getId(), END, today, later))
+			.containsExactly(new OccupiedPeriod(START, END));
+	}
+
+	@Test
+	@DisplayName("findBookedDates는 원래 대여 날짜가 조회 범위 밖이면 연체로 늘어난 구간이 겹쳐도 돌려주지 않는다")
+	void bookedDatesExcludeOriginalDatesOutsideRange() {
+		// given: OVERDUE [11/10, 11/12], 오늘 11/15 → 점유는 11/15까지
+		rentalFixture.createRental(item, renter, RentalStatus.OVERDUE, START, END);
+		LocalDateTime later = LocalDateTime.of(2026, 11, 15, 10, 0);
+		LocalDate today = later.toLocalDate();
+
+		// when, then
+		assertThat(rentalOccupancyReader.findOccupied(item.getId(), END.plusDays(1), today, later)).isNotEmpty();
+		assertThat(rentalOccupancyReader.findBookedDates(item.getId(), END.plusDays(1), today, later)).isEmpty();
+		assertThat(rentalOccupancyReader.findBookedDates(item.getId(), END, today, later))
 			.containsExactly(new OccupiedPeriod(START, END));
 	}
 
