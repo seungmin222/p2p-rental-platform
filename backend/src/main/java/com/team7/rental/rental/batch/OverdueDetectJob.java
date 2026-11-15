@@ -10,13 +10,14 @@ import org.springframework.stereotype.Component;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 
 import com.team7.rental.rental.service.RentalOverdueService;
+import com.team7.rental.rental.service.RentalOverdueTxService.Participants;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * 연체 감지 (REQ-023·031, policies.md 배치 주기 매일 00:05 + 매시 정각 재검사). RENTING이고 반납 예정일이 지난 대여를 OVERDUE로 바꾸고
- * 대여자·제공자에게 연체 알림을 보낸다. "오늘"은 Clock(Asia/Seoul) 기준이다.
+ * 대여자·제공자에게 연체 알림을 보낸다. 이어서 앞 대여 연체로 시작일이 온 다음 예약의 대여자에게 PREVIOUS_RENTAL_OVERDUE를 보낸다(open-issues #7). "오늘"은 Clock(Asia/Seoul) 기준이다.
  * <p>
  * 건별 트랜잭션이라 한 건이 실패해도 나머지는 계속하고, 실패한 건은 다음 회차에 다시 대상이 된다(조건을 다시 보므로 멱등). 두 cron이 같은 락 이름을
  * 쓰므로 겹쳐도 한 번만 돈다.
@@ -56,6 +57,18 @@ public class OverdueDetectJob {
 		if (!targetIds.isEmpty()) {
 			log.info("Overdue detect: {} / {} marked", marked, targetIds.size());
 		}
+		notifyPreviousRentalOverdue(now);
 		return marked;
+	}
+
+	// 앞 대여 연체로 시작일이 온 다음 예약을 이행할 수 없는 건(open-issues #7). 전환 뒤에 보므로 이번 회차에 OVERDUE가 된 건도 들어간다. event_id로 1회
+	private void notifyPreviousRentalOverdue(LocalDateTime now) {
+		for (Participants target : rentalOverdueService.findPreviousRentalOverdueTargets(now.toLocalDate())) {
+			try {
+				rentalOverdueService.sendPreviousRentalOverdue(target);
+			} catch (RuntimeException e) {
+				log.error("Previous rental overdue notify failed: rentalId={}", target.rentalId(), e);
+			}
+		}
 	}
 }

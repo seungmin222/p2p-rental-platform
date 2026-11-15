@@ -28,6 +28,18 @@ public class CancelFeeCalculator {
 	 * @throws IllegalArgumentException RESERVED 단독 취소인데 오늘 ≥ 시작일(validateCancelable에서 막히는 경우), 지원하지 않는 취소 종류
 	 */
 	public int calculate(Rental rental, CancelType type, LocalDate today) {
+		return calculate(rental, type, today, false);
+	}
+
+	/**
+	 * 앞 대여 연체 예외(open-issues #7): 같은 물품의 앞 대여가 연체 중일 때 대여자 단독 취소는 시작일 전후와 상관없이 0.
+	 *
+	 * @param previousRentalOverdue 같은 물품에 종료일이 지난 RENTING·OVERDUE 대여가 있는지
+	 */
+	public int calculate(Rental rental, CancelType type, LocalDate today, boolean previousRentalOverdue) {
+		if (type == CancelType.RENTER && previousRentalOverdue && rental.getStatus() == RentalStatus.RESERVED) {
+			return 0;
+		}
 		// 결제 대기는 시작일이 지났어도 0이다(자정 직전 생성). 날짜 검사보다 먼저 본다
 		if (rental.getStatus() == RentalStatus.PENDING_PAYMENT) {
 			return 0;

@@ -76,6 +76,16 @@ public class RentalOverdueTxService {
 			.toList();
 	}
 
+	/**
+	 * 앞 대여 연체 알림 대상 (open-issues #7): RESERVED이고 startDate ≤ 오늘이며 같은 물품의 앞 대여(RENTING·OVERDUE)가 종료일이 지난 대여.
+	 * 앞 대여가 반납될 때까지 매 회차 다시 조회되지만 event_id가 대여당 하나라 알림은 1회다
+	 */
+	public List<Participants> findPreviousRentalOverdueTargets(LocalDate today) {
+		return rentalRepository.findPreviousOverdueConflicts(today).stream()
+			.map(rental -> new Participants(rental.getId(), rental.getRenterId(), rental.getOwnerId()))
+			.toList();
+	}
+
 	public record Participants(Long rentalId, Long renterId, Long ownerId) {
 	}
 

@@ -48,6 +48,19 @@ public class RentalOverdueService {
 		return transitioned.isPresent();
 	}
 
+	public List<Participants> findPreviousRentalOverdueTargets(LocalDate today) {
+		return rentalOverdueTxService.findPreviousRentalOverdueTargets(today);
+	}
+
+	/**
+	 * 다음 예약자에게만 PREVIOUS_RENTAL_OVERDUE (event_id {@code PREVIOUS_RENTAL_OVERDUE:{rentalId}}). 상태는 바꾸지 않는다.
+	 * 제공자는 앞 대여의 OVERDUE 알림을 이미 받으므로 보내지 않는다(open-issues #7)
+	 */
+	public void sendPreviousRentalOverdue(Participants target) {
+		rentalNotificationPort.send(target.renterId(), Type.PREVIOUS_RENTAL_OVERDUE, TargetType.RENTAL,
+			target.rentalId(), RentalNotificationPort.rentalEventId(Type.PREVIOUS_RENTAL_OVERDUE, target.rentalId()));
+	}
+
 	public List<ReminderTarget> findReturnReminderTargets(LocalDate today) {
 		return rentalOverdueTxService.findReturnReminderTargets(today);
 	}

@@ -33,6 +33,8 @@ public interface RentalNotificationPort {
 		/** 보증금 반환 PG 환불 성공 (REQ-025). 반환액 0원(FORFEITED)은 보내지 않는다 */
 		DEPOSIT_REFUNDED,
 		OVERDUE,
+		/** 앞 대여 연체로 다음 예약 이행이 어려움 (open-issues #7). 다음 예약자에게만, eventId {@code PREVIOUS_RENTAL_OVERDUE:{다음 대여 id}} */
+		PREVIOUS_RENTAL_OVERDUE,
 		RETURN_REMINDER,
 		LOST_REPORTED,
 		DEPOSIT_HELD,
@@ -69,7 +71,7 @@ public interface RentalNotificationPort {
 		return Type.RETURN_REMINDER.name() + ":" + rentalId + ":" + endDate;
 	}
 
-	/** 한 대여에 한 번인 알림 키 {@code {TYPE}:{rentalId}} (예약 확정·결제 완료·예약 취소·인계 리마인더·인계·반납 요청·상태 확인·보증금 반환·보류, 미반납 신고, AI 비교) */
+	/** 한 대여에 한 번인 알림 키 {@code {TYPE}:{rentalId}} (예약 확정·결제 완료·예약 취소·인계 리마인더·앞 대여 연체·인계·반납 요청·상태 확인·보증금 반환·보류, 미반납 신고, AI 비교) */
 	static String rentalEventId(Type type, Long rentalId) {
 		return type.name() + ":" + rentalId;
 	}

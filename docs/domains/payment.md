@@ -41,6 +41,7 @@
 - 멱등성 키 = `cancel-refund:{rentalId}`. 실패 시 REFUND_FAILED + 재시도 배치 (보증금 0원이면 NONE을 유지하고 `refund_pending_amount`로 재시도)
 - 결제 대기 취소는 PG를 부르지 않고 READY 주문을 FAILED로 닫는다. 승인 결과를 모르는 주문은 조정 배치가 처리한다
 - 인계 없음 자동 취소(REQ-017)도 같은 전액 환불이다
+- 앞 대여 연체 중 다음 예약자의 단독 취소(open-issues #7)는 cancelFee 0이라 전액 환불이다
 - cancelFee > 0 → 정산 생성(REQ-039)
 
 ## 연장료 결제 [2] (REQ-038 연계)

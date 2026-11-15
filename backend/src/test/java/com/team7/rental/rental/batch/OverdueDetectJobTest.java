@@ -133,7 +133,8 @@ class OverdueDetectJobTest extends IntegrationTestSupport {
 		assertThat(statusOf(returned)).isEqualTo(RentalStatus.RETURNED);
 		assertThat(statusOf(overdue)).isEqualTo(RentalStatus.OVERDUE);
 		assertThat(historyRepository.findAll()).isEmpty();
-		assertThat(notificationPort.sent()).isEmpty();
+		// 같은 물품에 OVERDUE가 있어 시작일이 지난 RESERVED는 앞 대여 연체 알림 대상이다(open-issues #7, PreviousRentalOverdueIntegrationTest). 여기서는 연체 알림만 본다
+		assertThat(notificationPort.sent()).filteredOn(sent -> sent.type() == Type.OVERDUE).isEmpty();
 	}
 
 	@Test

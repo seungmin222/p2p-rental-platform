@@ -17,7 +17,7 @@
 - 실시간 전달(`/user/queue/notifications`)은 채팅 STOMP 설정(REQ-027, `feat/chat-core`)으로 연결됐다(`StompNotificationPushPort`). 접속 중이 아니면 보내지 않고 목록·안 읽은 수 API로 확인한다
 
 ## REQ-031 연체 알림 [2 필수]
-연체 배치(rental.md REQ-023)가 대여자·제공자 각각에게 `OVERDUE` 발행. event_id `OVERDUE:{rentalId}`로 매시 재검사에도 1회만.
+연체 배치(rental.md REQ-023)가 대여자·제공자 각각에게 `OVERDUE` 발행. event_id `OVERDUE:{rentalId}`로 매시 재검사에도 1회만. 같은 배치가 이미 잡힌 다음 예약의 대여자에게 `PREVIOUS_RENTAL_OVERDUE`도 보낸다(open-issues #7).
 
 ## 수신자 매핑 (기본)
 | 이벤트 | 대여자 | 제공자 |
@@ -36,6 +36,7 @@
 | 차감 수락·자동 수락·관리자 확정 (`DEDUCTION_ACCEPTED`) | ✔ | ✔ |
 | 차감 거절 (`DEDUCTION_REJECTED`) | | ✔ |
 | 연체 | ✔ | ✔ |
+| 앞 대여 연체로 다음 예약 이행 어려움 (`PREVIOUS_RENTAL_OVERDUE`) | ✔ (다음 예약자) | |
 | 대여 연장 | ✔ | ✔ |
 | 후기 도착 | 받는 사람 | 받는 사람 |
 | AI 비교 완료 | ✔ | ✔ |
@@ -46,6 +47,7 @@
 - 양측 동의 취소: 수락·거절 모두 양측에 `CANCEL_AGREEMENT_RESULT`(수락 때 `RESERVATION_CANCELED`는 따로 보내지 않음). 48시간 만료는 보내지 않는다
 - 반납 요청: 제공자 대리 접수면 보내지 않는다
 - 상태 확인 결과: 제공자 판정·자동 확인 모두 대여자에게. 보증금 반환(`DEPOSIT_REFUNDED`)은 PG 환불이 성공했을 때만(반환액 0원·보증금 없음은 보내지 않음)
+- 앞 대여 연체(`PREVIOUS_RENTAL_OVERDUE`, open-issues #7): 연체 배치(rental.md REQ-023)가 다음 예약의 대여자에게만 event_id `PREVIOUS_RENTAL_OVERDUE:{다음 대여 id}`로 1회. 제공자는 앞 대여의 `OVERDUE`를 받으므로 보내지 않는다
 - 인계 리마인더(`HANDOVER_REMINDER`): 리마인더 배치(rental.md REQ-017)가 대여자·제공자에게 같은 event_id `HANDOVER_REMINDER:{rentalId}`로 보낸다(OVERDUE와 같은 방식)
 
 ## 3순위

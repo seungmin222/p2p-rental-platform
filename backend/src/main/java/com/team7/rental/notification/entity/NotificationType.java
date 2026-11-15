@@ -22,6 +22,8 @@ public enum NotificationType {
 	DEDUCTION_ACCEPTED,
 	DEDUCTION_REJECTED,
 	OVERDUE,
+	/** 같은 물품의 앞 대여가 연체 중이라 다음 예약을 시작일에 받지 못할 수 있음 (open-issues #7). 다음 예약자에게만 */
+	PREVIOUS_RENTAL_OVERDUE,
 	RENTAL_EXTENDED,
 	REVIEW_RECEIVED,
 	AI_COMPARE_DONE,

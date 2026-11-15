@@ -32,6 +32,7 @@ final class NotificationContentTemplate {
 			case DEDUCTION_ACCEPTED -> "보증금 차감이 확정됐어요.";
 			case DEDUCTION_REJECTED -> "대여자가 보증금 차감 제안을 거절했어요.";
 			case OVERDUE -> "반납 예정일이 지났어요.";
+			case PREVIOUS_RENTAL_OVERDUE -> "앞선 대여가 아직 반납되지 않아 예약한 날에 물품을 받지 못할 수 있어요. 수수료 없이 취소할 수 있어요.";
 			case RENTAL_EXTENDED -> "대여 기간이 연장됐어요.";
 			case REVIEW_RECEIVED -> "새 후기가 도착했어요.";
 			case AI_COMPARE_DONE -> "AI 상태 비교 결과가 나왔어요.";

@@ -46,7 +46,7 @@ stateDiagram-v2
 | PENDING_PAYMENT | CANCELED | 금액 불일치 | 시스템 | confirm 요청 금액 ≠ 서버 계산 금액 | 024 |
 | PENDING_PAYMENT | CANCELED | 사용자 취소 | 당사자 | 수수료 없음 | 015 |
 | RESERVED | RENTING | 인계 확인 | 제공자 | 오늘 ≥ startDate, 사진 1~5장 | 017 |
-| RESERVED | CANCELED | 단독 취소 | 대여자 또는 제공자 | 오늘 < startDate. 환불액은 `policies.md` §2 취소 수수료 표 | 015 |
+| RESERVED | CANCELED | 단독 취소 | 대여자 또는 제공자 | 오늘 < startDate, 또는 대여자이고 같은 물품의 앞 대여가 연체 중(종료일이 지난 RENTING·OVERDUE, open-issues #7). 환불액은 `policies.md` §2 취소 수수료 표 | 015 |
 | RESERVED | CANCELED | 양측 동의 취소 | 당사자 | 오늘 ≥ startDate, 한쪽 요청 + 상대 동의(48시간 내), 전액 환불 | 015 |
 | RESERVED | CANCELED | 인계 없음 자동 취소 | 시스템 | 오늘 > startDate + 3일, 전액 환불 | 017 |
 | RENTING | RENTING | 연장 | 대여자 | 연장 횟수 < 2, 일수 ≤ 7, 이후 기간 비어 있음, 추가 결제 완료 | 038 |
@@ -80,7 +80,7 @@ stateDiagram-v2
 
 **점유 구간** 대여의 점유 구간은 `[startDate, 점유 끝]`이다. 점유 끝은 RENTING·OVERDUE(물건이 대여자에게 있음)면 `max(endDate, 오늘)`, 그 외 상태는 `endDate`다. 종료일이 지난 미반납 대여는 반납될 때까지 오늘을 점유해, 오늘을 포함하는 새 예약을 막는다. 반납(RETURNED)으로 벗어나면 점유도 풀린다(open-issues #53). 연체 배치(00:05) 전에 종료일이 지난 RENTING도 같게 본다. 예약 겹침·캘린더·기간 검색·연장 겹침에 적용하고, 대여 가능 기간 수정 검사(REQ-007)만 원래 대여 날짜 `[startDate, endDate]`로 본다.
 
-> 주의: OVERDUE는 endDate가 지나도 물품이 아직 대여자에게 있다. 내일 이후 이미 잡혀 있던 다음 예약의 처리는 `open-issues.md` #7.
+> 주의: OVERDUE는 endDate가 지나도 물품이 아직 대여자에게 있다. 이미 잡혀 있던 다음 예약은 그대로 두고, 시작일이 오면 다음 예약자에게 `PREVIOUS_RENTAL_OVERDUE`를 보내며 앞 대여가 연체 중인 동안 다음 예약자는 수수료 없이 단독 취소할 수 있다(`open-issues.md` #7, rental.md REQ-015·023). 새 전이는 없다.
 
 ## 2. 보증금 상태 `DepositStatus` (Payment.depositStatus)
 
@@ -173,4 +173,4 @@ stateDiagram-v2
 
 ### NotificationType
 
-`RESERVATION_CONFIRMED`, `PAYMENT_COMPLETED`, `RESERVATION_CANCELED`, `CANCEL_AGREEMENT_REQUESTED`, `CANCEL_AGREEMENT_RESULT`, `HANDOVER_CONFIRMED`, `HANDOVER_REMINDER`, `RETURN_REMINDER`, `RETURN_REQUESTED`, `LOST_REPORTED`, `INSPECTION_RESULT`, `DEPOSIT_REFUNDED`, `DEPOSIT_HELD`, `DEDUCTION_PROPOSED`, `DEDUCTION_ACCEPTED`, `DEDUCTION_REJECTED`, `OVERDUE`, `RENTAL_EXTENDED`, `REVIEW_RECEIVED`, `AI_COMPARE_DONE`, `KEYWORD_MATCHED`(3순위), `APPOINTMENT_REMINDER`(3순위)
+`RESERVATION_CONFIRMED`, `PAYMENT_COMPLETED`, `RESERVATION_CANCELED`, `CANCEL_AGREEMENT_REQUESTED`, `CANCEL_AGREEMENT_RESULT`, `HANDOVER_CONFIRMED`, `HANDOVER_REMINDER`, `RETURN_REMINDER`, `RETURN_REQUESTED`, `LOST_REPORTED`, `INSPECTION_RESULT`, `DEPOSIT_REFUNDED`, `DEPOSIT_HELD`, `DEDUCTION_PROPOSED`, `DEDUCTION_ACCEPTED`, `DEDUCTION_REJECTED`, `OVERDUE`, `PREVIOUS_RENTAL_OVERDUE`, `RENTAL_EXTENDED`, `REVIEW_RECEIVED`, `AI_COMPARE_DONE`, `KEYWORD_MATCHED`(3순위), `APPOINTMENT_REMINDER`(3순위)
