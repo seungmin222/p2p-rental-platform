@@ -78,7 +78,9 @@ stateDiagram-v2
 
 **활성(기간 점유) 상태 집합** `ACTIVE_FOR_PERIOD = {PENDING_PAYMENT(만료 전), RESERVED, RENTING, OVERDUE}` — 중복 검사·캘린더·대여 가능 기간 수정 검사에서 공통으로 사용. 상수 하나로 정의할 것.
 
-> 주의: OVERDUE는 endDate가 지나도 물품이 아직 대여자에게 있다. 연체 건 다음 예약의 처리는 `open-issues.md` #7.
+**점유 구간** 대여의 점유 구간은 `[startDate, 점유 끝]`이다. 점유 끝은 RENTING·OVERDUE(물건이 대여자에게 있음)면 `max(endDate, 오늘)`, 그 외 상태는 `endDate`다. 종료일이 지난 미반납 대여는 반납될 때까지 오늘을 점유해, 오늘을 포함하는 새 예약을 막는다. 반납(RETURNED)으로 벗어나면 점유도 풀린다(open-issues #53). 연체 배치(00:05) 전에 종료일이 지난 RENTING도 같게 본다. 예약 겹침·캘린더·기간 검색·연장 겹침에 적용하고, 대여 가능 기간 수정 검사(REQ-007)만 원래 대여 날짜 `[startDate, endDate]`로 본다.
+
+> 주의: OVERDUE는 endDate가 지나도 물품이 아직 대여자에게 있다. 내일 이후 이미 잡혀 있던 다음 예약의 처리는 `open-issues.md` #7.
 
 ## 2. 보증금 상태 `DepositStatus` (Payment.depositStatus)
 

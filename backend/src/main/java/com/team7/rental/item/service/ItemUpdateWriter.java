@@ -117,7 +117,8 @@ public class ItemUpdateWriter {
 	private void validatePeriodsCoverOccupied(Long itemId, List<ItemPeriodRequest> periods) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		List<FieldErrorDetail> conflicts = new ArrayList<>();
-		for (OccupiedPeriod occupied : rentalOccupancyReader.findOccupied(itemId, OCCUPANCY_FROM, OCCUPANCY_TO,
+		// 연체로 늘어난 점유 구간이 아니라 원래 대여 날짜를 본다 (open-issues #53)
+		for (OccupiedPeriod occupied : rentalOccupancyReader.findBookedDates(itemId, OCCUPANCY_FROM, OCCUPANCY_TO,
 			now)) {
 			boolean isCovered = occupied.startDate().datesUntil(occupied.endDate().plusDays(1))
 				.allMatch(date -> periods.stream()

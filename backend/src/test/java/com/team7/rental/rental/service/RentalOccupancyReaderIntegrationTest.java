@@ -96,6 +96,58 @@ class RentalOccupancyReaderIntegrationTest extends IntegrationTestSupport {
 		assertThat(rentalOccupancyReader.isOccupied(item.getId(), START, END, expiresAt)).isFalse();
 	}
 
+	@ParameterizedTest
+	@EnumSource(value = RentalStatus.class, names = {"RENTING", "OVERDUE"})
+	@DisplayName("종료일이 지난 미반납 대여는 오늘까지 점유하고 내일은 점유하지 않는다 (open-issues #53)")
+	void unreturnedPastEndDateOccupiesUntilToday(RentalStatus status) {
+		// given: [11/10, 11/12], 오늘 11/15
+		rentalFixture.createRental(item, renter, status, START, END);
+		LocalDateTime later = LocalDateTime.of(2026, 11, 15, 10, 0);
+		LocalDate today = later.toLocalDate();
+
+		// when, then
+		assertThat(rentalOccupancyReader.findOccupied(item.getId(), today, today, later))
+			.containsExactly(new OccupiedPeriod(START, today));
+		assertThat(rentalOccupancyReader.isOccupied(item.getId(), END.plusDays(1), END.plusDays(2), later)).isTrue();
+		assertThat(rentalOccupancyReader.isOccupied(item.getId(), today.plusDays(1), today.plusDays(3), later))
+			.isFalse();
+		// 물품 수정 검사용은 원래 대여 날짜 그대로
+		assertThat(rentalOccupancyReader.findBookedDates(item.getId(), END, today, later))
+			.containsExactly(new OccupiedPeriod(START, END));
+	}
+
+	@Test
+	@DisplayName("findBookedDates는 원래 대여 날짜가 조회 범위 밖이면 연체로 늘어난 구간이 겹쳐도 돌려주지 않는다")
+	void bookedDatesExcludeOriginalDatesOutsideRange() {
+		// given: OVERDUE [11/10, 11/12], 오늘 11/15 → 점유는 11/15까지
+		rentalFixture.createRental(item, renter, RentalStatus.OVERDUE, START, END);
+		LocalDateTime later = LocalDateTime.of(2026, 11, 15, 10, 0);
+		LocalDate today = later.toLocalDate();
+
+		// when, then
+		assertThat(rentalOccupancyReader.findOccupied(item.getId(), END.plusDays(1), today, later)).isNotEmpty();
+		assertThat(rentalOccupancyReader.findBookedDates(item.getId(), END.plusDays(1), today, later)).isEmpty();
+		assertThat(rentalOccupancyReader.findBookedDates(item.getId(), END, today, later))
+			.containsExactly(new OccupiedPeriod(START, END));
+	}
+
+	@Test
+	@DisplayName("종료일 전인 RENTING과 종료일이 지난 RESERVED는 원래 대여 날짜만 점유한다")
+	void otherStatusesKeepEndDate() {
+		// given
+		rentalFixture.createRental(item, renter, RentalStatus.RENTING, START, END);
+		LocalDateTime duringRental = LocalDateTime.of(2026, 11, 11, 10, 0);
+		Item otherItem = fixture.createItem(fixture.createVerifiedMember(), START, END).item();
+		rentalFixture.createRental(otherItem, renter, RentalStatus.RESERVED, START, END);
+		LocalDateTime later = LocalDateTime.of(2026, 11, 15, 10, 0);
+
+		// when, then
+		assertThat(rentalOccupancyReader.findOccupied(item.getId(), START, END.plusDays(5), duringRental))
+			.containsExactly(new OccupiedPeriod(START, END));
+		assertThat(rentalOccupancyReader.isOccupied(otherItem.getId(), END.plusDays(1), later.toLocalDate(), later))
+			.isFalse();
+	}
+
 	@Test
 	@DisplayName("다른 물품의 대여는 점유로 세지 않는다")
 	void otherItem() {

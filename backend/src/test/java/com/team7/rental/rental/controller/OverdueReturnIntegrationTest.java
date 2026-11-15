@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.ResultActions;
@@ -141,6 +142,33 @@ class OverdueReturnIntegrationTest extends IntegrationTestSupport {
 		detail(rental, renter).andExpect(jsonPath("$.data.overdueFee").value(0));
 		requestReturn(rental).andExpect(status().isOk());
 		assertThat(reload(rental).getOverdueFee()).isZero();
+	}
+
+	@Test
+	@DisplayName("연체 대여를 반납 API로 RETURNED로 바꾸면 같은 물품의 오늘 포함 예약이 201이다 (open-issues #53)")
+	void returnReleasesTodayForReservation() throws Exception {
+		// given: [11/03, 11/05] 연체, 오늘 11/07
+		Rental rental = rentalFixture.createRental(item, renter, RentalStatus.OVERDUE, START, END);
+		paymentFixture.createApproved(rental);
+		LocalDate today = END.plusDays(2);
+		testClock.fixAt(today.atTime(10, 0));
+		Member another = fixture.createVerifiedMember().member();
+		reserve(another, today, today.plusDays(1)).andExpect(status().isConflict())
+			.andExpect(jsonPath("$.error.code").value("RENTAL_PERIOD_CONFLICT"));
+
+		// when
+		requestReturn(rental).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("RETURNED"));
+
+		// then
+		reserve(another, today, today.plusDays(1)).andExpect(status().isCreated());
+	}
+
+	private ResultActions reserve(Member member, LocalDate start, LocalDate end) throws Exception {
+		return mockMvc.perform(post("/api/rentals")
+			.header(HttpHeaders.AUTHORIZATION, bearerToken(member.getId()))
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("{\"itemId\": %d, \"startDate\": \"%s\", \"endDate\": \"%s\"}".formatted(item.getId(), start,
+				end)));
 	}
 
 	private ResultActions detail(Rental rental, Member member) throws Exception {

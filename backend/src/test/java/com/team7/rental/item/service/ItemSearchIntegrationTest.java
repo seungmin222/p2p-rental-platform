@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -32,6 +33,7 @@ import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalExtension;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.repository.RentalExtensionRepository;
+import com.team7.rental.rental.service.RentalOccupancyReader;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture;
 
@@ -47,6 +49,8 @@ class ItemSearchIntegrationTest extends IntegrationTestSupport {
 	private CategoryRepository categories;
 	@Autowired
 	private RentalExtensionRepository extensions;
+	@Autowired
+	private RentalOccupancyReader occupancyReader;
 	private MemberItemFixture.VerifiedMember owner;
 	private Member renter;
 	private Long categoryId;
@@ -168,6 +172,40 @@ class ItemSearchIntegrationTest extends IntegrationTestSupport {
 		// availableOnly를 함께 보내도 기간 기준 그대로
 		assertThat(ids(search(builder().startDate(from).endDate(to).availableOnly(true).sort(ItemSortType.LATEST))))
 			.containsExactly(expiredExtending.getId(), ignored.getId(), exactFit.getId());
+	}
+
+	@Test
+	@DisplayName("기간 검색의 점유 판정은 RentalOccupancyReader와 같다(종료일 지난 미반납은 오늘까지 점유, open-issues #53)")
+	void periodOccupancyMatchesRentalOccupancyReader() {
+		List<RentalStatus> statuses = List.of(RentalStatus.RESERVED, RentalStatus.RENTING, RentalStatus.OVERDUE,
+			RentalStatus.RETURNED);
+		List<Period> rentalPeriods = List.of(period(today.minusDays(4), today.minusDays(2)),
+			period(today.minusDays(1), today.plusDays(1)), period(today.plusDays(2), today.plusDays(3)));
+		List<Item> created = new ArrayList<>();
+		for (RentalStatus status : statuses) {
+			for (Period rentalPeriod : rentalPeriods) {
+				Item item = createWithPeriods(status + " " + rentalPeriod,
+					period(today.minusDays(10), today.plusDays(20)));
+				rentalFixture.createRental(item, renter, status, rentalPeriod.start(), rentalPeriod.end());
+				created.add(item);
+			}
+		}
+
+		for (Period query : List.of(period(today, today), period(today.plusDays(1), today.plusDays(2)),
+			period(today.plusDays(3), today.plusDays(5)), period(today.plusDays(4), today.plusDays(6)))) {
+			List<Long> expected = created.stream()
+				.filter(item -> !occupancyReader.isOccupied(item.getId(), query.start(), query.end(), now))
+				.map(Item::getId)
+				.toList();
+			assertThat(ids(search(builder().startDate(query.start()).endDate(query.end()))))
+				.as("기간 %s", query)
+				.containsExactlyInAnyOrderElementsOf(expected);
+		}
+		// 종료일 지난 미반납(RENTING·OVERDUE [오늘-4, 오늘-2])은 오늘 검색에서 빠지고 내일부터는 나온다
+		Long overduePastEnd = created.get(2 * rentalPeriods.size()).getId();
+		assertThat(ids(search(builder().startDate(today).endDate(today)))).doesNotContain(overduePastEnd);
+		assertThat(ids(search(builder().startDate(today.plusDays(1)).endDate(today.plusDays(2)))))
+			.contains(overduePastEnd);
 	}
 
 	@Test

@@ -102,6 +102,22 @@ class RentalCalendarIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("종료일이 지난 미반납 연체는 오늘까지 BOOKED이고 내일은 AVAILABLE이다 (open-issues #53)")
+	void overduePastEndDateBooksToday() throws Exception {
+		// given: [10/25, 10/26] 연체, 오늘 10/28
+		rentalFixture.createRental(item, renter, RentalStatus.OVERDUE, LocalDate.of(2026, 10, 25),
+			LocalDate.of(2026, 10, 26));
+
+		// when
+		Map<String, String> october = calendar("2026-10", null);
+
+		// then
+		assertThat(october.get("2026-10-27")).isEqualTo("UNAVAILABLE"); // 지난 날짜
+		assertThat(october.get("2026-10-28")).isEqualTo("BOOKED");
+		assertThat(october.get("2026-10-29")).isEqualTo("AVAILABLE");
+	}
+
+	@Test
 	@DisplayName("month 형식이 틀리면 400 COMMON_INVALID_INPUT이다")
 	void invalidMonth() throws Exception {
 		mockMvc.perform(get("/api/items/{itemId}/calendar", item.getId()).param("month", "2026-13"))
