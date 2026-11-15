@@ -1,3 +1,9 @@
+## 요약
+- API 경로·필드 변경 없음. 종료일 지난 RENTING·OVERDUE의 점유 끝을 max(종료일, 오늘)로 늘려 예약(POST /api/rentals)·캘린더·기간 검색(GET /api/items)·연장에 적용 (open-issues #53).
+- 판정 식: Rental.occupiedEndDate(today). 쿼리: RentalRepository.findOccupying, ItemListingRepositoryImpl.occupied(두 곳을 ItemSearchIntegrationTest로 묶음).
+- 물품 가능 기간 수정 검사는 RentalOccupancyReader.findBookedDates로 원래 대여 날짜만 본다(범위 밖 원래 날짜는 거름).
+- 남은 일: 이미 잡힌 다음 예약과 연체가 겹치는 경우는 open-issues #7 영역으로 다루지 않았다.
+
 ## 결정
 - 점유 끝 = Rental.occupiedEndDate(today): RENTING·OVERDUE면 max(endDate, today), 그 외 endDate (open-issues #53 사용자 결정). 오늘을 포함하는 예약만 막고 내일 시작 예약은 받는다(사용자 결정 A①). 내일까지 반납이 안 되면 #7 영역이라 이번에 다루지 않았다.
 - 배치(00:05) 전에 종료일이 지난 RENTING도 같은 식에 넣었다. validateExtendable이 이미 이 경우를 연체로 보고, 종료일 이전 RENTING은 max가 endDate라 영향이 없다.
