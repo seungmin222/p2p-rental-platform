@@ -39,6 +39,19 @@ export function overdueDays(endDate, today) {
 }
 
 /**
+ * 앞 대여 연체로 시작일 뒤에도 수수료 없이 단독 취소할 수 있는지(open-issues #7). 대여자이고 RESERVED·시작일 ≤ 오늘이며
+ * 대여 상세 previousRentalOverdue가 true일 때. 수수료는 0원이다(openapi PATCH /api/rentals/{id}/cancel).
+ */
+export function isOverdueCancelWaiver(rental, today) {
+  return (
+    rental.status === 'RESERVED' &&
+    rental.myRole === 'RENTER' &&
+    rental.previousRentalOverdue === true &&
+    compareDate(today, rental.startDate) >= 0
+  );
+}
+
+/**
  * 지금 단독 취소하면 붙는 수수료(policies.md §2). 대여자가 RESERVED를 시작일 2일 전 ~ 전날 취소할 때만
  * 대여료 × 30%(원 미만 절사), 그 외 0. 확정 금액은 취소 응답의 cancelFee가 기준이다.
  */

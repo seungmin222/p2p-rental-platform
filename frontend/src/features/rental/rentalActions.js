@@ -2,7 +2,7 @@
 // 서버가 최종 검증하므로 UI는 보조다(state-machines.md §1 전이 표).
 import { compareDate, formatMonthDay } from '../../shared/lib/date';
 import { PAYMENT_ENABLED, RETURN_AUTO_CONFIRM_DAYS } from './constants';
-import { formatDateTime, overdueDays } from './rentalData';
+import { formatDateTime, isOverdueCancelWaiver, overdueDays } from './rentalData';
 
 /** 버튼 종류. 화면은 이 값으로 열 모달·시트를 고른다. */
 export const RENTAL_ACTION = {
@@ -74,6 +74,25 @@ export function getRentalActions(
         };
       }
       const agreement = rental.activeCancelAgreement;
+      // 앞 대여 연체(open-issues #7): 대여자는 시작일 뒤에도 수수료 없이 단독 취소. 동의 요청은 필요 없어 숨기고,
+      // 상대가 보낸 요청이 있으면 거절·동의는 그대로 둔다
+      if (isOverdueCancelWaiver(rental, today)) {
+        return {
+          actions: [
+            ...(agreement && !agreement.requestedByMe
+              ? [
+                  action(A.REJECT_CANCEL_AGREEMENT, '거절', 'secondary'),
+                  action(A.ACCEPT_CANCEL_AGREEMENT, '동의', 'outline'),
+                ]
+              : []),
+            action(A.CANCEL, '예약 취소', 'secondary'),
+          ],
+          notice: {
+            tone: 'danger',
+            text: '앞 대여의 물품이 아직 반납되지 않았어요. 수수료 없이 예약을 취소할 수 있어요',
+          },
+        };
+      }
       let cancelActions;
       if (!agreement) {
         cancelActions = [action(A.REQUEST_CANCEL_AGREEMENT, '취소 요청', 'secondary')];

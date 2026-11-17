@@ -15,6 +15,7 @@
 // | 9 | RETURNED | D-5~D-1 | 내가 반납 요청, 판정 전 |
 // | 10 | COMPLETED | D-20~D-18 | 정상 판정 |
 // | 11 | CANCELED | D+1~D+2 | 대여자 취소(RENTER), 수수료 기록 있음 |
+// | 12 | RESERVED | D+0~D+1 | 앞 대여(13, 남의 OVERDUE)가 연체 중 → previousRentalOverdue, 수수료 없는 예약 취소(open-issues #7) |
 //
 // 제공자 쪽(대여자 텐트초보)
 // | id | 상태 | 기간 | 경우 |
@@ -41,6 +42,7 @@
 // 그 밖
 // | id | 경우 |
 // | --- | --- |
+// | 13 | 남의 연체(물품 101, D-5~D-1 OVERDUE) → 12의 앞 대여 |
 // | 900 | 남의 대여(물품 101, D+8~D+10 RESERVED) → 상세 403 RENTAL_NOT_PARTICIPANT |
 // | 901 | 남의 결제 대기(물품 101, D+12~D+13), 결제 만료 지남 → 캘린더에서 예약 가능 |
 // | 902 | 남의 결제 대기(물품 101, D+14), 만료 전 → 캘린더에서 예약됨 |
@@ -211,6 +213,7 @@ export function createRentalSeed() {
       cancelReason: 'SCHEDULE_CHANGE',
       cancelFee: 2400,
     }),
+    rental(12, 101, MOCK_ME, 'RESERVED', [0, 1]),
     // 제공자 쪽
     rental(21, 104, RENTER, 'PENDING_PAYMENT', [6, 8], { paymentExpiresAt: minutesFromNow(9) }),
     rental(22, 104, RENTER, 'RESERVED', [3, 4]),
@@ -241,6 +244,7 @@ export function createRentalSeed() {
     rental(32, 107, RENTER, 'RESERVED', [5, 6]),
     ...pastRentals(),
     // 남의 대여
+    rental(13, 101, OTHER, 'OVERDUE', [-5, -1], { handedOverAt: at(-5, '18:00') }),
     rental(900, 101, OTHER, 'RESERVED', [8, 10]),
     rental(901, 101, OTHER, 'PENDING_PAYMENT', [12, 13], { paymentExpiresAt: minutesFromNow(-5) }),
     rental(902, 101, OTHER, 'PENDING_PAYMENT', [14, 14], { paymentExpiresAt: minutesFromNow(10) }),

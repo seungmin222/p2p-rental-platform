@@ -191,6 +191,24 @@ function requireStatus(rental, ...statuses) {
 }
 
 /** RentalDetailResponse */
+/**
+ * 앞 대여 연체(open-issues #7): RESERVED·시작일 ≤ 오늘이고, 같은 물품의 앞 대여(RENTING·OVERDUE)가 종료일이 지났는데
+ * 반납되지 않았는지. 백엔드 RentalRepository.existsPreviousOverdue와 같은 조건
+ */
+function hasPreviousOverdue(rental, today = todayInSeoul()) {
+  if (rental.status !== 'RESERVED' || compareDate(today, rental.startDate) < 0) {
+    return false;
+  }
+  return db.rentals.some(
+    (other) =>
+      other.itemId === rental.itemId &&
+      other.rentalId !== rental.rentalId &&
+      (other.status === 'RENTING' || other.status === 'OVERDUE') &&
+      compareDate(other.startDate, rental.startDate) < 0 &&
+      compareDate(other.endDate, today) < 0,
+  );
+}
+
 function toDetail(rental) {
   const myRole = roleOf(rental);
   const item = findMockItem(rental.itemId);
@@ -229,6 +247,7 @@ function toDetail(rental) {
     cancelReason: rental.cancelReason,
     cancelReasonText: rental.cancelReasonText,
     cancelFee: rental.cancelFee,
+    previousRentalOverdue: hasPreviousOverdue(rental),
     activeCancelAgreement: agreement
       ? {
           agreementId: agreement.agreementId,
@@ -649,7 +668,12 @@ export const rentalHandlers = [
       let cancelFee = 0;
       if (rental.status === 'RESERVED') {
         if (compareDate(today, rental.startDate) >= 0) {
-          reject('RENTAL_CANCEL_NOT_ALLOWED');
+          // 앞 대여 연체 중이면 대여자는 수수료 없이 단독 취소(open-issues #7)
+          if (role !== 'RENTER' || !hasPreviousOverdue(rental, today)) {
+            reject('RENTAL_CANCEL_NOT_ALLOWED');
+          }
+          cancel(rental, { cancelType: role, reason, reasonText, cancelFee: 0 });
+          return ok(toDetail(rental));
         }
         const daysBefore = countDaysInclusive(today, rental.startDate) - 1;
         if (role === 'RENTER' && daysBefore < POLICY.CANCEL_FEE_FREE_UNTIL_DAYS_BEFORE) {

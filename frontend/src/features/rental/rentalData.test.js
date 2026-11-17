@@ -6,6 +6,7 @@ import {
   formatDateTime,
   formatShortDate,
   formatShortRange,
+  isOverdueCancelWaiver,
   mergeCalendarDays,
   overdueDays,
   toChecklist,
@@ -63,6 +64,30 @@ describe('overdueDays', () => {
     ['2026-10-30', '2026-11-02', 3], // 달 넘김
   ])('endDate %s, 오늘 %s → %i일', (endDate, today, expected) => {
     expect(overdueDays(endDate, today)).toBe(expected);
+  });
+});
+
+describe('isOverdueCancelWaiver', () => {
+  const reserved = (overrides) => ({
+    status: 'RESERVED',
+    myRole: 'RENTER',
+    startDate: '2026-11-03',
+    previousRentalOverdue: true,
+    ...overrides,
+  });
+
+  it('대여자이고 시작일 ≤ 오늘이며 앞 대여 연체면 true', () => {
+    expect(isOverdueCancelWaiver(reserved(), '2026-11-03')).toBe(true);
+    expect(isOverdueCancelWaiver(reserved(), '2026-11-05')).toBe(true);
+  });
+
+  it.each([
+    ['시작일 전', reserved(), '2026-11-02'],
+    ['제공자', reserved({ myRole: 'OWNER' }), '2026-11-03'],
+    ['앞 대여 연체 아님', reserved({ previousRentalOverdue: false }), '2026-11-03'],
+    ['RESERVED 아님', reserved({ status: 'RENTING' }), '2026-11-03'],
+  ])('%s면 false', (_, rental, today) => {
+    expect(isOverdueCancelWaiver(rental, today)).toBe(false);
   });
 });
 
