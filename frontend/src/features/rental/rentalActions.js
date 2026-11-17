@@ -16,6 +16,7 @@ export const RENTAL_ACTION = {
   RETURN_REQUEST: 'RETURN_REQUEST', // 대여자 반납 요청 / 제공자 대리 접수(같은 API)
   CONFIRM_ABNORMAL: 'CONFIRM_ABNORMAL',
   CONFIRM_NORMAL: 'CONFIRM_NORMAL',
+  WRITE_REVIEW: 'WRITE_REVIEW', // 후기 쓰기(SCR-14로 이동, REQ-034)
 };
 
 const A = RENTAL_ACTION;
@@ -151,8 +152,18 @@ export function getRentalActions(
         },
       };
 
+    case 'COMPLETED':
+      // 후기(REQ-034): 쓸 수 있는지는 서버 canWriteReview, 이미 썼는지는 reviewWritten. 기한이 지났으면 아무것도 없다
+      if (rental.canWriteReview) {
+        return { actions: [action(A.WRITE_REVIEW, '후기 쓰기', 'primary')], notice: null };
+      }
+      return {
+        actions: [],
+        notice: rental.reviewWritten ? { tone: 'default', text: '후기를 보냈어요' } : null,
+      };
+
     default:
-      // COMPLETED·CANCELED
+      // CANCELED
       return { actions: [], notice: null };
   }
 }

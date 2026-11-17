@@ -27,6 +27,7 @@ import { DEPOSIT_REFUND_FAILED, takeFailure } from './paymentScenario';
 import { fail, ok } from './response';
 import { minutesFromNow } from './rentalSeed';
 import { db, nowServer, occupiesPeriod, saveDb } from './rentalStore';
+import { canWriteReview as canWriteReviewOf, hasWritten } from './reviewLogic';
 import { authenticateMockRequest } from './session';
 
 const PAYMENT_ENABLED = import.meta.env.VITE_PAYMENT_ENABLED === 'true';
@@ -52,7 +53,6 @@ const POLICY = {
   IMAGES_MAX: 5,
   CANCEL_FEE_FREE_UNTIL_DAYS_BEFORE: 3,
   CANCEL_FEE_RATE_PERCENT: 30,
-  REVIEW_WRITE_DEADLINE_DAYS: 7,
   PAYMENT_EXPIRE_BATCH_MINUTES: 1, // policies.md 배치 주기 "결제 만료"
 };
 
@@ -87,6 +87,9 @@ const MESSAGES = {
   PAYMENT_APPROVAL_FAILED: '결제 승인에 실패했습니다. 다시 결제해 주세요.',
   PAYMENT_RESULT_UNKNOWN: '결제 결과를 확인하고 있습니다. 잠시 후 다시 시도해 주세요.',
   PAYMENT_CANCELED_AFTER_EXPIRY: '결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다.',
+  REVIEW_ALREADY_WRITTEN: '이미 후기를 작성했습니다.',
+  REVIEW_DEADLINE_PASSED: '후기 작성 기간이 지났습니다.',
+  MEMBER_NOT_FOUND: '회원을 찾을 수 없습니다.',
 };
 
 const STATUS_BY_CODE = {
@@ -108,6 +111,8 @@ const STATUS_BY_CODE = {
   PAYMENT_RENTER_ONLY: 403,
   PAYMENT_NOT_FOUND: 404,
   PAYMENT_RESULT_UNKNOWN: 503,
+  REVIEW_DEADLINE_PASSED: 400,
+  MEMBER_NOT_FOUND: 404,
 };
 
 /** 검사에서 던지고 핸들러가 공통 실패 응답으로 바꾼다 */
@@ -159,7 +164,7 @@ function isOpen(agreement) {
   return agreement.status === 'REQUESTED' && agreement.expiresAt > nowServer();
 }
 
-function roleOf(rental) {
+export function roleOf(rental) {
   if (rental.renterId === currentMemberId()) {
     return 'RENTER';
   }
@@ -167,7 +172,7 @@ function roleOf(rental) {
 }
 
 /** 404 → 403(당사자) 순서로 대여를 찾는다 */
-function findParticipantRental(rentalId) {
+export function findParticipantRental(rentalId) {
   const rental = db.rentals.find((candidate) => candidate.rentalId === Number(rentalId));
   if (!rental) {
     reject('RENTAL_NOT_FOUND');
@@ -248,6 +253,8 @@ function toDetail(rental) {
     cancelReasonText: rental.cancelReasonText,
     cancelFee: rental.cancelFee,
     previousRentalOverdue: hasPreviousOverdue(rental),
+    canWriteReview: canWriteReview(rental),
+    reviewWritten: hasWritten(db.reviews, rental.rentalId, currentMemberId()),
     activeCancelAgreement: agreement
       ? {
           agreementId: agreement.agreementId,
@@ -260,15 +267,9 @@ function toDetail(rental) {
   };
 }
 
-/** 거래 완료 후 review.write-deadline-days 이내(정각 포함). 후기 테이블이 없어 "미작성" 조건은 없다(REQ-019) */
+/** 거래 완료 후 review.write-deadline-days 이내(정각 포함)이고 이 회원이 아직 쓰지 않았는지(REQ-034) */
 function canWriteReview(rental) {
-  if (rental.status !== 'COMPLETED' || !rental.completedAt) {
-    return false;
-  }
-  const deadline =
-    new Date(`${rental.completedAt}+09:00`).getTime() +
-    POLICY.REVIEW_WRITE_DEADLINE_DAYS * 24 * 60 * 60 * 1000;
-  return Date.now() <= deadline;
+  return canWriteReviewOf(rental, db.reviews, currentMemberId(), Date.now());
 }
 
 /** RentalHistoryResponse. totalAmount는 상세와 같은 값(대여료 + 보증금) */

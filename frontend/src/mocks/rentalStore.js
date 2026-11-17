@@ -28,6 +28,8 @@ function loadDb() {
 }
 
 export const db = loadDb() ?? { ...createRentalSeed(), payments: [] };
+// 후기(REQ-034) 전에 저장한 데이터에는 reviews가 없다. 대여 시드는 그대로 두고 후기만 시드로 채운다
+db.reviews ??= createRentalSeed().reviews;
 
 export function saveDb() {
   try {

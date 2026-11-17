@@ -17,6 +17,7 @@ import PaymentSuccessPage from '../pages/PaymentSuccessPage';
 import RegionPage from '../pages/RegionPage';
 import RentalDetailPage from '../pages/RentalDetailPage';
 import RentalReservePage from '../pages/RentalReservePage';
+import ReviewWritePage from '../pages/ReviewWritePage';
 import SearchPage from '../pages/SearchPage';
 import SignupPage from '../pages/SignupPage';
 import { clearLocalSession } from '../features/auth/queries';
@@ -69,6 +70,7 @@ export const router = createBrowserRouter([
           { path: '/payments/success', element: <PaymentSuccessPage />, handle: hideTabBar }, // SCR-07
           { path: '/payments/fail', element: <PaymentFailPage />, handle: hideTabBar }, // SCR-07
           { path: '/rentals/:id', element: <RentalDetailPage />, handle: hideTabBar }, // SCR-08
+          { path: '/rentals/:id/review', element: <ReviewWritePage />, handle: hideTabBar }, // SCR-14
           { path: '/chats', element: <ChatListPage /> }, // SCR-09
           { path: '/chats/:roomId', element: <ChatRoomPage />, handle: hideTabBar }, // SCR-10
           { path: '/notifications', element: <NotificationListPage /> }, // SCR-11

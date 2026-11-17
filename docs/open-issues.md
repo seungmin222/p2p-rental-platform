@@ -59,6 +59,7 @@
 | 51 | ✅ | 문의 | REQ-063 문의 `type`·`status` 값, 분쟁 접수 조건, 내용 글자 수·목록 페이지 크기가 명세에 없다 | (2026-11-12 사용자 결정) `InquiryType` = `GENERAL`·`DISPUTE`, `InquiryStatus` = `RECEIVED`·`IN_PROGRESS`·`RESOLVED`(state-machines §5). 분쟁은 rentalId 필수, 그 대여의 대여자·제공자만, PENDING_PAYMENT는 409 `INQUIRY_DISPUTE_NOT_ALLOWED`, 같은 회원·대여에 RESOLVED가 아닌 분쟁이 있으면 409 `INQUIRY_DISPUTE_ALREADY_OPEN`(상대방은 따로 접수 가능). `inquiry.content-max` 1,000자(공백만 불가), `inquiry.page` 20 고정. 정산 목록에 `heldTotal` 추가. 알림은 보내지 않는다(관리자 처리 결과 알림은 057) |
 | 52 | ✅ | AI·카테고리 | REQ-067은 "없으면 `ETC` + category_suggestions에 후보 기록"인데, erd.md의 category_suggestions는 item_id를 가지며 AI 추천은 물품 등록 전이라 item_id가 없다. 기록 시점이 명세에 없다 | (2026-11-12 사용자 결정) 추천 시점(`POST /api/items/ai-category`)에 PENDING으로 기록한다. item_id는 NULL 허용, 요청 회원 `member_id`를 추가(V16). 등록 후 item과 잇지 않는다. 검토(APPROVED·REJECTED)는 REQ-057 |
 | 53 | ✅ | 대여 | 기간 점유는 대여 날짜(시작일~종료일)로만 판정해서, 종료일이 지난 미반납 OVERDUE 물품도 오늘부터 예약을 받는다(#7과 같은 뿌리). 물건이 아직 돌아오지 않았는데 다음 대여자가 결제까지 할 수 있다 | RENTING·OVERDUE의 점유 구간은 [시작일, max(종료일, 오늘)]로 본다. 오늘을 포함하는 예약만 409이고 내일 시작은 받는다. 반납으로 벗어나면 풀린다. 예약·캘린더·기간 검색·연장에 적용하고, 가능 기간 수정 검사는 원래 대여 날짜로 본다(`state-machines.md` §1 점유 구간). 이미 잡힌 다음 예약은 #7 |
+| 54 | ⬜ | 후기 | REQ-034 후기 진입 경로로 빌린 내역(SCR-12)에 "작성 완료"를 보이려 해도, 빌린 내역 응답 `RentalHistoryResponse`에는 `canWriteReview`만 있고 `reviewWritten`이 없다(대여 상세 `RentalDetailResponse`에는 둘 다 있음). false가 "이미 씀"인지 "기한 지남"인지 목록에서 구분할 수 없다 | (임시, `feat/fe-review`) 빌린 내역은 `canWriteReview`일 때 "후기 쓰기"만 보이고, 작성 완료 표시는 대여 상세에만 둔다. 백엔드에 `RentalHistoryResponse.reviewWritten` 추가를 요청한다 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 
