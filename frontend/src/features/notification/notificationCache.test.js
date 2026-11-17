@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { markAllReadInList, markReadInList, prependNotification } from './notificationCache';
+import { markReadInList, prependNotification } from './notificationCache';
 
 function n(notificationId, isRead = false) {
   return { notificationId, isRead, type: 'OVERDUE', targetType: 'RENTAL', targetId: 1 };
@@ -32,13 +32,7 @@ describe('읽음 반영', () => {
     expect(next.pages[0].items.map((item) => item.isRead)).toEqual([false, true]);
   });
 
-  it('전부 읽음', () => {
-    const next = markAllReadInList(data([n(2)], [n(1, true)]));
-    expect(next.pages.flatMap((page) => page.items).every((item) => item.isRead)).toBe(true);
-  });
-
   it('목록이 없으면 undefined', () => {
     expect(markReadInList(undefined, 1)).toBeUndefined();
-    expect(markAllReadInList(undefined)).toBeUndefined();
   });
 });

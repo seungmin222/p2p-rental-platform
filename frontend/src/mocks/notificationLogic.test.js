@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import openapi from '../../../docs/openapi.json';
+
 import {
   countUnreadNotifications,
   decodeCursor,
   markAllRead,
   NOTIFICATION_PAGE,
   pageNotifications,
+  toUnreadCountResponse,
 } from './notificationLogic';
 
 function notification(notificationId, memberId = 1, isRead = false) {
@@ -52,5 +55,17 @@ describe('읽음', () => {
     expect(markAllRead(all, 1)).toBe(1);
     expect(countUnreadNotifications(all, 1)).toBe(0);
     expect(countUnreadNotifications(all, 2)).toBe(1);
+  });
+});
+
+describe('toUnreadCountResponse', () => {
+  it('openapi UnreadCountResponse 필드 이름(count)으로 내 안 읽은 수를 준다', () => {
+    const fields = Object.keys(openapi.components.schemas.UnreadCountResponse.properties);
+    const response = toUnreadCountResponse(
+      [notification(1), notification(2, 1, true), notification(3, 2)],
+      1,
+    );
+    expect(Object.keys(response)).toEqual(fields);
+    expect(response).toEqual({ count: 1 });
   });
 });

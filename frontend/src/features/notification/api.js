@@ -6,7 +6,7 @@ export function fetchNotifications(cursor) {
   return apiClient.get('/notifications', { params: cursor ? { cursor } : undefined });
 }
 
-/** GET /api/notifications/unread-count → UnreadCountResponse { unreadCount } */
+/** GET /api/notifications/unread-count → UnreadCountResponse { count } */
 export function fetchNotificationUnreadCount() {
   return apiClient.get('/notifications/unread-count');
 }

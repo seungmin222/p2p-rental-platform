@@ -6,7 +6,7 @@ import { useNotificationUnreadCount } from '../queries';
 export default function NotificationUnreadBadge({ className = '' }) {
   const isLoggedIn = useAuthStore((state) => state.accessToken !== null);
   const { data } = useNotificationUnreadCount({ enabled: isLoggedIn });
-  const count = isLoggedIn ? (data?.unreadCount ?? 0) : 0;
+  const count = isLoggedIn ? (data?.count ?? 0) : 0;
   if (count <= 0) {
     return null;
   }

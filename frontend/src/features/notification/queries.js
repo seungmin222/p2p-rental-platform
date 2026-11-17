@@ -10,7 +10,7 @@ import {
   markNotificationRead,
 } from './api';
 import { NOTIFICATION_DESTINATION } from './constants';
-import { markAllReadInList, markReadInList, prependNotification } from './notificationCache';
+import { markReadInList, prependNotification } from './notificationCache';
 
 export const notificationKeys = {
   all: ['notifications'],
@@ -60,7 +60,7 @@ export function useMarkNotificationRead() {
       const unread = queryClient.getQueryData(notificationKeys.unreadCount());
       if (unread) {
         queryClient.setQueryData(notificationKeys.unreadCount(), {
-          unreadCount: Math.max(0, unread.unreadCount - 1),
+          count: Math.max(0, unread.count - 1),
         });
       }
     },
@@ -68,18 +68,15 @@ export function useMarkNotificationRead() {
   });
 }
 
-/** 모두 읽음: 성공하면 목록을 전부 읽음, 안 읽은 수 0 */
+/**
+ * 모두 읽음: 성공하면 목록·안 읽은 수를 다시 받는다. 0으로 직접 두면 요청 중에 도착한 알림까지 읽음으로 묻힌다
+ * (서버는 요청 시점의 안 읽은 것만 읽음 처리).
+ */
 export function useMarkAllNotificationsRead() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: markAllNotificationsRead,
-    onSuccess: () => {
-      const list = markAllReadInList(queryClient.getQueryData(notificationKeys.list()));
-      if (list) {
-        queryClient.setQueryData(notificationKeys.list(), list);
-      }
-      queryClient.setQueryData(notificationKeys.unreadCount(), { unreadCount: 0 });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: notificationKeys.all }),
   });
 }
 

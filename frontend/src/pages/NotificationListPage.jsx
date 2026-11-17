@@ -44,7 +44,7 @@ export default function NotificationListPage() {
   useRefetchErrorToast([query]);
 
   const notifications = flattenPages(query.data);
-  const unreadCount = unreadQuery.data?.unreadCount ?? 0;
+  const unreadCount = unreadQuery.data?.count ?? 0;
 
   function handleSelect(notification) {
     if (!notification.isRead) {

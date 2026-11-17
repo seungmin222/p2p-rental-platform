@@ -34,11 +34,3 @@ export function markReadInList(data, notificationId) {
     item.notificationId === notificationId && !item.isRead ? { ...item, isRead: true } : item,
   );
 }
-
-/** 전부 읽음으로. 목록이 없으면 undefined */
-export function markAllReadInList(data) {
-  if (!data?.pages) {
-    return undefined;
-  }
-  return mapItems(data, (item) => (item.isRead ? item : { ...item, isRead: true }));
-}

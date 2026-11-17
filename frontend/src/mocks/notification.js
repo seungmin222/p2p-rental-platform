@@ -4,11 +4,11 @@ import { http } from 'msw';
 
 import { pushToMember } from './chatStomp';
 import {
-  countUnreadNotifications,
   decodeCursor,
   markAllRead,
   pageNotifications,
   toNotificationResponse,
+  toUnreadCountResponse,
 } from './notificationLogic';
 import { createNotificationSeed, NOTIFICATION_CONTENT } from './notificationSeed';
 import { readPathId } from './pageList';
@@ -49,7 +49,7 @@ export const notificationHandlers = [
     if (!me) {
       return failWith(401, 'AUTH_UNAUTHORIZED');
     }
-    return ok({ unreadCount: countUnreadNotifications(notifications, me.memberId) });
+    return ok(toUnreadCountResponse(notifications, me.memberId));
   }),
 
   http.patch('/api/notifications/read-all', ({ request }) => {

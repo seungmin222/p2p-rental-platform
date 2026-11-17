@@ -190,7 +190,6 @@ function requireStatus(rental, ...statuses) {
   }
 }
 
-/** RentalDetailResponse */
 /**
  * 앞 대여 연체(open-issues #7): RESERVED·시작일 ≤ 오늘이고, 같은 물품의 앞 대여(RENTING·OVERDUE)가 종료일이 지났는데
  * 반납되지 않았는지. 백엔드 RentalRepository.existsPreviousOverdue와 같은 조건
@@ -209,6 +208,7 @@ function hasPreviousOverdue(rental, today = todayInSeoul()) {
   );
 }
 
+/** RentalDetailResponse */
 function toDetail(rental) {
   const myRole = roleOf(rental);
   const item = findMockItem(rental.itemId);

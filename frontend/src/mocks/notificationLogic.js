@@ -48,6 +48,11 @@ export function countUnreadNotifications(notifications, memberId) {
   return notifications.filter((n) => n.memberId === memberId && !n.isRead).length;
 }
 
+/** UnreadCountResponse */
+export function toUnreadCountResponse(notifications, memberId) {
+  return { count: countUnreadNotifications(notifications, memberId) };
+}
+
 /** 내 안 읽은 알림을 전부 읽음으로 바꾸고 바꾼 수 */
 export function markAllRead(notifications, memberId) {
   let updatedCount = 0;
