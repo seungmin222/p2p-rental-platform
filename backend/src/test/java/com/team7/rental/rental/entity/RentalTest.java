@@ -686,6 +686,45 @@ class RentalTest {
 			ErrorCode.RENTAL_INVALID_TRANSITION);
 	}
 
+	@Test
+	@DisplayName("앞 대여 연체 중이면 RESERVED 대여자 단독 취소는 시작일 당일·이후에도 되고, 제공자·RESERVED 아님은 기존 규칙이다 (open-issues #7)")
+	void renterCancelAllowedAfterStartWhenPreviousRentalOverdue() {
+		// given
+		LocalDateTime startDay = START.atTime(9, 0);
+		Rental rental = withStatus(RentalStatus.RESERVED);
+
+		// then
+		assertThatThrownBy(() -> rental.cancel(3L, CancelType.OWNER, CancelReason.SCHEDULE_CHANGE, null, 0, true,
+			startDay)).isInstanceOf(BusinessException.class)
+			.extracting(e -> ((BusinessException)e).getErrorCode())
+			.isEqualTo(ErrorCode.RENTAL_CANCEL_NOT_ALLOWED);
+		Rental renting = withStatus(RentalStatus.RENTING);
+		assertThatThrownBy(() -> renting.cancel(2L, CancelType.RENTER, CancelReason.SCHEDULE_CHANGE, null, 0, true,
+			startDay)).isInstanceOf(BusinessException.class)
+			.extracting(e -> ((BusinessException)e).getErrorCode())
+			.isEqualTo(ErrorCode.RENTAL_INVALID_TRANSITION);
+		assertCancelFails(rental, CancelType.RENTER, startDay, ErrorCode.RENTAL_CANCEL_NOT_ALLOWED);
+
+		rental.cancel(2L, CancelType.RENTER, CancelReason.SCHEDULE_CHANGE, null, 0, true,
+			START.plusDays(1).atTime(9, 0));
+		assertThat(rental.getStatus()).isEqualTo(RentalStatus.CANCELED);
+		assertThat(rental.getCancelType()).isEqualTo(CancelType.RENTER);
+	}
+
+	@Test
+	@DisplayName("앞 대여 연체 예외 대상은 RESERVED이고 시작일 ≤ 오늘일 때뿐이다 (open-issues #7)")
+	void previousOverdueExemptionCandidate() {
+		// given
+		Rental rental = withStatus(RentalStatus.RESERVED);
+
+		// then
+		assertThat(rental.isPreviousOverdueExemptionCandidate(START.minusDays(1))).isFalse();
+		assertThat(rental.isPreviousOverdueExemptionCandidate(START)).isTrue();
+		assertThat(rental.isPreviousOverdueExemptionCandidate(START.plusDays(1))).isTrue();
+		assertThat(withStatus(RentalStatus.PENDING_PAYMENT).isPreviousOverdueExemptionCandidate(START)).isFalse();
+		assertThat(withStatus(RentalStatus.RENTING).isPreviousOverdueExemptionCandidate(START)).isFalse();
+	}
+
 	private void assertTransitionFails(ThrowingCallable transition, ErrorCode errorCode) {
 		assertThatThrownBy(transition)
 			.isInstanceOf(BusinessException.class)

@@ -43,6 +43,11 @@ public class RentalStatusHistory extends BaseTimeEntity {
 	public static final String REASON_AMOUNT_MISMATCH = "AMOUNT_MISMATCH";
 	/** 인계 없음 자동 취소 배치 (REQ-017). changedBy = null */
 	public static final String REASON_NO_HANDOVER_BATCH = "NO_HANDOVER_BATCH";
+	/**
+	 * 앞 대여 연체로 수수료 없이 한 대여자 단독 취소 (open-issues #7). changedBy = 대여자. 사용자가 고른 사유는 rentals.cancel_reason에 남는다.
+	 * REQ-062(노쇼 페널티) 구현 시 이 이력의 취소는 대여자 취소로 세지 않는다
+	 */
+	public static final String REASON_PREVIOUS_RENTAL_OVERDUE = "PREVIOUS_RENTAL_OVERDUE";
 	/** 보증금 반환 재시도 성공으로 완료 (REQ-025). changedBy = null */
 	public static final String REASON_REFUND_RETRY_BATCH = "REFUND_RETRY_BATCH";
 	/** 연체 배치 RENTING → OVERDUE (REQ-023). changedBy = null */

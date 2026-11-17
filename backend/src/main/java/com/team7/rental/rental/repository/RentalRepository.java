@@ -54,6 +54,41 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, RentalSea
 	List<Long> findNoHandoverCancelIds(@Param("threshold")
 	LocalDate threshold);
 
+	/**
+	 * 같은 물품에 앞 대여가 연체 중인지(open-issues #7): 자기 자신이 아닌 RENTING·OVERDUE 대여 중 endDate &lt; today가 있으면 true.
+	 * RENTING도 넣는 것은 연체 배치(00:05) 전에 종료일이 지난 건을 같게 보기 위함이다(state-machines.md §1 점유 구간).
+	 */
+	@Query("""
+		select count(r) > 0 from Rental r
+		where r.itemId = :itemId and r.id <> :rentalId
+			and r.status in (com.team7.rental.rental.entity.RentalStatus.RENTING,
+				com.team7.rental.rental.entity.RentalStatus.OVERDUE)
+			and r.endDate < :today
+		""")
+	boolean existsPreviousOverdue(@Param("itemId")
+	Long itemId, @Param("rentalId")
+	Long rentalId, @Param("today")
+	LocalDate today);
+
+	/**
+	 * 앞 대여 연체 알림(open-issues #7) 대상: RESERVED이고 startDate ≤ today(Rental.isPreviousOverdueExemptionCandidate와 같은 조건)이며 같은 물품의 앞 대여가 연체 중인 대여. id 순.
+	 * 결제 대기(PENDING_PAYMENT)는 넣지 않는다(수수료 없이 취소되고, 결제가 승인되면 다음 회차에 대상이 된다).
+	 */
+	@Query("""
+		select r from Rental r
+		where r.status = com.team7.rental.rental.entity.RentalStatus.RESERVED
+			and r.startDate <= :today
+			and exists (
+				select p.id from Rental p
+				where p.itemId = r.itemId and p.id <> r.id
+					and p.status in (com.team7.rental.rental.entity.RentalStatus.RENTING,
+						com.team7.rental.rental.entity.RentalStatus.OVERDUE)
+					and p.endDate < :today)
+		order by r.id
+		""")
+	List<Rental> findPreviousOverdueConflicts(@Param("today")
+	LocalDate today);
+
 	/** 연체 배치(REQ-023) 대상 id: RENTING이고 endDate &lt; today. id 순. 인덱스 (status, end_date) */
 	@Query("""
 		select r.id from Rental r

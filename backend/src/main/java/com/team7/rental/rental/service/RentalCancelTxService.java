@@ -52,6 +52,7 @@ public class RentalCancelTxService {
 
 	/**
 	 * 단독 취소. 취소 종류는 요청자의 역할(RENTER·OWNER)로 정한다.
+	 * 대여자이고 시작일 ≤ 오늘이며 같은 물품의 앞 대여가 연체 중이면 수수료 없이 취소한다(open-issues #7). 시작일 전은 기존 수수료 표대로다.
 	 *
 	 * @return 커밋 뒤 실행할 환불. 결제 대기·결제 없는 대여면 비어 있다
 	 * @throws BusinessException RENTAL_NOT_FOUND, RENTAL_NOT_PARTICIPANT, RENTAL_INVALID_TRANSITION,
@@ -63,10 +64,17 @@ public class RentalCancelTxService {
 		LocalDate today = now.toLocalDate();
 		Rental rental = getParticipantRentalForUpdate(rentalId, memberId);
 		CancelType type = rental.roleOf(memberId) == RentalRole.RENTER ? CancelType.RENTER : CancelType.OWNER;
-		rental.validateCancelable(type, today);
 		boolean wasReserved = rental.getStatus() == RentalStatus.RESERVED;
-		int cancelFee = cancelFeeCalculator.calculate(rental, type, today);
-		cancel(rental, memberId, memberId, type, request.reason(), request.normalizedReasonText(), cancelFee, now);
+		// 앞 대여 연체 예외(open-issues #7): 대여자 + RESERVED·시작일 ≤ 오늘일 때만 조회한다. 앞 대여의 반납과는 락을 나누지 않는다(경합 시 어느 쪽 판정이든 허용 범위)
+		boolean previousRentalOverdue = type == CancelType.RENTER && rental.isPreviousOverdueExemptionCandidate(today)
+			&& rentalRepository.existsPreviousOverdue(rental.getItemId(), rentalId, today);
+		rental.validateCancelable(type, today, previousRentalOverdue);
+		int cancelFee = cancelFeeCalculator.calculate(rental, type, today, previousRentalOverdue);
+		String historyReason = previousRentalOverdue
+			? RentalStatusHistory.REASON_PREVIOUS_RENTAL_OVERDUE
+			: RentalStatusHistory.cancelReasonOf(request.reason(), request.normalizedReasonText());
+		cancel(rental, memberId, memberId, type, request.reason(), request.normalizedReasonText(), cancelFee,
+			previousRentalOverdue, historyReason, now);
 		// 결제 대기 취소는 아직 확정된 예약이 아니라 알리지 않는다
 		if (wasReserved) {
 			rentalNotificationPublisher.toCounterpart(rental, memberId, Type.RESERVATION_CANCELED,
@@ -130,7 +138,8 @@ public class RentalCancelTxService {
 		agreement.accept(now);
 		int cancelFee = cancelFeeCalculator.calculate(rental, CancelType.MUTUAL, now.toLocalDate());
 		cancel(rental, agreement.getRequestedBy(), memberId, CancelType.MUTUAL, agreement.getReason(),
-			agreement.getReasonText(), cancelFee, now);
+			agreement.getReasonText(), cancelFee, false,
+			RentalStatusHistory.cancelReasonOf(agreement.getReason(), agreement.getReasonText()), now);
 		notifyAgreementResult(rental, agreement);
 		return rentalRefundPort.prepareCancelRefund(rentalId, cancelFee);
 	}
@@ -190,13 +199,14 @@ public class RentalCancelTxService {
 		return rental;
 	}
 
-	// 전이 + 같은 트랜잭션의 이력. changedBy는 상태를 바꾼 회원(MUTUAL은 수락자), canceledBy는 취소를 원한 회원(MUTUAL은 요청자)
+	// 전이 + 같은 트랜잭션의 이력. changedBy는 상태를 바꾼 회원(MUTUAL은 수락자), canceledBy는 취소를 원한 회원(MUTUAL은 요청자).
+	// 앞 대여 연체 면제 취소는 이력 reason을 PREVIOUS_RENTAL_OVERDUE로 남기고(REQ-062 구현 시 대여자 취소로 세지 않기 위함) 사용자가 고른 사유는 rental에 둔다
 	private void cancel(Rental rental, Long canceledBy, Long changedBy, CancelType type, CancelReason reason,
-		String reasonText, int cancelFee, LocalDateTime now) {
+		String reasonText, int cancelFee, boolean previousRentalOverdue, String historyReason, LocalDateTime now) {
 		RentalStatus from = rental.getStatus();
-		rental.cancel(canceledBy, type, reason, reasonText, cancelFee, now);
+		rental.cancel(canceledBy, type, reason, reasonText, cancelFee, previousRentalOverdue, now);
 		rentalStatusHistoryRepository.save(RentalStatusHistory.create(rental.getId(), from, rental.getStatus(),
-			changedBy, RentalStatusHistory.cancelReasonOf(reason, reasonText), now));
+			changedBy, historyReason, now));
 		// 수수료는 대여자 환불 결과와 상관없이 제공자 몫이다(REQ-039). 환불 TX1보다 먼저 불러 결제가 아직 APPROVED일 때 본다
 		rentalSettlementPort.createForCancelFee(rental.getId(), rental.getOwnerId(), cancelFee, now);
 	}

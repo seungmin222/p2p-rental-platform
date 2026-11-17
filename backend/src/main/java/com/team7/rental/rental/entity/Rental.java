@@ -241,6 +241,16 @@ public class Rental extends BaseTimeEntity {
 	 * @throws IllegalArgumentException 시스템 취소 종류(PAYMENT_EXPIRED 등). 해당 REQ에서 추가한다
 	 */
 	public void validateCancelable(CancelType type, LocalDate today) {
+		validateCancelable(type, today, false);
+	}
+
+	/**
+	 * {@link #validateCancelable(CancelType, LocalDate)}에 앞 대여 연체 예외를 더한다(open-issues #7). 같은 물품의 앞 대여가 연체 중이면
+	 * RESERVED의 대여자 단독 취소는 오늘 ≥ startDate여도 허용한다(플래그는 {@link #isPreviousOverdueExemptionCandidate} 조건에서만 true). 제공자 단독 취소는 그대로다.
+	 *
+	 * @param previousRentalOverdue 같은 물품에 종료일이 지난 RENTING·OVERDUE 대여가 있는지(서비스가 조회)
+	 */
+	public void validateCancelable(CancelType type, LocalDate today, boolean previousRentalOverdue) {
 		switch (type) {
 			case RENTER, OWNER -> {
 				if (status == RentalStatus.PENDING_PAYMENT) {
@@ -248,6 +258,9 @@ public class Rental extends BaseTimeEntity {
 				}
 				if (status != RentalStatus.RESERVED) {
 					throw new BusinessException(ErrorCode.RENTAL_INVALID_TRANSITION);
+				}
+				if (type == CancelType.RENTER && previousRentalOverdue) {
+					return;
 				}
 				if (!today.isBefore(startDate)) {
 					throw new BusinessException(ErrorCode.RENTAL_CANCEL_NOT_ALLOWED);
@@ -271,7 +284,17 @@ public class Rental extends BaseTimeEntity {
 	 */
 	public void cancel(Long canceledBy, CancelType type, CancelReason reason, String reasonText, int cancelFee,
 		LocalDateTime now) {
-		validateCancelable(type, now.toLocalDate());
+		cancel(canceledBy, type, reason, reasonText, cancelFee, false, now);
+	}
+
+	/**
+	 * 앞 대여 연체 예외(open-issues #7)를 함께 보는 취소. {@link #validateCancelable(CancelType, LocalDate, boolean)} 참고.
+	 *
+	 * @param previousRentalOverdue 같은 물품의 앞 대여가 연체 중인지
+	 */
+	public void cancel(Long canceledBy, CancelType type, CancelReason reason, String reasonText, int cancelFee,
+		boolean previousRentalOverdue, LocalDateTime now) {
+		validateCancelable(type, now.toLocalDate(), previousRentalOverdue);
 		this.status = RentalStatus.CANCELED;
 		this.canceledAt = now;
 		this.canceledBy = canceledBy;
@@ -314,6 +337,15 @@ public class Rental extends BaseTimeEntity {
 	public void cancelForAmountMismatch(LocalDateTime now) {
 		requirePendingPayment();
 		cancelBySystem(CancelType.AMOUNT_MISMATCH, now);
+	}
+
+	/**
+	 * 앞 대여 연체 예외(open-issues #7)를 받을 수 있는 쪽인지: RESERVED이고 startDate ≤ today.
+	 * 배치 알림 대상(RentalRepository.findPreviousOverdueConflicts의 같은 조건), 대여자 면제 취소, 상세 previousRentalOverdue가 모두 이 조건을 쓴다.
+	 * 시작일 전에는 앞 대여가 연체 중이어도 기존 수수료 표·가드를 따른다.
+	 */
+	public boolean isPreviousOverdueExemptionCandidate(LocalDate today) {
+		return status == RentalStatus.RESERVED && !today.isBefore(startDate);
 	}
 
 	/** 인계 없음 자동 취소 대상인지: RESERVED이고 오늘 &gt; 시작일 + autoCancelDays (REQ-017) */

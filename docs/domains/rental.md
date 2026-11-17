@@ -61,6 +61,7 @@ try {
 - 당사자(대여자·제공자)만 → 아니면 403 `RENTAL_NOT_PARTICIPANT`. 없는 대여 404 `RENTAL_NOT_FOUND`
 - 가능: PENDING_PAYMENT, 또는 RESERVED **이고 오늘 < startDate**. 그 외 상태는 409 `RENTAL_INVALID_TRANSITION`
 - 오늘 ≥ startDate인 RESERVED(인계 안 됨): 단독 취소 409 `RENTAL_CANCEL_NOT_ALLOWED` → 양측 동의 취소로 안내
+- **앞 대여 연체 예외** (open-issues #7): 같은 물품에 종료일이 지난 RENTING·OVERDUE 대여(앞 대여)가 있고 시작일 ≤ 오늘이면 RESERVED의 **대여자** 단독 취소를 허용하고 수수료 0, 전액 환불. 시작일 전에는 앞 대여가 연체 중이어도 기존 수수료 표대로다(배치 알림 대상과 같은 범위). 판정은 취소 요청 시점(대여 행 락 안)이며 앞 대여가 반납되면 기존 규칙으로 돌아간다. 사용자가 고른 사유는 rental에, 이력 reason은 `PREVIOUS_RENTAL_OVERDUE`. 제공자 단독 취소는 그대로. 대여 상세 `previousRentalOverdue`(RESERVED이고 시작일 ≤ 오늘이며 앞 대여 연체 중이면 true, 양측 뷰 같음)로 화면이 취소 버튼을 보여 준다
 - reason=OTHER면 reasonText 필수(200자) → 아니면 400 `COMMON_INVALID_INPUT`
 - `canceled_at`, `cancel_type`(RENTER / OWNER), 사유를 rental과 이력에 기록 (REQ-062 페널티 산정용)
 - **환불액**: `policies.md` §2 취소 수수료 표. 대여자 단독 취소가 시작일 2일 전~전날이면 대여료의 30%를 `cancel_fee`로 남기고 나머지와 보증금을 PG 부분 취소. 그 외는 전액 취소
@@ -78,6 +79,7 @@ try {
 ### 인계 없음 자동 취소 [2]
 - 매일 09:00: `RESERVED AND start_date + 3일 < 오늘` → CANCELED(cancelType=`NO_HANDOVER`), 전액 환불, 양측 알림
 - 원본 명세의 "자동 취소하지 않음"을 바꾼 정책이다. 양측 무응답 시 결제금이 영구히 묶이는 것을 막기 위함
+- 앞 대여 연체로 인계를 못 받은 경우도 따로 다루지 않는다(같은 `NO_HANDOVER`, 전액 환불). 대여자는 그 전에 앞 대여 연체 예외로 직접 취소할 수 있다(open-issues #7)
 
 ## REQ-016 대여 상태 관리 [1]
 `state-machines.md` §1 전이 표가 명세 그 자체. 구현 규칙:
@@ -148,6 +150,7 @@ try {
 - 대상: `status = RENTING AND end_date < 오늘` → OVERDUE 일괄 전환(이력: changedBy=null, reason=`OVERDUE_BATCH`)
 - 대여자·제공자에게 `OVERDUE` 알림 (DB 저장 → WebSocket). **같은 건 중복 알림 금지**: event_id = `OVERDUE:{rentalId}` 유니크
 - 실패 시 로그, 다음 주기 재처리 (전환이 멱등이므로 안전)
+- **앞 대여 연체 알림** (open-issues #7): 같은 회차에 전환 뒤, `RESERVED AND start_date ≤ 오늘` 이고 같은 물품에 종료일이 지난 RENTING·OVERDUE 대여가 있는 건의 **대여자에게만** `PREVIOUS_RENTAL_OVERDUE` (event_id `PREVIOUS_RENTAL_OVERDUE:{rentalId}`, 대여당 1회). 결제 대기는 대상 아님(결제 승인 뒤 다음 회차에 잡힌다). 제공자는 앞 대여의 `OVERDUE`로 알므로 보내지 않는다. 앞 대여가 늦게라도 반납되면 다음 예약은 기간·금액 조정 없이 그대로 이어진다
 - **결제 대기 연장(REQ-038)이 있으면 건너뛴다**: 만료 전 `rental_extensions` PENDING_PAYMENT가 있는 대여는 전환하지 않고, 연장이 만료되면 매시 재검사가 전환한다(open-issues #45)
 - **반납 리마인더**: 매일 09:00, `RENTING AND end_date = 내일` → 대여자 `RETURN_REMINDER` (event_id `RETURN_REMINDER:{rentalId}:{endDate}` — 연장으로 end_date가 바뀌면 다시 보낼 수 있게)
 - **연체료**: 연체일수 = (반납 요청일 또는 미반납 신고일) − end_date. 연체료 = min(연체일수 × floor(pricePerDay × 1.5), deposit). 반납 시점에 `rentals.overdue_fee`로 확정해 저장하고, 보증금 처리(REQ-025)에서 먼저 차감. 대여 상세에는 OVERDUE 동안 "현재까지 연체료"를 계산해 보여 준다
@@ -177,6 +180,7 @@ try {
 - 종료일 지난 미반납(OVERDUE, 배치 전 RENTING): 오늘 포함 예약 409·내일 시작 예약 가능, 캘린더 오늘 BOOKED, 반납 후 오늘 예약 가능 (open-issues #53)
 - 상태 전이: 허용 전이 전부 성공 + 대표적인 불허 전이(COMPLETED→RENTING 등) 409
 - 취소 수수료: 시작일 3일 전 / 2일 전 / 전날 / 제공자 취소 경계
+- 앞 대여 연체(open-issues #7): 다음 예약자 알림 1회(재실행·매시 재검사), 시작일 전·결제 대기·앞 대여 반납 건은 대상 아님, 연체 중 대여자 단독 취소는 시작일 당일·이후 수수료 0·전액 환불(시작일 전날은 기존 30%·플래그 false), 반납 뒤에는 기존 규칙, 제공자 단독 취소는 그대로
 - 연체료: 0일, 1일, 보증금 초과 상한, 보증금 0원
 - 연체 배치·반납 리마인더·인계 리마인더 멱등성(두 번 돌려도 알림 1회)
 - 3일 자동 확인 배치, 시작일+3일 자동 취소 배치

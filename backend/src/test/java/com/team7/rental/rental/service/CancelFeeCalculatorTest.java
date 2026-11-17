@@ -47,6 +47,21 @@ class CancelFeeCalculatorTest {
 	}
 
 	@Test
+	@DisplayName("앞 대여 연체 중 대여자 단독 취소는 시작일 당일·이후 0, 시작일 전날은 기존 30%이고, 제공자는 기존 규칙이다 (open-issues #7)")
+	void renterFreeWhenPreviousRentalOverdue() {
+		// given
+		Rental rental = reserved(PRICE_PER_DAY);
+
+		// then
+		assertThat(calculator.calculate(rental, CancelType.RENTER, START.minusDays(1), true)).isEqualTo(9_000);
+		assertThat(calculator.calculate(rental, CancelType.RENTER, START, true)).isZero();
+		assertThat(calculator.calculate(rental, CancelType.RENTER, START.plusDays(2), true)).isZero();
+		assertThat(calculator.calculate(rental, CancelType.RENTER, START.minusDays(1), false)).isEqualTo(9_000);
+		assertThatThrownBy(() -> calculator.calculate(rental, CancelType.OWNER, START, true))
+			.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
 	@DisplayName("대여 예정의 시작일 당일·이후 단독 취소는 계산 대상이 아니다(validateCancelable에서 막힌다)")
 	void soleCancelOnOrAfterStartIsNotCalculated() {
 		// given
