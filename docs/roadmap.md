@@ -82,7 +82,7 @@
 | 026/027 | 실시간 채팅 | B | ✔ | ✅ 방 정보 조회(`GET /api/chat-rooms/{id}`)는 028에서 구현. 대여 상태 SYSTEM 메시지·차단(056) 시 생성 불가는 미구현. 프론트 SCR-10 채팅방·상세 "채팅하기" ✅(`feat/fe-chat`, SYSTEM 메시지는 오면 안내 줄로 표시) |
 | 028/029 | 채팅 목록·읽음 | B | | ✅ 읽음은 STOMP `/pub/chat-rooms/{id}/read`, 상대에게 `/user/queue/chat-reads`. 프론트 SCR-09 채팅 목록·안 읽은 수 배지·'읽음' 표시 ✅(`feat/fe-chat`) |
 | 030 | 거래 장소 지도 | FE | | ✅ |
-| 032 | 거래 활동 알림 | B | | ✅ 실시간 전달(STOMP `/user/queue/notifications`)은 채팅 027에서 연결, 인계 리마인더(`HANDOVER_REMINDER`)는 017 배치로 발송, 후기 알림은 034. 문구 임시(open-issues #50) |
+| 032 | 거래 활동 알림 | B | | ✅ 실시간 전달(STOMP `/user/queue/notifications`)은 채팅 027에서 연결, 인계 리마인더(`HANDOVER_REMINDER`)는 017 배치로 발송, 후기 알림은 034. 문구 임시(open-issues #50). 프론트 SCR-11 알림 목록·안 읽은 수 배지·실시간 갱신 ✅(`feat/fe-notification`) |
 | 033 | 결제·보증금 내역 | A | | ✅ type 의미는 임시 해석(open-issues #44) |
 | 034 | 거래 후기 | B | ✔ | ✅ 칭찬 항목은 공통 목록(open-issues #15). 빌린 내역·대여 상세의 canWriteReview에 미작성 조건 반영, 대여 상세에 reviewWritten. 신뢰 점수 반영은 054 |
 | 035 | 최근 본 상품 | B | | ⬜ |

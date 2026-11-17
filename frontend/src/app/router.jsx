@@ -2,7 +2,6 @@ import { createBrowserRouter } from 'react-router';
 
 import ChatListPage from '../pages/ChatListPage';
 import ChatRoomPage from '../pages/ChatRoomPage';
-import ComingSoonPage from '../pages/ComingSoonPage';
 import HomePage from '../pages/HomePage';
 import ItemDetailPage from '../pages/ItemDetailPage';
 import ItemFormPage from '../pages/ItemFormPage';
@@ -12,6 +11,7 @@ import MyPage from '../pages/MyPage';
 import MyProfilePage from '../pages/MyProfilePage';
 import MyRentalsPage from '../pages/MyRentalsPage';
 import NotFoundPage from '../pages/NotFoundPage';
+import NotificationListPage from '../pages/NotificationListPage';
 import PaymentFailPage from '../pages/PaymentFailPage';
 import PaymentSuccessPage from '../pages/PaymentSuccessPage';
 import RegionPage from '../pages/RegionPage';
@@ -48,7 +48,7 @@ const devRoutes = import.meta.env.DEV
     ]
   : [];
 
-// 구현한 화면만 등록한다(frontend/CLAUDE.md "화면 ↔ 라우트"). 아직 없는 2순위 탭(알림)은 "준비 중"으로 연결.
+// 구현한 화면만 등록한다(frontend/CLAUDE.md "화면 ↔ 라우트").
 export const router = createBrowserRouter([
   // SCR-01
   { path: '/login', element: <LoginPage /> },
@@ -60,7 +60,6 @@ export const router = createBrowserRouter([
       { path: '/search', element: <SearchPage /> }, // SCR-04
       { path: '/regions', element: <RegionPage /> }, // SCR-02 (비회원 임시 동네 선택 가능)
       { path: '/items/:id', element: <ItemDetailPage />, handle: hideTabBar }, // SCR-05
-      { path: '/notifications', element: <ComingSoonPage /> }, // SCR-11 (2순위)
       {
         element: <RequireAuth />,
         children: [
@@ -72,6 +71,7 @@ export const router = createBrowserRouter([
           { path: '/rentals/:id', element: <RentalDetailPage />, handle: hideTabBar }, // SCR-08
           { path: '/chats', element: <ChatListPage /> }, // SCR-09
           { path: '/chats/:roomId', element: <ChatRoomPage />, handle: hideTabBar }, // SCR-10
+          { path: '/notifications', element: <NotificationListPage /> }, // SCR-11
           // SCR-12
           { path: '/me', element: <MyPage /> },
           { path: '/me/rentals', element: <MyRentalsPage /> },

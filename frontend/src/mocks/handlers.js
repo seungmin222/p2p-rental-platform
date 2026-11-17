@@ -6,6 +6,7 @@ import { feedHandlers } from './feed';
 import { itemHandlers } from './item';
 import { itemWriteHandlers } from './itemWrite';
 import { memberHandlers } from './member';
+import { notificationHandlers } from './notification';
 import { regionHandlers } from './region';
 import { paymentHandlers } from './payment';
 import { rentalHandlers } from './rental';
@@ -20,6 +21,7 @@ export const handlers = [
   ...paymentHandlers,
   ...chatHandlers,
   ...chatStompHandlers,
+  ...notificationHandlers,
   ...feedHandlers,
   ...itemWriteHandlers,
   ...itemHandlers,

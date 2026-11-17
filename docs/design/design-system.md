@@ -108,6 +108,7 @@
 | `ButtonLink` | 버튼 모양 링크 | `Button`과 같은 variant·size, `disabled`(aria-disabled) | 상세 "예약하기", 결제 결과 |
 | `buttonClassName` | 버튼 클래스 함수 | variant·size·fullWidth | `Button`·`ButtonLink` 내부 |
 | `Badge` | 상태 배지 | `tone` gray·blue·green·red·amber·ink (`Main.html` 상태 배지 6종) | `RentalHistoryCard`, 대여 상세 헤더, `ItemCard` |
+| `CountBadge` | 빨간 숫자 배지(안 읽은 수) | `count`(0 이하면 그리지 않음, 99 넘으면 "99+", `COUNT_BADGE_MAX`), `text-xs`·`danger` 원 | `ChatRoomListItem`, `ChatUnreadBadge`·`NotificationUnreadBadge`(하단 탭·PC 헤더) |
 | `Chip` | 필터 칩(토글) | `selected`(aria-pressed), 높이 34 | `CategoryChips`(홈·검색) |
 | `TextField` | 라벨·입력·힌트·오류·글자 수 | `label`, `hint`, `error`, `required`, `multiline`, `maxLength` | 로그인·가입, `ItemForm` |
 | `Calendar` | 대여 기간 캘린더(범위 선택) | `days`, 기간 제한·라벨은 props(정책은 features 상수) | 상세(SCR-05), 예약(SCR-07) |
@@ -184,10 +185,11 @@
 | 08 | 대여 상세 (`RentalDetailPage`) | `PageHeader` + 상태 `Badge` | `RentalActionBar`(BottomActionBar) | `RentalStepBar`, 시트(인계·반납·이상), `InspectionRecords` |
 | 09 | 채팅 목록 (`ChatListPage`) | 직접 만든 제목(`MyPage`와 같음), 본문 `max-w-2xl` | 하단 탭 | `ChatRoomListItem`(상대 원형 사진 48 · 닉네임 `font-semibold` · 동네·경과 시간 `text-xs` · 마지막 메시지 한 줄 `text-caption` · `CountBadge` · 물품 `Thumbnail` 48), `li` 사이 `divide-divider`, `Skeleton`, `EmptyState` |
 | 10 | 채팅방 (`ChatRoomPage`) | 직접 만든 헤더(`BackButton` + 상대 닉네임 `text-lg` + 동네 `text-caption`) | 입력창 `ChatComposer`(둥근 `surface` textarea + 48 원형 `primary` 보내기), 하단 탭 숨김 | 화면 높이 칼럼(`h-dvh`, PC는 헤더 64 뺌, `max-w-2xl` + 좌우 `border-line`), `ChatItemBar`(물품 `Thumbnail` 48 · 이름 · 대여 상태 `Badge`(`RENTAL_STATUS`) · 기간 · `ButtonLink sm`), `MessageList`(`bg-surface` 스크롤 영역, 말풍선 상대 흰 면+`border-line` 모서리 `4px 16px 16px 16px`·나 `primary` `16px 4px 16px 16px`, 최대 75%, `text-body`, 시각·읽음 `text-xs`, 날짜 줄 `text-xs` 가운데, SYSTEM은 `primary-soft` 알약 + 체크 아이콘, 위 끝 `InfiniteListFooter`), 연결 끊김 안내 `accent-soft` 띠 |
+| 11 | 알림 (`NotificationListPage`) | 직접 만든 제목 + 오른쪽 "모두 읽음"(`Button secondary sm`, 안 읽은 게 없으면 비활성), 본문 `max-w-2xl` | 하단 탭 | `NotificationListItem`(종 아이콘 원 40 — 연체 계열은 `danger-soft`/`danger`, 그 밖은 `surface`/`ink-muted` · 문구 `text-body`(안 읽음 `font-semibold text-ink`, 읽음 `text-ink-muted`) · 경과 시간 `text-xs` · 안 읽음 `danger` 점 8), `li` 사이 `divide-divider`, `Skeleton`, `EmptyState`, `InfiniteListFooter`. 시안 없음 — 채팅 목록 패턴을 따랐다 |
 | 12 | 나의 대여 (`MyPage`, `MyRentalsPage`, `MyItemsPage`, `MyProfilePage`) | `MyPage`·`MyProfilePage`는 직접 만든 제목, 목록은 `PageHeader` | 하단 탭 | `Tabs`, 목록 카드, `InfiniteListFooter`, `EmptyState` |
 | — | 준비 중·없는 페이지 (`ComingSoonPage`, `NotFoundPage`) | 직접 만든 제목 | 하단 탭 | 기본 팔레트 사용 → 7.1 |
 
-SCR-11·13~16은 아직 없다(알림 탭은 `ComingSoonPage`). 하단 탭·PC 헤더의 "채팅"에는 전체 안 읽은 수 `ChatUnreadBadge`(빨간 `danger` 원, `text-xs`, 100 이상 "99+")가 붙는다.
+SCR-13~16은 아직 없다. 하단 탭·PC 헤더의 "채팅"·"알림"에는 안 읽은 수 `ChatUnreadBadge`·`NotificationUnreadBadge`(`CountBadge`: 빨간 `danger` 원, `text-xs`, 100 이상 "99+")가 붙는다. PC 헤더 Figma 시안의 알림 빨간 점 대신 채팅과 같은 숫자 배지로 했다(사용자 결정).
 
 채팅 화면 시안(`Chat.html`)과 다른 점: 말풍선 14px·배지 11px은 `text-body`·`text-xs`(토큰 규칙), 헤더의 신뢰 점수·응답 시간(034·3순위)과 물품 일 대여료(방 정보 응답에 없음)는 그리지 않고, 약속 카드·사진·입력창의 캘린더·카메라 버튼(051·050, 3순위)도 없다.
 

@@ -90,11 +90,3 @@ export function formatShortPeriod(startDate, endDate) {
   };
   return startDate === endDate ? short(startDate) : `${short(startDate)} ~ ${short(endDate)}`;
 }
-
-/** 배지 숫자: 0이면 null(그리지 않음), max 초과면 "99+" */
-export function formatUnreadCount(count, max) {
-  if (!count || count <= 0) {
-    return null;
-  }
-  return count > max ? `${max}+` : String(count);
-}

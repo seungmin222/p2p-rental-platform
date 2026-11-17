@@ -35,6 +35,7 @@ src/
 │   ├── region/         동네(api·queries·constants·errorMessages·geolocation·guestRegionStore·myRegions·regionStatus, components/)
 │   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay·itemId·itemForm·kakaoPlace, components/)
 │   ├── chat/           채팅(api·queries·constants·errorMessages·chatCache·messageView·pendingMessages·activeRoom·useChatRoomSession, components/)
+│   ├── notification/   알림(api·queries·constants·errorMessages·notificationTarget·notificationCache, components/)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
 │       ├── queries.js      useQuery/useMutation 훅 + queryKey
@@ -43,7 +44,7 @@ src/
 ├── shared/
 │   ├── api/        axios 인스턴스, 인터셉터, 에러 정규화, 토큰 재발급, authStore(AT), multipart(toMultipart)
 │   ├── ws/         STOMP 클라이언트 싱글톤(stompClient: 연결·구독 등록·publish), 연결 상태 스토어, useStompSubscription
-│   ├── ui/         Button, ButtonLink, Badge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Tabs, Thumbnail, InfiniteListFooter, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
+│   ├── ui/         Button, ButtonLink, Badge, CountBadge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Tabs, Thumbnail, InfiniteListFooter, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
 │   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), listParams(페이지·탭 쿼리), queryState(조회 실패 표시), validators(회원 입력, 글자 수는 코드 포인트), formErrors(오류 문구 함수·필드 오류 붙이기)
 │   └── hooks/      useInfiniteScroll, useTabParam, useRefetchErrorToast, useSubmitErrorHandler, useDebouncedValue, useMediaQuery
 ├── mocks/          MSW 핸들러 (Swagger 응답 형태 그대로)
@@ -71,7 +72,7 @@ src/
 | 15 | 약관·정책 | `/terms/:type` | 037 | 2 |
 | 16 | 관리자 | `/admin/*` | 057 | 3 |
 
-- 현재 순위의 라우트만 등록한다. 아직 만들지 않은 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(지금은 알림 탭). 채팅(`/chats`, `/chats/:roomId`)은 `RequireAuth` 안이다.
+- 현재 순위의 라우트만 등록한다. 아직 만들지 않은 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(지금은 없음). 채팅(`/chats`, `/chats/:roomId`)·알림(`/notifications`)은 `RequireAuth` 안이다.
 - 하단 탭(모바일): 홈 · 검색 · 채팅 · 알림 · 나의 대여. PC(≥1280px)는 상단 헤더 메뉴로 같은 구성.
 - 인증 필요 라우트는 `RequireAuth`로 감싸고, 비로그인 시 `/login?redirect=...`. redirect는 `app/loginPath.js` `getSafeRedirect`로 거른다: `/`로 시작하고 `//`·`/\`로 시작하지 않으며 제어 문자가 없을 때만, `/login`·`/signup`이면 무시(오픈 리다이렉트 방지).
 - 홈·검색의 동네는 `features/item/homeRegion.js` `resolveFeedRegion`이 정한다: 로그인(AT 있음)이면 `/members/me`의 `primaryRegion`(인증이 만료·미인증이어도 피드는 보여 준다), 비회원이면 localStorage `rental.guestRegion`(`features/region/guestRegionStore.js`). 둘 다 없으면(로그인했는데 대표 동네가 없는 경우 포함) 피드 대신 안내 + `/regions` 버튼을 보이고 **자동으로 옮기지 않는다**(`/regions`에서 뒤로 가기를 누르면 홈으로 돌아와 다시 옮겨지는 루프가 생긴다). 로그인한 사용자에게는 임시 동네를 쓰지 않는다.
@@ -105,7 +106,7 @@ src/
 - `shared/ws/stompClient.js` 싱글톤(@stomp/stompjs, `/ws`, SockJS 없음). `app/router.jsx`가 `startStompSession`을 한 번 불러 authStore에 묶는다: AT가 생기면 연결, 지워지면(로그아웃·재발급 실패) 끊는다. **재발급으로 AT만 바뀌면 다시 연결하지 않는다**(서버는 만료를 CONNECT 때만 본다). 연결 직전(`beforeConnect`)에 최신 AT를 `connectHeaders`에 넣는다.
 - CONNECT가 ERROR `AUTH_UNAUTHORIZED`로 거부되면 다음 연결 전에 `reissueAccessToken()`(single-flight) → 실패하면 REST와 같은 unauthorized 핸들러(로그인 화면 + `clearLocalSession`).
 - 자동 재연결(1초부터 두 배씩, 최대 30초). 구독은 `subscribe(destination, handler, { onReady, onError })`로 등록해 두면 연결마다 다시 건다. 구독마다 receipt를 달아 `onReady`(서버가 받음)를 알리고, 거부 ERROR의 `receipt-id`로 그 구독만 빼서 거부가 반복되지 않게 한다. 화면은 `useStompSubscription(destination, handler)`(destination이 null이면 구독 안 함). 연결 상태는 `useStompStatus()`(Zustand, UI 표시용).
-- 구독: `/user/queue/chat-rooms`(목록·안 읽은 수, `AppLayout`에서 로그인 동안), 채팅방 화면에서 `/topic/chat-rooms.{id}`·`/user/queue/chat-reads`·`/user/queue/errors`. `/user/queue/notifications`는 알림 화면 브랜치에서 같은 훅으로 건다(아직 구독하지 않음).
+- 구독: `/user/queue/chat-rooms`(목록·안 읽은 수)·`/user/queue/notifications`(알림, 본문 NotificationResponse)는 `AppLayout`에서 로그인 동안, 채팅방 화면에서 `/topic/chat-rooms.{id}`·`/user/queue/chat-reads`·`/user/queue/errors`.
 - 수신 이벤트로 TanStack Query 캐시를 직접 갱신(`setQueryData`)하거나 invalidate. 재연결 후 놓친 메시지는 REST로 보충(채팅방 규칙 참고).
 
 ## 상태 표시
@@ -125,6 +126,7 @@ export const RENTAL_STATUS = {
 대여 상세(SCR-08)는 스텝바 5단계(결제 · 대여 예정 · 대여 중 · 반납 완료 · 거래 완료, 결제가 꺼져 있으면 첫 단계는 "예약". OVERDUE는 "대여 중"을 danger로, CANCELED는 스텝바 대신 취소 정보 카드)와 **현재 상태 × 내 역할(대여자/제공자)**에 따라 보이는 액션 버튼을 정의한 표 하나로 렌더링한다. 버튼 노출 조건을 컴포넌트 곳곳에 흩뿌리지 않는다. (서버가 최종 검증하므로 UI는 보조)
 
 ### 대여 화면 규칙 (SCR-07·08)
+- 앞 대여 연체(open-issues #7, 상세 `previousRentalOverdue`): 대여자이고 RESERVED·시작일 ≤ 오늘이면(`rentalData.js` `isOverdueCancelWaiver`) "취소 요청" 대신 "예약 취소"(단독 취소, 수수료 0원)와 danger 안내를 보인다. 상대가 보낸 동의 요청이 있으면 거절·동의도 남긴다. 제공자 화면은 그대로. 취소 모달은 "수수료 없이 취소돼요"(결제가 켜져 있으면 "취소 수수료는 0원"까지)를 보여 준다. 수수료는 프론트가 새로 계산하지 않는다(시작일 전은 기존 `estimateCancelFee`, 확정은 응답 `cancelFee`).
 - 버튼 표는 `features/rental/rentalActions.js` `getRentalActions(rental, returnInspection, today)`, 스텝바는 `rentalSteps.js` `getRentalSteps(status)` 순수 함수(테스트 있음). today는 호출부가 `todayInSeoul()`로 넘긴다. RETURNED는 inspections를 불러오기 전(`returnInspection === undefined`)에는 버튼을 그리지 않는다.
 - 오류 문구는 `features/rental/errorMessages.js` 한 곳(code → 문구). `RENTAL_INVALID_TRANSITION`·`COMMON_CONCURRENT_UPDATE`·`RENTAL_CANCEL_AGREEMENT_CLOSED`는 "상태가 바뀌었어요. 다시 불러왔어요" + 상세·inspections 무효화(`queries.js`가 뮤테이션 onError에서 처리).
 - 상태 변경 응답이 RentalDetailResponse면 `['rentals', id]`에 `setQueryData`, `['rentals', 'me']`·`['items', 'me']`(내 물품 탭·다가오는 예약 수) 무효화. 기간 점유가 바뀌면(예약·취소·동의 수락·반납 요청(대리 접수 포함)) 물품 캘린더·예약 현황도, 기록이 생기면(인계·반납·상태 확인) inspections도 무효화. 동의 요청(`CancelAgreementResponse`)은 상세를 다시 불러온다.
@@ -168,8 +170,17 @@ export const RENTAL_STATUS = {
 - 상단 바(`ChatItemBar`): 최근 대여 건이 있으면 상태 `Badge`(`RENTAL_STATUS`) + 기간 + "대여 상세", 없으면 대여자에게만 "예약하기"(삭제된 물품이면 없음). 상대 탈퇴는 "탈퇴한 사용자" + 입력 비활성, 삭제된 물품은 "삭제된 물품"(링크 없음).
 - 입력: Enter 보내기(한글 조합 중 제외)·Shift+Enter 줄바꿈, 공백만이면 안 보냄, `CHAT_MESSAGE_MAX`(policies `chat.message.max`, 코드 포인트) 초과면 글자 수를 빨갛게 보이고 막는다.
 - 물품 상세 "채팅하기": 비회원이면 `/login?redirect=<상세>`, 회원이면 `POST /api/chat-rooms`(200·201) → `/chats/{roomId}`. 관심(하트)은 아직 "준비 중" 토스트.
-- 배지: 하단 탭·PC 헤더 "채팅"에 `ChatUnreadBadge`(로그인했을 때만 부름, `UNREAD_BADGE_MAX` 99 넘으면 "99+").
+- 배지: 하단 탭·PC 헤더 "채팅"에 `ChatUnreadBadge`(로그인했을 때만 부름, `shared/ui/CountBadge` — `COUNT_BADGE_MAX` 99 넘으면 "99+").
 - 사진(050)·약속(051)·차단(056)은 3순위라 없다. 시안의 신뢰 점수·일 대여료는 응답에 없어 그리지 않는다.
+
+### 알림 화면 규칙 (SCR-11 `/notifications`)
+- queryKey: 목록 `['notifications', 'list']`(`useInfiniteQuery` 커서, size 없음 — policies `notification.page` 20건 고정), 안 읽은 수 `['notifications', 'unread-count']`. 둘 다 `staleTime: 0`(다른 기기에서 읽은 것은 이벤트가 없다).
+- 실시간: `/user/queue/notifications`(`useNotificationUpdates`, AppLayout)로 받은 알림을 notificationId로 중복을 걸러 첫 페이지 맨 앞에 넣고(목록을 안 불러왔으면 넣지 않음), 안 읽은 수는 다시 받는다(본문에 전체 수가 없다). 대상이 RENTAL이면 `['rentals', targetId]`도 무효화한다(`notificationCache.js` 순수 함수, 테스트).
+- 이동: 종류(type)가 아니라 `targetType`·`targetId`로 정한다(`notificationTarget.js` `getNotificationPath`): RENTAL → `/rentals/:id`, ITEM → `/items/:id`, CHAT_ROOM → `/chats/:id`. REVIEW·모르는 종류·id 없음은 이동하지 않고 읽음만. 지금 백엔드는 구현된 종류를 모두 RENTAL로 보낸다(REVIEW_RECEIVED 포함).
+- 읽음: 목록에 들어오기만 해서는 읽음 처리하지 않는다. 안 읽은 알림을 누르면 `PATCH /read`를 보내고 바로 이동한다 — 캐시를 먼저 고치고(isRead, 안 읽은 수 −1), 실패(404·403 포함)는 알리지 않고 목록·수를 다시 받는다. 위의 "모두 읽음"은 안 읽은 수가 0이면 비활성, 성공하면 목록 전부 읽음·수 0, 실패는 토스트.
+- 문구는 서버 `content` 그대로(open-issues #50 임시 문구). 종류는 아이콘 색에만 쓴다: `OVERDUE`·`PREVIOUS_RENTAL_OVERDUE`·`LOST_REPORTED`는 danger(`constants.js` `DANGER_NOTIFICATION_TYPES`).
+- 배지: 하단 탭·PC 헤더 "알림"에 `NotificationUnreadBadge`(로그인했을 때만 부름, `CountBadge`).
+- 키워드 알림(052)·알림 설정(053)·웹 푸시(061)는 3순위라 없다.
 
 ### 동네 화면 규칙 (SCR-02, `/regions`)
 - 로그인하면 `MyRegionManager`(내 동네 목록 `MyRegionList` + 추가), 아니면 `GuestRegionPicker`(임시 동네 하나). 검색·현재 위치로 찾기는 둘이 `RegionFinder`를 같이 쓴다.
@@ -223,4 +234,5 @@ export const RENTAL_STATUS = {
 - 작업 중에는 바꾼 부분의 테스트만 돌린다(`npx vitest run <파일>`). 전체 테스트는 PR 직전 한 번, 출력은 실패 요약만 본다(`npx vitest run --reporter=dot`). 빌드 로그를 통째로 읽지 않는다.
 - 결제 플래그 `VITE_PAYMENT_ENABLED`는 백엔드 `payment-enabled`와 맞춘다. false면 결제 화면 없이 "예약 완료 → 대여 상세"로 바로 이동한다.
 - **채팅 목**(`mocks/chat.js` REST + `mocks/chatStomp.js` MSW `ws.link('/ws')` 가짜 STOMP 서버, 시드 표는 `mocks/chatSeed.js` 맨 위): user1 기준 방 7개(안 읽음·SYSTEM 안내·대여 전 "예약하기"·내가 제공자·메시지 없음·탈퇴한 상대·120건 페이지 넘김·삭제된 물품). 메모리라 새로고침하면 시드로 돌아간다. 내가 보내면 1.5초 뒤 상대가 읽고 3초 뒤 자동 답장한다(상대가 같은 탭에 접속해 있지 않을 때). 내용을 `/fail`로 보내면 서버 거부(`/user/queue/errors`)를 흉내 낸다. 콘솔 `window.__mockChat.disconnect()`로 연결을 끊어 재연결·보충·보내는 중 실패를, `system(roomId, content)`로 SYSTEM 안내 메시지를 볼 수 있다. 같은 탭 안의 연결끼리만 전달된다(다른 탭·계정은 서로 못 받는다).
+- **알림 목**(`mocks/notification.js`, 시드 표는 `mocks/notificationSeed.js` 맨 위): user1 기준 31건(안 읽음 5 — `PREVIOUS_RENTAL_OVERDUE`(대여 12)·`OVERDUE`·`HANDOVER_REMINDER`·`RETURN_REQUESTED`, 2페이지), 남의 알림 900(읽음 403). 메모리라 새로고침하면 시드로 돌아간다. 콘솔 `window.__mockNotification.push(type, rentalId)`로 알림을 저장하고 가짜 STOMP로 보내 배지·목록 실시간 갱신을 볼 수 있다. 대여 목 12(대여자, 오늘 시작 RESERVED)는 같은 물품 101의 앞 대여 13(남의 OVERDUE)이 연체 중이라 `previousRentalOverdue` true다(`mocks/rental.js` `hasPreviousOverdue`, 단독 취소 수수료 0).
 - **결제 목**: 대여·결제 목은 `sessionStorage`(`mock.rentalDb`)에 저장해 결제창에 다녀와도 남는다. 콘솔 `window.__mockPayment.reset()`으로 시드로 되돌리고, `failNext(code)`로 다음 승인·반환 한 번을 실패시킨다(`mocks/paymentScenario.js`). 승인·환불은 토스를 부르지 않는 목 응답이고 결제창만 실제다.

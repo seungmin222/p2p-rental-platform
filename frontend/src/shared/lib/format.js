@@ -73,3 +73,11 @@ export function formatElapsed(dateTime, now = new Date()) {
   }
   return `${Math.floor(days / 365)}년 전`;
 }
+
+/** 숫자 배지: 0 이하면 null(그리지 않음), max 초과면 "99+" */
+export function formatBadgeCount(count, max) {
+  if (!count || count <= 0) {
+    return null;
+  }
+  return count > max ? `${max}+` : String(count);
+}

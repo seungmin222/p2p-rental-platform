@@ -13,14 +13,14 @@ import {
 } from '../constants';
 import { getErrorMessage } from '../errorMessages';
 import { useCancelRental, useRequestCancelAgreement } from '../queries';
-import { estimateCancelFee, refundOnCancel } from '../rentalData';
+import { estimateCancelFee, isOverdueCancelWaiver, refundOnCancel } from '../rentalData';
 import { FormError } from './FormParts';
 
 // 서버 details[].field → 폼 필드
 const FIELD_MAP = { reason: 'reason', reasonText: 'reasonText' };
 
 const MODES = {
-  // 단독 취소(시작일 전)
+  // 단독 취소(시작일 전, 또는 앞 대여 연체로 시작일 뒤 — open-issues #7)
   cancel: { title: '예약을 취소할까요?', submitLabel: '예약 취소', success: '예약을 취소했어요' },
   // 양측 동의 취소 요청(시작일부터, 인계 전)
   agreement: {
@@ -56,6 +56,7 @@ export default function CancelModal({ mode, rental, today, onClose }) {
 
   const reason = useWatch({ control, name: 'reason' });
   const fee = mode === 'cancel' && PAYMENT_ENABLED ? estimateCancelFee(rental, today) : 0;
+  const isWaiver = mode === 'cancel' && isOverdueCancelWaiver(rental, today);
 
   function onSubmit(values) {
     const body = { reason: values.reason };
@@ -160,6 +161,12 @@ export default function CancelModal({ mode, rental, today, onClose }) {
               },
             })}
           />
+        )}
+        {isWaiver && (
+          <p className="text-caption text-ink-muted">
+            앞 대여의 물품이 아직 반납되지 않아 수수료 없이 취소돼요.
+            {PAYMENT_ENABLED && ' 취소 수수료는 0원이에요.'}
+          </p>
         )}
         {fee > 0 && (
           <p className="text-caption text-accent-strong">

@@ -5,6 +5,7 @@ export { buttonClassName } from './buttonClassName';
 export { default as ButtonLink } from './ButtonLink';
 export { default as Calendar } from './Calendar';
 export { default as Chip } from './Chip';
+export { default as CountBadge } from './CountBadge';
 export { default as ConfirmModal } from './ConfirmModal';
 export { default as EmptyState } from './EmptyState';
 export { default as ErrorState } from './ErrorState';

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatBadgeCount,
   formatDailyPrice,
   formatDeposit,
   formatElapsed,
@@ -92,5 +93,14 @@ describe('경과 시간', () => {
 
   it('오프셋이 있는 시각도 같은 기준으로 계산한다', () => {
     expect(formatElapsed('2026-10-07T06:27:00Z', now)).toBe('3분 전');
+  });
+});
+
+describe('formatBadgeCount', () => {
+  it('0이면 null, 상한을 넘으면 99+', () => {
+    expect(formatBadgeCount(0, 99)).toBeNull();
+    expect(formatBadgeCount(5, 99)).toBe('5');
+    expect(formatBadgeCount(99, 99)).toBe('99');
+    expect(formatBadgeCount(100, 99)).toBe('99+');
   });
 });

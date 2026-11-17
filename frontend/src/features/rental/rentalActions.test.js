@@ -139,6 +139,51 @@ describe('getRentalActions', () => {
     });
   });
 
+  describe('RESERVED, 앞 대여 연체(previousRentalOverdue)', () => {
+    const waiting = (overrides) =>
+      rental({ startDate: TODAY, previousRentalOverdue: true, ...overrides });
+
+    it('대여자: 시작일 뒤에도 예약 취소 + 수수료 없음 안내, 취소 요청은 숨김', () => {
+      const result = getRentalActions(waiting({ startDate: '2026-10-27' }), undefined, TODAY);
+      expect(types(result)).toEqual([A.CANCEL]);
+      expect(disabled(result)[A.CANCEL]).toBeNull();
+      expect(result.notice).toEqual({
+        tone: 'danger',
+        text: '앞 대여의 물품이 아직 반납되지 않았어요. 수수료 없이 예약을 취소할 수 있어요',
+      });
+    });
+
+    it('대여자: 상대가 보낸 동의 요청이 있으면 거절·동의도 보인다', () => {
+      const agreement = { agreementId: 7, expiresAt: '2026-10-31T09:05:00', requestedByMe: false };
+      const result = getRentalActions(
+        waiting({ activeCancelAgreement: agreement }),
+        undefined,
+        TODAY,
+      );
+      expect(types(result)).toEqual([
+        A.REJECT_CANCEL_AGREEMENT,
+        A.ACCEPT_CANCEL_AGREEMENT,
+        A.CANCEL,
+      ]);
+    });
+
+    it('대여자: 내가 보낸 동의 요청이 있어도 예약 취소만', () => {
+      const agreement = { agreementId: 7, expiresAt: '2026-10-31T09:05:00', requestedByMe: true };
+      const result = getRentalActions(
+        waiting({ activeCancelAgreement: agreement }),
+        undefined,
+        TODAY,
+      );
+      expect(types(result)).toEqual([A.CANCEL]);
+    });
+
+    it('제공자는 그대로(취소 요청·인계 확인)', () => {
+      const result = getRentalActions(waiting({ myRole: 'OWNER' }), undefined, TODAY);
+      expect(types(result)).toEqual([A.REQUEST_CANCEL_AGREEMENT, A.HANDOVER]);
+      expect(result.notice).toBeNull();
+    });
+  });
+
   describe.each(START_CASES)('시작일 %s의 RESERVED', (_, startDate) => {
     it.each(ROLES)('%s: 단독 취소와 동의 요청 중 하나만 보인다', (myRole) => {
       const result = getRentalActions(rental({ myRole, startDate }), undefined, TODAY);

@@ -2,6 +2,7 @@ import { setupWorker } from 'msw/browser';
 
 import { mockChatControls } from './chatStomp';
 import { handlers } from './handlers';
+import { mockNotificationControls } from './notification';
 import { failNext } from './paymentScenario';
 import { clearSavedDb } from './rentalStore';
 import { expireMockAccessToken } from './session';
@@ -14,6 +15,9 @@ window.__mockAuth = { expireAccessToken: expireMockAccessToken };
 
 // disconnect(): STOMP 연결을 모두 끊는다(재연결 확인). system(roomId, content): 그 방에 SYSTEM 안내 메시지(chatStomp.js)
 window.__mockChat = mockChatControls;
+
+// push(type, rentalId): 알림 하나를 저장하고 STOMP /user/queue/notifications로 보낸다(notification.js)
+window.__mockNotification = mockNotificationControls;
 
 // failNext(code): 다음 승인·반환 한 번을 실패시킨다(paymentScenario.js). reset(): 대여·결제 목을 시드로 되돌린다(로그인은 유지)
 window.__mockPayment = {

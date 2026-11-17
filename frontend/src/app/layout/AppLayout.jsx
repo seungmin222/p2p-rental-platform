@@ -2,6 +2,8 @@ import { NavLink, Outlet, useMatches } from 'react-router';
 
 import ChatUnreadBadge from '../../features/chat/components/UnreadBadge';
 import { useChatRoomUpdates } from '../../features/chat/queries';
+import NotificationUnreadBadge from '../../features/notification/components/NotificationUnreadBadge';
+import { useNotificationUpdates } from '../../features/notification/queries';
 import { useAuthStore } from '../../shared/api';
 import DesktopHeader from './DesktopHeader';
 import NavIcon from './NavIcon';
@@ -21,9 +23,10 @@ function tabLinkClassName({ isActive }) {
 export default function AppLayout() {
   const matches = useMatches();
   const hideTabBar = matches.some((match) => match.handle?.hideTabBar);
-  // 상대가 보낸 메시지로 채팅 목록·안 읽은 수를 고치는 구독(로그인 동안 어느 화면에서든)
+  // 상대가 보낸 메시지로 채팅 목록·안 읽은 수를, 새 알림으로 알림 목록·안 읽은 수를 고치는 구독(로그인 동안 어느 화면에서든)
   const isLoggedIn = useAuthStore((state) => state.accessToken !== null);
   useChatRoomUpdates({ enabled: isLoggedIn });
+  useNotificationUpdates({ enabled: isLoggedIn });
 
   return (
     <div className="flex min-h-dvh flex-col bg-white">
@@ -51,6 +54,9 @@ export default function AppLayout() {
                         <NavIcon name={item.icon} active={isActive} />
                         {item.badge === 'chat' && (
                           <ChatUnreadBadge className="absolute -top-1.5 left-3.5" />
+                        )}
+                        {item.badge === 'notification' && (
+                          <NotificationUnreadBadge className="absolute -top-1.5 left-3.5" />
                         )}
                       </span>
                       {item.label}
