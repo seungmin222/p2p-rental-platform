@@ -4,7 +4,6 @@ import {
   buildMessageRows,
   formatMessageTime,
   formatShortPeriod,
-  formatUnreadCount,
   getMyMemberId,
 } from './messageView';
 
@@ -83,16 +82,9 @@ describe('buildMessageRows', () => {
   });
 });
 
-describe('formatShortPeriod · formatUnreadCount', () => {
+describe('formatShortPeriod', () => {
   it('기간을 짧게', () => {
     expect(formatShortPeriod('2026-10-09', '2026-10-11')).toBe('10/9 ~ 10/11');
     expect(formatShortPeriod('2026-10-09', '2026-10-09')).toBe('10/9');
-  });
-
-  it('0이면 null, 상한을 넘으면 99+', () => {
-    expect(formatUnreadCount(0, 99)).toBeNull();
-    expect(formatUnreadCount(5, 99)).toBe('5');
-    expect(formatUnreadCount(99, 99)).toBe('99');
-    expect(formatUnreadCount(100, 99)).toBe('99+');
   });
 });

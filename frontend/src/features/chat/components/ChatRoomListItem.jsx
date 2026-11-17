@@ -1,10 +1,9 @@
 import { Link } from 'react-router';
 
 import { formatElapsed } from '../../../shared/lib/format';
-import { Thumbnail } from '../../../shared/ui';
+import { CountBadge, Thumbnail } from '../../../shared/ui';
 import { getCounterpartName } from '../messageView';
 import ChatAvatar from './ChatAvatar';
-import { CountBadge } from './UnreadBadge';
 
 /**
  * SCR-09 목록 한 줄: 상대 사진 · 닉네임 · 동네 · 경과 시간 / 마지막 메시지(한 줄) · 안 읽은 수 · 물품 썸네일.
