@@ -56,6 +56,7 @@
 | `chore/fe-design-refactor` | `docs/design/design-system.md` "정리 대상" 리팩터링 (`docs/fe-design-system` 머지 후 착수, "사용자 확인" 항목은 확인 후) | FE |
 | `feat/rental-overdue-conflict` | open-issues #7: 앞 대여 연체로 다음 예약 이행 불가 — 다음 예약자 `PREVIOUS_RENTAL_OVERDUE` 알림, 대여자 단독 취소 수수료 면제(015·023) | A |
 | `feat/fe-chat` | SCR-09 채팅 목록, SCR-10 채팅방(026–029): STOMP 공통 모듈(`shared/ws`), 하단 탭·PC 헤더 안 읽은 수 배지, 상세 "채팅하기" 연결 (사진 050·약속 051·차단 056·알림 화면 제외) | FE |
+| `feat/fe-notification` | SCR-11 알림 목록·읽음·모두 읽음(032, 031 확인 경로), 하단 탭·PC 헤더 알림 안 읽은 수 배지, `/user/queue/notifications` 실시간 갱신, SCR-08 앞 대여 연체 시 수수료 없는 예약 취소(open-issues #7 프론트) (052·053·061 제외) | FE |
 
 `feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
 

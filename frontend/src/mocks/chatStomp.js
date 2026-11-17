@@ -69,6 +69,11 @@ function deliverToMember(memberId, destination, payload) {
   }
 }
 
+/** 다른 목(알림)이 회원 개인 큐로 보낼 때 쓴다 */
+export function pushToMember(memberId, destination, payload) {
+  deliverToMember(memberId, destination, payload);
+}
+
 function broadcast(destination, payload) {
   for (const connection of connections) {
     deliver(connection, destination, payload);
