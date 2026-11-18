@@ -42,7 +42,7 @@ public class RentalHistoryService {
 
 	/**
 	 * 빌린 내역(REQ-019). 본인이 대여자인 건만. 물품·제공자 닉네임은 페이지 단위로 한 번씩 일괄 조회해 쿼리 수가 항목 수와 상관없다
-	 * (대여·물품·대표 이미지·닉네임, 필요하면 count). 빈 페이지면 일괄 조회 메서드가 쿼리를 내지 않는다.
+	 * (대여·물품·대표 이미지·닉네임, COMPLETED 건이 있으면 후기 작성 여부, 필요하면 count). 빈 페이지면 일괄 조회 메서드가 쿼리를 내지 않는다.
 	 */
 	public PageResponse<RentalHistoryResponse> getRenterHistory(Long memberId, RentalHistoryTab tab, int page) {
 		LocalDateTime now = LocalDateTime.now(clock);

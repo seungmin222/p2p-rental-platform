@@ -200,6 +200,7 @@ class RentalHistoryIntegrationTest extends IntegrationTestSupport {
 		// then: 대여 + 물품 + 대표 이미지 + 닉네임 + 후기 작성 여부
 		assertThat(canWriteReviewOf(done, written)).isFalse();
 		assertThat(canWriteReviewOf(done, byOwnerOnly)).isTrue();
+		assertThat(reviewWrittenOf(done, byOwnerOnly)).isFalse();
 		assertThat(countQueries(request("DONE"))).isEqualTo(5);
 	}
 
