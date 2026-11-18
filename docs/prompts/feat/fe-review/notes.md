@@ -1,5 +1,12 @@
 # feat/fe-review 결정 기록
 
+## 요약
+
+- 화면: SCR-14 `/rentals/:id/review`(`pages/ReviewWritePage.jsx`, `features/review/`), 대여 상세·빌린 내역(완료 탭)에서 진입. 연동 API: `POST /api/rentals/{rentalId}/reviews`, `GET /api/members/{memberId}/reviews`(목·`ReceivedReviewList`까지만).
+- 목: `mocks/review.js`·`reviewLogic.js`, 대여 시드 14·15·33 추가(후기는 대여 목 db에 둬 `canWriteReview`·`reviewWritten`이 바뀜).
+- 남은 일: `ReceivedReviewList`는 SCR-13 프로필(REQ-021 백엔드 후)에 붙이고 비회원 공개(`isPublicApi`)도 그때 정한다. 빌린 내역 "작성 완료" 표시는 백엔드 `reviewWritten` 추가 대기(open-issues #54).
+- 백엔드 확인: 탈퇴한 상대의 대여에서 상세 `counterpart.nickname`이 어떻게 오는지(null이면 후기 제목이 "null님"). 아래 "남은 일" 참고.
+
 SCR-14 후기 작성 화면(REQ-034 프론트)과 진입 경로. 백엔드는 `feat/review`(머지됨).
 
 ## 결정

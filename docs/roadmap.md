@@ -84,7 +84,7 @@
 | 030 | 거래 장소 지도 | FE | | ✅ |
 | 032 | 거래 활동 알림 | B | | ✅ 실시간 전달(STOMP `/user/queue/notifications`)은 채팅 027에서 연결, 인계 리마인더(`HANDOVER_REMINDER`)는 017 배치로 발송, 후기 알림은 034. 문구 임시(open-issues #50). 프론트 SCR-11 알림 목록·안 읽은 수 배지·실시간 갱신 ✅(`feat/fe-notification`) |
 | 033 | 결제·보증금 내역 | A | | ✅ type 의미는 임시 해석(open-issues #44) |
-| 034 | 거래 후기 | B | ✔ | ✅ 칭찬 항목은 공통 목록(open-issues #15). 빌린 내역·대여 상세의 canWriteReview에 미작성 조건 반영, 대여 상세에 reviewWritten. 신뢰 점수 반영은 054 |
+| 034 | 거래 후기 | B | ✔ | ✅ 칭찬 항목은 공통 목록(open-issues #15). 빌린 내역·대여 상세의 canWriteReview에 미작성 조건 반영, 대여 상세에 reviewWritten. 신뢰 점수 반영은 054. 프론트 SCR-14 후기 작성·대여 상세/빌린 내역 진입 ✅(`feat/fe-review`), 받은 후기 목록 컴포넌트는 SCR-13 프로필(021)에서 붙임 |
 | 035 | 최근 본 상품 | B | | ⬜ |
 | 036 | 비밀번호 재설정 | B | | ⬜ |
 | 037 | 약관 동의 | B | | ⬜ |
