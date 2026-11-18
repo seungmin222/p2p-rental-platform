@@ -5,13 +5,12 @@ import { getErrorMessage as getRentalErrorMessage } from '../features/rental/err
 import { useRental } from '../features/rental/queries';
 import ReviewForm from '../features/review/components/ReviewForm';
 import { REVIEW_WRITE_DEADLINE_DAYS } from '../features/review/constants';
-import { getReviewBlockReason } from '../features/review/reviewData';
+import { getReviewBlockReason, isRentalUnavailable } from '../features/review/reviewData';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { isInitialLoadError } from '../shared/lib/queryState';
 import { ButtonLink, EmptyState, ErrorState, Skeleton } from '../shared/ui';
 
 const TITLE = '후기 쓰기';
-const UNAVAILABLE_CODES = ['RENTAL_NOT_FOUND', 'RENTAL_NOT_PARTICIPANT'];
 
 // 쓸 수 없을 때의 안내(getReviewBlockReason)
 const BLOCKED = {
@@ -48,10 +47,13 @@ export default function ReviewWritePage() {
   const isValidId = Number.isInteger(rentalId) && rentalId > 0;
   const rentalQuery = useRental(isValidId ? rentalId : null);
   const rental = rentalQuery.data;
-  useRefetchErrorToast([rentalQuery]);
+  // 제출이 없는 대여·당사자 아님으로 거절되면 상세를 다시 받는 것도 같은 코드로 실패한다.
+  // 데이터가 남아 있어도 폼 대신 "볼 수 없어요"로 바꾸고, 토스트는 폼(제출 거절) 한 번만 띄운다
+  const isUnavailable = isRentalUnavailable(rentalQuery);
+  useRefetchErrorToast(isUnavailable ? [] : [rentalQuery]);
   const isLoadFailed = isInitialLoadError(rentalQuery);
 
-  if (!isValidId || (isLoadFailed && UNAVAILABLE_CODES.includes(rentalQuery.error.code))) {
+  if (!isValidId || isUnavailable) {
     return (
       <>
         <PageHeader title={TITLE} />

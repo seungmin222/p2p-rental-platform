@@ -6,13 +6,14 @@ import { COMPLIMENT, SATISFACTION } from '../constants';
 const WRITER_ROLE_LABEL = { RENTER: '대여자', OWNER: '제공자' };
 const SATISFACTION_TONE = { BAD: 'gray', GOOD: 'green', BEST: 'green' };
 
-/** 받은 후기 한 줄(ReceivedReviewResponse). 탈퇴한 작성자는 닉네임·사진이 null → "탈퇴한 사용자" */
+/** 받은 후기 한 줄(ReceivedReviewResponse). 탈퇴한 작성자(writer.isWithdrawn)는 "탈퇴한 사용자" */
 export default function ReceivedReviewItem({ review }) {
   const { writer } = review;
-  const nickname = writer.nickname ?? '탈퇴한 사용자';
+  const isWithdrawn = Boolean(writer.isWithdrawn);
+  const nickname = isWithdrawn ? '탈퇴한 사용자' : writer.nickname;
   return (
     <article className="flex gap-3 py-3.5">
-      {writer.profileImageUrl ? (
+      {!isWithdrawn && writer.profileImageUrl ? (
         <img
           src={writer.profileImageUrl}
           alt=""
@@ -24,9 +25,7 @@ export default function ReceivedReviewItem({ review }) {
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-2">
-          <span
-            className={`truncate font-semibold ${writer.nickname == null ? 'text-ink-muted' : ''}`}
-          >
+          <span className={`truncate font-semibold ${isWithdrawn ? 'text-ink-muted' : ''}`}>
             {nickname}
           </span>
           <span className="shrink-0 text-xs text-ink-muted">

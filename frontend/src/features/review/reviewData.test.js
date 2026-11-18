@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { COMPLIMENT, REVIEW_CONTENT_MAX } from './constants';
-import { getReviewBlockReason, toReviewRequest, validateReviewContent } from './reviewData';
+import {
+  getReviewBlockReason,
+  isRentalUnavailable,
+  toReviewRequest,
+  validateReviewContent,
+} from './reviewData';
 
 const ORDER = Object.keys(COMPLIMENT);
 
@@ -44,6 +49,24 @@ describe('toReviewRequest', () => {
     ).toEqual({ satisfaction: 'BEST', compliments: ['ON_TIME', 'CLEAN_USE'] });
     expect(
       toReviewRequest({ satisfaction: 'BAD', compliments: [], content: ' 별로 ' }, ORDER),
-    ).toEqual({ satisfaction: 'BAD', compliments: [], content: '별로' });
+    ).toEqual({ satisfaction: 'BAD', compliments: [], content: ' 별로 ' });
+  });
+});
+
+describe('isRentalUnavailable', () => {
+  it('없는 대여·당사자 아님 실패면 데이터가 있어도 true', () => {
+    for (const code of ['RENTAL_NOT_FOUND', 'RENTAL_NOT_PARTICIPANT']) {
+      expect(isRentalUnavailable({ isError: true, error: { code }, data: undefined })).toBe(true);
+      expect(isRentalUnavailable({ isError: true, error: { code }, data: { rentalId: 1 } })).toBe(
+        true,
+      );
+    }
+  });
+
+  it('다른 실패나 성공이면 false', () => {
+    expect(
+      isRentalUnavailable({ isError: true, error: { code: 'CLIENT_NETWORK' }, data: undefined }),
+    ).toBe(false);
+    expect(isRentalUnavailable({ isError: false, error: null, data: { rentalId: 1 } })).toBe(false);
   });
 });
