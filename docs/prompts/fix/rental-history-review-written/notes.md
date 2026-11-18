@@ -1,5 +1,12 @@
 # fix/rental-history-review-written 결정 기록
 
+## 요약
+
+- API: `GET /api/members/me/rentals?role=renter`(빌린 내역) 항목에 `reviewWritten` 추가. 경로 변경 없음, `canWriteReview = !reviewWritten && 작성 기간 안`(대여 상세와 같은 식).
+- 변경 파일: `rental/dto/RentalHistoryResponse.java`, `rental/service/RentalHistoryService.java`, `RentalHistoryIntegrationTest.java`. 새 파일 없음.
+- 후기 작성 여부는 COMPLETED 건 전체를 페이지당 쿼리 1개로 조회(COMPLETED 없으면 쿼리 없음).
+- 남은 일: 탈퇴한 상대 표시(`isWithdrawn`·마스킹)는 open-issues #55, REQ-043 때 정한다. 프론트는 빌린 내역에서 `reviewWritten`으로 "후기 작성 완료" 표시를 붙일 수 있다.
+
 빌린 내역 응답에 `reviewWritten` 추가(open-issues #54), 탈퇴한 상대의 `counterpart.nickname` 확인. REQ-019, REQ-034 백엔드.
 
 ## 결정
