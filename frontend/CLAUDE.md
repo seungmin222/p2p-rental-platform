@@ -36,6 +36,7 @@ src/
 │   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay·itemId·itemForm·kakaoPlace, components/)
 │   ├── chat/           채팅(api·queries·constants·errorMessages·chatCache·messageView·pendingMessages·activeRoom·useChatRoomSession, components/)
 │   ├── notification/   알림(api·queries·constants·errorMessages·notificationTarget·notificationCache, components/)
+│   ├── review/         후기(api·queries·constants·errorMessages·reviewData, components/ReviewForm·ReceivedReviewList·ReceivedReviewItem)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
 │       ├── queries.js      useQuery/useMutation 훅 + queryKey
@@ -182,6 +183,14 @@ export const RENTAL_STATUS = {
 - 배지: 하단 탭·PC 헤더 "알림"에 `NotificationUnreadBadge`(로그인했을 때만 부름, `CountBadge`).
 - 키워드 알림(052)·알림 설정(053)·웹 푸시(061)는 3순위라 없다.
 
+### 후기 화면 규칙 (SCR-14 `/rentals/:id/review`)
+- RequireAuth 안, 하단 탭 숨김(`hideTabBar`). 대여 상세(`useRental`)를 불러와 쓸 수 있는지 정한다: `canWriteReview`면 폼, 아니면 `reviewData.js` `getReviewBlockReason`으로 안내(이미 씀 `reviewWritten` / 완료인데 못 씀 = 기한 지남 / 완료 전) + "대여 상세로"(replace). 자동으로 옮기지 않는다(뒤로 가기 루프). 기한은 프론트가 계산하지 않고 서버 값만 본다. 없는 대여·남의 대여는 대여 상세와 같은 ErrorState.
+- 대여자·제공자 같은 화면. 제목 "{counterpart.nickname}님과의 거래는 어땠나요?", 부제 "물품 · 빌려준 분에게(내가 대여자)/빌린 분에게(내가 제공자)". 만족도 칩 하나(필수, 라벨은 openapi 설명), 칭찬 칩 여럿(trust.md 문구, 역할 공통 — open-issues #15), 내용 선택(`REVIEW_CONTENT_MAX` 300, 코드 포인트로 세서 힌트에 "n/300", 브라우저 maxLength는 쓰지 않는다). 보낼 때 칭찬은 목록 순서, 공백만인 내용은 빼고 앞뒤 공백을 자른다(`toReviewRequest`).
+- 제출: 성공 → 토스트 "후기를 보냈어요" + 대여 상세로 replace, `['rentals', id]`·`['rentals', 'me']`·받은 후기 `['members', targetId, 'reviews']` 무효화. 쓸 수 없는 거절(`RENTAL_NOT_FOUND`·`RENTAL_NOT_PARTICIPANT`·`RENTAL_INVALID_TRANSITION`·`REVIEW_ALREADY_WRITTEN`·`REVIEW_DEADLINE_PASSED`, `errorMessages.js` `isReviewBlockedError`)은 danger 토스트 + 상세·빌린 내역 무효화 → 다시 받은 상세로 화면이 안내로 바뀐다(쓰던 내용은 버림). 그 밖(`COMMON_INVALID_INPUT` 등)은 폼 안 오류, 입력 유지.
+- 진입: SCR-08 버튼 표(`getRentalActions`) COMPLETED에 `canWriteReview`면 "후기 쓰기"(primary), `reviewWritten`이면 안내 "후기를 보냈어요". SCR-12 빌린 내역 카드는 `canWriteReview`면 카드 아래 "후기 쓰기"(outline sm). 빌린 내역 응답에 `reviewWritten`이 없어 작성 완료 표시는 상세에만 있다(open-issues #54).
+- 알림 `REVIEW_RECEIVED`는 대상이 RENTAL이라 기존 이동 규칙대로 대여 상세로 간다.
+- 받은 후기 목록(`GET /api/members/{id}/reviews`, page/hasNext, size 없음 — `review.page` 고정)은 `ReceivedReviewList`(`useReceivedReviews`)까지만 있고 화면 연결은 SCR-13(021) 브랜치에서 한다. 지금은 `/dev/ui` 미리보기에만 붙였다. 신뢰 점수(054)는 없다.
+
 ### 동네 화면 규칙 (SCR-02, `/regions`)
 - 로그인하면 `MyRegionManager`(내 동네 목록 `MyRegionList` + 추가), 아니면 `GuestRegionPicker`(임시 동네 하나). 검색·현재 위치로 찾기는 둘이 `RegionFinder`를 같이 쓴다.
 - **사용자의 현재 위치 좌표는 TanStack Query 캐시·state·Zustand·로그에 두지 않는다.** (물품 거래 장소 좌표는 상세 API로 공개되는 값이라 이 규칙 밖이다. 다만 등록·수정 뮤테이션과 수정 조회는 `gcTime: 0`.) 위치 뮤테이션 variables에는 좌표를 돌려주는 함수(`locate`)만 넣고 mutationFn 안에서 부른다(`features/region/queries.js`, `queries.test.js`가 MutationCache·QueryCache를 훑어 확인). 현재 위치로 찾은 좌표는 `RegionFinder`의 좌표 칸(`coordsSlot.js` `createCoordsSlot`, 찾기 호출마다 토큰 — 늦게 온 응답은 좌표·결과 표시 모두 버림)에만 두고, 새 검색 입력·검색 결과 선택·찾은 결과로 추가를 시도한 직후·언마운트 때 비운다. 추가 직후 인증은 그 좌표로 하고, 좌표가 없으면 인증을 부르지 않는다.
@@ -235,4 +244,5 @@ export const RENTAL_STATUS = {
 - 결제 플래그 `VITE_PAYMENT_ENABLED`는 백엔드 `payment-enabled`와 맞춘다. false면 결제 화면 없이 "예약 완료 → 대여 상세"로 바로 이동한다.
 - **채팅 목**(`mocks/chat.js` REST + `mocks/chatStomp.js` MSW `ws.link('/ws')` 가짜 STOMP 서버, 시드 표는 `mocks/chatSeed.js` 맨 위): user1 기준 방 7개(안 읽음·SYSTEM 안내·대여 전 "예약하기"·내가 제공자·메시지 없음·탈퇴한 상대·120건 페이지 넘김·삭제된 물품). 메모리라 새로고침하면 시드로 돌아간다. 내가 보내면 1.5초 뒤 상대가 읽고 3초 뒤 자동 답장한다(상대가 같은 탭에 접속해 있지 않을 때). 내용을 `/fail`로 보내면 서버 거부(`/user/queue/errors`)를 흉내 낸다. 콘솔 `window.__mockChat.disconnect()`로 연결을 끊어 재연결·보충·보내는 중 실패를, `system(roomId, content)`로 SYSTEM 안내 메시지를 볼 수 있다. 같은 탭 안의 연결끼리만 전달된다(다른 탭·계정은 서로 못 받는다).
 - **알림 목**(`mocks/notification.js`, 시드 표는 `mocks/notificationSeed.js` 맨 위): user1 기준 31건(안 읽음 5 — `PREVIOUS_RENTAL_OVERDUE`(대여 12)·`OVERDUE`·`HANDOVER_REMINDER`·`RETURN_REQUESTED`, 2페이지), 남의 알림 900(읽음 403). 메모리라 새로고침하면 시드로 돌아간다. 콘솔 `window.__mockNotification.push(type, rentalId)`로 알림을 저장하고 가짜 STOMP로 보내 배지·목록 실시간 갱신을 볼 수 있다. 대여 목 12(대여자, 오늘 시작 RESERVED)는 같은 물품 101의 앞 대여 13(남의 OVERDUE)이 연체 중이라 `previousRentalOverdue` true다(`mocks/rental.js` `hasPreviousOverdue`, 단독 취소 수수료 0).
+- **후기 목**(`mocks/review.js`, 계산은 `mocks/reviewLogic.js` 순수 함수, 저장은 대여 목과 같은 db의 `reviews`): 검사 순서는 백엔드와 같다(입력 400 → 404 → 403 → 상태 409 → 기한 400 → 1회 409). 대여 목 14(어제 완료, 쓸 수 있음)·15(내가 씀)·10(기한 지남)·33(제공자로 쓸 수 있음). user1이 받은 후기 23건(2페이지, 탈퇴한 작성자 98 포함). 상대에게 가는 `REVIEW_RECEIVED` 알림은 흉내 내지 않는다. 대여 목과 함께 `window.__mockPayment.reset()`으로 시드로 돌아간다.
 - **결제 목**: 대여·결제 목은 `sessionStorage`(`mock.rentalDb`)에 저장해 결제창에 다녀와도 남는다. 콘솔 `window.__mockPayment.reset()`으로 시드로 되돌리고, `failNext(code)`로 다음 승인·반환 한 번을 실패시킨다(`mocks/paymentScenario.js`). 승인·환불은 토스를 부르지 않는 목 응답이고 결제창만 실제다.

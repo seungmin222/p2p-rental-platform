@@ -2,11 +2,35 @@ import { Link } from 'react-router';
 
 import { formatDateRange } from '../../../shared/lib/date';
 import { formatPrice } from '../../../shared/lib/format';
-import { Badge, Thumbnail } from '../../../shared/ui';
+import { Badge, ButtonLink, Thumbnail } from '../../../shared/ui';
 import { PAYMENT_ENABLED, RENTAL_STATUS } from '../constants';
 
-/** 빌린 내역 한 줄(RentalHistoryResponse). 전체가 대여 상세 링크 */
+/**
+ * 빌린 내역 한 줄(RentalHistoryResponse). 카드 전체가 대여 상세 링크이고, 후기를 쓸 수 있으면(canWriteReview)
+ * 카드 아래에 "후기 쓰기"를 둔다(링크 안에 링크를 넣지 않으려고 따로). 응답에 reviewWritten이 없어
+ * 작성 완료 표시는 대여 상세에만 있다(open-issues #54).
+ */
 export default function RentalHistoryCard({ rental }) {
+  return (
+    <>
+      <RentalHistoryLink rental={rental} />
+      {rental.canWriteReview && (
+        <div className="pb-3.5">
+          <ButtonLink
+            to={`/rentals/${rental.rentalId}/review`}
+            variant="outline"
+            size="sm"
+            fullWidth
+          >
+            후기 쓰기
+          </ButtonLink>
+        </div>
+      )}
+    </>
+  );
+}
+
+function RentalHistoryLink({ rental }) {
   const status = RENTAL_STATUS[rental.status];
   const itemName = rental.item.isDeleted ? '삭제된 물품' : rental.item.name;
   return (

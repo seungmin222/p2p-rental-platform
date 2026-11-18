@@ -258,9 +258,40 @@ describe('getRentalActions', () => {
     });
   });
 
-  describe.each(['COMPLETED', 'CANCELED'])('%s', (status) => {
+  describe('COMPLETED (후기 REQ-034)', () => {
+    const completed = (myRole, review) =>
+      rental({
+        status: 'COMPLETED',
+        myRole,
+        canWriteReview: false,
+        reviewWritten: false,
+        ...review,
+      });
+
+    it.each(ROLES)('%s: 쓸 수 있으면 후기 쓰기', (myRole) => {
+      const result = getRentalActions(completed(myRole, { canWriteReview: true }), null, TODAY);
+      expect(types(result)).toEqual([A.WRITE_REVIEW]);
+      expect(result.notice).toBeNull();
+    });
+
+    it.each(ROLES)('%s: 이미 썼으면 버튼 없이 안내', (myRole) => {
+      expect(getRentalActions(completed(myRole, { reviewWritten: true }), null, TODAY)).toEqual({
+        actions: [],
+        notice: { tone: 'default', text: '후기를 보냈어요' },
+      });
+    });
+
+    it.each(ROLES)('%s: 기한이 지났으면 아무것도 없음', (myRole) => {
+      expect(getRentalActions(completed(myRole), null, TODAY)).toEqual({
+        actions: [],
+        notice: null,
+      });
+    });
+  });
+
+  describe('CANCELED', () => {
     it.each(ROLES)('%s: 버튼 없음', (myRole) => {
-      expect(getRentalActions(rental({ status, myRole }), null, TODAY)).toEqual({
+      expect(getRentalActions(rental({ status: 'CANCELED', myRole }), null, TODAY)).toEqual({
         actions: [],
         notice: null,
       });

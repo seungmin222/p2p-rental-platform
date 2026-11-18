@@ -10,6 +10,7 @@ import {
   RENTAL_STATUS,
   RENTAL_TABS,
 } from '../features/rental/constants';
+import ReceivedReviewList from '../features/review/components/ReceivedReviewList';
 import { addDays, compareDate } from '../shared/lib/date';
 import { formatDailyPrice, formatDeposit, formatElapsed } from '../shared/lib/format';
 import {
@@ -345,6 +346,13 @@ export default function UiPreviewPage() {
       </Section>
 
       <div className="h-[60vh]" aria-hidden="true" />
+
+      <Section title="받은 후기 목록 (REQ-034, 화면 연결은 SCR-13)">
+        <div className="w-full">
+          {/* 목 회원 1(동네주민)이 받은 후기 23건(2페이지), 탈퇴한 작성자 포함. 목을 끄면 실제 서버를 부른다 */}
+          <ReceivedReviewList memberId={1} />
+        </div>
+      </Section>
 
       <Modal
         open={openDialog === 'modal'}

@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import BottomActionBar from '../../../app/layout/BottomActionBar';
 import { parseServerDateTime } from '../../../shared/lib/format';
@@ -169,6 +170,7 @@ export default function RentalActionBar({ rental, returnInspection, today }) {
   const [openType, setOpenType] = useState(null);
   const { actions, notice } = getRentalActions(rental, returnInspection, today);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   // SCR-07에서 시작한 결제창도 여기서 기다린다
   const isPaymentStarting = useIsPaymentStarting(rental.rentalId);
   const secondsLeft = usePaymentSecondsLeft(notice?.paymentExpiresAt);
@@ -209,11 +211,15 @@ export default function RentalActionBar({ rental, returnInspection, today }) {
                 }
                 isLoading={action.type === A.PAY && isPaymentStarting}
                 aria-describedby={action.disabledReason ? reasonId : undefined}
-                onClick={
-                  action.type === A.PAY
-                    ? () => startPayment(queryClient, rental.rentalId)
-                    : () => setOpenType(action.type)
-                }
+                onClick={() => {
+                  if (action.type === A.PAY) {
+                    startPayment(queryClient, rental.rentalId);
+                  } else if (action.type === A.WRITE_REVIEW) {
+                    navigate(`/rentals/${rental.rentalId}/review`);
+                  } else {
+                    setOpenType(action.type);
+                  }
+                }}
               >
                 {action.label}
               </Button>

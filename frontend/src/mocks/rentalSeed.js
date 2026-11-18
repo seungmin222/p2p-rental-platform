@@ -16,6 +16,12 @@
 // | 10 | COMPLETED | D-20~D-18 | 정상 판정 |
 // | 11 | CANCELED | D+1~D+2 | 대여자 취소(RENTER), 수수료 기록 있음 |
 // | 12 | RESERVED | D+0~D+1 | 앞 대여(13, 남의 OVERDUE)가 연체 중 → previousRentalOverdue, 수수료 없는 예약 취소(open-issues #7) |
+// | 14 | COMPLETED | D-4~D-2 | 어제 완료, 후기 작성 가능(canWriteReview) |
+// | 15 | COMPLETED | D-8~D-6 | 5일 전 완료, 내가 후기 작성함(reviewWritten) |
+// | 10 | (위) | | 17일 전 완료 → 후기 기한 지남 |
+//
+// 후기(REQ-034, 시드 reviews): 내가 쓴 것은 15 하나. 내가 받은 것은 41~65(제공자가 씀, writerRole OWNER) 12건 +
+// 71~92(대여자가 씀, writerRole RENTER) 10건 + 탈퇴한 작성자(98) 1건 = 23건(받은 후기 2페이지)
 //
 // 제공자 쪽(대여자 텐트초보)
 // | id | 상태 | 기간 | 경우 |
@@ -32,6 +38,7 @@
 // | 30 | COMPLETED | D-30~D-28 | 이상 판정(1순위라 완료) |
 // | 31 | CANCELED | D+2~D+3 | 양측 동의 취소(MUTUAL) |
 // | 32 | RESERVED | D+5~D+6 | 물품 107 다가오는 예약(내 물품 대여 가능 탭) |
+// | 33 | COMPLETED | D-5~D-3 | 물품 108, 2일 전 완료 → 제공자로 후기 작성 가능 |
 //
 // 목록용(빌린 내역 무한 스크롤·예약 현황 시트 더 불러오기). 상세 화면 경우는 위 표와 같고 새 경우는 없다
 // | id | 상태 | 기간 | 쓰임 |
@@ -214,6 +221,16 @@ export function createRentalSeed() {
       cancelFee: 2400,
     }),
     rental(12, 101, MOCK_ME, 'RESERVED', [0, 1]),
+    rental(14, 102, MOCK_ME, 'COMPLETED', [-4, -2], {
+      handedOverAt: at(-4, '18:00'),
+      returnedAt: at(-2, '19:00'),
+      completedAt: at(-1, '09:00'),
+    }),
+    rental(15, 102, MOCK_ME, 'COMPLETED', [-8, -6], {
+      handedOverAt: at(-8, '18:00'),
+      returnedAt: at(-6, '19:00'),
+      completedAt: at(-5, '09:00'),
+    }),
     // 제공자 쪽
     rental(21, 104, RENTER, 'PENDING_PAYMENT', [6, 8], { paymentExpiresAt: minutesFromNow(9) }),
     rental(22, 104, RENTER, 'RESERVED', [3, 4]),
@@ -242,6 +259,11 @@ export function createRentalSeed() {
       cancelFee: 0,
     }),
     rental(32, 107, RENTER, 'RESERVED', [5, 6]),
+    rental(33, 108, RENTER, 'COMPLETED', [-5, -3], {
+      handedOverAt: at(-5, '18:00'),
+      returnedAt: at(-3, '19:00'),
+      completedAt: at(-2, '09:00'),
+    }),
     ...pastRentals(),
     // 남의 대여
     rental(13, 101, OTHER, 'OVERDUE', [-5, -1], { handedOverAt: at(-5, '18:00') }),
@@ -264,6 +286,10 @@ export function createRentalSeed() {
     returnRecord(9, -1),
     handover(10, -20),
     returnRecord(10, -18, { result: 'NORMAL' }),
+    handover(14, -4),
+    returnRecord(14, -2, { result: 'NORMAL' }),
+    handover(15, -8),
+    returnRecord(15, -6, { result: 'NORMAL' }),
     handover(26, -3),
     handover(27, -6),
     handover(28, -6),
@@ -273,6 +299,8 @@ export function createRentalSeed() {
     }),
     handover(29, -8),
     returnRecord(29, -1, { writerRole: 'OWNER', note: '대여자가 문 앞에 두고 가서 대신 접수해요' }),
+    handover(33, -5),
+    returnRecord(33, -3, { result: 'NORMAL' }),
     handover(30, -30),
     returnRecord(30, -28, {
       checklist: { ...ALL_YES, NO_EXTERIOR_DAMAGE: false },
@@ -283,5 +311,49 @@ export function createRentalSeed() {
     }),
   ].map((inspection, index) => ({ inspectionId: index + 1, ...inspection }));
 
-  return { rentals, agreements, inspections };
+  return { rentals, agreements, inspections, reviews: reviewSeed(rentals) };
+}
+
+// 탈퇴한 회원(chatSeed.js WITHDRAWN_MEMBER_ID와 같은 값). 대여 시드에는 없다
+const WITHDRAWN_WRITER_ID = 98;
+
+const REVIEW_SAMPLES = [
+  { satisfaction: 'BEST', compliments: ['ON_TIME', 'CLEAN_USE'], content: '깨끗하게 잘 썼어요.' },
+  { satisfaction: 'GOOD', compliments: ['ON_TIME'], content: null },
+  {
+    satisfaction: 'BEST',
+    compliments: ['ON_TIME', 'AS_DESCRIBED', 'CLEAN_USE'],
+    content: '또 거래하고 싶어요!',
+  },
+  { satisfaction: 'GOOD', compliments: [], content: '약속 시간보다 조금 늦었지만 괜찮았어요.' },
+  { satisfaction: 'BAD', compliments: [], content: '연락이 잘 안 됐어요.' },
+];
+
+/** 후기 시드(위 표). completedAt 다음 날 작성 */
+function reviewSeed(rentals) {
+  const byId = new Map(rentals.map((r) => [r.rentalId, r]));
+  const reviews = [];
+  const add = (rentalId, writerRole, sample, extra = {}) => {
+    const rental = byId.get(rentalId);
+    reviews.push({
+      reviewId: reviews.length + 1,
+      rentalId,
+      writerId: writerRole === 'RENTER' ? rental.renterId : rental.ownerId,
+      targetId: writerRole === 'RENTER' ? rental.ownerId : rental.renterId,
+      writerRole,
+      ...sample,
+      createdAt: `${addDays(rental.completedAt.slice(0, 10), 1)}T20:00:00`,
+      ...extra,
+    });
+  };
+  add(15, 'RENTER', REVIEW_SAMPLES[0]);
+  const renterSide = rentals.filter(
+    (r) => r.rentalId >= 41 && r.rentalId <= 65 && r.status === 'COMPLETED',
+  );
+  renterSide.slice(0, 12).forEach((r, i) => add(r.rentalId, 'OWNER', REVIEW_SAMPLES[i % 5]));
+  const ownerSide = rentals.filter((r) => r.rentalId >= 71 && r.rentalId <= 92);
+  ownerSide.slice(0, 10).forEach((r, i) => add(r.rentalId, 'RENTER', REVIEW_SAMPLES[(i + 2) % 5]));
+  // 탈퇴한 작성자: 남은 지난 대여 하나에 붙인다(작성자만 바꿈)
+  add(ownerSide[10].rentalId, 'RENTER', REVIEW_SAMPLES[1], { writerId: WITHDRAWN_WRITER_ID });
+  return reviews;
 }
