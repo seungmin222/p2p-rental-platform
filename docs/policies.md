@@ -77,6 +77,7 @@
 | `review.write-deadline-days` | 거래 완료 후 7일 (completed_at + 7일 정각까지 포함) | 034, 019 |
 | `review.content.max` | 300자 (공백만이면 내용 없음으로 저장) | 034 |
 | `review.page` | 20건 (받은 후기 목록, 요청에서 size를 받지 않는 고정값) | 034 |
+| `profile-items.page` | 20건 (사용자 프로필의 등록 물품, 요청에서 size를 받지 않는 고정값) | 021 |
 | `inquiry.content-max` | 1,000자 (공백만은 불가) | 063 |
 | `inquiry.page` | 20건 (요청에서 size를 받지 않는 고정값) | 063 |
 | `trust.initial` / 범위 | 50점 / 0~100, 0.5 단위 | 054 |

@@ -89,7 +89,9 @@ public record PolicyProperties(
 	Chat chat,
 	/** search.page: 검색 페이지 크기 (REQ-010). size 파라미터를 받지 않는다 */
 	@Valid @NotNull
-	PageSize search) {
+	PageSize search,
+	@Valid @NotNull
+	PageSize profileItems) {
 
 	/**
 	 * 채팅 (REQ-027·028)

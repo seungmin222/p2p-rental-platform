@@ -35,9 +35,16 @@ public class MemberQueryService {
 	private final PolicyProperties policyProperties;
 	private final Clock clock;
 
-	/** 탈퇴 회원도 행이 남아 있으므로 true다(받은 후기 목록 REQ-034의 404 판정용) */
-	public boolean exists(Long memberId) {
-		return memberRepository.existsById(memberId);
+	/**
+	 * 공개 조회(프로필 REQ-021, 받은 후기·등록 물품 목록)의 대상 확인. 쿼리 1개.
+	 *
+	 * @return 탈퇴(WITHDRAWN) 회원이면 true. 탈퇴 회원은 "상세 비공개"라 호출하는 쪽이 빈 목록을 준다
+	 * @throws BusinessException MEMBER_NOT_FOUND
+	 */
+	public boolean isWithdrawn(Long memberId) {
+		return memberRepository.findById(memberId)
+			.map(member -> member.getStatus() == MemberStatus.WITHDRAWN)
+			.orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 	}
 
 	/**

@@ -208,6 +208,23 @@ public class ItemQueryService {
 			row.chatCount(), Math.toIntExact(row.upcomingCount()), row.renting(), row.bumpedAt()));
 	}
 
+	/**
+	 * 사용자 프로필의 등록 물품 (REQ-021). 비회원도 본다. 카드는 피드와 같다. 페이지 크기는 profile-items.page 고정. 쿼리는 회원 확인 1 + 목록 1(+
+	 * count) + 동네 이름 1 + 썸네일 1이다. 탈퇴 회원은 상세 비공개라 빈 페이지다.
+	 *
+	 * @param viewerId 조회하는 회원(비회원이면 null). 차단 관계면 숨기는 처리(REQ-056)를 붙일 자리이고 지금은 쓰지 않는다
+	 * @throws BusinessException MEMBER_NOT_FOUND
+	 */
+	public PageResponse<ItemSummaryResponse> getMemberItems(Long memberId, Long viewerId, int page) {
+		var pageable = org.springframework.data.domain.PageRequest.of(page, policies.profileItems().page());
+		if (members.isWithdrawn(memberId)) {
+			return PageResponse.of(org.springframework.data.domain.Page.<ItemSummaryResponse>empty(pageable));
+		}
+		var rows = itemRepository.findMemberItems(memberId, pageable, java.time.LocalDateTime.now(clock));
+		return PageResponse.of(new org.springframework.data.domain.PageImpl<>(toSummaries(rows.getContent()),
+			rows.getPageable(), rows.getTotalElements()));
+	}
+
 	private Map<Long, String> thumbnails(List<com.team7.rental.item.repository.ItemListRow> rows) {
 		Map<Long, String> result = new HashMap<>();
 		if (!rows.isEmpty()) {

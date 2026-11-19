@@ -26,9 +26,9 @@
 | 1 | PATCH | /api/members/me/regions/{id}/primary | 대표 동네 설정 | O | 004 |
 | 1 | DELETE | /api/members/me/regions/{id} | 동네 삭제 | O | 004 |
 | 3 | PATCH | /api/members/me/regions/{id}/range | 범위 설정 | O | 042 |
-| 2 | GET | /api/members/{id} | 사용자 프로필 | X | 021 |
+| 2 | GET | /api/members/{id} | 사용자 프로필(거래 횟수 포함, 탈퇴 회원은 isWithdrawn만) | X | 021 |
 | 2 | GET | /api/members/{id}/reviews?page= | 받은 후기(최신순, 작성자 역할 writerRole) | X | 021, 034 |
-| 2 | GET | /api/members/{id}/items | 등록 물품 | X | 021 |
+| 2 | GET | /api/members/{id}/items?page= | 등록 물품(AVAILABLE, bumpedAt 내림차순, 탈퇴 회원은 빈 목록) | X | 021 |
 | 2 | POST | /api/auth/password-reset | 재설정 메일 | X | 036 |
 | 2 | POST | /api/auth/password-reset/confirm | 재설정 | X | 036 |
 | 2 | GET | /api/terms | 약관·정책 문서 | X | 037 |
