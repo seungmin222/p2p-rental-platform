@@ -33,5 +33,8 @@ public record RentalHistoryResponse(
 	long totalAmount,
 
 	@Schema(description = "후기 작성 가능 여부. 거래 완료(COMPLETED) 후 policies.md review.write-deadline-days 이내(기한 정각 포함)이고 아직 쓰지 않았으면 true")
-	boolean canWriteReview) {
+	boolean canWriteReview,
+
+	@Schema(description = "조회한 회원이 이 대여에 후기를 썼으면 true. 대여 상세 reviewWritten과 같다. canWriteReview가 false일 때 이미 썼는지 기한이 지났는지 구분한다")
+	boolean reviewWritten) {
 }

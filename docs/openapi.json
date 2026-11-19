@@ -11184,6 +11184,10 @@
             "description": "대여 ID",
             "example": 1
           },
+          "reviewWritten": {
+            "type": "boolean",
+            "description": "조회한 회원이 이 대여에 후기를 썼으면 true. 대여 상세 reviewWritten과 같다. canWriteReview가 false일 때 이미 썼는지 기한이 지났는지 구분한다"
+          },
           "startDate": {
             "type": "string",
             "format": "date",

@@ -200,6 +200,7 @@ class RentalHistoryIntegrationTest extends IntegrationTestSupport {
 		// then: 대여 + 물품 + 대표 이미지 + 닉네임 + 후기 작성 여부
 		assertThat(canWriteReviewOf(done, written)).isFalse();
 		assertThat(canWriteReviewOf(done, byOwnerOnly)).isTrue();
+		assertThat(reviewWrittenOf(done, byOwnerOnly)).isFalse();
 		assertThat(countQueries(request("DONE"))).isEqualTo(5);
 	}
 
@@ -270,6 +271,66 @@ class RentalHistoryIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("reviewWritten: 기간 안·기한 지남 모두 본인이 썼으면 true, canWriteReview는 기간 안 미작성만 true")
+	void reviewWritten() throws Exception {
+		// given
+		Rental openNotWritten = createCompleted(NOW.minusDays(1), START);
+		Rental openWritten = createCompleted(NOW.minusDays(1), START.minusDays(1));
+		Rental expiredNotWritten = createCompleted(NOW.minusDays(8), START.minusDays(2));
+		Rental expiredWritten = createCompleted(NOW.minusDays(8), START.minusDays(3));
+		writeByRenter(openWritten);
+		writeByRenter(expiredWritten);
+
+		// when
+		String done = perform(request("DONE")).andReturn().getResponse().getContentAsString();
+
+		// then
+		assertThat(canWriteReviewOf(done, openNotWritten)).isTrue();
+		assertThat(reviewWrittenOf(done, openNotWritten)).isFalse();
+		assertThat(canWriteReviewOf(done, openWritten)).isFalse();
+		assertThat(reviewWrittenOf(done, openWritten)).isTrue();
+		assertThat(canWriteReviewOf(done, expiredNotWritten)).isFalse();
+		assertThat(reviewWrittenOf(done, expiredNotWritten)).isFalse();
+		assertThat(canWriteReviewOf(done, expiredWritten)).isFalse();
+		assertThat(reviewWrittenOf(done, expiredWritten)).isTrue();
+	}
+
+	@Test
+	@DisplayName("reviewWritten: CANCELED·RENTING 건은 false이고, 완료 건이 없으면 후기 작성 여부 쿼리를 내지 않는다")
+	void reviewWrittenNotCompleted() throws Exception {
+		// given
+		Rental canceled = rentalFixture.createRental(item, renter, RentalStatus.CANCELED, START, END);
+		Rental renting = rentalFixture.createRental(item, renter, RentalStatus.RENTING, START, END);
+
+		// when
+		String done = perform(request("DONE")).andReturn().getResponse().getContentAsString();
+		String ongoing = perform(request("ONGOING")).andReturn().getResponse().getContentAsString();
+
+		// then: 대여 + 물품 + 대표 이미지 + 닉네임
+		assertThat(reviewWrittenOf(done, canceled)).isFalse();
+		assertThat(reviewWrittenOf(ongoing, renting)).isFalse();
+		assertThat(countQueries(request("DONE"))).isEqualTo(4);
+	}
+
+	@Test
+	@DisplayName("reviewWritten 쿼리 수는 완료 건 수와 상관없다: 기한 지난 건 1개도 5개, 기간 안·기한 지남·작성·미작성 섞인 6건도 5개")
+	void reviewWrittenQueryCount() throws Exception {
+		// given: 기한 지난 미작성 1건 — 이전에는 이 경우 후기 쿼리를 내지 않았다
+		createCompleted(NOW.minusDays(8), START);
+		assertThat(countQueries(request("DONE"))).isEqualTo(5);
+
+		// when: 작성·미작성, 기간 안·기한 지남을 섞어 5건 더
+		writeByRenter(createCompleted(NOW.minusDays(1), START.minusDays(1)));
+		createCompleted(NOW.minusDays(1), START.minusDays(2));
+		writeByRenter(createCompleted(NOW.minusDays(8), START.minusDays(3)));
+		createCompleted(NOW.minusDays(2), START.minusDays(4));
+		writeByRenter(createCompleted(NOW.minusDays(9), START.minusDays(5)));
+
+		// then: 대여 + 물품 + 대표 이미지 + 닉네임 + 후기 작성 여부
+		assertThat(countQueries(request("DONE"))).isEqualTo(5);
+	}
+
+	@Test
 	@DisplayName("쿼리 수는 항목 수와 상관없다: 대여 3건(물품 3·제공자 2) 4개, 21건 page 0 5개(count), page 1 4개(count 생략), 빈 페이지 1개")
 	void queryCount() throws Exception {
 		// given: owner가 물품 2개, otherOwner가 물품 1개
@@ -307,6 +368,18 @@ class RentalHistoryIntegrationTest extends IntegrationTestSupport {
 			"$.data.items[?(@.rentalId == " + rental.getId() + ")].canWriteReview");
 		assertThat(values).hasSize(1);
 		return values.getFirst();
+	}
+
+	private boolean reviewWrittenOf(String body, Rental rental) {
+		List<Boolean> values = JsonPath.read(body,
+			"$.data.items[?(@.rentalId == " + rental.getId() + ")].reviewWritten");
+		assertThat(values).hasSize(1);
+		return values.getFirst();
+	}
+
+	private void writeByRenter(Rental rental) {
+		reviewRepository.save(Review.write(rental.getId(), renter.getId(), owner.member().getId(), Satisfaction.GOOD,
+			List.of(), null));
 	}
 
 	// 요청 직전에 비워 픽스처 저장이 섞이지 않게 한다

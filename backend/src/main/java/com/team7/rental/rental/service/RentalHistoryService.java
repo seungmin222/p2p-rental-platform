@@ -22,6 +22,7 @@ import com.team7.rental.rental.dto.RentalDetailResponse.RentalItem;
 import com.team7.rental.rental.dto.RentalHistoryResponse;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalHistoryTab;
+import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.repository.RentalHistoryRow;
 import com.team7.rental.rental.repository.RentalRepository;
 
@@ -41,7 +42,7 @@ public class RentalHistoryService {
 
 	/**
 	 * 빌린 내역(REQ-019). 본인이 대여자인 건만. 물품·제공자 닉네임은 페이지 단위로 한 번씩 일괄 조회해 쿼리 수가 항목 수와 상관없다
-	 * (대여·물품·대표 이미지·닉네임, 필요하면 count). 빈 페이지면 일괄 조회 메서드가 쿼리를 내지 않는다.
+	 * (대여·물품·대표 이미지·닉네임, COMPLETED 건이 있으면 후기 작성 여부, 필요하면 count). 빈 페이지면 일괄 조회 메서드가 쿼리를 내지 않는다.
 	 */
 	public PageResponse<RentalHistoryResponse> getRenterHistory(Long memberId, RentalHistoryTab tab, int page) {
 		LocalDateTime now = LocalDateTime.now(clock);
@@ -53,9 +54,10 @@ public class RentalHistoryService {
 		Map<Long, ItemSummary> items = itemQueryService.getSummaries(itemIds);
 		Map<Long, String> nicknames = memberQueryService.getNicknames(ownerIds);
 		int reviewDeadlineDays = policyProperties.review().writeDeadlineDays();
-		// 작성 기간 안의 건만 후기 작성 여부를 확인한다(없으면 쿼리를 내지 않는다)
+		// 후기는 COMPLETED에서만 쓸 수 있어 그 건만 확인한다. 기한이 지난 건도 reviewWritten을 줘야 해서 기간으로 거르지 않는다
+		// (페이지 단위 쿼리 1개, COMPLETED 건이 없으면 쿼리를 내지 않는다)
 		Set<Long> reviewWritten = rentalReviewQueryPort.findWrittenRentalIds(memberId, rows.stream()
-			.filter(row -> Rental.canWriteReview(row.status(), row.completedAt(), now, reviewDeadlineDays))
+			.filter(row -> row.status() == RentalStatus.COMPLETED)
 			.map(RentalHistoryRow::rentalId)
 			.toList());
 
@@ -67,6 +69,7 @@ public class RentalHistoryService {
 		Map<Long, String> nicknames, LocalDateTime now, int reviewDeadlineDays, Set<Long> reviewWritten) {
 		// 대여가 FK로 참조하는 행이고 물품·회원은 소프트 삭제라 없으면 데이터 오류다(getSummary·getNickname과 같은 처리)
 		ItemSummary item = items.get(row.itemId());
+		boolean written = reviewWritten.contains(row.rentalId());
 		String nickname = nicknames.get(row.ownerId());
 		if (item == null || nickname == null) {
 			throw new IllegalStateException("대여가 참조하는 물품·회원이 없습니다: rentalId=" + row.rentalId());
@@ -79,8 +82,8 @@ public class RentalHistoryService {
 			row.startDate(),
 			row.endDate(),
 			(long)row.rentalFee() + row.deposit(),
-			Rental.canWriteReview(row.status(), row.completedAt(), now, reviewDeadlineDays)
-				&& !reviewWritten.contains(row.rentalId()));
+			!written && Rental.canWriteReview(row.status(), row.completedAt(), now, reviewDeadlineDays),
+			written);
 	}
 
 	/**
