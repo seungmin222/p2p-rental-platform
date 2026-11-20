@@ -43,6 +43,7 @@ public class MemberService {
 	private final RefreshTokenRepository refreshTokenRepository;
 	private final ImageProcessor imageProcessor;
 	private final FileStorage fileStorage;
+	private final TermsService termsService;
 
 	@Value("${app.policy.profile.image-max-size}")
 	private String profileImageMaxSize;
@@ -57,11 +58,14 @@ public class MemberService {
 		}
 		Member member = Member.createLocal(request.email(), passwordEncoder.encode(request.password()),
 			request.nickname(), policyProperties.trust().initialScore());
+		Long memberId;
 		try {
-			return new MemberSignupResponse(memberRepository.saveAndFlush(member).getId());
+			memberId = memberRepository.saveAndFlush(member).getId();
 		} catch (DataIntegrityViolationException e) {
 			throw mapDuplicate(e);
 		}
+		termsService.agreeAllOnSignup(memberId);
+		return new MemberSignupResponse(memberId);
 	}
 
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)

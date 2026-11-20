@@ -18,4 +18,7 @@ public interface ItemListingRepository {
 		Pageable pageable, LocalDateTime now);
 
 	Page<ItemListRow> findMyItems(Long memberId, MyItemTab tab, Pageable pageable, LocalDateTime now);
+
+	/** 사용자 프로필의 등록 물품 (REQ-021): 회원의 AVAILABLE 물품, bumpedAt·id 내림차순 */
+	Page<ItemListRow> findMemberItems(Long ownerId, Pageable pageable, LocalDateTime now);
 }

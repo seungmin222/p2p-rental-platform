@@ -51,12 +51,17 @@
 - 신뢰 점수·칭찬 항목별 횟수는 REQ-054 구현 시. 채팅 응답률·평균 응답 시간은 보조 지표(선택)
 - 이메일 등 개인정보 비노출. 비회원 조회 가능
 - 탈퇴 회원 → "탈퇴한 사용자", 상세 비공개 / 없음 404 / 차단 관계면 등록 물품 숨김(REQ-056 이후)
+  - 탈퇴 회원 응답: 프로필은 200 + `isWithdrawn=true`, 나머지 필드 null(문구는 프론트). 받은 후기·등록 물품은 200 빈 목록(open-issues #55)
+- 등록 물품 목록: 피드 카드 형태, 정렬 bumpedAt·id 내림차순, 페이지 크기 `policies.md` `profile-items.page`
 
 ## REQ-036 비밀번호 재설정 [2]
 - `POST /api/auth/password-reset {email}`: 가입 이메일이면 1회용 토큰 → Redis 30분 → 링크 메일 발송. **가입 여부와 무관하게 같은 응답**. 같은 이메일 5분에 1회(초과도 같은 응답, 메일만 안 보냄)
 - `POST /api/auth/password-reset/confirm {token, newPassword}`: 검증 → BCrypt → 재설정 토큰 삭제 + 해당 회원의 모든 RT family 삭제(전체 기기 로그아웃)
 - 예외: 토큰 만료·재사용 400 `AUTH_RESET_TOKEN_INVALID`, 소셜 전용 계정은 카카오 로그인 안내, 메일 실패 시 재시도 안내
-- 메일 발송: Spring Mail(SMTP). 로컬은 MailHog/로그 출력으로 대체
+- 메일 발송: Spring Mail(SMTP). 로컬은 Mailpit(`infra/docker-compose.local.yml`, 받은 메일 http://localhost:8025)
+  - 구현: 메일은 백그라운드에서 보내 응답·응답 시간이 가입 여부와 상관없이 같다. 발송 실패는 로그만 남기고, "메일 실패 시 재시도 안내"는 프론트가 항상 "메일이 오지 않으면 잠시 뒤 다시 요청"을 안내하는 것으로 갈음한다
+  - 링크는 `{app.frontend.base-url}/password-reset?token={토큰}`(토큰 32바이트 Base64URL 43자). 요청 제한은 이메일을 소문자로 바꿔 세고, 없는 이메일도 센다
+  - 소셜 전용 계정(비밀번호 없음)은 링크 대신 카카오 로그인 안내 메일. 같은 회원의 이전 토큰은 무효화하지 않는다(1회용이고 재설정 시 전체 로그아웃)
 
 ## REQ-037 약관 동의 및 정책 안내 [2]
 - 가입 시 필수: 이용약관, 개인정보 수집·이용, 만 14세 이상 → 하나라도 false면 400
@@ -64,6 +69,9 @@
 - `GET /api/terms` 비회원 조회 가능: 이용약관, 개인정보처리방침, 대여 금지 품목(`policies.md` §2)
 - 약관 개정 시 다음 로그인에서 재동의 요구(로그인 응답에 `requiresTermsAgreement: true`), 거부 시 이용 제한 안내
 - 약관 본문은 마크다운 파일 또는 DB. 버전 문자열로 관리
+  - 구현: 본문 `backend/src/main/resources/terms/*.md`(현재 초안), 버전 `application.yml` `app.terms.*-version`. 동의 항목 `TermsAgreementType`(TERMS_OF_SERVICE·PRIVACY_COLLECTION·AGE_OVER_14)은 각각 이용약관·개인정보처리방침 문서 버전·만 14세 확인 버전을 따른다
+  - 가입 요청 `agreements {termsOfService, privacyCollection, ageOver14}`, 재동의 `POST /api/members/me/terms-agreements {types}`. 로그인·재발급 응답 모두 `requiresTermsAgreement`를 준다
+  - 거부 시 이용 제한은 지금은 안내만(서버에서 API를 막지 않음, open-issues #56)
 
 ## REQ-041 소셜 로그인 [3]
 카카오 OAuth. provider=KAKAO, password NULL. 같은 이메일 LOCAL 계정 존재 시 처리 방침은 착수 시 결정.

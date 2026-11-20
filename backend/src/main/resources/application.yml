@@ -104,6 +104,17 @@ app:
     payment-reconcile-cron: "0 30 * * * *"
     # 정산 지급: 매일 (REQ-039). 지급 예정일 당일에 지급되도록 자정 직후에 돈다
     settlement-payout-cron: "0 30 0 * * *"
+  # 비밀번호 재설정 메일 (REQ-036). 발신 주소, 백그라운드 발송 여부(테스트만 false). 링크 주소는 프로필별 app.frontend.base-url
+  mail:
+    from: ${MAIL_FROM:no-reply@rental.local}
+    async: true
+  # 약관·정책 문서 버전 (REQ-037). 본문은 resources/terms/*.md. 본문을 고치면 버전을 올린다(20자 이내).
+  # 이용약관·개인정보처리방침·만 14세 확인의 버전이 바뀌면 다음 로그인 응답 requiresTermsAgreement가 true가 된다
+  terms:
+    terms-of-service-version: "2026-11-20"
+    privacy-policy-version: "2026-11-20"
+    prohibited-items-version: "2026-11-20"
+    age-over14-version: "1"
   policy:
     feed:
       page: 20
@@ -111,6 +122,9 @@ app:
     search:
       page: 20
     my-items:
+      page: 20
+    # profile-items.page: 사용자 프로필의 등록 물품 페이지 크기. size 파라미터를 받지 않는다 (REQ-021)
+    profile-items:
       page: 20
     item-rentals:
       page: 20
@@ -232,6 +246,10 @@ app:
     rental-history:
       # rental-history.page: 빌린 내역 페이지 크기. size 파라미터를 받지 않는다 (REQ-019)
       page: 20
+    # password-reset.token-ttl / rate-limit: 재설정 토큰 30분, 같은 이메일 5분에 1회 (REQ-036)
+    password-reset:
+      token-ttl: 30m
+      rate-limit: 5m
     member:
       # member.email.max: 이메일 최대 100자 (REQ-001)
       email-max: 100

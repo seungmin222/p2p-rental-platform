@@ -158,4 +158,10 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, RentalSea
 
 	/** (물품, 대여자)의 가장 최근 대여 건, 상태 무관 (채팅방 상단 바 REQ-028). 인덱스 (item_id, …) 사용 */
 	Optional<Rental> findFirstByItemIdAndRenterIdOrderByIdDesc(Long itemId, Long renterId);
+
+	/** 프로필 거래 횟수(REQ-021). 인덱스 (renter_id, status) */
+	long countByRenterIdAndStatus(Long renterId, RentalStatus status);
+
+	/** 프로필 거래 횟수(REQ-021). 인덱스 (owner_id, status) */
+	long countByOwnerIdAndStatus(Long ownerId, RentalStatus status);
 }

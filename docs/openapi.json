@@ -442,6 +442,121 @@
         ]
       }
     },
+    "/api/auth/password-reset": {
+      "post": {
+        "description": "가입 여부와 상관없이 항상 성공(data null)이다. 가입한 이메일이면 재설정 링크 메일을 백그라운드에서 보낸다(링크 {프론트 주소}/password-reset?token\u003d..., 유효 시간 policies.md password-reset.token-ttl, 1회용). 같은 이메일은 password-reset.rate-limit에 한 번만 보내고 그 안의 재요청도 같은 응답이다. 카카오 로그인 전용 계정은 링크 대신 카카오 로그인 안내 메일을 보낸다. 프론트는 \"메일이 오지 않으면 잠시 뒤 다시 요청하세요\"를 안내한다.",
+        "operationId": "requestPasswordReset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          }
+        },
+        "summary": "비밀번호 재설정 메일 (REQ-036)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/auth/password-reset/confirm": {
+      "post": {
+        "description": "메일 링크의 token과 새 비밀번호로 재설정한다. 새 비밀번호 규칙은 가입과 같다(policies.md member.password). 성공하면 토큰은 사라지고 모든 기기에서 로그아웃된다(모든 Refresh Token family 삭제). 토큰이 만료·재사용·위조됐으면 400 AUTH_RESET_TOKEN_INVALID → 프론트는 재설정 메일을 다시 요청하게 안내한다.",
+        "operationId": "confirmPasswordReset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_RESET_TOKEN_INVALID": {
+                    "summary": "재설정 링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_RESET_TOKEN_INVALID",
+                        "details": [],
+                        "message": "재설정 링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요."
+                      },
+                      "success": false
+                    }
+                  },
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_RESET_TOKEN_INVALID, COMMON_INVALID_INPUT"
+          }
+        },
+        "summary": "비밀번호 재설정 (REQ-036)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
     "/api/auth/reissue": {
       "post": {
         "description": "Refresh Token 쿠키로 Access Token과 Refresh Token을 모두 새로 발급한다(Rotation, Set-Cookie로 교체). Refresh Token은 응답 바디에 없고 HttpOnly 쿠키 refreshToken(Path\u003d/api/auth, SameSite\u003dLax, local 외 Secure, 만료 policies.md auth.refresh-token-ttl)로만 주고받는다. 브라우저가 자동으로 보내므로 프론트는 쿠키를 다루지 않는다(같은 출처 + withCredentials). 401 AUTH_REFRESH_TOKEN_INVALID: 쿠키 없음, 서명 오류·만료, 로그아웃·강제 무효화된 family, 이미 교체된 RT 재사용(탈취로 보고 그 family만 무효화, 다른 기기는 유지). 401이면 프론트는 로그인 화면으로 간다.",
@@ -2514,7 +2629,7 @@
     },
     "/api/members": {
       "post": {
-        "description": "글자 수 규칙은 policies.md member.email.max·member.password·member.nickname, 비밀번호는 공백 없는 ASCII 출력 문자만, 영문·숫자·기호를 각각 1개 이상 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 가입 후 로그인 화면으로 이동한다.",
+        "description": "글자 수 규칙은 policies.md member.email.max·member.password·member.nickname, 비밀번호는 공백 없는 ASCII 출력 문자만, 영문·숫자·기호를 각각 1개 이상 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 필수 약관 동의(REQ-037) agreements의 세 항목(이용약관·개인정보 수집·이용·만 14세 이상)이 모두 true여야 하고, 하나라도 false거나 생략하면 400(details agreements.{필드}). 동의는 각 항목의 현재 버전으로 기록된다. 가입 후 로그인 화면으로 이동한다.",
         "operationId": "signup",
         "requestBody": {
           "content": {
@@ -3882,6 +3997,244 @@
         "summary": "정산 내역 조회 (REQ-039)",
         "tags": [
           "Payment"
+        ]
+      }
+    },
+    "/api/members/me/terms-agreements": {
+      "post": {
+        "description": "로그인 응답 requiresTermsAgreement가 true일 때 부른다. 보낸 항목을 현재 버전으로 동의하고, 이미 현재 버전에 동의한 항목은 그대로 둔다. 응답의 requiresTermsAgreement가 false가 되면 재동의가 끝난 것이다. 모르는 항목은 400.",
+        "operationId": "reagreeTerms",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermsReagreeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTermsAgreementStatusResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "약관 재동의 (REQ-037)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/{memberId}": {
+      "get": {
+        "description": "비회원도 볼 수 있다. 이메일 등 개인정보는 주지 않는다. 거래 횟수 \u003d 대여자·제공자로 거래 완료(COMPLETED)된 대여 수. 받은 후기는 /api/members/{memberId}/reviews, 등록 물품은 /api/members/{memberId}/items로 따로 조회한다. 탈퇴 회원은 200에 isWithdrawn\u003dtrue이고 나머지 필드는 null(\"탈퇴한 사용자\", 상세 비공개).",
+        "operationId": "getProfile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberProfileResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MEMBER_NOT_FOUND": {
+                    "summary": "회원을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "MEMBER_NOT_FOUND",
+                        "details": [],
+                        "message": "회원을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "MEMBER_NOT_FOUND"
+          }
+        },
+        "summary": "사용자 프로필 (REQ-021)",
+        "tags": [
+          "Member"
+        ]
+      }
+    },
+    "/api/members/{memberId}/items": {
+      "get": {
+        "description": "비회원도 볼 수 있다. 회원의 AVAILABLE 물품만(HIDDEN·DELETED 제외), 정렬은 피드와 같이 bumpedAt 내림차순, id 내림차순. 카드 형태는 피드와 같다. 페이지 크기는 policies.md profile-items.page로 고정(size를 받지 않음). 탈퇴 회원은 상세 비공개라 빈 목록이다.",
+        "operationId": "getMemberItems",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseItemSummaryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "MEMBER_NOT_FOUND": {
+                    "summary": "회원을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "MEMBER_NOT_FOUND",
+                        "details": [],
+                        "message": "회원을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "MEMBER_NOT_FOUND"
+          }
+        },
+        "summary": "사용자 프로필 등록 물품 (REQ-021)",
+        "tags": [
+          "Member"
         ]
       }
     },
@@ -7455,6 +7808,28 @@
           "Review"
         ]
       }
+    },
+    "/api/terms": {
+      "get": {
+        "description": "비회원도 볼 수 있다. 이용약관(TERMS_OF_SERVICE), 개인정보처리방침(PRIVACY_POLICY), 대여 금지 품목(PROHIBITED_ITEMS, policies.md §2) 세 문서를 이 순서로 준다. 본문은 마크다운이고 version은 현재 버전이다. 가입 화면의 이용약관·개인정보 수집·이용 동의는 각각 TERMS_OF_SERVICE·PRIVACY_POLICY 문서를 보여 준다.",
+        "operationId": "getTerms",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTermsDocumentResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "약관·정책 문서 (REQ-037)",
+        "tags": [
+          "Member"
+        ]
+      }
     }
   },
   "components": {
@@ -7902,6 +8277,37 @@
           }
         }
       },
+      "ApiResponseListTermsDocumentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TermsDocumentResponse"
+            }
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseMemberProfileResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemberProfileResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseMemberRegionResponse": {
         "type": "object",
         "properties": {
@@ -8182,6 +8588,20 @@
           }
         }
       },
+      "ApiResponseTermsAgreementStatusResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TermsAgreementStatusResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponseUnreadCountResponse": {
         "type": "object",
         "properties": {
@@ -8236,6 +8656,10 @@
             "type": "string",
             "description": "Access Token (JWT). Authorization: Bearer 헤더에 넣는다. 만료는 policies.md auth.access-token-ttl",
             "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature"
+          },
+          "requiresTermsAgreement": {
+            "type": "boolean",
+            "description": "약관이 개정돼 필수 항목(이용약관·개인정보 수집·이용·만 14세 확인) 중 현재 버전에 동의하지 않은 것이 있으면 true (REQ-037). true면 재동의 화면으로 보내 POST /api/members/me/terms-agreements를 부른다. 거부하면 이용 제한을 안내한다"
           }
         }
       },
@@ -9591,6 +10015,48 @@
           "newPassword"
         ]
       },
+      "MemberProfileResponse": {
+        "type": "object",
+        "properties": {
+          "completedRentalCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "거래 횟수 \u003d 대여자·제공자로 거래 완료(COMPLETED)된 대여 수. 탈퇴 회원이면 null",
+            "example": 12
+          },
+          "isWithdrawn": {
+            "type": "boolean",
+            "description": "탈퇴(WITHDRAWN) 회원이면 true → \"탈퇴한 사용자\" 표시, 상세 비공개"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "가입 시각. 탈퇴 회원이면 null",
+            "example": "2026-10-01T12:00:00"
+          },
+          "memberId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "회원 ID",
+            "example": 1
+          },
+          "nickname": {
+            "type": "string",
+            "description": "닉네임. 탈퇴 회원이면 null",
+            "example": "동네주민"
+          },
+          "profileImageUrl": {
+            "type": "string",
+            "description": "프로필 이미지 URL. 없거나 탈퇴 회원이면 null",
+            "example": "/files/profiles/1/a1b2c3.jpg"
+          },
+          "regionName": {
+            "type": "string",
+            "description": "대표 동네 이름. 동네가 없거나 탈퇴 회원이면 null",
+            "example": "송도1동"
+          }
+        }
+      },
       "MemberProfileUpdateRequest": {
         "type": "object",
         "properties": {
@@ -9709,6 +10175,10 @@
       "MemberSignupRequest": {
         "type": "object",
         "properties": {
+          "agreements": {
+            "$ref": "#/components/schemas/TermsAgreementsRequest",
+            "description": "필수 약관 동의 (REQ-037). 생략하면 400(details agreements)"
+          },
           "email": {
             "type": "string",
             "format": "email",
@@ -9731,6 +10201,7 @@
           }
         },
         "required": [
+          "agreements",
           "email",
           "nickname",
           "password"
@@ -10207,6 +10678,44 @@
             "example": 21
           }
         }
+      },
+      "PasswordResetConfirmRequest": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "description": "새 비밀번호. 글자 수는 policies.md member.password, 공백 없는 ASCII 출력 문자, 영문·숫자·기호 각 1개 이상",
+            "example": "newpass456@",
+            "minLength": 1,
+            "pattern": "^(?\u003d.*[A-Za-z])(?\u003d.*\\d)(?\u003d.*[!-/:-@\\[-`{-~])[!-~]*$"
+          },
+          "token": {
+            "type": "string",
+            "description": "재설정 메일 링크의 token 값(Base64URL 43자)",
+            "example": "q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l9z0x1c",
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "required": [
+          "newPassword",
+          "token"
+        ]
+      },
+      "PasswordResetRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "가입한 이메일",
+            "example": "user@example.com",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email"
+        ]
       },
       "PaymentConfirmRequest": {
         "type": "object",
@@ -11591,6 +12100,91 @@
             ]
           }
         }
+      },
+      "TermsAgreementStatusResponse": {
+        "type": "object",
+        "properties": {
+          "requiresTermsAgreement": {
+            "type": "boolean",
+            "description": "아직 현재 버전에 동의하지 않은 필수 항목이 있으면 true (로그인 응답과 같은 기준)"
+          }
+        }
+      },
+      "TermsAgreementsRequest": {
+        "type": "object",
+        "properties": {
+          "ageOver14": {
+            "type": "boolean",
+            "description": "만 14세 이상 확인 (필수, true)",
+            "example": true
+          },
+          "privacyCollection": {
+            "type": "boolean",
+            "description": "개인정보 수집·이용 동의 (필수, true)",
+            "example": true
+          },
+          "termsOfService": {
+            "type": "boolean",
+            "description": "이용약관 동의 (필수, true)",
+            "example": true
+          }
+        },
+        "required": [
+          "ageOver14",
+          "privacyCollection",
+          "termsOfService"
+        ]
+      },
+      "TermsDocumentResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "본문 (마크다운)",
+            "example": "# 이용약관\n\n## 제1조 (목적)\n..."
+          },
+          "title": {
+            "type": "string",
+            "description": "제목",
+            "example": "이용약관"
+          },
+          "type": {
+            "type": "string",
+            "description": "문서 종류 (/terms/:type)",
+            "enum": [
+              "TERMS_OF_SERVICE",
+              "PRIVACY_POLICY",
+              "PROHIBITED_ITEMS"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "description": "현재 버전. 동의 기록(terms_agreements)에 이 값을 남긴다",
+            "example": "2026-11-20"
+          }
+        }
+      },
+      "TermsReagreeRequest": {
+        "type": "object",
+        "properties": {
+          "types": {
+            "type": "array",
+            "description": "동의할 항목. 로그인 응답 requiresTermsAgreement가 true면 셋 다 보낸다",
+            "items": {
+              "type": "string",
+              "enum": [
+                "TERMS_OF_SERVICE",
+                "PRIVACY_COLLECTION",
+                "AGE_OVER_14"
+              ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "types"
+        ]
       },
       "UnreadCountResponse": {
         "type": "object",

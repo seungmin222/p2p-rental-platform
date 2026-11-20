@@ -15,12 +15,20 @@ spring:
     port: ${RABBITMQ_PORT}
     username: ${RABBITMQ_USERNAME}
     password: ${RABBITMQ_PASSWORD}
+  # 비밀번호 재설정 메일 (REQ-036). 로컬은 Mailpit(인증 없음), 받은 메일은 http://localhost:8025
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
 
 logging:
   level:
     org.hibernate.SQL: debug
 
 app:
+  frontend:
+    base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   security:
     permit-swagger: true
   shedlock:

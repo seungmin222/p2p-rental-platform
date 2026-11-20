@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.global.error.BusinessException;
-import com.team7.rental.global.error.ErrorCode;
 import com.team7.rental.global.policy.PolicyProperties;
 import com.team7.rental.global.response.PageResponse;
 import com.team7.rental.member.dto.MemberPublicSummary;
@@ -45,16 +44,18 @@ public class ReviewQueryService implements RentalReviewQueryPort {
 
 	/**
 	 * 회원이 받은 후기, 최신 작성 순(id DESC). 비회원도 본다. 쿼리 수는 항목 수와 상관없이 회원 확인 1 + 후기 1(+ count) + 칭찬 1 + 대여 1 +
-	 * 작성자 3이고, 빈 페이지면 일괄 조회가 쿼리를 내지 않는다. 대상 회원이 탈퇴했을 때의 비공개 처리는 프로필(REQ-021)에서 정한다.
+	 * 작성자 3이고, 빈 페이지면 일괄 조회가 쿼리를 내지 않는다. 대상 회원이 탈퇴했으면 상세 비공개(REQ-021)라 빈 페이지를 준다.
 	 *
 	 * @throws BusinessException MEMBER_NOT_FOUND
 	 */
 	public PageResponse<ReceivedReviewResponse> getReceivedReviews(Long memberId, int page) {
-		if (!memberQueryService.exists(memberId)) {
-			throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
+		PageRequest pageable = PageRequest.of(page, policyProperties.review().page(),
+			Sort.by(Sort.Direction.DESC, "id"));
+		if (memberQueryService.isWithdrawn(memberId)) {
+			// 탈퇴 회원 프로필은 상세 비공개(REQ-021)라 받은 후기도 빈 목록이다
+			return PageResponse.of(Page.<ReceivedReviewResponse>empty(pageable));
 		}
-		Page<Review> reviews = reviewRepository.findByTargetId(memberId,
-			PageRequest.of(page, policyProperties.review().page(), Sort.by(Sort.Direction.DESC, "id")));
+		Page<Review> reviews = reviewRepository.findByTargetId(memberId, pageable);
 
 		List<Long> reviewIds = new ArrayList<>();
 		Set<Long> rentalIds = new HashSet<>();

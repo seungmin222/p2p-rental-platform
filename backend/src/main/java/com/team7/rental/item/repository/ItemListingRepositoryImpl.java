@@ -164,6 +164,17 @@ public class ItemListingRepositoryImpl implements ItemListingRepository {
 			() -> queryFactory.select(item.count()).from(item).where(conditions).fetchOne());
 	}
 
+	@Override
+	public Page<ItemListRow> findMemberItems(Long ownerId, Pageable pageable, LocalDateTime now) {
+		// AVAILABLE만: HIDDEN(REQ-044)·DELETED(REQ-008) 제외. 차단 관계면 숨기는 처리(REQ-056)는 서비스에서 빈 목록으로 한다.
+		BooleanExpression[] conditions = {item.ownerId.eq(ownerId), item.status.eq(ItemStatus.AVAILABLE)};
+		var content = queryFactory.select(projection(now)).from(item).where(conditions)
+			.orderBy(item.bumpedAt.desc(), item.id.desc()).offset(pageable.getOffset()).limit(pageable.getPageSize())
+			.fetch();
+		return PageableExecutionUtils.getPage(content, pageable,
+			() -> queryFactory.select(item.count()).from(item).where(conditions).fetchOne());
+	}
+
 	private ConstructorExpression<ItemListRow> projection(LocalDateTime now) {
 		var upcoming = JPAExpressions.select(rental.count()).from(rental)
 			.where(rental.itemId.eq(item.id), rental.startDate.goe(now.toLocalDate()),

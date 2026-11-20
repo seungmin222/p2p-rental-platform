@@ -24,6 +24,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V16 | `V16__create_category_suggestions.sql` | `feat/ai-category` | 머지 |
 | V17 | `V17__create_chat_tables.sql` | `feat/chat-core` | 머지 |
 | V18 | `V18__create_review_tables.sql` | `feat/review` | 머지 |
+| V19 | `V19__create_terms_agreements.sql` | `feat/member-extra` | 머지 |
 
 ## 규칙
 
@@ -84,7 +85,7 @@ erDiagram
 - UK(member_id, region_id). 회원당 최대 2행, is_primary=true는 1행(애플리케이션 검증).
 - 인증 유효 = `verified_at + region.verify-valid-days > now` (`policies.md`).
 
-**terms_agreements** [2] — member_id, terms_type, terms_version, agreed_at
+**terms_agreements** [2] — id, member_id FK→members, terms_type(`TermsAgreementType`: `TERMS_OF_SERVICE`/`PRIVACY_COLLECTION`/`AGE_OVER_14`) VARCHAR(30), terms_version VARCHAR(20)(동의한 버전 스냅샷, `app.terms.*-version`), agreed_at DATETIME(6), created_at, updated_at. UK(member_id, terms_type, terms_version)(재동의 판정 조회도 이 인덱스) — 생성됨(`V19`). 개정 후 재동의하면 새 버전 행을 더하고 옛 행은 남긴다
 
 ## 물품 [1]
 
@@ -226,7 +227,7 @@ erDiagram
 | `search:popular` | 인기 검색어 Sorted Set | — |
 | `search:recent:{memberId}` | 최근 검색어 List | — |
 | `recommend:{memberId}` | 추천 결과 | 1시간 |
-| `pwreset:{token}` | 비밀번호 재설정 | 30분 |
+| `pwreset:token:{token}` | 비밀번호 재설정 토큰(값: memberId). 토큰은 Base64URL 43자만 받는다 | 30분 |
 | `pwreset:rate:{email}` | 요청 제한 | 5분 |
 | `ai:usage:{yyyyMM}` | AI 호출 월 사용량 카운터 | 해당 월 말 + 1일 |
 | `ai:category:{memberId}:{yyyyMMdd}` | 회원의 하루 AI 카테고리 추천 횟수 (`ai.category.per-member-daily`) | 다음 날 끝 |
