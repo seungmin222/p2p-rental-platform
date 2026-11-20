@@ -25,9 +25,12 @@ import com.team7.rental.member.dto.MemberProfileUpdateRequest;
 import com.team7.rental.member.dto.MemberResponse;
 import com.team7.rental.member.dto.MemberSignupRequest;
 import com.team7.rental.member.dto.MemberSignupResponse;
+import com.team7.rental.member.dto.TermsAgreementStatusResponse;
+import com.team7.rental.member.dto.TermsReagreeRequest;
 import com.team7.rental.member.service.MemberProfileQueryService;
 import com.team7.rental.member.service.MemberQueryService;
 import com.team7.rental.member.service.MemberService;
+import com.team7.rental.member.service.TermsService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -44,9 +47,12 @@ public class MemberController {
 	private final MemberService memberService;
 	private final MemberQueryService memberQueryService;
 	private final MemberProfileQueryService memberProfileQueryService;
+	private final TermsService termsService;
 
 	@Operation(summary = "회원가입 (REQ-001)", description = "글자 수 규칙은 policies.md member.email.max·member.password·member.nickname, "
-		+ "비밀번호는 공백 없는 ASCII 출력 문자만, 영문·숫자·기호를 각각 1개 이상 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. 가입 후 로그인 화면으로 이동한다.")
+		+ "비밀번호는 공백 없는 ASCII 출력 문자만, 영문·숫자·기호를 각각 1개 이상 포함한다. 형식 오류는 400 + details(필드별), 중복은 409. "
+		+ "필수 약관 동의(REQ-037) agreements의 세 항목(이용약관·개인정보 수집·이용·만 14세 이상)이 모두 true여야 하고, 하나라도 false거나 생략하면 400(details agreements.{필드}). "
+		+ "동의는 각 항목의 현재 버전으로 기록된다. 가입 후 로그인 화면으로 이동한다.")
 	@ApiErrorCodes({COMMON_INVALID_INPUT, MEMBER_EMAIL_DUPLICATED, MEMBER_NICKNAME_DUPLICATED})
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
@@ -62,6 +68,17 @@ public class MemberController {
 	public ApiResponse<MemberResponse> getMe(@LoginMember
 	Long memberId) {
 		return ApiResponse.ok(memberQueryService.getMe(memberId));
+	}
+
+	@Operation(summary = "약관 재동의 (REQ-037)", description = "로그인 응답 requiresTermsAgreement가 true일 때 부른다. 보낸 항목을 현재 버전으로 동의하고, "
+		+ "이미 현재 버전에 동의한 항목은 그대로 둔다. 응답의 requiresTermsAgreement가 false가 되면 재동의가 끝난 것이다. 모르는 항목은 400.")
+	@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_UNAUTHORIZED})
+	@PostMapping("/me/terms-agreements")
+	public ApiResponse<TermsAgreementStatusResponse> reagreeTerms(@LoginMember
+	Long memberId, @Valid @RequestBody
+	TermsReagreeRequest request) {
+		return ApiResponse.ok(termsService.reagree(memberId, request.types()));
 	}
 
 	@Operation(summary = "사용자 프로필 (REQ-021)", description = "비회원도 볼 수 있다. 이메일 등 개인정보는 주지 않는다. "

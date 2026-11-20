@@ -1,12 +1,14 @@
 package com.team7.rental.member.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 /**
- * 회원가입 (REQ-001). 글자 수는 {@link ValidMemberText}. 약관 동의(REQ-037, 2순위)는 그 단계에서 필드를 추가한다.
+ * 회원가입 (REQ-001). 글자 수는 {@link ValidMemberText}. 필수 약관 동의(REQ-037)는 {@link TermsAgreementsRequest}.
  */
 @ValidMemberText
 public record MemberSignupRequest(
@@ -17,5 +19,8 @@ public record MemberSignupRequest(
 	String password,
 
 	@Schema(description = "닉네임. 글자 수는 policies.md member.nickname", example = "동네주민") @NotBlank
-	String nickname) {
+	String nickname,
+
+	@Schema(description = "필수 약관 동의 (REQ-037). 생략하면 400(details agreements)") @Valid @NotNull
+	TermsAgreementsRequest agreements) {
 }

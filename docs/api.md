@@ -31,7 +31,8 @@
 | 2 | GET | /api/members/{id}/items?page= | 등록 물품(AVAILABLE, bumpedAt 내림차순, 탈퇴 회원은 빈 목록) | X | 021 |
 | 2 | POST | /api/auth/password-reset | 재설정 메일 | X | 036 |
 | 2 | POST | /api/auth/password-reset/confirm | 재설정 | X | 036 |
-| 2 | GET | /api/terms | 약관·정책 문서 | X | 037 |
+| 2 | GET | /api/terms | 약관·정책 문서(이용약관·개인정보처리방침·대여 금지 품목, 마크다운) | X | 037 |
+| 2 | POST | /api/members/me/terms-agreements | 약관 재동의(현재 버전으로 기록, 로그인 응답 requiresTermsAgreement 해소) | O | 037 |
 | 3 | POST | /api/auth/oauth/kakao | 카카오 로그인 | X | 041 |
 | 3 | DELETE | /api/members/me | 회원 탈퇴 | O | 043 |
 

@@ -21,7 +21,7 @@ class MemberApiContractIntegrationTest extends IntegrationTestSupport {
 	void signupValidation() throws Exception {
 		// given: 이메일 형식 오류, 비밀번호 특수문자 없음, 닉네임 1자
 		String body = """
-			{"email": "not-an-email", "password": "abcd1234", "nickname": "a"}
+			{"email": "not-an-email", "password": "abcd1234", "nickname": "a", "agreements": {"termsOfService": true, "privacyCollection": true, "ageOver14": true}}
 			""";
 
 		// when, then
@@ -36,8 +36,9 @@ class MemberApiContractIntegrationTest extends IntegrationTestSupport {
 	void signupPasswordLength() throws Exception {
 		for (String password : new String[] {"abc123!", "abcdefghij1234567890!"}) {
 			String body = """
-				{"email": "user@example.com", "password": "%s", "nickname": "동네주민"}
-				""".formatted(password);
+				{"email": "user@example.com", "password": "%s", "nickname": "동네주민", "agreements": {"termsOfService": true, "privacyCollection": true, "ageOver14": true}}
+				"""
+				.formatted(password);
 
 			mockMvc.perform(post("/api/members").contentType(MediaType.APPLICATION_JSON).content(body))
 				.andExpect(status().isBadRequest())
@@ -51,8 +52,9 @@ class MemberApiContractIntegrationTest extends IntegrationTestSupport {
 		// given: 닉네임만 1자로 틀리게 해서 서비스(미구현)까지 가지 않고 400으로 끝나게 한다
 		for (String password : new String[] {"abc123!@", "abcdefghij123456789!"}) {
 			String body = """
-				{"email": "user@example.com", "password": "%s", "nickname": "a"}
-				""".formatted(password);
+				{"email": "user@example.com", "password": "%s", "nickname": "a", "agreements": {"termsOfService": true, "privacyCollection": true, "ageOver14": true}}
+				"""
+				.formatted(password);
 
 			mockMvc.perform(post("/api/members").contentType(MediaType.APPLICATION_JSON).content(body))
 				.andExpect(status().isBadRequest())
@@ -65,8 +67,9 @@ class MemberApiContractIntegrationTest extends IntegrationTestSupport {
 	void signupPasswordCharacters() throws Exception {
 		for (String password : new String[] {"비밀번호abc123!", "abc 123!xyz"}) {
 			String body = """
-				{"email": "user@example.com", "password": "%s", "nickname": "동네주민"}
-				""".formatted(password);
+				{"email": "user@example.com", "password": "%s", "nickname": "동네주민", "agreements": {"termsOfService": true, "privacyCollection": true, "ageOver14": true}}
+				"""
+				.formatted(password);
 
 			mockMvc.perform(post("/api/members").contentType(MediaType.APPLICATION_JSON).content(body))
 				.andExpect(status().isBadRequest())

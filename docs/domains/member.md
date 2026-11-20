@@ -66,6 +66,9 @@
 - `GET /api/terms` 비회원 조회 가능: 이용약관, 개인정보처리방침, 대여 금지 품목(`policies.md` §2)
 - 약관 개정 시 다음 로그인에서 재동의 요구(로그인 응답에 `requiresTermsAgreement: true`), 거부 시 이용 제한 안내
 - 약관 본문은 마크다운 파일 또는 DB. 버전 문자열로 관리
+  - 구현: 본문 `backend/src/main/resources/terms/*.md`(현재 초안), 버전 `application.yml` `app.terms.*-version`. 동의 항목 `TermsAgreementType`(TERMS_OF_SERVICE·PRIVACY_COLLECTION·AGE_OVER_14)은 각각 이용약관·개인정보처리방침 문서 버전·만 14세 확인 버전을 따른다
+  - 가입 요청 `agreements {termsOfService, privacyCollection, ageOver14}`, 재동의 `POST /api/members/me/terms-agreements {types}`. 로그인·재발급 응답 모두 `requiresTermsAgreement`를 준다
+  - 거부 시 이용 제한은 지금은 안내만(서버에서 API를 막지 않음, open-issues #56)
 
 ## REQ-041 소셜 로그인 [3]
 카카오 OAuth. provider=KAKAO, password NULL. 같은 이메일 LOCAL 계정 존재 시 처리 방침은 착수 시 결정.

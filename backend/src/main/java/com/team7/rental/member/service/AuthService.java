@@ -38,6 +38,7 @@ public class AuthService {
 	private final JwtProvider jwtProvider;
 	private final Clock clock;
 	private final Environment environment;
+	private final TermsService termsService;
 
 	@Transactional
 	public AuthTokenResponse login(AuthLoginRequest request, HttpServletResponse response) {
@@ -53,7 +54,7 @@ public class AuthService {
 		Duration ttl = remaining(refresh);
 		refreshTokenRepository.save(member.getId(), familyId, refresh.jti(), ttl);
 		writeCookie(response, refresh.token(), ttl);
-		return new AuthTokenResponse(access);
+		return new AuthTokenResponse(access, termsService.requiresAgreement(member.getId()));
 	}
 
 	public void logout(String refreshToken, HttpServletResponse response) {
@@ -88,7 +89,7 @@ public class AuthService {
 				throw new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
 			}
 			writeCookie(response, next.token(), ttl);
-			return new AuthTokenResponse(access);
+			return new AuthTokenResponse(access, termsService.requiresAgreement(member.getId()));
 		} catch (BusinessException e) {
 			writeCookie(response, "", Duration.ZERO);
 			throw e;

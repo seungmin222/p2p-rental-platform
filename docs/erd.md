@@ -85,7 +85,7 @@ erDiagram
 - UK(member_id, region_id). 회원당 최대 2행, is_primary=true는 1행(애플리케이션 검증).
 - 인증 유효 = `verified_at + region.verify-valid-days > now` (`policies.md`).
 
-**terms_agreements** [2] — member_id, terms_type, terms_version, agreed_at
+**terms_agreements** [2] — id, member_id FK→members, terms_type(`TermsAgreementType`: `TERMS_OF_SERVICE`/`PRIVACY_COLLECTION`/`AGE_OVER_14`) VARCHAR(30), terms_version VARCHAR(20)(동의한 버전 스냅샷, `app.terms.*-version`), agreed_at DATETIME(6), created_at, updated_at. UK(member_id, terms_type, terms_version)(재동의 판정 조회도 이 인덱스) — 생성됨(`V19`). 개정 후 재동의하면 새 버전 행을 더하고 옛 행은 남긴다
 
 ## 물품 [1]
 

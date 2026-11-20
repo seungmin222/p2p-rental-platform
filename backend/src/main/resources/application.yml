@@ -104,6 +104,13 @@ app:
     payment-reconcile-cron: "0 30 * * * *"
     # 정산 지급: 매일 (REQ-039). 지급 예정일 당일에 지급되도록 자정 직후에 돈다
     settlement-payout-cron: "0 30 0 * * *"
+  # 약관·정책 문서 버전 (REQ-037). 본문은 resources/terms/*.md. 본문을 고치면 버전을 올린다(20자 이내).
+  # 이용약관·개인정보처리방침·만 14세 확인의 버전이 바뀌면 다음 로그인 응답 requiresTermsAgreement가 true가 된다
+  terms:
+    terms-of-service-version: "2026-11-20"
+    privacy-policy-version: "2026-11-20"
+    prohibited-items-version: "2026-11-20"
+    age-over14-version: "1"
   policy:
     feed:
       page: 20
