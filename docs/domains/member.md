@@ -58,7 +58,10 @@
 - `POST /api/auth/password-reset {email}`: 가입 이메일이면 1회용 토큰 → Redis 30분 → 링크 메일 발송. **가입 여부와 무관하게 같은 응답**. 같은 이메일 5분에 1회(초과도 같은 응답, 메일만 안 보냄)
 - `POST /api/auth/password-reset/confirm {token, newPassword}`: 검증 → BCrypt → 재설정 토큰 삭제 + 해당 회원의 모든 RT family 삭제(전체 기기 로그아웃)
 - 예외: 토큰 만료·재사용 400 `AUTH_RESET_TOKEN_INVALID`, 소셜 전용 계정은 카카오 로그인 안내, 메일 실패 시 재시도 안내
-- 메일 발송: Spring Mail(SMTP). 로컬은 MailHog/로그 출력으로 대체
+- 메일 발송: Spring Mail(SMTP). 로컬은 Mailpit(`infra/docker-compose.local.yml`, 받은 메일 http://localhost:8025)
+  - 구현: 메일은 백그라운드에서 보내 응답·응답 시간이 가입 여부와 상관없이 같다. 발송 실패는 로그만 남기고, "메일 실패 시 재시도 안내"는 프론트가 항상 "메일이 오지 않으면 잠시 뒤 다시 요청"을 안내하는 것으로 갈음한다
+  - 링크는 `{app.frontend.base-url}/password-reset?token={토큰}`(토큰 32바이트 Base64URL 43자). 요청 제한은 이메일을 소문자로 바꿔 세고, 없는 이메일도 센다
+  - 소셜 전용 계정(비밀번호 없음)은 링크 대신 카카오 로그인 안내 메일. 같은 회원의 이전 토큰은 무효화하지 않는다(1회용이고 재설정 시 전체 로그아웃)
 
 ## REQ-037 약관 동의 및 정책 안내 [2]
 - 가입 시 필수: 이용약관, 개인정보 수집·이용, 만 14세 이상 → 하나라도 false면 400

@@ -26,12 +26,20 @@ app:
     return-reminder-cron: "-"
     deduction-auto-accept-cron: "-"
     settlement-payout-cron: "-"
+  frontend:
+    base-url: http://localhost:5173
+  mail:
+    # 재설정 메일을 호출 스레드에서 바로 보내(FakePasswordResetMailSender) 결과를 결정적으로 검증한다
+    async: false
   storage:
     local:
       root-dir: build/test-uploads
       url-prefix: /files
 
 spring:
+  # SMTP 빈만 만든다. 테스트는 FakePasswordResetMailSender(@Primary)가 대신 보내 접속하지 않는다
+  mail:
+    host: localhost
   rabbitmq:
     listener:
       simple:

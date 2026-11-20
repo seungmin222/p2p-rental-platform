@@ -91,7 +91,9 @@ public record PolicyProperties(
 	@Valid @NotNull
 	PageSize search,
 	@Valid @NotNull
-	PageSize profileItems) {
+	PageSize profileItems,
+	@Valid @NotNull
+	PasswordReset passwordReset) {
 
 	/**
 	 * 채팅 (REQ-027·028)
@@ -438,6 +440,19 @@ public record PolicyProperties(
 	 * @param password 비밀번호 글자 수 (member.password)
 	 * @param nickname 닉네임 글자 수 (member.nickname)
 	 */
+	/**
+	 * 비밀번호 재설정 (REQ-036).
+	 *
+	 * @param tokenTtl 재설정 토큰 유효 시간 (password-reset.token-ttl)
+	 * @param rateLimit 같은 이메일의 재요청 간격 (password-reset.rate-limit)
+	 */
+	public record PasswordReset(
+		@NotNull
+		Duration tokenTtl,
+		@NotNull
+		Duration rateLimit) {
+	}
+
 	public record Member(
 		@Positive
 		int emailMax,

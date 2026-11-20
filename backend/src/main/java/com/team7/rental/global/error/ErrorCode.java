@@ -27,6 +27,7 @@ public enum ErrorCode {
 	AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
 	/** 재발급 실패: RT 없음·서명 오류·만료, family 키 없음(로그아웃·강제 무효화), 이미 교체된 RT 재사용 (REQ-003) */
 	AUTH_REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "로그인이 만료되었습니다. 다시 로그인해 주세요."),
+	AUTH_RESET_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "재설정 링크가 만료되었거나 이미 사용되었습니다. 다시 요청해 주세요."),
 
 	// 이미지 업로드 (global/storage)
 	IMAGE_INVALID_TYPE(HttpStatus.BAD_REQUEST, "jpg 또는 png 이미지만 업로드할 수 있습니다."),

@@ -79,6 +79,20 @@ public class RefreshTokenRepository {
 			currentFamilyId, "rt:" + memberId + ":");
 	}
 
+	private static final DefaultRedisScript<Long> DELETE_ALL = new DefaultRedisScript<>("""
+		local families = redis.call('SMEMBERS', KEYS[1])
+		for _, family in ipairs(families) do
+		  redis.call('DEL', ARGV[1] .. family)
+		end
+		redis.call('DEL', KEYS[1])
+		return #families
+		""", Long.class);
+
+	/** 단일 Redis 구성. 회원의 모든 family를 폐기한다(전체 기기 로그아웃: 비밀번호 재설정 REQ-036). */
+	public void deleteAllFamilies(Long memberId) {
+		redis.execute(DELETE_ALL, List.of("rt-families:" + memberId), "rt:" + memberId + ":");
+	}
+
 	private List<String> keys(Long memberId, String familyId) {
 		return List.of("rt:" + memberId + ":" + familyId, "rt-families:" + memberId);
 	}

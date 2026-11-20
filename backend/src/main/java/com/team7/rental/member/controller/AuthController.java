@@ -13,7 +13,10 @@ import com.team7.rental.global.error.ApiErrorCodes;
 import com.team7.rental.global.response.ApiResponse;
 import com.team7.rental.member.dto.AuthLoginRequest;
 import com.team7.rental.member.dto.AuthTokenResponse;
+import com.team7.rental.member.dto.PasswordResetConfirmRequest;
+import com.team7.rental.member.dto.PasswordResetRequest;
 import com.team7.rental.member.service.AuthService;
+import com.team7.rental.member.service.PasswordResetService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,6 +50,7 @@ public class AuthController {
 		+ "=; Path=/api/auth; Max-Age=0; HttpOnly; SameSite=Lax; Secure(local 제외)";
 
 	private final AuthService authService;
+	private final PasswordResetService passwordResetService;
 
 	@Operation(summary = "로그인 (REQ-002)", description = "성공 시 바디에 Access Token, Set-Cookie로 Refresh Token. "
 		+ COOKIE_NOTE + "로그인할 때마다 새 토큰 묶음(family)이 생겨 기기마다 따로 유지된다. "
@@ -81,5 +85,28 @@ public class AuthController {
 		@Parameter(hidden = true) @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false)
 		String refreshToken, HttpServletResponse response) {
 		return ApiResponse.ok(authService.reissue(refreshToken, response));
+	}
+
+	@Operation(summary = "비밀번호 재설정 메일 (REQ-036)", description = "가입 여부와 상관없이 항상 성공(data null)이다. 가입한 이메일이면 재설정 링크 메일을 "
+		+ "백그라운드에서 보낸다(링크 {프론트 주소}/password-reset?token=..., 유효 시간 policies.md password-reset.token-ttl, 1회용). "
+		+ "같은 이메일은 password-reset.rate-limit에 한 번만 보내고 그 안의 재요청도 같은 응답이다. 카카오 로그인 전용 계정은 링크 대신 카카오 로그인 안내 메일을 보낸다. "
+		+ "프론트는 \"메일이 오지 않으면 잠시 뒤 다시 요청하세요\"를 안내한다.")
+	@ApiErrorCodes({COMMON_INVALID_INPUT})
+	@PostMapping("/password-reset")
+	public ApiResponse<Void> requestPasswordReset(@Valid @RequestBody
+	PasswordResetRequest request) {
+		passwordResetService.requestReset(request.email());
+		return ApiResponse.ok();
+	}
+
+	@Operation(summary = "비밀번호 재설정 (REQ-036)", description = "메일 링크의 token과 새 비밀번호로 재설정한다. 새 비밀번호 규칙은 가입과 같다(policies.md member.password). "
+		+ "성공하면 토큰은 사라지고 모든 기기에서 로그아웃된다(모든 Refresh Token family 삭제). "
+		+ "토큰이 만료·재사용·위조됐으면 400 AUTH_RESET_TOKEN_INVALID → 프론트는 재설정 메일을 다시 요청하게 안내한다.")
+	@ApiErrorCodes({COMMON_INVALID_INPUT, AUTH_RESET_TOKEN_INVALID})
+	@PostMapping("/password-reset/confirm")
+	public ApiResponse<Void> confirmPasswordReset(@Valid @RequestBody
+	PasswordResetConfirmRequest request) {
+		passwordResetService.confirm(request);
+		return ApiResponse.ok();
 	}
 }

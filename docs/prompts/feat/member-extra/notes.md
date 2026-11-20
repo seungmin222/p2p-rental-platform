@@ -19,3 +19,15 @@ REQ-021 사용자 프로필, REQ-037 약관 동의, REQ-036 비밀번호 재설�
 - **재동의 API `POST /api/members/me/terms-agreements {types}` 추가(사용자 결정).** 이미 현재 버전에 동의한 항목은 건너뛰고(멱등), 회원 행 락으로 동시 요청의 유니크 충돌을 막는다. 옛 버전 행은 지우지 않는다(스냅샷).
 - **거부 시 이용 제한은 안내만(open-issues #56).** 서버 차단은 보안 필터 변경이라 범위 밖.
 - 인덱스는 UK(member_id, terms_type, terms_version) 하나만 둔다. 앞부분이 member_id라 회원별 조회도 이걸 탄다.
+
+## REQ-036 비밀번호 재설정
+- **메일은 백그라운드 발송(사용자 결정 (a)).** "가입 여부와 무관하게 같은 응답"을 우선했다. 동기로 보내면 가입한 이메일에서만 응답 시간·SMTP 실패가 달라 가입 여부가 드러난다. 발송 실패는 로그만(이메일 주소는 남기지 않음).
+- **실행기는 빈으로 내놓지 않고 `PasswordResetMailDispatcher`가 직접 가진다.** `Executor` 빈이 생기면 Boot 기본 `applicationTaskExecutor`가 빠져 다른 비동기 처리에 영향이 갈 수 있어서. `@EnableAsync`도 쓰지 않았다. 테스트는 `app.mail.async=false`(SyncTaskExecutor)로 결정적으로 검증한다.
+- **메일은 `PasswordResetMailSender` 인터페이스 뒤 SMTP 구현, 테스트는 `FakePasswordResetMailSender`(@Primary).** 외부 연동은 인터페이스 뒤에 두는 규칙. 의존성 `spring-boot-starter-mail` 추가(버전은 Boot BOM).
+- **링크 주소는 `app.frontend.base-url`(로컬 기본 http://localhost:5173, 운영 `FRONTEND_BASE_URL` 필수), 발신 주소 `app.mail.from`(운영 `MAIL_FROM` 필수).** `.env.example`에는 비운 값이 기본값을 덮지 않게 주석으로 넣었다.
+- **요청 제한 키는 이메일을 소문자로 바꿔 쓴다.** members.email 조회는 MySQL 대소문자 무시 정렬이라, 대소문자만 바꿔 제한을 피하지 못하게.
+- **토큰은 먼저 GETDEL로 지운 뒤 DB를 바꾼다.** 1회용을 원자적으로 보장하려고. DB 저장이 실패하면 그 토큰은 버려지고 다시 요청한다.
+- **소셜 전용 계정(비밀번호 없음)은 링크 대신 카카오 로그인 안내 메일(사용자 결정).** 041 미구현이라 지금은 그런 계정이 없다. confirm은 이런 계정·탈퇴 회원이면 AUTH_RESET_TOKEN_INVALID.
+- **같은 회원의 이전 토큰 무효화 키(pwreset:member:*)는 두지 않는다(사용자 결정).** 1회용이고 재설정하면 전체 기기 로그아웃이라.
+- `RefreshTokenRepository.deleteAllFamilies`를 추가했다(탈퇴 REQ-043·이용 정지도 이걸 쓰면 된다).
+

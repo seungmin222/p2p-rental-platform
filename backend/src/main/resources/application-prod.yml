@@ -13,8 +13,21 @@ spring:
     port: ${RABBITMQ_PORT}
     username: ${RABBITMQ_USERNAME}
     password: ${RABBITMQ_PASSWORD}
+  # 비밀번호 재설정 메일 (REQ-036). SMTP 인증·STARTTLS
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
 
 app:
+  frontend:
+    base-url: ${FRONTEND_BASE_URL}
+  mail:
+    from: ${MAIL_FROM}
   shedlock:
     environment: prod
   storage:

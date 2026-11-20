@@ -86,7 +86,7 @@
 | 033 | 결제·보증금 내역 | A | | ✅ type 의미는 임시 해석(open-issues #44) |
 | 034 | 거래 후기 | B | ✔ | ✅ 칭찬 항목은 공통 목록(open-issues #15). 빌린 내역·대여 상세의 canWriteReview에 미작성 조건 반영, 대여 상세·빌린 내역에 reviewWritten(open-issues #54). 신뢰 점수 반영은 054. 프론트 SCR-14 후기 작성·대여 상세/빌린 내역 진입 ✅(`feat/fe-review`), 받은 후기 목록 컴포넌트는 SCR-13 프로필(021)에서 붙임 |
 | 035 | 최근 본 상품 | B | | ⬜ |
-| 036 | 비밀번호 재설정 | B | | ⬜ |
+| 036 | 비밀번호 재설정 | B | | ✅ 백엔드(`feat/member-extra`). 메일은 백그라운드 발송(실패는 로그만), 링크 `{app.frontend.base-url}/password-reset?token=`. 프론트 SCR-01 재설정 화면 미구현 |
 | 037 | 약관 동의 | B | | ✅ 백엔드(`feat/member-extra`). 약관 본문은 초안. 가입 요청에 agreements 필수라 프론트 SCR-01 체크박스·SCR-15 화면 필요. 거부 시 서버 차단은 open-issues #56 |
 | 038 | 대여 연장 | A | | ✅ 프론트(결제 화면 재진입 시 extensionId)는 fe 연장 브랜치 |
 | 039 | 제공자 정산 | A | | ✅ HELD 전이는 063에서 구현(분쟁 접수 → HELD, 목록 heldTotal) |
