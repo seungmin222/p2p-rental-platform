@@ -1,5 +1,11 @@
 # feat/member-extra 결정 기록
 
+## 요약
+- API: `GET /api/members/{id}`(프로필), `GET /api/members/{id}/items`(등록 물품, `profile-items.page`), `GET /api/terms`, `POST /api/members/me/terms-agreements`, `POST /api/auth/password-reset`, `POST /api/auth/password-reset/confirm`. 가입 요청에 `agreements` 필수, 로그인·재발급 응답에 `requiresTermsAgreement`. 탈퇴 회원 프로필은 `isWithdrawn`만, 받은 후기·등록 물품은 빈 목록.
+- 주요 파일: `member/service/MemberProfileQueryService`·`TermsService`·`PasswordResetService`, `member/client/PasswordResetMailDispatcher`(백그라운드 발송)·`SmtpPasswordResetMailSender`, `rental/service/RentalCountReader`, `item/controller/MemberItemController`, `V19__create_terms_agreements.sql`, `resources/terms/*.md`(초안). 새 ErrorCode `AUTH_RESET_TOKEN_INVALID`.
+- 남은 일: 약관 본문 정식 검토, 거부 시 서버 이용 제한(open-issues #56), 차단 시 물품 숨김(056), 신뢰 점수 표시(054). 탈퇴(043)는 `RefreshTokenRepository.deleteAllFamilies`를 쓰고 #55 counterpart를 정한다.
+- 프론트: 이 브랜치 머지 후 가입은 agreements 없이는 400 → SCR-01 약관 체크박스·`/password-reset?token=` 화면, SCR-13 프로필, SCR-15 약관 화면이 필요하다.
+
 REQ-021 사용자 프로필, REQ-037 약관 동의, REQ-036 비밀번호 재설정(백엔드). 프론트 SCR-13 등은 범위 밖.
 
 ## REQ-021 사용자 프로필
