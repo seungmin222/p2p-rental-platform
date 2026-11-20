@@ -1,23 +1,29 @@
 package com.team7.rental.member.controller;
 
+import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.team7.rental.item.entity.Item;
 import com.team7.rental.member.entity.Member;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
+
+import jakarta.persistence.EntityManagerFactory;
 
 /** 사용자 프로필·받은 후기·등록 물품 (REQ-021) */
 class MemberProfileIntegrationTest extends IntegrationTestSupport {
@@ -28,6 +34,9 @@ class MemberProfileIntegrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private EntityManagerFactory entityManagerFactory;
 
 	private VerifiedMember owner;
 	private VerifiedMember renter;
@@ -178,6 +187,55 @@ class MemberProfileIntegrationTest extends IntegrationTestSupport {
 		mockMvc.perform(get("/api/members/{id}/items", owner.member().getId()).queryParam("page", "-1"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("COMMON_INVALID_INPUT"));
+	}
+
+	@Test
+	@DisplayName("등록 물품: 21건이면 1페이지 20건(hasNext true), 2페이지 1건(hasNext false)")
+	void itemsPageBoundary() throws Exception {
+		for (int i = 0; i < 20; i++) {
+			fixture.createItem(owner, PERIOD_START, PERIOD_END);
+		}
+
+		mockMvc.perform(get("/api/members/{id}/items", owner.member().getId()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(20))
+			.andExpect(jsonPath("$.data.totalElements").value(21))
+			.andExpect(jsonPath("$.data.hasNext").value(true));
+		mockMvc.perform(get("/api/members/{id}/items", owner.member().getId()).queryParam("page", "1"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.totalElements").value(21))
+			.andExpect(jsonPath("$.data.hasNext").value(false));
+	}
+
+	@Test
+	@DisplayName("쿼리 수: 프로필은 5개(대표 동네가 없으면 4개, 탈퇴 회원이면 1개)")
+	void profileQueryCount() throws Exception {
+		Member noRegion = fixture.createMember();
+		Member withdrawn = fixture.createMember();
+		jdbcTemplate.update("UPDATE members SET status = 'WITHDRAWN' WHERE id = ?", withdrawn.getId());
+
+		assertThat(countQueries(get("/api/members/{id}", owner.member().getId()))).isEqualTo(5);
+		assertThat(countQueries(get("/api/members/{id}", noRegion.getId()))).isEqualTo(4);
+		assertThat(countQueries(get("/api/members/{id}", withdrawn.getId()))).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("쿼리 수: 등록 물품은 물품 수와 무관하게 회원 확인 1 + 목록 1 + count 1 + 동네 이름 1 + 썸네일 1")
+	void itemsQueryCount() throws Exception {
+		for (int i = 0; i < 24; i++) {
+			fixture.createItem(owner, PERIOD_START, PERIOD_END);
+		}
+
+		assertThat(countQueries(get("/api/members/{id}/items", owner.member().getId()))).isEqualTo(5);
+	}
+
+	// 요청 직전에 비워 픽스처 저장이 섞이지 않게 한다
+	private long countQueries(MockHttpServletRequestBuilder request) throws Exception {
+		Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+		statistics.clear();
+		mockMvc.perform(request).andExpect(status().isOk());
+		return statistics.getPrepareStatementCount();
 	}
 
 	private static LocalDate date(int day) {

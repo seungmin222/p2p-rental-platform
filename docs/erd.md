@@ -227,7 +227,7 @@ erDiagram
 | `search:popular` | 인기 검색어 Sorted Set | — |
 | `search:recent:{memberId}` | 최근 검색어 List | — |
 | `recommend:{memberId}` | 추천 결과 | 1시간 |
-| `pwreset:{token}` | 비밀번호 재설정 | 30분 |
+| `pwreset:token:{token}` | 비밀번호 재설정 토큰(값: memberId). 토큰은 Base64URL 43자만 받는다 | 30분 |
 | `pwreset:rate:{email}` | 요청 제한 | 5분 |
 | `ai:usage:{yyyyMM}` | AI 호출 월 사용량 카운터 | 해당 월 말 + 1일 |
 | `ai:category:{memberId}:{yyyyMMdd}` | 회원의 하루 AI 카테고리 추천 횟수 (`ai.category.per-member-daily`) | 다음 날 끝 |

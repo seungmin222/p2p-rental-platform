@@ -70,8 +70,8 @@ class PasswordResetIntegrationTest extends IntegrationTestSupport {
 		assertThat(mail.validMinutes()).isEqualTo(policyProperties.passwordReset().tokenTtl().toMinutes());
 		String token = token(mail);
 		assertThat(token).hasSize(43);
-		assertThat(redis.opsForValue().get("pwreset:" + token)).isEqualTo(member.getId().toString());
-		assertTtl("pwreset:" + token, policyProperties.passwordReset().tokenTtl());
+		assertThat(redis.opsForValue().get("pwreset:token:" + token)).isEqualTo(member.getId().toString());
+		assertTtl("pwreset:token:" + token, policyProperties.passwordReset().tokenTtl());
 		assertTtl("pwreset:rate:" + EMAIL, policyProperties.passwordReset().rateLimit());
 	}
 
@@ -137,7 +137,7 @@ class PasswordResetIntegrationTest extends IntegrationTestSupport {
 			.andExpect(jsonPath("$.error.code").value("AUTH_REFRESH_TOKEN_INVALID"));
 		confirm(token, "another789#").andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("AUTH_RESET_TOKEN_INVALID"));
-		assertThat(redis.hasKey("pwreset:" + token)).isFalse();
+		assertThat(redis.hasKey("pwreset:token:" + token)).isFalse();
 	}
 
 	@Test
@@ -145,12 +145,31 @@ class PasswordResetIntegrationTest extends IntegrationTestSupport {
 	void confirmInvalidToken() throws Exception {
 		confirm("no-such-token", NEW_PASSWORD).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("AUTH_RESET_TOKEN_INVALID"));
+		confirm("A".repeat(43), NEW_PASSWORD).andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("AUTH_RESET_TOKEN_INVALID"));
 
 		request(EMAIL);
 		String token = token(passwordResetMail.sent().getFirst());
 		jdbcTemplate.update("UPDATE members SET status = 'WITHDRAWN' WHERE id = ?", member.getId());
 		confirm(token, NEW_PASSWORD).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("AUTH_RESET_TOKEN_INVALID"));
+	}
+
+	@Test
+	@DisplayName("재설정: 요청 제한 키를 가리키는 토큰(rate:{email})은 400 AUTH_RESET_TOKEN_INVALID이고 비밀번호·제한 키는 그대로다")
+	void confirmRejectsOtherResetKeys() throws Exception {
+		request(EMAIL);
+		String rateKey = "pwreset:rate:" + EMAIL;
+		assertThat(redis.hasKey(rateKey)).isTrue();
+
+		for (String forged : new String[] {"rate:" + EMAIL, "token:" + token(passwordResetMail.sent().getFirst())}) {
+			confirm(forged, NEW_PASSWORD).andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error.code").value("AUTH_RESET_TOKEN_INVALID"));
+		}
+
+		assertThat(redis.hasKey(rateKey)).isTrue();
+		login(OLD_PASSWORD).andExpect(status().isOk());
+		login(NEW_PASSWORD).andExpect(status().isUnauthorized());
 	}
 
 	@Test

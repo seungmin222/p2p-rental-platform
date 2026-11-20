@@ -8,6 +8,7 @@ import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.team7.rental.global.error.BusinessException;
@@ -60,8 +61,10 @@ public class PasswordResetService {
 
 	/**
 	 * 재설정 메일 요청. 같은 이메일은 password-reset.rate-limit에 한 번만 처리한다(가입하지 않은 이메일도 같이 센다). 활성 회원이면 토큰을 만들어 링크 메일을,
-	 * 소셜 전용 계정(비밀번호 없음)이면 카카오 로그인 안내 메일을 보낸다. 탈퇴 회원·없는 이메일은 아무것도 보내지 않는다.
+	 * 소셜 전용 계정(비밀번호 없음)이면 카카오 로그인 안내 메일을 보낸다. 탈퇴 회원·없는 이메일은 아무것도 보내지 않는다. 회원 조회 한 번과 Redis 쓰기뿐이고
+	 * 메일은 트랜잭션 밖(백그라운드)에서 보내므로 트랜잭션을 열지 않는다(NOT_SUPPORTED).
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public void requestReset(String email) {
 		String normalized = email.strip().toLowerCase(Locale.ROOT);
 		PolicyProperties.PasswordReset policy = policyProperties.passwordReset();
@@ -89,10 +92,13 @@ public class PasswordResetService {
 	/**
 	 * 재설정. 토큰을 먼저 지워(1회용) DB 저장이 실패해도 같은 토큰은 다시 쓸 수 없다(다시 요청한다).
 	 *
-	 * @throws BusinessException AUTH_RESET_TOKEN_INVALID 토큰이 없거나(만료·재사용·위조) 회원이 탈퇴했거나 비밀번호가 없는 소셜 전용 계정일 때
+	 * @throws BusinessException AUTH_RESET_TOKEN_INVALID 토큰 형식이 틀렸거나 없거나(만료·재사용·위조) 회원이 탈퇴했거나 비밀번호가 없는 소셜 전용 계정일 때
 	 */
 	@Transactional
 	public void confirm(PasswordResetConfirmRequest request) {
+		if (!request.hasWellFormedToken()) {
+			throw new BusinessException(ErrorCode.AUTH_RESET_TOKEN_INVALID);
+		}
 		Long memberId = tokenRepository.consume(request.token())
 			.orElseThrow(() -> new BusinessException(ErrorCode.AUTH_RESET_TOKEN_INVALID));
 		Member member = memberRepository.findForUpdate(memberId)

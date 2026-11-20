@@ -10691,9 +10691,10 @@
           },
           "token": {
             "type": "string",
-            "description": "재설정 메일 링크의 token 값",
+            "description": "재설정 메일 링크의 token 값(Base64URL 43자)",
             "example": "q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l9z0x1c",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
           }
         },
         "required": [

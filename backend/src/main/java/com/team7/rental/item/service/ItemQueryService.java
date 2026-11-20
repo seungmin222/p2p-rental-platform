@@ -1,10 +1,14 @@
 package com.team7.rental.item.service;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -216,12 +220,12 @@ public class ItemQueryService {
 	 * @throws BusinessException MEMBER_NOT_FOUND
 	 */
 	public PageResponse<ItemSummaryResponse> getMemberItems(Long memberId, Long viewerId, int page) {
-		var pageable = org.springframework.data.domain.PageRequest.of(page, policies.profileItems().page());
+		var pageable = PageRequest.of(page, policies.profileItems().page());
 		if (members.isWithdrawn(memberId)) {
-			return PageResponse.of(org.springframework.data.domain.Page.<ItemSummaryResponse>empty(pageable));
+			return PageResponse.of(Page.<ItemSummaryResponse>empty(pageable));
 		}
-		var rows = itemRepository.findMemberItems(memberId, pageable, java.time.LocalDateTime.now(clock));
-		return PageResponse.of(new org.springframework.data.domain.PageImpl<>(toSummaries(rows.getContent()),
+		var rows = itemRepository.findMemberItems(memberId, pageable, LocalDateTime.now(clock));
+		return PageResponse.of(new PageImpl<>(toSummaries(rows.getContent()),
 			rows.getPageable(), rows.getTotalElements()));
 	}
 

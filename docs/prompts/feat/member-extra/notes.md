@@ -2,8 +2,8 @@
 
 ## 요약
 - API: `GET /api/members/{id}`(프로필), `GET /api/members/{id}/items`(등록 물품, `profile-items.page`), `GET /api/terms`, `POST /api/members/me/terms-agreements`, `POST /api/auth/password-reset`, `POST /api/auth/password-reset/confirm`. 가입 요청에 `agreements` 필수, 로그인·재발급 응답에 `requiresTermsAgreement`. 탈퇴 회원 프로필은 `isWithdrawn`만, 받은 후기·등록 물품은 빈 목록.
-- 주요 파일: `member/service/MemberProfileQueryService`·`TermsService`·`PasswordResetService`, `member/client/PasswordResetMailDispatcher`(백그라운드 발송)·`SmtpPasswordResetMailSender`, `rental/service/RentalCountReader`, `item/controller/MemberItemController`, `V19__create_terms_agreements.sql`, `resources/terms/*.md`(초안). 새 ErrorCode `AUTH_RESET_TOKEN_INVALID`.
-- 남은 일: 약관 본문 정식 검토, 거부 시 서버 이용 제한(open-issues #56), 차단 시 물품 숨김(056), 신뢰 점수 표시(054). 탈퇴(043)는 `RefreshTokenRepository.deleteAllFamilies`를 쓰고 #55 counterpart를 정한다.
+- 주요 파일: `member/service/MemberProfileQueryService`·`TermsService`·`PasswordResetService`, `member/client/PasswordResetMailDispatcher`(백그라운드 발송)·`SmtpPasswordResetMailSender`, `rental/service/RentalCountReader`, `item/controller/MemberItemController`, `V19__create_terms_agreements.sql`, `resources/terms/*.md`(초안). 새 ErrorCode `AUTH_RESET_TOKEN_INVALID`. Redis 키 `pwreset:token:{token}`·`pwreset:rate:{email}`.
+- 남은 일: 약관 본문 정식 검토(처리방침 §3·§5는 탈퇴 구현 시 다시 고친다), 거부 시 서버 이용 제한(open-issues #56), 차단 시 물품 숨김(056), 신뢰 점수 표시(054). 탈퇴(043)는 `RefreshTokenRepository.deleteAllFamilies`를 쓰고 #55 counterpart를 정한다.
 - 프론트: 이 브랜치 머지 후 가입은 agreements 없이는 400 → SCR-01 약관 체크박스·`/password-reset?token=` 화면, SCR-13 프로필, SCR-15 약관 화면이 필요하다.
 
 REQ-021 사용자 프로필, REQ-037 약관 동의, REQ-036 비밀번호 재설정(백엔드). 프론트 SCR-13 등은 범위 밖.
@@ -14,6 +14,7 @@ REQ-021 사용자 프로필, REQ-037 약관 동의, REQ-036 비밀번호 재설�
 - **등록 물품 정렬은 피드와 같은 bumpedAt·id 내림차순.** 카드에 bumpedAt을 보여 주므로 화면 순서와 맞춘다(내 물품 관리는 id 내림차순이라 다르다).
 - **등록 물품 API는 item 도메인 `MemberItemController`에 둔다.** 내 물품(`MyItemController`)과 같이 경로는 회원 아래지만 물품 목록이라서. Swagger 태그는 api.md 섹션(회원·인증)을 따라 Member.
 - **탈퇴 회원: 프로필 200 + `isWithdrawn=true`, 나머지 null / 받은 후기·등록 물품 200 빈 목록(사용자 결정, open-issues #55에 기록).** 후기 작성자 표시(`isWithdrawn`)처럼 문구는 프론트가 정한다. 받은 후기 404 판정용 `MemberQueryService.exists`는 `isWithdrawn`(없으면 MEMBER_NOT_FOUND)으로 바꿨다.
+- **쿼리 수: 프로필 5개(대표 동네 없으면 4, 탈퇴 회원 1), 등록 물품 5개(회원 확인·목록·count·동네 이름·썸네일, 마지막 페이지면 count가 빠질 수 있다).** 물품 수와 무관하고 `MemberProfileIntegrationTest`가 Hibernate Statistics로 고정한다(기존 쿼리 수 테스트와 같은 방식).
 - **차단(REQ-056)은 확장 지점만**: 서비스가 조회자 ID(nullable)를 받고 아직 쓰지 않는다. 컨트롤러는 `@LoginMember(required = false)`.
 
 ## REQ-037 약관 동의
@@ -31,6 +32,9 @@ REQ-021 사용자 프로필, REQ-037 약관 동의, REQ-036 비밀번호 재설�
 - **실행기는 빈으로 내놓지 않고 `PasswordResetMailDispatcher`가 직접 가진다.** `Executor` 빈이 생기면 Boot 기본 `applicationTaskExecutor`가 빠져 다른 비동기 처리에 영향이 갈 수 있어서. `@EnableAsync`도 쓰지 않았다. 테스트는 `app.mail.async=false`(SyncTaskExecutor)로 결정적으로 검증한다.
 - **메일은 `PasswordResetMailSender` 인터페이스 뒤 SMTP 구현, 테스트는 `FakePasswordResetMailSender`(@Primary).** 외부 연동은 인터페이스 뒤에 두는 규칙. 의존성 `spring-boot-starter-mail` 추가(버전은 Boot BOM).
 - **링크 주소는 `app.frontend.base-url`(로컬 기본 http://localhost:5173, 운영 `FRONTEND_BASE_URL` 필수), 발신 주소 `app.mail.from`(운영 `MAIL_FROM` 필수).** `.env.example`에는 비운 값이 기본값을 덮지 않게 주석으로 넣었다.
+- **토큰 키는 `pwreset:token:{token}`으로 요청 제한 키 `pwreset:rate:{email}`과 접두어를 나눴고, confirm은 토큰이 Base64URL 43자(`^[A-Za-z0-9_-]{43}$`)가 아니면 Redis를 보지 않고 400 AUTH_RESET_TOKEN_INVALID.** 리뷰 지적: 접두어를 공유하면 token="rate:{email}"로 GETDEL이 "1"을 돌려 회원 1의 비밀번호가 바뀌었다. 형식 위반을 COMMON_INVALID_INPUT details가 아니라 AUTH_RESET_TOKEN_INVALID로 둔 이유: 토큰은 사용자가 고칠 수 있는 입력이 아니라 메일 링크 값이고, member.md가 위조 토큰을 이 코드로 정했으며 프론트가 "다시 요청" 안내 하나로 처리할 수 있어서. 그래서 Bean Validation `@Pattern` 대신 DTO 메서드로 검사하고 Swagger에는 `pattern`만 표시한다.
+- **requestReset은 `@Transactional(NOT_SUPPORTED)`.** 회원 조회 한 번과 Redis 쓰기뿐이라 DB 트랜잭션이 필요 없고, 클래스 기본(readOnly)이 붙으면 메일 디스패치까지 커넥션을 잡고 있게 되어서.
+- **가입한 이메일만 토큰 Redis SET이 하나 더 있어 응답 시간이 약간 다를 수 있는데, 허용한다.** 메일 발송(수백 ms)과 달리 밀리초 이하 차이이고 요청 제한(5분 1회) 때문에 반복 측정도 어렵다.
 - **요청 제한 키는 이메일을 소문자로 바꿔 쓴다.** members.email 조회는 MySQL 대소문자 무시 정렬이라, 대소문자만 바꿔 제한을 피하지 못하게.
 - **토큰은 먼저 GETDEL로 지운 뒤 DB를 바꾼다.** 1회용을 원자적으로 보장하려고. DB 저장이 실패하면 그 토큰은 버려지고 다시 요청한다.
 - **소셜 전용 계정(비밀번호 없음)은 링크 대신 카카오 로그인 안내 메일(사용자 결정).** 041 미구현이라 지금은 그런 계정이 없다. confirm은 이런 계정·탈퇴 회원이면 AUTH_RESET_TOKEN_INVALID.

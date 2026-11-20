@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class PasswordResetTokenRepository {
 
-	private static final String TOKEN_PREFIX = "pwreset:";
+	private static final String TOKEN_PREFIX = "pwreset:token:";
 	private static final String RATE_PREFIX = "pwreset:rate:";
 
 	private final StringRedisTemplate redis;
