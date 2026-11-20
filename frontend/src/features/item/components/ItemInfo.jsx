@@ -1,6 +1,9 @@
+import { Link } from 'react-router';
+
 import { useKakaoMap } from '../../../shared/hooks/useKakaoMap';
 import { formatElapsed } from '../../../shared/lib/format';
 import { Skeleton } from '../../../shared/ui';
+import { getProfilePath } from '../../profile/profileDisplay';
 import { ITEM_CONDITION } from '../constants';
 import { getDepositText, getPriceParts } from '../itemDisplay';
 import KakaoPlaceMap from './KakaoPlaceMap';
@@ -14,20 +17,48 @@ function MemberAvatar({ url }) {
   return <div aria-hidden="true" className="size-11 shrink-0 rounded-full bg-primary-soft" />;
 }
 
-/** 판매자 카드(테두리 상자, 닉네임 + 동네). 거래 횟수·신뢰 점수는 1순위 응답에 없어 그리지 않는다(신뢰 점수는 REQ-054, 3순위) */
+/**
+ * 판매자 카드(테두리 상자, 닉네임 + 동네). 누르면 사용자 프로필(SCR-13).
+ * 거래 횟수·신뢰 점수는 상세 응답에 없어 그리지 않는다(거래 횟수는 프로필에, 신뢰 점수는 REQ-054)
+ */
 export function ItemOwnerCard({ owner }) {
-  return (
-    <section
-      aria-label="제공자"
-      className="flex items-center gap-3 rounded-xl border border-line p-4"
-    >
+  const profilePath = getProfilePath(owner);
+  const content = (
+    <>
       <MemberAvatar url={owner.profileImageUrl} />
-      <div className="flex min-w-0 items-baseline gap-2">
+      <div className="flex min-w-0 flex-1 items-baseline gap-2">
         <span className="truncate font-semibold">{owner.nickname}</span>
         {owner.regionName && (
           <span className="shrink-0 text-xs text-ink-muted">{owner.regionName}</span>
         )}
       </div>
+    </>
+  );
+  return (
+    <section aria-label="제공자">
+      {profilePath ? (
+        <Link
+          to={profilePath}
+          aria-label={`${owner.nickname} 프로필 보기`}
+          className="flex items-center gap-3 rounded-xl border border-line p-4 hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          {content}
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="size-5 shrink-0 text-ink-faint"
+          >
+            <path d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      ) : (
+        <div className="flex items-center gap-3 rounded-xl border border-line p-4">{content}</div>
+      )}
     </section>
   );
 }

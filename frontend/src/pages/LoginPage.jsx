@@ -92,7 +92,15 @@ function LoginForm({ redirect, defaultEmail }) {
           로그인
         </Button>
       </form>
-      <p className="mt-6 flex items-center justify-center gap-1 text-caption text-ink-muted">
+      <p className="mt-3 flex justify-center text-caption">
+        <Link
+          to="/password-reset/request"
+          className="inline-flex min-h-11 items-center px-1 text-ink-muted underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          비밀번호를 잊으셨나요?
+        </Link>
+      </p>
+      <p className="mt-3 flex items-center justify-center gap-1 text-caption text-ink-muted">
         아직 회원이 아니신가요?
         <Link
           to={withRedirect('/signup', redirect)}

@@ -12,6 +12,8 @@ import MyProfilePage from '../pages/MyProfilePage';
 import MyRentalsPage from '../pages/MyRentalsPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import NotificationListPage from '../pages/NotificationListPage';
+import PasswordResetConfirmPage from '../pages/PasswordResetConfirmPage';
+import PasswordResetRequestPage from '../pages/PasswordResetRequestPage';
 import PaymentFailPage from '../pages/PaymentFailPage';
 import PaymentSuccessPage from '../pages/PaymentSuccessPage';
 import RegionPage from '../pages/RegionPage';
@@ -20,6 +22,8 @@ import RentalReservePage from '../pages/RentalReservePage';
 import ReviewWritePage from '../pages/ReviewWritePage';
 import SearchPage from '../pages/SearchPage';
 import SignupPage from '../pages/SignupPage';
+import TermsPage from '../pages/TermsPage';
+import UserProfilePage from '../pages/UserProfilePage';
 import { clearLocalSession } from '../features/auth/queries';
 import { watchPageRestore } from '../features/payment/startPayment';
 import { setUnauthorizedHandler } from '../shared/api';
@@ -54,6 +58,9 @@ export const router = createBrowserRouter([
   // SCR-01
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
+  // 비밀번호 재설정(REQ-036): 로그인 여부와 상관없이 쓴다. 메일 링크는 /password-reset?token=
+  { path: '/password-reset/request', element: <PasswordResetRequestPage /> },
+  { path: '/password-reset', element: <PasswordResetConfirmPage /> },
   {
     element: <AppLayout />,
     children: [
@@ -61,6 +68,8 @@ export const router = createBrowserRouter([
       { path: '/search', element: <SearchPage /> }, // SCR-04
       { path: '/regions', element: <RegionPage /> }, // SCR-02 (비회원 임시 동네 선택 가능)
       { path: '/items/:id', element: <ItemDetailPage />, handle: hideTabBar }, // SCR-05
+      { path: '/users/:memberId', element: <UserProfilePage /> }, // SCR-13 (비회원 조회 가능)
+      { path: '/terms/:slug', element: <TermsPage /> }, // SCR-15 약관·정책 (비회원 조회 가능)
       {
         element: <RequireAuth />,
         children: [

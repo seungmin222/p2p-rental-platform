@@ -10,6 +10,8 @@ const MESSAGES = {
   AUTH_REFRESH_TOKEN_INVALID: '로그인이 만료됐어요. 다시 로그인해 주세요',
   MEMBER_EMAIL_DUPLICATED: '이미 가입된 이메일이에요',
   MEMBER_NICKNAME_DUPLICATED: '이미 사용 중인 닉네임이에요',
+  // 비밀번호 재설정(REQ-036): 만료·재사용·위조 모두 같은 코드 → 메일을 다시 요청하게 안내
+  AUTH_RESET_TOKEN_INVALID: '링크가 만료됐거나 이미 사용됐어요. 재설정 메일을 다시 요청해 주세요',
 };
 
 export const getErrorMessage = createErrorMessageGetter(MESSAGES);

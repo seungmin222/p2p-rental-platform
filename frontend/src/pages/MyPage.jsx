@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 
 import LogoutButton from '../features/auth/components/LogoutButton';
 import ProfileSummary from '../features/auth/components/ProfileSummary';
+import { TERMS_DOCUMENTS } from '../features/terms/constants';
 
 // 1순위 메뉴만(REQ-019·020). 프로필 수정·관심·최근 본·결제/정산 내역·후기는 해당 기능 브랜치에서 더한다
 const MENU = [
@@ -41,7 +42,19 @@ export default function MyPage() {
           ))}
         </ul>
       </nav>
-      <div className="mt-8">
+      {/* SCR-15 약관·정책(REQ-037). 문의·분쟁 접수(REQ-063)는 해당 브랜치에서 더한다 */}
+      <nav aria-label="약관·정책" className="mt-6 flex flex-wrap gap-x-4">
+        {TERMS_DOCUMENTS.map((document) => (
+          <Link
+            key={document.slug}
+            to={`/terms/${document.slug}`}
+            className="inline-flex min-h-11 items-center text-caption text-ink-muted underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            {document.title}
+          </Link>
+        ))}
+      </nav>
+      <div className="mt-4">
         <LogoutButton />
       </div>
     </>

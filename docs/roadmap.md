@@ -75,7 +75,7 @@
 ### 2순위
 | REQ | 이름 | 담당 | 필수 | 상태 |
 | --- | --- | --- | --- | --- |
-| 021 | 사용자 프로필 | B | | ✅ 백엔드(`feat/member-extra`). 신뢰 점수·칭찬 항목별 횟수는 054, 차단 시 물품 숨김은 056. 프론트 SCR-13 미구현 |
+| 021 | 사용자 프로필 | B | | ✅ 백엔드(`feat/member-extra`). 신뢰 점수·칭찬 항목별 횟수는 054, 차단 시 물품 숨김은 056. 프론트 SCR-13 `/users/:memberId` ✅(`feat/fe-member-extra`, 등록 물품·받은 후기 탭, 상세·채팅·대여 상세·후기에서 진입) |
 | 022 | 관심 | B | | ⬜ |
 | 023/031 | 연체 감지·알림 | A | ✔ | ✅ (031 저장은 032 구현으로 연결, 실시간 전달은 채팅 STOMP로 연결) |
 | 024/025 | 결제·보증금 반환 | A | ✔ | ✅ |
@@ -84,10 +84,10 @@
 | 030 | 거래 장소 지도 | FE | | ✅ |
 | 032 | 거래 활동 알림 | B | | ✅ 실시간 전달(STOMP `/user/queue/notifications`)은 채팅 027에서 연결, 인계 리마인더(`HANDOVER_REMINDER`)는 017 배치로 발송, 후기 알림은 034. 문구 임시(open-issues #50). 프론트 SCR-11 알림 목록·안 읽은 수 배지·실시간 갱신 ✅(`feat/fe-notification`) |
 | 033 | 결제·보증금 내역 | A | | ✅ type 의미는 임시 해석(open-issues #44) |
-| 034 | 거래 후기 | B | ✔ | ✅ 칭찬 항목은 공통 목록(open-issues #15). 빌린 내역·대여 상세의 canWriteReview에 미작성 조건 반영, 대여 상세·빌린 내역에 reviewWritten(open-issues #54). 신뢰 점수 반영은 054. 프론트 SCR-14 후기 작성·대여 상세/빌린 내역 진입 ✅(`feat/fe-review`), 받은 후기 목록 컴포넌트는 SCR-13 프로필(021)에서 붙임 |
+| 034 | 거래 후기 | B | ✔ | ✅ 칭찬 항목은 공통 목록(open-issues #15). 빌린 내역·대여 상세의 canWriteReview에 미작성 조건 반영, 대여 상세·빌린 내역에 reviewWritten(open-issues #54). 신뢰 점수 반영은 054. 프론트 SCR-14 후기 작성·대여 상세/빌린 내역 진입 ✅(`feat/fe-review`), 받은 후기 목록은 SCR-13 프로필 탭에 붙임(`feat/fe-member-extra`) |
 | 035 | 최근 본 상품 | B | | ⬜ |
-| 036 | 비밀번호 재설정 | B | | ✅ 백엔드(`feat/member-extra`). 메일은 백그라운드 발송(실패는 로그만), 링크 `{app.frontend.base-url}/password-reset?token=`. 프론트 SCR-01 재설정 화면 미구현 |
-| 037 | 약관 동의 | B | | ✅ 백엔드(`feat/member-extra`). 약관 본문은 초안. 가입 요청에 agreements 필수라 프론트 SCR-01 체크박스·SCR-15 화면 필요. 거부 시 서버 차단은 open-issues #56 |
+| 036 | 비밀번호 재설정 | B | | ✅ 백엔드(`feat/member-extra`). 메일은 백그라운드 발송(실패는 로그만), 링크 `{app.frontend.base-url}/password-reset?token=`. 프론트 SCR-01 `/password-reset/request`·`/password-reset?token=` ✅(`feat/fe-member-extra`) |
+| 037 | 약관 동의 | B | | ✅ 백엔드(`feat/member-extra`). 약관 본문은 초안. 프론트 SCR-01 가입 체크박스·재동의 모달·SCR-15 `/terms/:slug` ✅(`feat/fe-member-extra`). 거부 시 서버 차단은 open-issues #56 |
 | 038 | 대여 연장 | A | | ✅ 프론트(결제 화면 재진입 시 extensionId)는 fe 연장 브랜치 |
 | 039 | 제공자 정산 | A | | ✅ HELD 전이는 063에서 구현(분쟁 접수 → HELD, 목록 heldTotal) |
 | 040 | AI 상태 비교 | A | | ✅ 검증 실험 미실행 (`docs/experiments/ai-compare.md`) |

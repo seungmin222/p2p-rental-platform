@@ -50,6 +50,13 @@ export function endMockSession() {
   }
 }
 
+/** 모든 기기 로그아웃 흉내(비밀번호 재설정): 지금 세션이 그 회원이면 끝낸다 */
+export function endMockSessionOf(memberId) {
+  if (readSessionMemberId() === memberId) {
+    endMockSession();
+  }
+}
+
 /**
  * 재발급: 세션이 있고 그 회원이 목에 있으면 새 AT, 아니면 null(401 AUTH_REFRESH_TOKEN_INVALID).
  * 가입한 계정은 메모리에만 있어 새로고침 뒤에는 회원이 없으므로 null이 된다.

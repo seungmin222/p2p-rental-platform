@@ -9,10 +9,20 @@ import {
   toVerification,
   validateLogin,
   validateSignup,
+  agreeTermsInDb,
+  confirmPasswordResetInDb,
+  requestPasswordResetInDb,
+  requiresTermsAgreement,
 } from './memberLogic';
 import { createMemberDb, MOCK_REGION_MASTER } from './memberSeed';
 
-const VALID = { email: 'new@example.com', password: 'rental123!', nickname: '새이웃' };
+const AGREED = { termsOfService: true, privacyCollection: true, ageOver14: true };
+const VALID = {
+  email: 'new@example.com',
+  password: 'rental123!',
+  nickname: '새이웃',
+  agreements: AGREED,
+};
 
 describe('validateLogin', () => {
   it('빈 값만 400 details(형식은 보지 않는다)', () => {
@@ -31,10 +41,24 @@ describe('validateSignup', () => {
   });
 
   it('필드마다 첫 위반 하나', () => {
-    expect(validateSignup({ email: 'bad', password: 'short1!', nickname: '가' })).toEqual([
+    expect(
+      validateSignup({ email: 'bad', password: 'short1!', nickname: '가', agreements: AGREED }),
+    ).toEqual([
       { field: 'email', reason: '올바른 형식의 이메일 주소여야 합니다' },
       { field: 'password', reason: '8자 이상 20자 이하로 입력해 주세요.' },
       { field: 'nickname', reason: '2자 이상 10자 이하로 입력해 주세요.' },
+    ]);
+  });
+
+  it('약관 동의: 객체가 없으면 agreements, 항목이 false·생략이면 항목마다 details', () => {
+    expect(validateSignup({ ...VALID, agreements: undefined })).toEqual([
+      { field: 'agreements', reason: '널이어서는 안됩니다' },
+    ]);
+    expect(
+      validateSignup({ ...VALID, agreements: { termsOfService: false, ageOver14: true } }),
+    ).toEqual([
+      { field: 'agreements.termsOfService', reason: '참이어야 합니다' },
+      { field: 'agreements.privacyCollection', reason: '널이어서는 안됩니다' },
     ]);
   });
 
@@ -160,6 +184,51 @@ describe('toMemberResponse', () => {
       isVerified: false,
       verifiedAt: null,
       verifyExpiresAt: null,
+    });
+  });
+});
+
+describe('약관 재동의 · 비밀번호 재설정 목', () => {
+  const TOKEN = 'q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l9z0x1c';
+  const MINUTE = 60 * 1000;
+
+  it('재동의는 세 항목을 모두 보내야 끝나고, 모르는 항목은 details', () => {
+    const db = createMemberDb();
+    expect(requiresTermsAgreement(db, 2)).toBe(true);
+    expect(agreeTermsInDb(db, 2, ['TERMS_OF_SERVICE'])).toEqual({ requiresTermsAgreement: true });
+    expect(agreeTermsInDb(db, 2, ['UNKNOWN']).details).toHaveLength(1);
+    expect(
+      agreeTermsInDb(db, 2, ['TERMS_OF_SERVICE', 'PRIVACY_COLLECTION', 'AGE_OVER_14']),
+    ).toEqual({ requiresTermsAgreement: false });
+  });
+
+  it('재설정 요청: 가입 이메일만 토큰, 같은 이메일(대소문자 무시)은 5분에 한 번', () => {
+    const db = createMemberDb();
+    expect(requestPasswordResetInDb(db, 'nobody@example.com', 0, () => TOKEN)).toBeNull();
+    expect(requestPasswordResetInDb(db, 'User1@example.com', 0, () => TOKEN)).toBe(TOKEN);
+    expect(requestPasswordResetInDb(db, 'user1@example.com', 4 * MINUTE, () => TOKEN)).toBeNull();
+  });
+
+  it('재설정 확인: 형식·만료·재사용은 AUTH_RESET_TOKEN_INVALID, 성공하면 비밀번호가 바뀐다', () => {
+    const db = createMemberDb();
+    requestPasswordResetInDb(db, 'user1@example.com', 0, () => TOKEN);
+    const body = { token: TOKEN, newPassword: 'newpass456@' };
+
+    expect(confirmPasswordResetInDb(db, { ...body, token: 'short' }, 0)).toEqual({
+      code: 'AUTH_RESET_TOKEN_INVALID',
+    });
+    expect(confirmPasswordResetInDb(db, { ...body, newPassword: 'abc' }, 0).details[0].field).toBe(
+      'newPassword',
+    );
+    expect(confirmPasswordResetInDb(db, body, MINUTE)).toEqual({ memberId: 1 });
+    expect(db.members[0].password).toBe('newpass456@');
+    expect(confirmPasswordResetInDb(db, body, MINUTE)).toEqual({
+      code: 'AUTH_RESET_TOKEN_INVALID',
+    });
+
+    requestPasswordResetInDb(db, 'user2@example.com', 0, () => TOKEN);
+    expect(confirmPasswordResetInDb(db, body, 30 * MINUTE)).toEqual({
+      code: 'AUTH_RESET_TOKEN_INVALID',
     });
   });
 });

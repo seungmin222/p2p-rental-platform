@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 
 import BackButton from '../app/layout/BackButton';
 import ChatComposer from '../features/chat/components/ChatComposer';
@@ -9,6 +9,7 @@ import { buildMessageRows, getCounterpartName, getMyMemberId } from '../features
 import { useChatRoom } from '../features/chat/queries';
 import { useChatRoomSession } from '../features/chat/useChatRoomSession';
 import { parseItemId } from '../features/item/itemId';
+import { getProfilePath } from '../features/profile/profileDisplay';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { flattenPages } from '../shared/lib/listParams';
 import { isInitialLoadError } from '../shared/lib/queryState';
@@ -21,16 +22,27 @@ const COLUMN =
 
 function RoomHeader({ room }) {
   const name = room ? getCounterpartName(room.counterpart) : null;
+  // 상대 닉네임을 누르면 프로필(SCR-13). 탈퇴한 상대는 링크 없음
+  const profilePath = room ? getProfilePath(room.counterpart) : null;
   return (
     <header className="flex h-14 shrink-0 items-center gap-1 border-b border-divider bg-white pr-4 pl-1">
       <BackButton />
       {room ? (
         <h1 className="flex min-w-0 flex-1 items-baseline gap-2">
-          <span
-            className={`truncate text-lg font-bold ${room.counterpart.isWithdrawn ? 'text-ink-muted' : ''}`}
-          >
-            {name}
-          </span>
+          {profilePath ? (
+            <Link
+              to={profilePath}
+              className="truncate text-lg font-bold underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              {name}
+            </Link>
+          ) : (
+            <span
+              className={`truncate text-lg font-bold ${room.counterpart.isWithdrawn ? 'text-ink-muted' : ''}`}
+            >
+              {name}
+            </span>
+          )}
           {room.counterpart.regionName && (
             <span className="shrink-0 text-caption text-ink-muted">
               {room.counterpart.regionName}

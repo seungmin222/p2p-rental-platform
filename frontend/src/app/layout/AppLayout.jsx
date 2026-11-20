@@ -4,6 +4,7 @@ import ChatUnreadBadge from '../../features/chat/components/UnreadBadge';
 import { useChatRoomUpdates } from '../../features/chat/queries';
 import NotificationUnreadBadge from '../../features/notification/components/NotificationUnreadBadge';
 import { useNotificationUpdates } from '../../features/notification/queries';
+import TermsReagreeGate from '../../features/terms/components/TermsReagreeGate';
 import { useAuthStore } from '../../shared/api';
 import DesktopHeader from './DesktopHeader';
 import NavIcon from './NavIcon';
@@ -31,6 +32,8 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-dvh flex-col bg-white">
       <DesktopHeader />
+      {/* 약관 재동의(REQ-037): 로그인·재발급 응답 requiresTermsAgreement가 true면 어느 화면에서든 묻는다 */}
+      <TermsReagreeGate />
 
       {/* 세로 flex: hideTabBar 화면의 BottomActionBar(sticky, mt-auto)가 본문이 짧아도 화면 아래에 붙도록. 그 화면은 바가 마지막이라 아래 여백 없음 */}
       <main

@@ -7,12 +7,27 @@ import { AuthPageLayout, FormRootError } from '../features/auth/components/AuthF
 import { EMAIL_MAX, NICKNAME_LENGTH, PASSWORD_LENGTH } from '../features/auth/constants';
 import { getErrorMessage } from '../features/auth/errorMessages';
 import { useSignup } from '../features/auth/queries';
+import TermsAgreementField from '../features/terms/components/TermsAgreementField';
+import {
+  agreementFieldName,
+  emptyAgreements,
+  REQUIRED_AGREEMENTS,
+} from '../features/terms/constants';
 import { useAuthStore } from '../shared/api';
 import { useSubmitErrorHandler } from '../shared/hooks/useSubmitErrorHandler';
 import { validateEmail, validateNickname, validatePassword } from '../shared/lib/validators';
 import { Button, TextField, toast } from '../shared/ui';
 
-const FIELD_MAP = { email: 'email', password: 'password', nickname: 'nickname' };
+// 약관 동의 400은 details agreements.{필드}(객체를 빼면 agreements) → 그 체크박스, 객체 전체면 첫 항목
+const FIELD_MAP = {
+  email: 'email',
+  password: 'password',
+  nickname: 'nickname',
+  agreements: agreementFieldName(REQUIRED_AGREEMENTS[0].name),
+  ...Object.fromEntries(
+    REQUIRED_AGREEMENTS.map(({ name }) => [agreementFieldName(name), agreementFieldName(name)]),
+  ),
+};
 const CODE_FIELDS = {
   MEMBER_EMAIL_DUPLICATED: 'email',
   MEMBER_NICKNAME_DUPLICATED: 'nickname',
@@ -23,12 +38,20 @@ function SignupForm({ redirect }) {
   const navigate = useNavigate();
   const {
     register,
+    control,
     handleSubmit,
     setError,
     setFocus,
+    setValue,
     formState: { errors },
   } = useForm({
-    defaultValues: { email: '', password: '', passwordConfirm: '', nickname: '' },
+    defaultValues: {
+      email: '',
+      password: '',
+      passwordConfirm: '',
+      nickname: '',
+      agreements: emptyAgreements(),
+    },
     shouldFocusError: true,
   });
   const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, {
@@ -41,7 +64,12 @@ function SignupForm({ redirect }) {
     const email = values.email.trim();
     // 비밀번호 확인은 프론트 전용이라 보내지 않는다
     mutation.mutate(
-      { email, password: values.password, nickname: values.nickname },
+      {
+        email,
+        password: values.password,
+        nickname: values.nickname,
+        agreements: values.agreements,
+      },
       {
         onSuccess: () => {
           toast.show({ message: '가입이 완료됐어요. 로그인해 주세요' });
@@ -102,6 +130,12 @@ function SignupForm({ redirect }) {
               validate: (value) => validateNickname(value, NICKNAME_LENGTH),
             })}
           />
+          <TermsAgreementField
+            control={control}
+            register={register}
+            setValue={setValue}
+            errors={errors}
+          />
         </fieldset>
         <FormRootError message={errors.root?.server?.message} />
         <Button type="submit" fullWidth isLoading={mutation.isPending}>
@@ -121,7 +155,7 @@ function SignupForm({ redirect }) {
   );
 }
 
-/** SCR-01 회원가입 (REQ-001). 약관 동의(REQ-037)는 2순위라 없다 */
+/** SCR-01 회원가입 (REQ-001) + 필수 약관 동의(REQ-037, 같은 화면) */
 export default function SignupPage() {
   const [searchParams] = useSearchParams();
   const redirect = getSafeRedirect(searchParams.get('redirect'));

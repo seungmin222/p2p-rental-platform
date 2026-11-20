@@ -1,5 +1,8 @@
+import { Link } from 'react-router';
+
 import { formatElapsed } from '../../../shared/lib/format';
 import { Badge } from '../../../shared/ui';
+import { getProfilePath } from '../../profile/profileDisplay';
 import { COMPLIMENT, SATISFACTION } from '../constants';
 
 // writerRole: 작성자가 그 대여에서 맡은 역할(RENTER면 대여자가 쓴 후기)
@@ -11,6 +14,8 @@ export default function ReceivedReviewItem({ review }) {
   const { writer } = review;
   const isWithdrawn = Boolean(writer.isWithdrawn);
   const nickname = isWithdrawn ? '탈퇴한 사용자' : writer.nickname;
+  // 작성자 닉네임 → 그 사람의 프로필. 탈퇴한 작성자는 링크 없음
+  const profilePath = getProfilePath(writer);
   return (
     <article className="flex gap-3 py-3.5">
       {!isWithdrawn && writer.profileImageUrl ? (
@@ -25,9 +30,18 @@ export default function ReceivedReviewItem({ review }) {
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-2">
-          <span className={`truncate font-semibold ${isWithdrawn ? 'text-ink-muted' : ''}`}>
-            {nickname}
-          </span>
+          {profilePath ? (
+            <Link
+              to={profilePath}
+              className="truncate font-semibold underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              {nickname}
+            </Link>
+          ) : (
+            <span className={`truncate font-semibold ${isWithdrawn ? 'text-ink-muted' : ''}`}>
+              {nickname}
+            </span>
+          )}
           <span className="shrink-0 text-xs text-ink-muted">
             {WRITER_ROLE_LABEL[review.writerRole] ?? ''} · {formatElapsed(review.createdAt)}
           </span>
