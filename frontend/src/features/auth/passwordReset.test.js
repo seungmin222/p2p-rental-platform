@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { isResetTokenError, readResetToken } from './passwordReset';
 
-const TOKEN = 'q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l9z0x1c';
+// 형식(Base64URL 43자)만 맞춘 가짜 토큰. 비밀 스캐너가 잡지 않게 엔트로피가 낮은 값
+const TOKEN = 'a'.repeat(43);
 
 describe('readResetToken', () => {
   it('Base64URL 43자만 받는다', () => {

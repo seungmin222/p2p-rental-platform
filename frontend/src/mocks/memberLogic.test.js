@@ -189,7 +189,7 @@ describe('toMemberResponse', () => {
 });
 
 describe('약관 재동의 · 비밀번호 재설정 목', () => {
-  const TOKEN = 'q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l9z0x1c';
+  const TOKEN = 'a'.repeat(43);
   const MINUTE = 60 * 1000;
 
   it('재동의는 세 항목을 모두 보내야 끝나고, 모르는 항목은 details', () => {
