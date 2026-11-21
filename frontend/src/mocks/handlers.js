@@ -9,6 +9,7 @@ import { memberHandlers } from './member';
 import { notificationHandlers } from './notification';
 import { regionHandlers } from './region';
 import { paymentHandlers } from './payment';
+import { paymentHistoryHandlers } from './paymentHistory';
 import { profileHandlers } from './profile';
 import { rentalHandlers } from './rental';
 import { reviewHandlers } from './review';
@@ -24,6 +25,7 @@ export const handlers = [
   ...rentalHandlers,
   ...reviewHandlers,
   ...paymentHandlers,
+  ...paymentHistoryHandlers,
   ...chatHandlers,
   ...chatStompHandlers,
   ...notificationHandlers,

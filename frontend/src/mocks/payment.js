@@ -64,6 +64,8 @@ function createExtensionOrder(rental, extensionId) {
       findMockItem(rental.itemId).name,
       crypto.randomUUID(),
     );
+    // 결제 내역(REQ-033) 일시. 이 필드 전에 저장한 주문은 대여 생성 시각으로 본다(paymentHistoryLogic.js)
+    order.createdAt = nowServer();
     db.payments.push(order);
   }
   return order;
@@ -142,6 +144,7 @@ export const paymentHandlers = [
           findMockItem(rental.itemId).name,
           crypto.randomUUID(),
         );
+        order.createdAt = nowServer();
         db.payments.push(order);
       }
       return ok(toOrderResponse(order, currentMemberId()), { status: 201 });

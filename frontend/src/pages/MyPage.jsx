@@ -2,12 +2,15 @@ import { Link } from 'react-router';
 
 import LogoutButton from '../features/auth/components/LogoutButton';
 import ProfileSummary from '../features/auth/components/ProfileSummary';
+import { PAYMENT_ENABLED } from '../features/rental/constants';
 import { TERMS_DOCUMENTS } from '../features/terms/constants';
 
-// 1순위 메뉴만(REQ-019·020). 프로필 수정·관심·최근 본·결제/정산 내역·후기는 해당 기능 브랜치에서 더한다
+// 빌린 내역·내 물품(REQ-019·020), 결제·정산 내역(REQ-033·039, 결제가 켜져 있을 때만).
+// 프로필 수정·관심·최근 본은 해당 기능 브랜치에서 더한다
 const MENU = [
   { to: '/me/rentals', label: '빌린 내역' },
   { to: '/me/items', label: '내 물품 관리' },
+  ...(PAYMENT_ENABLED ? [{ to: '/me/payments', label: '결제·정산 내역' }] : []),
 ];
 
 /** SCR-12 나의 대여. 하단 탭 화면이라 뒤로 가기 없는 제목만 둔다. 위에 프로필 요약, 맨 아래 로그아웃 */

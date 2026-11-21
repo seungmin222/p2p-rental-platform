@@ -8,6 +8,7 @@ import ItemFormPage from '../pages/ItemFormPage';
 import LoginPage from '../pages/LoginPage';
 import MyItemsPage from '../pages/MyItemsPage';
 import MyPage from '../pages/MyPage';
+import MyPaymentsPage from '../pages/MyPaymentsPage';
 import MyProfilePage from '../pages/MyProfilePage';
 import MyRentalsPage from '../pages/MyRentalsPage';
 import NotFoundPage from '../pages/NotFoundPage';
@@ -87,6 +88,7 @@ export const router = createBrowserRouter([
           { path: '/me', element: <MyPage /> },
           { path: '/me/rentals', element: <MyRentalsPage /> },
           { path: '/me/items', element: <MyItemsPage /> },
+          { path: '/me/payments', element: <MyPaymentsPage /> }, // REQ-033·039
           { path: '/me/profile', element: <MyProfilePage /> },
         ],
       },
