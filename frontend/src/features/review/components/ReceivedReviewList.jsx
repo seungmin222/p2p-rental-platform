@@ -21,10 +21,7 @@ function ListSkeleton() {
   );
 }
 
-/**
- * 회원이 받은 후기 목록(REQ-034, 최신순·무한 스크롤). 화면 연결은 사용자 프로필(SCR-13, REQ-021) 브랜치에서 한다.
- * 지금은 /dev/ui 미리보기에서만 쓴다.
- */
+/** 회원이 받은 후기 목록(REQ-034, 최신순·무한 스크롤). 사용자 프로필(SCR-13) "받은 후기" 탭에서 쓴다 */
 export default function ReceivedReviewList({ memberId }) {
   const query = useReceivedReviews(memberId);
   useRefetchErrorToast([query]);

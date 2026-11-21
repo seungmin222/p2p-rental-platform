@@ -1,7 +1,7 @@
 import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuthStore } from '../../shared/api';
-import { fetchMe, login, logout, signup } from './api';
+import { confirmPasswordReset, fetchMe, login, logout, requestPasswordReset, signup } from './api';
 
 export const memberKeys = {
   // 내 동네 목록(['members', 'me', 'regions'])은 이 키의 하위다(feat/fe-region)
@@ -41,9 +41,12 @@ export function useLogin() {
   return useMutation({
     mutationFn: login,
     gcTime: 0,
-    onSuccess: ({ accessToken }) => {
+    onSuccess: ({ accessToken, requiresTermsAgreement }) => {
       queryClient.clear();
-      useAuthStore.getState().setAccessToken(accessToken);
+      const auth = useAuthStore.getState();
+      auth.setAccessToken(accessToken);
+      // true면 AppLayout의 재동의 모달이 뜬다(TermsReagreeGate)
+      auth.setRequiresTermsAgreement(requiresTermsAgreement);
     },
   });
 }
@@ -67,6 +70,32 @@ export async function fetchPostLoginDestination(queryClient) {
 /** 회원가입. variables에 비밀번호가 들어가므로 gcTime 0(useLogin과 같은 이유) */
 export function useSignup() {
   return useMutation({ mutationFn: signup, gcTime: 0 });
+}
+
+/** 비밀번호 재설정 메일 요청(REQ-036). 응답이 가입 여부와 무관하게 같아 화면도 같은 안내를 보인다 */
+export function usePasswordResetRequest() {
+  return useMutation({ mutationFn: requestPasswordReset });
+}
+
+/**
+ * 새 비밀번호로 재설정(REQ-036). variables에 토큰·비밀번호가 들어가 gcTime 0.
+ * 성공하면 서버가 모든 기기를 로그아웃시키므로 이 기기에 로그인돼 있었다면 AT와 조회 캐시도 지운다.
+ * clearLocalSession(queryClient.clear())을 쓰지 않는 이유: MutationCache까지 비우면 진행 중인 이 뮤테이션이 빠져
+ * 화면이 mutate에 넘긴 onSuccess(로그인 화면 이동)가 불리지 않는다.
+ */
+export function usePasswordResetConfirm() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: confirmPasswordReset,
+    gcTime: 0,
+    onSuccess: () => {
+      const auth = useAuthStore.getState();
+      if (auth.accessToken !== null) {
+        auth.clearAccessToken();
+        queryClient.getQueryCache().clear();
+      }
+    },
+  });
 }
 
 /**

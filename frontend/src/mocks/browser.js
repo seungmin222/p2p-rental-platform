@@ -1,5 +1,6 @@
 import { setupWorker } from 'msw/browser';
 
+import { getLastPasswordResetLink } from './auth';
 import { mockChatControls } from './chatStomp';
 import { handlers } from './handlers';
 import { mockNotificationControls } from './notification';
@@ -9,9 +10,12 @@ import { expireMockAccessToken } from './session';
 
 export const worker = setupWorker(...handlers);
 
-// 개발 확인용(콘솔에서 window.__mockAuth.expireAccessToken()). 이 파일은 main.jsx가 개발 서버 + VITE_USE_MOCK일 때만
+// 개발 확인용(콘솔에서 window.__mockAuth.expireAccessToken(), lastPasswordResetLink()). 이 파일은 main.jsx가 개발 서버 + VITE_USE_MOCK일 때만
 // 동적 import하므로 운영 번들에는 들어가지 않는다
-window.__mockAuth = { expireAccessToken: expireMockAccessToken };
+window.__mockAuth = {
+  expireAccessToken: expireMockAccessToken,
+  lastPasswordResetLink: getLastPasswordResetLink,
+};
 
 // disconnect(): STOMP 연결을 모두 끊는다(재연결 확인). system(roomId, content): 그 방에 SYSTEM 안내 메시지(chatStomp.js)
 window.__mockChat = mockChatControls;

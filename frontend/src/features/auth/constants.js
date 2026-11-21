@@ -6,3 +6,6 @@ export const EMAIL_MAX = 100;
 export const PASSWORD_LENGTH = { min: 8, max: 20 };
 // policies.md member.nickname
 export const NICKNAME_LENGTH = { min: 2, max: 10 };
+
+// policies.md password-reset.token-ttl / rate-limit (재설정 요청 화면 안내 문구)
+export const PASSWORD_RESET = { TOKEN_TTL_MINUTES: 30, RATE_LIMIT_MINUTES: 5 };

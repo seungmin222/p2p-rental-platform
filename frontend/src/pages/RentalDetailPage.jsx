@@ -1,6 +1,7 @@
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 
 import PageHeader from '../app/layout/PageHeader';
+import { getProfilePath } from '../features/profile/profileDisplay';
 import AmountSummary from '../features/rental/components/AmountSummary';
 import InspectionRecords from '../features/rental/components/InspectionRecords';
 import RentalActionBar from '../features/rental/components/RentalActionBar';
@@ -177,7 +178,17 @@ export default function RentalDetailPage() {
         <p className="text-caption text-ink-muted">
           {itemName} · {formatShortRange(rental.startDate, rental.endDate)} ·{' '}
           {rental.myRole === 'RENTER' ? '제공자' : '대여자'}{' '}
-          <b className="text-ink">{rental.counterpart.nickname}</b>
+          {/* 상대 닉네임 → 프로필(SCR-13). RentalCounterpart에 탈퇴 여부가 없어 memberId만 본다(탈퇴면 프로필이 안내) */}
+          {getProfilePath(rental.counterpart) ? (
+            <Link
+              to={getProfilePath(rental.counterpart)}
+              className="font-bold text-ink underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              {rental.counterpart.nickname}
+            </Link>
+          ) : (
+            <b className="text-ink">{rental.counterpart.nickname}</b>
+          )}
         </p>
 
         {rental.activeCancelAgreement && (

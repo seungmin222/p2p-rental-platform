@@ -13,7 +13,7 @@ const INVALID_INPUT = 'COMMON_INVALID_INPUT';
 const INVALID_INPUT_MESSAGE = '입력값이 올바르지 않습니다.';
 
 /** ItemSummaryResponse. 대여 중 배지는 대여 DB(RENTING·OVERDUE)와 시드의 표시용 플래그를 합친다 */
-function toSummary(item) {
+export function toSummary(item) {
   const isRentingByRental = db.rentals.some(
     (rental) =>
       rental.itemId === item.itemId && (rental.status === 'RENTING' || rental.status === 'OVERDUE'),

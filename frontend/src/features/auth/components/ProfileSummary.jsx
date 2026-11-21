@@ -68,7 +68,13 @@ export default function ProfileSummary() {
     <section aria-label="내 프로필" className="flex items-center gap-3 py-4">
       <Avatar url={me.profileImageUrl} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="truncate text-heading">{me.nickname}</p>
+        <p className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-heading">{me.nickname}</span>
+          {/* 다른 사람에게 보이는 내 프로필(SCR-13) */}
+          <Link to={`/users/${me.memberId}`} className={`${LINK} shrink-0`}>
+            프로필 보기
+          </Link>
+        </p>
         {region ? (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-ink-muted">
             <span>{region.regionName}</span>

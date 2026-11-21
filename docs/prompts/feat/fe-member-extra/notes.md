@@ -1,0 +1,32 @@
+# feat/fe-member-extra 결정 기록
+
+## 요약
+- 화면: 가입 약관 체크박스·재동의 전역 모달(`features/terms/components/TermsReagreeGate.jsx`), SCR-15 `/terms/:slug`(`pages/TermsPage.jsx`, 자체 파서 `shared/lib/markdown.js`), SCR-01 `/password-reset/request`·`/password-reset?token=`, SCR-13 `/users/:memberId`(`pages/UserProfilePage.jsx`, 등록 물품·받은 후기 탭).
+- 연동 API: `GET /api/terms`, `POST /api/members/me/terms-agreements`, `POST /api/auth/password-reset`·`/confirm`, `GET /api/members/{id}`·`/items`·`/reviews`. 목은 `mocks/terms.js`·`mocks/profile.js`(user2가 재동의 필요 계정).
+- 남은 일: 대여 상세 상대(`RentalCounterpart`)에 `isWithdrawn`이 없어 프로필 링크를 항상 둔다(open-issues #55 백엔드 후속). 재동의 거부 시 서버 차단은 open-issues #56. 빌린 내역 카드의 "작성 완료" 표시(`reviewWritten`, #54)는 아직 프론트 미반영.
+
+REQ-037 약관 동의(가입·재동의·SCR-15), REQ-036 비밀번호 재설정, REQ-021 사용자 프로필(SCR-13)의 프론트. 백엔드는 `feat/member-extra`(#60).
+
+## 공통
+- **프로필 경로는 `/users/:memberId`(사용자 결정).** frontend/CLAUDE.md 라우트 표 제안을 따랐고, API 경로(`/api/members/{id}`)·내 정보(`/me`)와 헷갈리지 않게.
+- **약관 본문 마크다운은 자체 파서(`shared/lib/markdown.js`)로 그린다(사용자 결정).** 약관 파일이 제목·목록·인용·문단만 쓰고, 의존성을 늘리지 않으려고. HTML로 넣지 않고 블록마다 React 요소를 만든다(그 밖의 문법은 글자 그대로).
+- **`GET /terms`는 공개 API 목록에 넣고, 프로필 API 세 개는 넣지 않는다.** 프로필은 비회원도 보지만 서버가 조회자 ID를 받는 차단(056) 확장 지점이 있어 물품 상세처럼 토큰을 보낸다.
+
+## REQ-037 약관 동의
+- **가입 화면 한 장에 둔다(단계로 나누지 않음).** 필드 넷 + 체크박스 셋이라 짧다. 서버 400 details `agreements.{필드}`는 그 체크박스에, `agreements`(객체 없음)는 첫 항목에 붙인다.
+- **재동의 상태는 authStore(메모리)에 AT와 같이 둔다.** 서버 조회 캐시가 아니라 토큰 응답의 일부라서(Zustand에 서버 데이터를 복사하지 않는 규칙과 다르지 않다). 재발급 응답도 매번 같은 필드를 주므로 `reissue.js`가 함께 고친다. AT를 지우면 함께 초기화.
+- **재동의는 전용 화면 대신 AppLayout 전역 모달(`TermsReagreeGate`).** 로그인 직후와 앱 시작 재발급 두 경로를 한 곳에서 처리하려고. `/terms/*`에서는 띄우지 않아 모달의 문서 링크로 읽으러 갈 수 있다. "나중에"는 새로고침·재로그인까지(메모리) — 서버가 막지 않으므로(open-issues #56) 안내 토스트만.
+
+## REQ-036 비밀번호 재설정
+- **요청 화면 문구는 가입 여부를 드러내지 않는 하나.** 백엔드가 항상 성공(data null)이고 메일은 백그라운드 발송이라 프론트도 구분할 정보가 없다. "메일이 오지 않으면 잠시 뒤 다시"를 항상 안내(member.md "메일 실패 시 재시도 안내" 갈음).
+- **로그인 화면의 "비밀번호를 잊으셨나요?"는 입력한 이메일을 location state로 넘겨 요청 화면이 미리 채운다.** 주소에 이메일을 남기지 않으려고 쿼리 대신 state.
+- **링크 토큰은 처음 읽고 주소에서 지운다(replace).** 브라우저 기록·화면 공유에 남지 않게. 대신 새로고침하면 "다시 요청" 안내가 된다. 형식이 틀리면 요청하지 않는다(서버도 형식 위반은 Redis를 보지 않고 같은 코드).
+- **성공 시 이 기기에 로그인돼 있었으면 AT·조회 캐시를 지운다(`clearLocalSession` 대신).** `queryClient.clear()`가 MutationCache까지 비우면 진행 중인 재설정 뮤테이션이 빠져 화면 onSuccess(로그인 이동)가 불리지 않았다(목 환경에서 확인). 다른 계정으로 로그인한 채 남의 링크를 써도 지우는데, 드문 경우라 단순하게 둔다.
+
+## REQ-021 사용자 프로필
+- **등록 물품·받은 후기를 탭(`?tab=items|reviews`, 기본 등록 물품)으로, 둘 다 page 방식 무한 스크롤.** 등록 물품은 기존 `ItemListView`(한 줄 목록)와 `toItemCard`를 그대로 쓴다 — 응답이 피드와 같은 ItemSummaryResponse라서.
+- **queryKey는 `['members', id]`·`['members', id, 'items']`.** 받은 후기 `['members', id, 'reviews']`와 같은 줄기, `['members', 'me']`와 겹치지 않는다.
+- **진입점: 물품 상세 판매자 카드, 채팅방 헤더, 대여 상세 상대 닉네임, 받은 후기 작성자, `/me` "프로필 보기".** 탈퇴한 상대는 링크를 그리지 않는다(`getProfilePath`). 대여 상세 상대(RentalCounterpart)는 탈퇴 여부가 없어 링크를 두고 프로필 화면이 "탈퇴한 사용자"로 안내한다. 백엔드 후속 과제로 open-issues #55에 덧붙였다.
+
+## 목
+- user2가 재동의 필요 계정. 재동의 결과·재설정 토큰은 localStorage에 둔다 — 메일 링크를 새 탭으로 열거나 새로고침하면 메모리 db가 시드로 돌아가 토큰이 사라지고 모달이 다시 떴다.

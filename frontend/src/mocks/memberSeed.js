@@ -105,6 +105,11 @@ export function createMemberDb() {
       },
       { memberRegionId: 4, memberId: 4, regionId: 1104, isPrimary: true, verifiedAt: null },
     ],
+    // 약관 개정 뒤 아직 재동의하지 않은 회원(REQ-037): 로그인·재발급 응답 requiresTermsAgreement true
+    termsOutdatedMemberIds: [2],
+    // 비밀번호 재설정(REQ-036): 토큰 → { memberId, expiresAt }, 소문자 이메일 → 마지막 요청 시각(ms)
+    passwordResetTokens: {},
+    passwordResetRequestedAt: {},
     // 가입하면 이 번호부터(시드와 겹치지 않게)
     nextMemberId: 100,
     nextMemberRegionId: 100,

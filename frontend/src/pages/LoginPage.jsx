@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { getSafeRedirect, withRedirect } from '../app/loginPath';
@@ -25,6 +25,7 @@ function LoginForm({ redirect, defaultEmail }) {
     handleSubmit,
     setError,
     setFocus,
+    control,
     formState: { errors },
   } = useForm({ defaultValues: { email: defaultEmail, password: '' }, shouldFocusError: true });
   const handleError = useSubmitErrorHandler({ setError, setFocus }, mutation.isPending, {
@@ -32,6 +33,8 @@ function LoginForm({ redirect, defaultEmail }) {
     getMessage: getErrorMessage,
   });
   const isBusy = mutation.isPending || isMovingOn;
+  // "비밀번호를 잊으셨나요?"로 갈 때 입력한 이메일을 넘겨 요청 화면이 미리 채운다
+  const email = useWatch({ control, name: 'email' });
 
   // 가입 직후(이메일이 채워짐)면 비밀번호 칸부터
   useEffect(() => {
@@ -92,7 +95,16 @@ function LoginForm({ redirect, defaultEmail }) {
           로그인
         </Button>
       </form>
-      <p className="mt-6 flex items-center justify-center gap-1 text-caption text-ink-muted">
+      <p className="mt-3 flex justify-center text-caption">
+        <Link
+          to="/password-reset/request"
+          state={{ email: email.trim() }}
+          className="inline-flex min-h-11 items-center px-1 text-ink-muted underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          비밀번호를 잊으셨나요?
+        </Link>
+      </p>
+      <p className="mt-3 flex items-center justify-center gap-1 text-caption text-ink-muted">
         아직 회원이 아니신가요?
         <Link
           to={withRedirect('/signup', redirect)}

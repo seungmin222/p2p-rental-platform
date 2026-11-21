@@ -228,6 +228,7 @@ describe('Authorization 헤더', () => {
     ['get', '/items/feed'],
     ['get', '/items'],
     ['get', '/categories'],
+    ['get', '/terms'],
   ])('공개 API %s %s에는 붙이지 않는다', async (method, path) => {
     const captured = captureAuthorization(method, path);
 

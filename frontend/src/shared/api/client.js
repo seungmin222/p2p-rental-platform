@@ -12,11 +12,18 @@ function toPath(config) {
 
 // 공개 GET(openapi에 security 없음): 동네 검색·좌표 변환, 피드·검색·카테고리.
 // GET /items/{itemId}는 넣지 않는다 — 토큰이 있어야 isOwner·isWished가 로그인한 사용자 기준으로 채워진다.
-const PUBLIC_GET_PATHS = ['/regions', '/regions/by-coord', '/items/feed', '/items', '/categories'];
+const PUBLIC_GET_PATHS = [
+  '/regions',
+  '/regions/by-coord',
+  '/items/feed',
+  '/items',
+  '/categories',
+  '/terms',
+];
 
 /**
  * Authorization을 붙이지 않는 공개 API: /auth/**, POST /members, GET /regions, GET /regions/by-coord,
- * GET /items/feed, GET /items(검색), GET /categories
+ * GET /items/feed, GET /items(검색), GET /categories, GET /terms(약관 문서)
  */
 function isPublicApi(config) {
   const path = toPath(config);
