@@ -25,6 +25,7 @@ import com.team7.rental.rental.entity.RentalExtension;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.repository.RentalCancelAgreementRepository;
 import com.team7.rental.rental.repository.RentalExtensionRepository;
+import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -48,6 +49,9 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private RentalExtensionRepository extensionRepository;
+
+	@Autowired
+	private RentalRepository rentalRepository;
 
 	private Member owner;
 	private Member renter;
@@ -189,6 +193,42 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 		mockMvc.perform(get("/api/rentals/{id}", renting.getId()).header(HttpHeaders.AUTHORIZATION,
 			bearerToken(renter.getId())))
 			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.pendingExtension").doesNotExist());
+	}
+
+	@Test
+	@DisplayName("결제 대기 연장이 남아 있어도 대여 중이 아니면(OVERDUE) 대여자에게도 null이다(REQ-038)")
+	void pendingExtensionHiddenWhenNotRenting() throws Exception {
+		// given
+		Rental overdue = rentalFixture.createRental(item, renter, RentalStatus.OVERDUE, START.plusDays(10),
+			START.plusDays(11));
+		extensionRepository.save(RentalExtension.pendingPayment(overdue.getId(), START.plusDays(11),
+			START.plusDays(13), 20000, NOW.plusMinutes(15)));
+
+		// when, then
+		mockMvc.perform(get("/api/rentals/{id}", overdue.getId()).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(renter.getId())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.status").value("OVERDUE"))
+			.andExpect(jsonPath("$.data.pendingExtension").doesNotExist());
+	}
+
+	@Test
+	@DisplayName("확정된 연장이 1건이면 extensionCount는 1이다(REQ-038)")
+	void extensionCountCountsConfirmed() throws Exception {
+		// given: 연장 확정은 대여의 종료일·횟수를 갱신하고 이력을 남긴다(서비스와 같은 순서)
+		Rental renting = rentalFixture.createRental(item, renter, RentalStatus.RENTING, START.plusDays(10),
+			START.plusDays(11));
+		renting.extend(START.plusDays(11), START.plusDays(12), 2);
+		rentalRepository.save(renting);
+		extensionRepository.save(RentalExtension.confirmedWithoutPayment(renting.getId(), START.plusDays(11),
+			START.plusDays(12), 10000, NOW));
+
+		// when, then
+		mockMvc.perform(get("/api/rentals/{id}", renting.getId()).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(renter.getId())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.extensionCount").value(1))
 			.andExpect(jsonPath("$.data.pendingExtension").doesNotExist());
 	}
 

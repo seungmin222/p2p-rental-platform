@@ -4,6 +4,7 @@
 - API: `GET /api/rentals/{id}` 응답에 `extensionCount`(양측)·`pendingExtension`(대여자·RENTING·만료 전 결제 대기 연장) 추가(백엔드 `RentalDetailResponse`·`RentalQueryService`·`RentalExtensionRepository.findPending`). 프론트는 `POST /api/rentals/{id}/extensions`, `POST /api/payments { extensionId }`, `/api/payments/confirm`(type 분기)을 쓴다.
 - 주요 파일: `features/rental/rentalExtension.js`(날짜 칩·maxEndDate 순수 함수), `features/rental/components/ExtensionSheet.jsx`, `rentalActions.js`(EXTEND·PAY_EXTENSION), `features/payment/startPayment.js`·`pendingPayment.js`·`paymentResult.js`(연장 분기), `mocks/rental.js`·`payment.js`(연장 목).
 - 남은 일: 검색 필터·007 기간 수정 목은 결제 대기 연장 점유를 넣지 않았다(실제 백엔드 007은 `RentalOccupancyReader`를 써야 한다, rental-extension 요약). `RENTAL_EXTENDED` 알림은 백엔드가 로그 구현이라 화면 확인 못 함.
+- 넘긴 리뷰 지적: 연장 결제 카운트다운의 `refetchInterval`이 만료 뒤 다시 계산되지 않는 문제, 대상이 아닐 때(제공자·RENTING 아님) `findPending` 조회 생략 최적화(상세 쿼리 9 → 8).
 
 ## 결제 대기 연장 다시 결제 (계획 질문 1 → A)
 - **대여 상세 응답에 `pendingExtension`을 넣었다.** 결제창을 떠나면 extensionId를 다시 얻을 길이 없어 15분 동안 `RENTAL_EXTENSION_IN_PROGRESS`만 받는다. sessionStorage(B)는 다른 탭·기기에서 못 이어 간다. 대여 결제 대기(`paymentExpiresAt`)와 같은 모양이라 화면 규칙도 같게 갈 수 있다.
@@ -29,6 +30,7 @@
 ## 결제 복귀
 - **결제 종류를 `pendingPayment`에 같이 저장한다(`kind`).** 실패 응답에는 type이 없어서, 연장 실패 문구(연장 취소·연장료 환불·다시 연장 요청)를 고를 근거가 이것뿐이다. 예전 저장값은 RENTAL로 읽는다.
 - 성공 문구는 응답 `type`으로 고른다(저장값보다 서버 값이 정확).
+- **승인 뒤(성공·실패 모두) 물품 캘린더도 무효화한다.** 연장료 승인 실패·`PAYMENT_CANCELED_AFTER_EXPIRY`면 결제 대기 연장 점유가 풀린다. 실패 응답에 itemId가 없어 `['items', *, 'calendar']`를 전부 무효화한다(대여 결제에도 같이 적용).
 
 ## 목
 - 결제 대기 연장 점유는 `rentalStore.listOccupied` 한곳에서 대여와 합쳐 캘린더·예약 겹침·연장 겹침이 같이 본다(백엔드 `RentalOccupancyReader`와 같은 구조).
