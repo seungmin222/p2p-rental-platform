@@ -6,10 +6,14 @@ import HistoryRangeSheet from '../features/payment/components/HistoryRangeSheet'
 import PaymentHistoryCard from '../features/payment/components/PaymentHistoryCard';
 import SettlementCard from '../features/payment/components/SettlementCard';
 import SettlementSummary from '../features/payment/components/SettlementSummary';
-import { PAYMENT_PAGE_TABS } from '../features/payment/constants';
+import {
+  PAYMENT_HISTORY_DEFAULT_RANGE_MONTHS,
+  PAYMENT_PAGE_TABS,
+} from '../features/payment/constants';
 import { getErrorMessage, isRangeError } from '../features/payment/errorMessages';
 import {
   getRangeLabel,
+  HISTORY_RANGE_ORDER_ERROR,
   PAYMENT_HISTORY_TYPES,
   readHistoryFilter,
   writeHistoryFilter,
@@ -62,7 +66,11 @@ function PaymentHistoryList({ filter, onResetRange }) {
   if (isInitialLoadError(query)) {
     // 기간 400은 다시 불러도 같으므로 기본 기간으로 돌린다
     return isRangeError(query.error) ? (
-      <ErrorState message="기간을 확인해 주세요" onRetry={onResetRange} />
+      <ErrorState
+        message={HISTORY_RANGE_ORDER_ERROR}
+        onRetry={onResetRange}
+        retryLabel={`최근 ${PAYMENT_HISTORY_DEFAULT_RANGE_MONTHS}개월로 보기`}
+      />
     ) : (
       <ErrorState message={getErrorMessage(query.error)} onRetry={query.refetch} />
     );

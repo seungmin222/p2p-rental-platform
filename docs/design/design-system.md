@@ -117,7 +117,7 @@
 | `Skeleton` | 로딩 자리 | 크기·모서리는 `className` | 홈·상세·목록 로딩 |
 | `Spinner` | 회전 표시 | `size` sm·md·lg, `label`(있으면 role=status) | `Button` 로딩, 결제 성공 처리 중 |
 | `EmptyState` | 빈 목록 | `title`, `description`, `action` | 나의 대여·내 물품·검색 |
-| `ErrorState` | 조회 실패 | `title`, `message`, `onRetry`(secondary 버튼) | 상세·예약·대여 상세 |
+| `ErrorState` | 조회 실패 | `title`, `message`, `onRetry`(secondary 버튼), `retryLabel`(기본 "다시 시도") | 상세·예약·대여 상세 |
 | `InfiniteListFooter` | 무한 스크롤 끝(로딩·다시 시도) | `query`(useInfiniteQuery 결과) | 나의 대여·내 물품 목록 |
 | `Tabs` | 탭(키보드 이동) | `items`, `value`, `onChange`, `label` | 나의 대여·내 물품 |
 | `Modal` | 가운데 모달(`<dialog>`) | `open`, `onClose`, `title`, `footer`, `dismissible` | `DeleteItemModal`, `CancelModal` |

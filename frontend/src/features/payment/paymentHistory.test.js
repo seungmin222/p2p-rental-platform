@@ -187,7 +187,7 @@ describe('getPaymentHistoryView', () => {
     expect(view.status.label).toBe('환불 완료');
     expect(view.deposit).toEqual({ label: '보증금 반환 실패', tone: 'red' });
     expect(view.rows.slice(2)).toEqual([
-      { label: '취소 수수료', value: '9,000원' },
+      { label: '취소 수수료', value: '−9,000원' },
       { label: '환불 금액', value: '71,000원' },
     ]);
     expect(view.notes).toEqual(['환불을 처리하고 있어요']);

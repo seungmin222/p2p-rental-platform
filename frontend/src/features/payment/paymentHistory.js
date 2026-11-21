@@ -94,6 +94,9 @@ export function toHistoryParams({ type, from, to }, page) {
  * 기간 입력 검사. to를 비우면 서버가 오늘로 채우므로 오늘과 비교한다(서버도 기본값을 채운 뒤 from > to면 400).
  * 문제가 없으면 null.
  */
+/** from > to 오류 문구. 기간 시트와 서버 400(from·to)이 함께 쓴다 */
+export const HISTORY_RANGE_ORDER_ERROR = '시작일이 종료일보다 늦어요';
+
 export function validateHistoryRange({ from, to }, today) {
   if (from && !isDateString(from)) {
     return '시작일을 확인해 주세요';
@@ -102,7 +105,7 @@ export function validateHistoryRange({ from, to }, today) {
     return '종료일을 확인해 주세요';
   }
   if (from && compareDate(from, to || today) > 0) {
-    return to ? '시작일이 종료일보다 늦어요' : '시작일이 오늘보다 늦어요';
+    return to ? HISTORY_RANGE_ORDER_ERROR : '시작일이 오늘보다 늦어요';
   }
   return null;
 }
@@ -157,7 +160,7 @@ export function getPaymentHistoryView(payment) {
     });
   }
   if (payment.cancelFee > 0) {
-    rows.push({ label: '취소 수수료', value: formatPrice(payment.cancelFee) });
+    rows.push({ label: '취소 수수료', value: `−${formatPrice(payment.cancelFee)}` });
   }
   if (payment.refundedAmount > 0) {
     rows.push({ label: '환불 금액', value: formatPrice(payment.refundedAmount) });

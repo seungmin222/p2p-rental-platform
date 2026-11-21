@@ -122,6 +122,18 @@ function paidExtensionOrders(orders, rentalId) {
   );
 }
 
+// 목 연장 주문은 전액 취소(CANCELED)만 환불로 남는다. 환불 처리 중 금액은 없다(0).
+function extensionRefundedOf(order) {
+  return order.status === 'CANCELED' ? order.amount : 0;
+}
+
+/** payment.md REQ-039: 연장료 = APPROVED·PARTIAL_CANCELED 결제마다 amount − refunded − pending */
+function receivedExtensionFees(orders, rentalId) {
+  return paidExtensionOrders(orders, rentalId)
+    .filter((order) => ['APPROVED', 'PARTIAL_CANCELED'].includes(order.status))
+    .reduce((sum, order) => sum + order.amount - extensionRefundedOf(order), 0);
+}
+
 /** 대여료·보증금 결제 한 건의 상태·환불액(대여 상태에서 정한다. rental.js cancel과 같은 규칙) */
 function rentalPaymentState(rental, rentalFee, extra) {
   const { deposit, cancelFee } = rental;
@@ -216,7 +228,7 @@ export function buildPaymentHistory(rentals, orders, renterId, itemOf) {
           createdAt: order.createdAt ?? rental.createdAt,
           paymentStatus: order.status,
           depositStatus: null,
-          refundedAmount: order.status === 'CANCELED' ? order.amount : 0,
+          refundedAmount: extensionRefundedOf(order),
           depositRefundPending: false,
           overdueFee: 0,
           deduction: null,
@@ -288,9 +300,7 @@ export function buildSettlements(rentals, orders, ownerId, itemOf, today) {
     let grossAmount;
     let deductionAmount = 0;
     if (isCompleted) {
-      const extensionFees = paidExtensionOrders(orders, rental.rentalId)
-        .filter((order) => order.status === 'APPROVED')
-        .reduce((sum, order) => sum + order.amount, 0);
+      const extensionFees = receivedExtensionFees(orders, rental.rentalId);
       const overdueFee = Math.min(extra.overdueFee ?? 0, rental.deposit);
       grossAmount = rentalFeeOf(rental, orders) + extensionFees + overdueFee;
       deductionAmount = extra.deduction?.amount ?? 0;

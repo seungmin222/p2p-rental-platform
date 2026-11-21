@@ -229,6 +229,35 @@ describe('buildSettlements', () => {
     });
   });
 
+  it('연장료는 APPROVED·PARTIAL_CANCELED 결제의 받은 금액만 더한다(REQ-039)', () => {
+    const rentals = [
+      rental({
+        rentalId: 30,
+        ownerId: MOCK_ME,
+        renterId: 3,
+        itemId: 104,
+        status: 'COMPLETED',
+        pricePerDay: 20000,
+        deposit: 100000,
+        completedAt: '2026-11-13T10:00:00',
+      }),
+    ];
+    const orders = [
+      { rentalId: 30, type: 'EXTENSION', extensionId: 1, status: 'APPROVED', amount: 20000 },
+      {
+        rentalId: 30,
+        type: 'EXTENSION',
+        extensionId: 2,
+        status: 'PARTIAL_CANCELED',
+        amount: 10000,
+      },
+      { rentalId: 30, type: 'EXTENSION', extensionId: 3, status: 'CANCELED', amount: 40000 },
+    ];
+    const [settlement] = buildSettlements(rentals, orders, MOCK_ME, itemOf, TODAY);
+    // 대여료 60,000 + 연장료 20,000 + 10,000(부분 취소, 목은 환불액 0)
+    expect(settlement.grossAmount).toBe(90000);
+  });
+
   it('시드: 33은 분쟁 보류, 2페이지가 넘는 정산', () => {
     const { rentals } = createRentalSeed();
     const settlements = buildSettlements(rentals, [], MOCK_ME, itemOf, TODAY);
