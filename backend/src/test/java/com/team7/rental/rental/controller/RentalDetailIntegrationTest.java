@@ -21,8 +21,10 @@ import com.team7.rental.member.entity.Member;
 import com.team7.rental.rental.entity.CancelReason;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalCancelAgreement;
+import com.team7.rental.rental.entity.RentalExtension;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.repository.RentalCancelAgreementRepository;
+import com.team7.rental.rental.repository.RentalExtensionRepository;
 import com.team7.rental.support.IntegrationTestSupport;
 import com.team7.rental.support.MemberItemFixture.VerifiedMember;
 
@@ -43,6 +45,9 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private RentalCancelAgreementRepository agreementRepository;
+
+	@Autowired
+	private RentalExtensionRepository extensionRepository;
 
 	private Member owner;
 	private Member renter;
@@ -155,7 +160,40 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	@DisplayName("결제 없는 상세 조회는 쿼리 8개로 끝난다(대여·물품 요약·대표 이미지·상대 닉네임·진행 중인 동의 취소·결제·후기 작성 여부·앞 대여 연체)")
+	@DisplayName("결제 대기 연장은 대여 중인 대여자에게만 보이고, 만료됐거나 제공자면 null이다. 연장 횟수는 양쪽 다 본다(REQ-038)")
+	void pendingExtension() throws Exception {
+		// given
+		Rental renting = rentalFixture.createRental(item, renter, RentalStatus.RENTING, START.plusDays(10),
+			START.plusDays(11));
+		LocalDate newEnd = START.plusDays(13);
+		RentalExtension pending = extensionRepository.save(RentalExtension.pendingPayment(renting.getId(),
+			START.plusDays(11), newEnd, 20000, NOW.plusMinutes(15)));
+
+		// when, then
+		mockMvc.perform(get("/api/rentals/{id}", renting.getId()).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(renter.getId())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.extensionCount").value(0))
+			.andExpect(jsonPath("$.data.pendingExtension.extensionId").value(pending.getId()))
+			.andExpect(jsonPath("$.data.pendingExtension.newEndDate").value(newEnd.toString()))
+			.andExpect(jsonPath("$.data.pendingExtension.additionalFee").value(20000))
+			.andExpect(jsonPath("$.data.pendingExtension.expiresAt").exists());
+		mockMvc.perform(get("/api/rentals/{id}", renting.getId()).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(owner.getId())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.extensionCount").value(0))
+			.andExpect(jsonPath("$.data.pendingExtension").doesNotExist());
+
+		// 만료 시각이 되면(배치 전이어도) 보이지 않는다
+		testClock.fixAt(NOW.plusMinutes(15));
+		mockMvc.perform(get("/api/rentals/{id}", renting.getId()).header(HttpHeaders.AUTHORIZATION,
+			bearerToken(renter.getId())))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.pendingExtension").doesNotExist());
+	}
+
+	@Test
+	@DisplayName("결제 없는 상세 조회는 쿼리 9개로 끝난다(대여·물품 요약·대표 이미지·상대 닉네임·진행 중인 동의 취소·결제·후기 작성 여부·앞 대여 연체·결제 대기 연장)")
 	void queryCount() throws Exception {
 		// given: 픽스처 저장이 섞이지 않게 요청 직전에 비운다
 		Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
@@ -167,6 +205,6 @@ class RentalDetailIntegrationTest extends IntegrationTestSupport {
 			.andExpect(status().isOk());
 
 		// then
-		assertThat(statistics.getPrepareStatementCount()).isEqualTo(8);
+		assertThat(statistics.getPrepareStatementCount()).isEqualTo(9);
 	}
 }

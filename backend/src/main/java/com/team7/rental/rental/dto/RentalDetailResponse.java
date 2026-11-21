@@ -8,6 +8,7 @@ import com.team7.rental.rental.entity.CancelReason;
 import com.team7.rental.rental.entity.CancelType;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalCancelAgreement;
+import com.team7.rental.rental.entity.RentalExtension;
 import com.team7.rental.rental.entity.RentalRole;
 import com.team7.rental.rental.entity.RentalStatus;
 
@@ -118,7 +119,14 @@ public record RentalDetailResponse(
 
 	@Schema(description = "RESERVED이고 시작일 ≤ 오늘이며 같은 물품의 앞 대여가 종료일이 지났는데 아직 반납되지 않았는지 (open-issues #7). "
 		+ "true인 동안 대여자는 단독 취소(PATCH /api/rentals/{id}/cancel)를 수수료 없이 할 수 있다. 시작일 전에는 false다. 제공자 뷰에도 같은 값을 준다", example = "false")
-	boolean previousRentalOverdue) {
+	boolean previousRentalOverdue,
+
+	@Schema(description = "확정된 연장 횟수 (REQ-038). policies.md extension.max-count에 닿으면 더 연장할 수 없다", example = "0")
+	int extensionCount,
+
+	@Schema(description = "결제를 기다리는 연장(REQ-038, 만료 전). 대여자 본인이고 대여 중(RENTING)일 때만 채우고, 없으면 null. "
+		+ "extensionId로 POST /api/payments { rentalId, extensionId }를 다시 불러 결제를 이어 간다")
+	PendingExtension pendingExtension) {
 
 	/**
 	 * @param activeCancelAgreement 진행 중인 동의 취소 요청. 없으면 null
@@ -127,10 +135,12 @@ public record RentalDetailResponse(
 	 * @param canWriteReview 후기 작성 기간이고 아직 쓰지 않았으면 true
 	 * @param reviewWritten 조회한 회원이 이 대여에 후기를 썼으면 true
 	 * @param previousRentalOverdue RESERVED이고 시작일 ≤ 오늘이며 같은 물품의 앞 대여가 연체 중이면 true
+	 * @param pendingExtension 보여 줄 결제 대기 연장. 없으면 null
 	 */
 	public static RentalDetailResponse of(Rental rental, RentalRole myRole, ItemSummary item, Long counterpartId,
 		String counterpartNickname, RentalCancelAgreement activeCancelAgreement, Long memberId, int overdueFee,
-		RentalDepositInfo depositInfo, boolean canWriteReview, boolean reviewWritten, boolean previousRentalOverdue) {
+		RentalDepositInfo depositInfo, boolean canWriteReview, boolean reviewWritten, boolean previousRentalOverdue,
+		RentalExtension pendingExtension) {
 		return new RentalDetailResponse(
 			rental.getId(),
 			rental.getStatus(),
@@ -164,7 +174,28 @@ public record RentalDetailResponse(
 			depositInfo == null ? null : depositInfo.latestProposal(),
 			canWriteReview,
 			reviewWritten,
-			previousRentalOverdue);
+			previousRentalOverdue,
+			rental.getExtensionCount(),
+			pendingExtension == null ? null : PendingExtension.of(pendingExtension));
+	}
+
+	public record PendingExtension(
+		@Schema(description = "연장 ID. POST /api/payments에 rentalId와 함께 보낸다", example = "1")
+		Long extensionId,
+
+		@Schema(description = "연장 후 종료일", example = "2026-11-08")
+		LocalDate newEndDate,
+
+		@Schema(description = "연장료(원)", example = "30000")
+		int additionalFee,
+
+		@Schema(description = "결제 대기 만료 시각. 지나면 연장이 취소된다")
+		LocalDateTime expiresAt) {
+
+		static PendingExtension of(RentalExtension extension) {
+			return new PendingExtension(extension.getId(), extension.getNewEndDate(),
+				extension.getAdditionalFee(), extension.getExpiresAt());
+		}
 	}
 
 	public record RentalItem(

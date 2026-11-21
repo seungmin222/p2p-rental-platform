@@ -41,6 +41,17 @@ public interface RentalExtensionRepository extends JpaRepository<RentalExtension
 	Long rentalId, @Param("now")
 	LocalDateTime now);
 
+	/** 이 대여의 만료 전 결제 대기 연장(대여 상세에서 다시 결제하려고 쓴다). 대여당 1건이다 */
+	@Query("""
+		select e from RentalExtension e
+		where e.rentalId = :rentalId
+			and e.status = com.team7.rental.rental.entity.ExtensionStatus.PENDING_PAYMENT
+			and e.expiresAt > :now
+		""")
+	Optional<RentalExtension> findPending(@Param("rentalId")
+	Long rentalId, @Param("now")
+	LocalDateTime now);
+
 	/**
 	 * 물품의 [from, to]와 겹치는 만료 전 결제 대기 연장. 연장 기간은 [prevEndDate + 1, newEndDate]라 시작 조건은 prevEndDate &lt; to다.
 	 * 직접 부르지 말고 RentalOccupancyReader를 쓴다.

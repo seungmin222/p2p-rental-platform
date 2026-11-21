@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Pattern;
  */
 @ValidMemberText
 public record PasswordResetConfirmRequest(
-	@Schema(description = "재설정 메일 링크의 token 값(Base64URL 43자)", pattern = PasswordResetConfirmRequest.TOKEN_PATTERN, example = "q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l9z0x1c") @NotBlank
+	@Schema(description = "재설정 메일 링크의 token 값(Base64URL 43자)", pattern = PasswordResetConfirmRequest.TOKEN_PATTERN, example = "example-reset-token000000000000000000000000") @NotBlank
 	String token,
 
 	@Schema(description = "새 비밀번호. 글자 수는 policies.md member.password, 공백 없는 ASCII 출력 문자, 영문·숫자·기호 각 1개 이상", example = "newpass456@") @NotBlank @Pattern(regexp = MemberTexts.PASSWORD_PATTERN, message = MemberTexts.PASSWORD_PATTERN_MESSAGE)
