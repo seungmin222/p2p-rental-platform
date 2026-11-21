@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { calcTotalAmount } from '../features/rental/rentalData';
 import { findMockItem, listMockItems } from './item';
 import {
+  createMockExtensionOrder,
   createMockOrder,
   hasFrozenDeposit,
   toConfirmResponse,
@@ -70,7 +71,23 @@ describe('toConfirmResponse', () => {
       'orderId',
       'rentalId',
       'status',
+      'type',
     ]);
+    expect(toConfirmResponse(order).type).toBe('RENTAL');
+  });
+
+  it('연장료 주문은 type EXTENSION, 보증금 상태 null(REQ-038)', () => {
+    const order = createMockExtensionOrder(
+      { extensionId: 3, rentalId: 16, additionalFee: 10000 },
+      '텐트',
+      'order-2',
+    );
+    expect(order).toMatchObject({ amount: 10000, orderName: '텐트 대여 연장', extensionId: 3 });
+    expect(toConfirmResponse({ ...order, status: 'APPROVED' })).toMatchObject({
+      type: 'EXTENSION',
+      depositStatus: null,
+      rentalId: 16,
+    });
   });
 });
 

@@ -34,6 +34,13 @@ const MESSAGES = {
   RENTAL_CANCEL_AGREEMENT_SELF_RESPONSE: '내가 보낸 요청에는 응답할 수 없어요',
   RENTAL_CANCEL_AGREEMENT_NOT_FOUND: '취소 요청을 찾을 수 없어요',
   RENTAL_CANCEL_AGREEMENT_CLOSED: STALE_MESSAGE,
+  RENTAL_RENTER_ONLY: '대여자만 할 수 있어요',
+  // 대여 연장(REQ-038). 기간 오류(PERIOD_CONFLICT·OUT_OF_AVAILABLE_PERIOD)는 연장 시트가 maxEndDate로 따로 안내한다
+  RENTAL_EXTENSION_OVERDUE: '반납 예정일이 지나 연장할 수 없어요. 먼저 반납해 주세요',
+  RENTAL_EXTENSION_LIMIT_EXCEEDED: '연장 횟수나 한 번에 늘릴 수 있는 일수를 넘었어요',
+  RENTAL_EXTENSION_IN_PROGRESS: '결제를 기다리는 연장이 있어요. 대여 상세에서 결제해 주세요',
+  RENTAL_EXTENSION_PERIOD_CONFLICT: '그 기간에 다른 예약이 있어요',
+  RENTAL_EXTENSION_NOT_FOUND: '연장 요청을 찾을 수 없어요',
 };
 
 // 화면이 보던 대여가 이미 바뀐 경우. 문구를 보여 주고 상세·inspections를 다시 불러온다(queries.js).
@@ -48,4 +55,11 @@ export const getErrorMessage = createErrorMessageGetter(MESSAGES);
 
 export function isStaleStateError(error) {
   return STALE_CODES.includes(error?.code);
+}
+
+// 연장 요청이 거절됐는데 보던 상세가 낡은 경우(결제 대기 연장이 생김·종료일이 지남). 상세를 다시 불러와 버튼을 바꾼다
+const EXTENSION_REFETCH_CODES = ['RENTAL_EXTENSION_IN_PROGRESS', 'RENTAL_EXTENSION_OVERDUE'];
+
+export function isExtensionRefetchError(error) {
+  return EXTENSION_REFETCH_CODES.includes(error?.code);
 }

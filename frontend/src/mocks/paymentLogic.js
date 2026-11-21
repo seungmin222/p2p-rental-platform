@@ -18,6 +18,22 @@ export function createMockOrder(rental, rentalDays, itemName, orderId) {
     orderName: itemName.slice(0, TOSS_ORDER_NAME_MAX),
     status: 'READY',
     depositStatus: 'NONE',
+    type: 'RENTAL',
+    extensionId: null,
+  };
+}
+
+/** 연장(REQ-038) → 연장료 주문 행. 금액은 연장 요청 때 정한 additionalFee, 주문명은 "{물품명} 대여 연장", 보증금 상태 없음 */
+export function createMockExtensionOrder(extension, itemName, orderId) {
+  return {
+    orderId,
+    rentalId: extension.rentalId,
+    amount: extension.additionalFee,
+    orderName: `${itemName} 대여 연장`.slice(0, TOSS_ORDER_NAME_MAX),
+    status: 'READY',
+    depositStatus: null,
+    type: 'EXTENSION',
+    extensionId: extension.extensionId,
   };
 }
 
@@ -38,7 +54,9 @@ export function toConfirmResponse(order) {
     rentalId: order.rentalId,
     amount: order.amount,
     status: order.status,
-    depositStatus: order.depositStatus,
+    depositStatus: order.type === 'EXTENSION' ? null : order.depositStatus,
+    // 연장 전에 저장한 주문에는 type이 없다
+    type: order.type ?? 'RENTAL',
   };
 }
 
@@ -51,7 +69,10 @@ export function hasFrozenDeposit(rental, orders, isPaymentEnabled) {
     return false;
   }
   const approved = orders.find(
-    (order) => order.rentalId === rental.rentalId && order.status === 'APPROVED',
+    (order) =>
+      order.rentalId === rental.rentalId &&
+      order.status === 'APPROVED' &&
+      order.type !== 'EXTENSION',
   );
   return approved ? approved.depositStatus === 'FROZEN' : true;
 }

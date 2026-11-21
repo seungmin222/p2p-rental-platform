@@ -7,8 +7,8 @@ import { PAYMENT_ENABLED, RENTAL_STATUS } from '../constants';
 
 /**
  * 빌린 내역 한 줄(RentalHistoryResponse). 카드 전체가 대여 상세 링크이고, 후기를 쓸 수 있으면(canWriteReview)
- * 카드 아래에 "후기 쓰기"를 둔다(링크 안에 링크를 넣지 않으려고 따로). 응답에 reviewWritten이 없어
- * 작성 완료 표시는 대여 상세에만 있다(open-issues #54).
+ * 카드 아래에 "후기 쓰기"를 둔다(링크 안에 링크를 넣지 않으려고 따로). 이미 썼으면(reviewWritten, open-issues #54)
+ * 대여 상세와 같은 문구 "후기를 보냈어요"를 카드 아래에 보인다.
  */
 export default function RentalHistoryCard({ rental }) {
   return (
@@ -25,6 +25,9 @@ export default function RentalHistoryCard({ rental }) {
             후기 쓰기
           </ButtonLink>
         </div>
+      )}
+      {rental.reviewWritten && (
+        <p className="-mt-1.5 pb-3.5 text-caption text-ink-muted">후기를 보냈어요</p>
       )}
     </>
   );

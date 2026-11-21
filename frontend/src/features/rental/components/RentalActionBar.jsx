@@ -13,6 +13,7 @@ import { useConfirmReturn, useRespondCancelAgreement } from '../queries';
 import { getRentalActions, RENTAL_ACTION as A } from '../rentalActions';
 import AbnormalSheet from './AbnormalSheet';
 import CancelModal from './CancelModal';
+import ExtensionSheet from './ExtensionSheet';
 import { FormError } from './FormParts';
 import HandoverSheet from './HandoverSheet';
 import ReturnRequestSheet from './ReturnRequestSheet';
@@ -31,25 +32,34 @@ function usePaymentSecondsLeft(expiresAt) {
   return expiry == null ? null : Math.max(0, Math.floor((expiry - now) / 1000));
 }
 
-/** 결제 만료까지 남은 시간 "12:04" */
-function PaymentCountdown({ seconds }) {
+/** 결제 만료까지 남은 시간 "12:04". kind EXTENSION이면 연장료 결제(REQ-038) 문구 */
+function PaymentCountdown({ seconds, kind }) {
+  const isExtension = kind === 'EXTENSION';
   if (seconds == null) {
     return null;
   }
   if (seconds === 0) {
-    return <p className="text-center text-xs text-danger">결제 시간이 지났어요</p>;
+    return (
+      <p className="text-center text-xs text-danger">
+        {isExtension ? '연장 결제 시간이 지났어요' : '결제 시간이 지났어요'}
+      </p>
+    );
   }
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
   return (
     <p className="text-center text-xs text-ink-muted">
-      결제 시간이{' '}
+      {isExtension ? '연장 결제 시간이' : '결제 시간이'}{' '}
       <b className="text-danger tabular-nums">
         {mm}:{ss}
       </b>{' '}
-      남았어요. 지나면 예약이 자동 취소돼요
+      남았어요. 지나면 {isExtension ? '연장이' : '예약이 자동'} 취소돼요
     </p>
   );
+}
+
+function isPayAction(action) {
+  return action.type === A.PAY || action.type === A.PAY_EXTENSION;
 }
 
 /** 양측 동의 취소 요청에 동의·거절 */
@@ -156,6 +166,8 @@ function ActionDialog({ type, rental, today, onClose }) {
       return <AbnormalSheet rental={rental} onClose={onClose} />;
     case A.CONFIRM_NORMAL:
       return <NormalConfirmModal rental={rental} onClose={onClose} />;
+    case A.EXTEND:
+      return <ExtensionSheet rental={rental} onClose={onClose} />;
     default:
       return null;
   }
@@ -163,7 +175,7 @@ function ActionDialog({ type, rental, today, onClose }) {
 
 /**
  * 대여 상세 하단 바. 무엇을 보여 줄지는 getRentalActions(표 하나)만 보고 정한다.
- * 비활성 버튼은 사유를 버튼 아래에 쓰고 aria-describedby로 잇는다. "결제하기"는 모달 없이 토스 결제창을 연다.
+ * 비활성 버튼은 사유를 버튼 아래에 쓰고 aria-describedby로 잇는다. "결제하기"·"연장 결제하기"는 모달 없이 토스 결제창을 연다.
  */
 export default function RentalActionBar({ rental, returnInspection, today }) {
   const reasonId = useId();
@@ -189,7 +201,9 @@ export default function RentalActionBar({ rental, returnInspection, today }) {
   return (
     <>
       <BottomActionBar className="flex flex-col gap-2">
-        {notice?.paymentExpiresAt && <PaymentCountdown seconds={secondsLeft} />}
+        {notice?.paymentExpiresAt && (
+          <PaymentCountdown seconds={secondsLeft} kind={notice.paymentKind} />
+        )}
         {notice?.text && (
           <p
             className={`text-center text-caption ${notice.tone === 'danger' ? 'font-semibold text-danger' : 'text-ink-muted'}`}
@@ -206,14 +220,19 @@ export default function RentalActionBar({ rental, returnInspection, today }) {
                 className="min-w-0 flex-1 px-3"
                 disabled={
                   action.disabledReason != null ||
-                  (action.type === A.PAY && secondsLeft === 0) ||
-                  (action.type === A.CANCEL && isPaymentStarting)
+                  (isPayAction(action) && secondsLeft === 0) ||
+                  ((action.type === A.CANCEL || action.type === A.RETURN_REQUEST) &&
+                    isPaymentStarting)
                 }
-                isLoading={action.type === A.PAY && isPaymentStarting}
+                isLoading={isPayAction(action) && isPaymentStarting}
                 aria-describedby={action.disabledReason ? reasonId : undefined}
                 onClick={() => {
                   if (action.type === A.PAY) {
                     startPayment(queryClient, rental.rentalId);
+                  } else if (action.type === A.PAY_EXTENSION) {
+                    startPayment(queryClient, rental.rentalId, {
+                      extensionId: rental.pendingExtension.extensionId,
+                    });
                   } else if (action.type === A.WRITE_REVIEW) {
                     navigate(`/rentals/${rental.rentalId}/review`);
                   } else {

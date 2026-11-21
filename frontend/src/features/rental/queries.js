@@ -20,12 +20,14 @@ import {
   fetchRentalHistory,
   handoverRental,
   requestCancelAgreement,
+  requestExtension,
   requestReturn,
   respondCancelAgreement,
   toItemRental,
 } from './api';
-import { isStaleStateError } from './errorMessages';
+import { isExtensionRefetchError, isStaleStateError } from './errorMessages';
 import { isPaymentExpired, mergeCalendarDays } from './rentalData';
+import { isExtensionPaymentExpired, readMaxEndDate } from './rentalExtension';
 
 // 상태가 바뀌는 화면이라 짧게(frontend/CLAUDE.md "API 연동 규칙")
 const SHORT_STALE_TIME = 5_000;
@@ -49,9 +51,13 @@ export function useRental(rentalId) {
     staleTime: SHORT_STALE_TIME,
     // 경로의 id가 숫자가 아니면 부르지 않는다(화면이 바로 "볼 수 없어요")
     enabled: rentalId != null,
-    // 결제 시간이 지나면 만료 배치가 취소할 때까지 다시 불러온다
+    // 결제 시간(대여 결제·연장 결제)이 지나면 만료 배치가 정리할 때까지 다시 불러온다
     refetchInterval: ({ state }) =>
-      state.data && isPaymentExpired(state.data, Date.now()) ? SHORT_STALE_TIME : false,
+      state.data &&
+      (isPaymentExpired(state.data, Date.now()) ||
+        isExtensionPaymentExpired(state.data, Date.now()))
+        ? SHORT_STALE_TIME
+        : false,
   });
 }
 
@@ -218,4 +224,35 @@ export function useConfirmReturn(rentalId) {
     ({ request, images }) => confirmReturn(rentalId, request, images),
     { hasInspectionsChanged: true },
   );
+}
+
+/**
+ * 대여 연장 요청(REQ-038). variables: { newEndDate }. 응답은 RentalExtensionResponse라 상세를 다시 불러온다.
+ * 결제 대기면 그 기간을 선점하고, 바로 확정이면 종료일이 바뀌므로 어느 쪽이든 캘린더·목록도 무효화한다.
+ * 거절이 보던 상세가 낡았다는 뜻이면(결제 대기 연장 있음·종료일 지남·상태 바뀜) 상세를 다시 불러오고,
+ * 연장 기간 오류(maxEndDate)면 캘린더를 다시 불러온다.
+ */
+export function useRequestExtension(rental) {
+  const queryClient = useQueryClient();
+  const { rentalId } = rental;
+  const itemId = rental.item.itemId;
+  return useMutation({
+    mutationFn: (body) => requestExtension(rentalId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rentalKeys.detail(rentalId) });
+      queryClient.invalidateQueries({ queryKey: rentalKeys.mine() });
+      queryClient.invalidateQueries({ queryKey: itemKeys.mine() });
+      queryClient.invalidateQueries({ queryKey: rentalKeys.calendar(itemId) });
+      queryClient.invalidateQueries({ queryKey: rentalKeys.itemRentals(itemId) });
+    },
+    onError: (error) => {
+      refetchIfStale(queryClient, rentalId, error);
+      if (isExtensionRefetchError(error)) {
+        queryClient.invalidateQueries({ queryKey: rentalKeys.detail(rentalId) });
+      }
+      if (readMaxEndDate(error) !== undefined) {
+        queryClient.invalidateQueries({ queryKey: rentalKeys.calendar(itemId) });
+      }
+    },
+  });
 }

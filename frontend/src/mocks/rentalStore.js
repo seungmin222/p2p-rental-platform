@@ -30,6 +30,8 @@ function loadDb() {
 export const db = loadDb() ?? { ...createRentalSeed(), payments: [] };
 // 후기(REQ-034) 전에 저장한 데이터에는 reviews가 없다. 대여 시드는 그대로 두고 후기만 시드로 채운다
 db.reviews ??= createRentalSeed().reviews;
+// 연장(REQ-038) 전에 저장한 데이터
+db.extensions ??= [];
 
 export function saveDb() {
   try {
@@ -52,6 +54,32 @@ const ACTIVE_FOR_PERIOD = ['PENDING_PAYMENT', 'RESERVED', 'RENTING', 'OVERDUE'];
 
 export function nowServer() {
   return toServerDateTime(new Date());
+}
+
+/** 결제 대기 연장이 만료 전인가(대여당 1건, 기간 [prevEndDate + 1, newEndDate]를 점유) */
+export function isPendingExtension(extension) {
+  return extension.status === 'PENDING_PAYMENT' && extension.expiresAt > nowServer();
+}
+
+/**
+ * 물품의 점유 구간 [{ rentalId, startDate, endDate }]: 기간을 점유하는 대여 + 만료 전 결제 대기 연장
+ * (백엔드 RentalOccupancyReader). 연장 구간 시작일은 prevEndDate 다음 날이라 끝 비교만으로 겹침을 본다.
+ */
+export function listOccupied(itemId) {
+  const rentals = db.rentals.filter((rental) => rental.itemId === itemId && occupiesPeriod(rental));
+  const byId = new Map(db.rentals.map((rental) => [rental.rentalId, rental]));
+  const extensions = db.extensions
+    .filter((extension) => isPendingExtension(extension))
+    .filter((extension) => byId.get(extension.rentalId)?.itemId === itemId)
+    .map((extension) => ({
+      rentalId: extension.rentalId,
+      startDate: extension.firstDate,
+      endDate: extension.newEndDate,
+    }));
+  return [
+    ...rentals.map(({ rentalId, startDate, endDate }) => ({ rentalId, startDate, endDate })),
+    ...extensions,
+  ];
 }
 
 /** 결제 대기는 만료 전인 것만 기간을 점유한다(rental.md REQ-012) */

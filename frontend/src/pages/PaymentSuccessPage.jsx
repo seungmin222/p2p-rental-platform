@@ -2,7 +2,11 @@ import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import PageHeader from '../app/layout/PageHeader';
-import { clearPendingPayment, readPendingPayment } from '../features/payment/pendingPayment';
+import {
+  clearPendingPayment,
+  readPendingPayment,
+  readPendingPaymentKind,
+} from '../features/payment/pendingPayment';
 import {
   CONFIRM_ACTION,
   getConfirmOutcome,
@@ -11,7 +15,10 @@ import {
 import { useConfirmPayment } from '../features/payment/queries';
 import { Button, ButtonLink, ErrorState, Spinner, toast } from '../shared/ui';
 
-/** SCR-07 결제 성공 복귀. 금액 검증은 서버가 하고, 승인 결과에 따라 대여 상세로 보낸다. */
+/**
+ * SCR-07 결제 성공 복귀. 금액 검증은 서버가 하고, 승인 결과에 따라 대여 상세로 보낸다.
+ * 연장료 결제(REQ-038)도 같은 화면이다: 승인 응답 type으로, 실패는 기억한 결제 종류로 문구를 고른다.
+ */
 export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -28,7 +35,12 @@ export default function PaymentSuccessPage() {
     if (confirmed) {
       clearPendingPayment();
       if (confirmed.status === 'APPROVED') {
-        toast.show({ message: '결제를 완료했어요' });
+        toast.show({
+          message:
+            confirmed.type === 'EXTENSION'
+              ? '연장료를 결제했어요. 반납일이 바뀌었어요'
+              : '결제를 완료했어요',
+        });
       }
       // 복귀 주소에 paymentKey가 있어 기록에 남기지 않는다
       navigate(`/rentals/${confirmed.rentalId}`, { replace: true });
@@ -50,7 +62,7 @@ export default function PaymentSuccessPage() {
   }
 
   if (error) {
-    const outcome = getConfirmOutcome(error);
+    const outcome = getConfirmOutcome(error, readPendingPaymentKind());
     const rentalId = readPendingPayment();
     return (
       <>

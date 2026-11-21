@@ -50,7 +50,11 @@ describe('getRentalActions', () => {
         isPaymentEnabled: true,
       });
       expect(types(result)).toEqual(expected);
-      expect(result.notice).toEqual({ tone: 'default', paymentExpiresAt: '2026-10-29T10:15:00' });
+      expect(result.notice).toEqual({
+        tone: 'default',
+        paymentExpiresAt: '2026-10-29T10:15:00',
+        paymentKind: 'RENTAL',
+      });
     });
   });
 
@@ -195,19 +199,84 @@ describe('getRentalActions', () => {
   });
 
   describe('RENTING·OVERDUE', () => {
-    it.each([
-      ['RENTER', '반납 요청'],
-      ['OWNER', '반납 대리 접수'],
-    ])('%s: 같은 반납 요청 액션, 라벨만 다르다', (myRole, label) => {
+    const renting = (overrides) =>
+      rental({
+        status: 'RENTING',
+        startDate: '2026-10-27',
+        endDate: '2026-10-31',
+        extensionCount: 0,
+        pendingExtension: null,
+        ...overrides,
+      });
+
+    it('제공자: 반납 대리 접수만(연장은 대여자만)', () => {
+      const result = getRentalActions(renting({ myRole: 'OWNER' }), undefined, TODAY);
+      expect(result.actions).toEqual([
+        {
+          type: A.RETURN_REQUEST,
+          label: '반납 대리 접수',
+          variant: 'primary',
+          disabledReason: null,
+        },
+      ]);
+      expect(result.notice).toBeNull();
+    });
+
+    it('대여자: 연장하기(secondary) + 반납 요청(primary), 같은 반납 요청 액션', () => {
+      const result = getRentalActions(renting({ myRole: 'RENTER' }), undefined, TODAY);
+      expect(result.actions).toEqual([
+        { type: A.EXTEND, label: '연장하기', variant: 'secondary', disabledReason: null },
+        { type: A.RETURN_REQUEST, label: '반납 요청', variant: 'primary', disabledReason: null },
+      ]);
+      expect(result.notice).toBeNull();
+    });
+
+    it('대여자: 종료일 당일까지는 연장할 수 있고, 지나면(연체 배치 전) 연장 버튼이 없다', () => {
+      expect(types(getRentalActions(renting({ endDate: TODAY }), undefined, TODAY))).toEqual([
+        A.EXTEND,
+        A.RETURN_REQUEST,
+      ]);
+      expect(types(getRentalActions(renting({ endDate: '2026-10-28' }), undefined, TODAY))).toEqual(
+        [A.RETURN_REQUEST],
+      );
+    });
+
+    it('대여자: 확정된 연장이 2번이면 연장하기 비활성 + 사유', () => {
+      expect(disabled(getRentalActions(renting({ extensionCount: 1 }), undefined, TODAY))).toEqual({
+        [A.EXTEND]: null,
+        [A.RETURN_REQUEST]: null,
+      });
+      expect(
+        disabled(getRentalActions(renting({ extensionCount: 2 }), undefined, TODAY))[A.EXTEND],
+      ).toBe('연장은 2번까지 할 수 있어요');
+    });
+
+    it('대여자: 결제 대기 연장이 있으면 연장 결제하기(primary)와 남은 연장 결제 시간', () => {
+      const pendingExtension = {
+        extensionId: 9,
+        newEndDate: '2026-11-02',
+        additionalFee: 8000,
+        expiresAt: '2026-10-29T10:15:00',
+      };
+      const result = getRentalActions(renting({ pendingExtension }), undefined, TODAY);
+      expect(result.actions.map((a) => [a.type, a.variant])).toEqual([
+        [A.RETURN_REQUEST, 'secondary'],
+        [A.PAY_EXTENSION, 'primary'],
+      ]);
+      expect(result.notice).toEqual({
+        tone: 'default',
+        paymentExpiresAt: '2026-10-29T10:15:00',
+        paymentKind: 'EXTENSION',
+      });
+    });
+
+    it('OVERDUE 대여자: 연장 버튼 없이 반납 요청만', () => {
       const result = getRentalActions(
-        rental({ status: 'RENTING', myRole, startDate: '2026-10-27', endDate: '2026-10-31' }),
+        rental({ status: 'OVERDUE', startDate: '2026-10-20', endDate: '2026-10-26' }),
         undefined,
         TODAY,
       );
-      expect(result.actions).toEqual([
-        { type: A.RETURN_REQUEST, label, variant: 'primary', disabledReason: null },
-      ]);
-      expect(result.notice).toBeNull();
+      expect(types(result)).toEqual([A.RETURN_REQUEST]);
     });
 
     it.each(ROLES)('%s: OVERDUE면 지난 일수 안내(연체료 없음)', (myRole) => {

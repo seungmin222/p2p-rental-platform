@@ -1,7 +1,7 @@
 // 대여 상세(SCR-08) 하단 버튼 표. 상태 × 내 역할로 보일 버튼과 안내를 정한다. 버튼 노출 조건은 이 파일에만 둔다.
 // 서버가 최종 검증하므로 UI는 보조다(state-machines.md §1 전이 표).
 import { compareDate, formatMonthDay } from '../../shared/lib/date';
-import { PAYMENT_ENABLED, RETURN_AUTO_CONFIRM_DAYS } from './constants';
+import { EXTENSION_POLICY, PAYMENT_ENABLED, RETURN_AUTO_CONFIRM_DAYS } from './constants';
 import { formatDateTime, isOverdueCancelWaiver, overdueDays } from './rentalData';
 
 /** 버튼 종류. 화면은 이 값으로 열 모달·시트를 고른다. */
@@ -17,6 +17,8 @@ export const RENTAL_ACTION = {
   CONFIRM_ABNORMAL: 'CONFIRM_ABNORMAL',
   CONFIRM_NORMAL: 'CONFIRM_NORMAL',
   WRITE_REVIEW: 'WRITE_REVIEW', // 후기 쓰기(SCR-14로 이동, REQ-034)
+  EXTEND: 'EXTEND', // 연장하기(대여자, REQ-038) → 새 종료일 시트
+  PAY_EXTENSION: 'PAY_EXTENSION', // 결제 대기 연장의 연장료 결제(모달 없이 결제창)
 };
 
 const A = RENTAL_ACTION;
@@ -31,8 +33,9 @@ function action(type, label, variant, disabledReason = null) {
  * @param {string} today "YYYY-MM-DD" (호출부가 todayInSeoul()로 넘긴다)
  * @param {{isPaymentEnabled?: boolean}} [options]
  * @returns {{actions: {type: string, label: string, variant: string, disabledReason: string | null}[],
- *   notice: {text?: string, tone: 'default' | 'danger', paymentExpiresAt?: string} | null}}
- *   disabledReason이 있으면 비활성 버튼 + 그 사유를 보여 준다. notice.paymentExpiresAt이면 남은 결제 시간을 센다.
+ *   notice: {text?: string, tone: 'default' | 'danger', paymentExpiresAt?: string, paymentKind?: 'RENTAL' | 'EXTENSION'} | null}}
+ *   disabledReason이 있으면 비활성 버튼 + 그 사유를 보여 준다. notice.paymentExpiresAt이면 남은 결제 시간을 센다
+ *   (paymentKind가 EXTENSION이면 연장 결제 시간).
  */
 export function getRentalActions(
   rental,
@@ -51,7 +54,7 @@ export function getRentalActions(
         ],
         // 결제가 꺼져 있으면 결제할 수 없으므로 남은 시간도 세지 않는다
         notice: isPaymentEnabled
-          ? { tone: 'default', paymentExpiresAt: rental.paymentExpiresAt }
+          ? { tone: 'default', paymentExpiresAt: rental.paymentExpiresAt, paymentKind: 'RENTAL' }
           : null,
       };
 
@@ -124,10 +127,18 @@ export function getRentalActions(
     case 'RENTING':
     case 'OVERDUE': {
       const days = rental.status === 'OVERDUE' ? overdueDays(rental.endDate, today) : 0;
-      return {
-        actions: [action(A.RETURN_REQUEST, isOwner ? '반납 대리 접수' : '반납 요청', 'primary')],
-        notice: days > 0 ? { tone: 'danger', text: `반납 예정일이 ${days}일 지났어요` } : null,
-      };
+      const returnAction = action(
+        A.RETURN_REQUEST,
+        isOwner ? '반납 대리 접수' : '반납 요청',
+        'primary',
+      );
+      if (isOwner || rental.status !== 'RENTING') {
+        return {
+          actions: [returnAction],
+          notice: days > 0 ? { tone: 'danger', text: `반납 예정일이 ${days}일 지났어요` } : null,
+        };
+      }
+      return getRenterRentingActions(rental, today, returnAction);
     }
 
     case 'RETURNED':
@@ -166,4 +177,39 @@ export function getRentalActions(
       // CANCELED
       return { actions: [], notice: null };
   }
+}
+
+/**
+ * 대여 중(RENTING)인 대여자: 반납 요청 + 연장(REQ-038).
+ * - 결제 대기 연장(pendingExtension)이 있으면 "연장 결제하기"와 남은 연장 결제 시간(대여당 1건이라 새 연장은 못 한다)
+ * - 종료일이 지났으면(연체 배치 전) 연장 버튼 없음(서버 409 RENTAL_EXTENSION_OVERDUE)
+ * - 확정된 연장이 extension.max-count에 닿으면 비활성 + 사유
+ */
+function getRenterRentingActions(rental, today, returnAction) {
+  const pending = rental.pendingExtension;
+  if (pending) {
+    return {
+      actions: [
+        { ...returnAction, variant: 'secondary' },
+        action(A.PAY_EXTENSION, '연장 결제하기', 'primary'),
+      ],
+      notice: { tone: 'default', paymentExpiresAt: pending.expiresAt, paymentKind: 'EXTENSION' },
+    };
+  }
+  if (compareDate(today, rental.endDate) > 0) {
+    return { actions: [returnAction], notice: null };
+  }
+  const isLimitReached = (rental.extensionCount ?? 0) >= EXTENSION_POLICY.MAX_COUNT;
+  return {
+    actions: [
+      action(
+        A.EXTEND,
+        '연장하기',
+        'secondary',
+        isLimitReached ? `연장은 ${EXTENSION_POLICY.MAX_COUNT}번까지 할 수 있어요` : null,
+      ),
+      returnAction,
+    ],
+    notice: null,
+  };
 }

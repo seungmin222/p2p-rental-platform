@@ -88,7 +88,7 @@
 | 035 | 최근 본 상품 | B | | ⬜ |
 | 036 | 비밀번호 재설정 | B | | ✅ 백엔드(`feat/member-extra`). 메일은 백그라운드 발송(실패는 로그만), 링크 `{app.frontend.base-url}/password-reset?token=`. 프론트 SCR-01 `/password-reset/request`·`/password-reset?token=` ✅(`feat/fe-member-extra`) |
 | 037 | 약관 동의 | B | | ✅ 백엔드(`feat/member-extra`). 약관 본문은 초안. 프론트 SCR-01 가입 체크박스·재동의 모달·SCR-15 `/terms/:slug` ✅(`feat/fe-member-extra`). 거부 시 서버 차단은 open-issues #56 |
-| 038 | 대여 연장 | A | | ✅ 프론트(결제 화면 재진입 시 extensionId)는 fe 연장 브랜치 |
+| 038 | 대여 연장 | A | | ✅ 대여 상세에 결제 대기 연장(`pendingExtension`)·연장 횟수(`extensionCount`). 프론트 SCR-08 연장 시트·연장료 결제·결제 복귀 분기 ✅(`feat/fe-rental-extension`) |
 | 039 | 제공자 정산 | A | | ✅ HELD 전이는 063에서 구현(분쟁 접수 → HELD, 목록 heldTotal) |
 | 040 | AI 상태 비교 | A | | ✅ 검증 실험 미실행 (`docs/experiments/ai-compare.md`) |
 | 049 | 보증금 보류·차감 | A | ✔ | ✅ |

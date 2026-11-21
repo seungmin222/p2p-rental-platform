@@ -170,6 +170,7 @@ try {
 - 승인 시점에 연장이 만료됐거나 대여가 RENTING이 아니거나 종료일이 요청 때와 다르면(연체 배치·반납 요청과의 경합) 확정하지 않고 extension `CANCELED` + 연장료 전액 환불, 409 `PAYMENT_CANCELED_AFTER_EXPIRY` (open-issues #45)
 - 결제 대기 연장은 대여당 1건(두 번째 요청 409 `RENTAL_EXTENSION_IN_PROGRESS`). 횟수 한도는 확정된 연장만 센다
 - 409·가능 기간 밖 400의 "연장 가능한 최대 날짜"는 `error.details`의 `{ field: "maxEndDate", reason: "yyyy-MM-dd" }`(하루도 안 되면 비움)
+- 결제 화면을 떠났다 돌아와도 이어서 결제할 수 있게, 대여 상세는 대여자 본인·RENTING이면 만료 전 결제 대기 연장(`pendingExtension`: extensionId·newEndDate·additionalFee·expiresAt)을, 양측에 확정된 연장 횟수(`extensionCount`)를 준다
 - 추가 대여료가 0원(무료 대여)이면 결제 없이 바로 CONFIRMED
 
 ## 테스트 포인트 (필수)

@@ -53,6 +53,9 @@ export const RETURN_AUTO_CONFIRM_DAYS = 3;
 // policies.md cancel-agreement.expire-hours (상대가 응답하지 않으면 양측 동의 취소 요청 만료)
 export const CANCEL_AGREEMENT_EXPIRE_HOURS = 48;
 
+// policies.md extension.max-count / extension.max-days-per (대여 연장 REQ-038: 대여당 2회, 회당 7일)
+export const EXTENSION_POLICY = { MAX_COUNT: 2, MAX_DAYS: 7 };
+
 // policies.md payment.expire-minutes (예약 후 15분 안에 결제하지 않으면 자동 취소)
 export const PAYMENT_EXPIRE_MINUTES = 15;
 

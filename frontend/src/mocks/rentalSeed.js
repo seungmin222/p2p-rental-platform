@@ -18,6 +18,9 @@
 // | 12 | RESERVED | D+0~D+1 | 앞 대여(13, 남의 OVERDUE)가 연체 중 → previousRentalOverdue, 수수료 없는 예약 취소(open-issues #7) |
 // | 14 | COMPLETED | D-4~D-2 | 어제 완료, 후기 작성 가능(canWriteReview) |
 // | 15 | COMPLETED | D-8~D-6 | 5일 전 완료, 내가 후기 작성함(reviewWritten) |
+// | 16 | RENTING | D-1~D+2 | 물품 102(보증금 없음). 연장하기: D+3·D+4만 고를 수 있음(D+5부터 903 예약) |
+// | 17 | RENTING | D-1~D+1 | 이미 2번 연장(extensionCount 2) → 연장하기 비활성 |
+// | 7 | (위) | | 물품 105 다음 날(D+4)부터 예약(2)이 있어 연장할 수 있는 날이 없음 |
 // | 10 | (위) | | 17일 전 완료 → 후기 기한 지남 |
 //
 // 후기(REQ-034, 시드 reviews): 내가 쓴 것은 15 하나. 내가 받은 것은 41~65(제공자가 씀, writerRole OWNER) 12건 +
@@ -53,6 +56,7 @@
 // | 900 | 남의 대여(물품 101, D+8~D+10 RESERVED) → 상세 403 RENTAL_NOT_PARTICIPANT |
 // | 901 | 남의 결제 대기(물품 101, D+12~D+13), 결제 만료 지남 → 캘린더에서 예약 가능 |
 // | 902 | 남의 결제 대기(물품 101, D+14), 만료 전 → 캘린더에서 예약됨 |
+// | 903 | 남의 예약(물품 102, D+5~D+6 RESERVED) → 16의 연장 한도 |
 // | 999 | 없음 → 404 RENTAL_NOT_FOUND |
 import { addDays, todayInSeoul } from '../shared/lib/date';
 import { findMockItem, MOCK_ME, placeholderImage } from './item';
@@ -103,6 +107,8 @@ function rental(rentalId, itemId, renterId, status, [from, to], extra = {}) {
     cancelReasonText: null,
     // 백엔드는 int(NOT NULL DEFAULT 0)라 취소 전에도 0
     cancelFee: 0,
+    // 확정된 연장 횟수(REQ-038)
+    extensionCount: 0,
     ...extra,
   };
 }
@@ -231,6 +237,11 @@ export function createRentalSeed() {
       returnedAt: at(-6, '19:00'),
       completedAt: at(-5, '09:00'),
     }),
+    rental(16, 102, MOCK_ME, 'RENTING', [-1, 2], { handedOverAt: at(-1, '18:00') }),
+    rental(17, 105, MOCK_ME, 'RENTING', [-1, 1], {
+      handedOverAt: at(-1, '18:00'),
+      extensionCount: 2,
+    }),
     // 제공자 쪽
     rental(21, 104, RENTER, 'PENDING_PAYMENT', [6, 8], { paymentExpiresAt: minutesFromNow(9) }),
     rental(22, 104, RENTER, 'RESERVED', [3, 4]),
@@ -270,6 +281,7 @@ export function createRentalSeed() {
     rental(900, 101, OTHER, 'RESERVED', [8, 10]),
     rental(901, 101, OTHER, 'PENDING_PAYMENT', [12, 13], { paymentExpiresAt: minutesFromNow(-5) }),
     rental(902, 101, OTHER, 'PENDING_PAYMENT', [14, 14], { paymentExpiresAt: minutesFromNow(10) }),
+    rental(903, 102, OTHER, 'RESERVED', [5, 6]),
   ];
 
   const agreements = [
@@ -311,7 +323,8 @@ export function createRentalSeed() {
     }),
   ].map((inspection, index) => ({ inspectionId: index + 1, ...inspection }));
 
-  return { rentals, agreements, inspections, reviews: reviewSeed(rentals) };
+  // 연장(REQ-038): { extensionId, rentalId, prevEndDate, newEndDate, additionalFee, status, expiresAt }. 시드는 없고 화면에서 만든다
+  return { rentals, agreements, inspections, reviews: reviewSeed(rentals), extensions: [] };
 }
 
 // 탈퇴한 회원(chatSeed.js WITHDRAWN_MEMBER_ID와 같은 값). 대여 시드에는 없다
