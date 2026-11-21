@@ -80,9 +80,37 @@ const OUTCOMES = {
   },
 };
 
-/** 승인 실패 → 화면 안내. 그 밖의 오류(CLIENT_* 등)는 결과를 알 수 없으므로 다시 확인하게 한다. */
-export function getConfirmOutcome(error) {
+// 연장료 결제(REQ-038)에서 안내가 다른 경우. 실패해도 대여는 그대로이고 연장만 취소되거나 결제 대기로 남는다
+const EXTENSION_OUTCOMES = {
+  PAYMENT_APPROVAL_FAILED: {
+    title: '연장 결제 승인에 실패했어요',
+    message: '결제 시간 안에 대여 상세에서 다시 결제할 수 있어요.',
+    action: TO_DETAIL,
+  },
+  PAYMENT_AMOUNT_MISMATCH: {
+    title: '연장이 취소됐어요',
+    message: '결제 금액이 일치하지 않아 연장이 취소됐어요. 반납일은 그대로예요.',
+    action: TO_DETAIL,
+  },
+  PAYMENT_CANCELED_AFTER_EXPIRY: {
+    title: '연장료를 환불해요',
+    message: '결제 처리 중 연장 시간이 지났거나 대여 상태가 바뀌어 연장료를 전액 환불해요.',
+    action: TO_DETAIL,
+  },
+  PAYMENT_EXPIRED: {
+    title: '연장 결제 시간이 지났어요',
+    message: '대여 상세에서 다시 연장을 요청해 주세요.',
+    action: TO_DETAIL,
+  },
+};
+
+/**
+ * 승인 실패 → 화면 안내. 그 밖의 오류(CLIENT_* 등)는 결과를 알 수 없으므로 다시 확인하게 한다.
+ * @param {string} [kind] 'RENTAL' | 'EXTENSION'(pendingPayment.js). 연장이면 연장용 문구가 먼저다
+ */
+export function getConfirmOutcome(error, kind = 'RENTAL') {
   return (
+    (kind === 'EXTENSION' ? EXTENSION_OUTCOMES[error?.code] : undefined) ??
     OUTCOMES[error?.code] ?? {
       title: '결제 결과를 확인하지 못했어요',
       message: error?.message ?? '잠시 후 다시 확인해 주세요.',

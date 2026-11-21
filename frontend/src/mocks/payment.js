@@ -4,11 +4,16 @@ import { http } from 'msw';
 
 import { countDaysInclusive } from '../shared/lib/date';
 import { findMockItem } from './item';
-import { createMockOrder, toConfirmResponse, toOrderResponse } from './paymentLogic';
+import {
+  createMockExtensionOrder,
+  createMockOrder,
+  toConfirmResponse,
+  toOrderResponse,
+} from './paymentLogic';
 import { CONFIRM_FAILURES, takeFailure } from './paymentScenario';
-import { cancel, currentMemberId, handle, invalidInput, reject } from './rental';
+import { cancel, confirmExtension, currentMemberId, handle, invalidInput, reject } from './rental';
 import { ok } from './response';
-import { db, nowServer } from './rentalStore';
+import { db, isPendingExtension, nowServer } from './rentalStore';
 
 function isExpired(rental) {
   return rental.paymentExpiresAt <= nowServer();
@@ -34,11 +39,77 @@ function applyScenario(failure, order, rental) {
   reject(failure);
 }
 
+/** 연장료 주문(REQ-038). 연장 행으로 유효성을 본다: 다른 대여의 연장 404, 결제 대기 아님 409, 만료 409 */
+function createExtensionOrder(rental, extensionId) {
+  const extension = db.extensions.find(
+    (candidate) =>
+      candidate.extensionId === Number(extensionId) && candidate.rentalId === rental.rentalId,
+  );
+  if (!extension) {
+    reject('RENTAL_EXTENSION_NOT_FOUND');
+  }
+  if (extension.status !== 'PENDING_PAYMENT') {
+    reject('RENTAL_INVALID_TRANSITION');
+  }
+  if (!isPendingExtension(extension)) {
+    reject('PAYMENT_EXPIRED');
+  }
+  // 진행 중인 주문이 연장에 묶여 있으면 그대로, 실패 뒤에는 새 주문
+  let order = db.payments.find(
+    (o) => o.extensionId === extension.extensionId && o.status === 'READY',
+  );
+  if (!order) {
+    order = createMockExtensionOrder(
+      extension,
+      findMockItem(rental.itemId).name,
+      crypto.randomUUID(),
+    );
+    db.payments.push(order);
+  }
+  return order;
+}
+
+/**
+ * 연장료 승인(REQ-038). 연장이 만료됐거나 대여가 RENTING이 아니거나 종료일이 요청 때와 다르면 확정하지 않고
+ * 연장 CANCELED + 환불(409 PAYMENT_CANCELED_AFTER_EXPIRY, open-issues #45 A). 금액 불일치는 결제 FAILED + 연장 CANCELED.
+ */
+function confirmExtensionOrder(order, rental, amount) {
+  const extension = db.extensions.find((e) => e.extensionId === order.extensionId);
+  const failure = takeFailure(CONFIRM_FAILURES);
+  if (failure === 'PAYMENT_APPROVAL_FAILED') {
+    failOrder(order);
+    reject(failure);
+  }
+  if (
+    failure === 'PAYMENT_CANCELED_AFTER_EXPIRY' ||
+    !isPendingExtension(extension) ||
+    rental.status !== 'RENTING' ||
+    rental.endDate !== extension.prevEndDate
+  ) {
+    order.status = 'CANCELED';
+    if (extension.status === 'PENDING_PAYMENT') {
+      extension.status = 'CANCELED';
+    }
+    reject('PAYMENT_CANCELED_AFTER_EXPIRY');
+  }
+  if (failure) {
+    reject(failure);
+  }
+  if (order.amount !== amount) {
+    failOrder(order);
+    extension.status = 'CANCELED';
+    reject('PAYMENT_AMOUNT_MISMATCH');
+  }
+  order.status = 'APPROVED';
+  confirmExtension(rental, extension);
+  return ok(toConfirmResponse(order));
+}
+
 export const paymentHandlers = [
   http.post(
     '/api/payments',
     handle(async ({ request }) => {
-      const { rentalId } = (await request.json()) ?? {};
+      const { rentalId, extensionId } = (await request.json()) ?? {};
       if (rentalId == null) {
         invalidInput('rentalId', '필수 값입니다.');
       }
@@ -49,6 +120,11 @@ export const paymentHandlers = [
       if (rental.renterId !== currentMemberId()) {
         reject('PAYMENT_RENTER_ONLY');
       }
+      if (extensionId != null) {
+        return ok(toOrderResponse(createExtensionOrder(rental, extensionId), currentMemberId()), {
+          status: 201,
+        });
+      }
       if (rental.status !== 'PENDING_PAYMENT') {
         reject('RENTAL_INVALID_TRANSITION');
       }
@@ -56,7 +132,9 @@ export const paymentHandlers = [
         reject('PAYMENT_EXPIRED');
       }
       // 진행 중인 주문이 있으면 같은 주문, 승인에 실패한 뒤에는 새 주문
-      let order = db.payments.find((o) => o.rentalId === rental.rentalId && o.status === 'READY');
+      let order = db.payments.find(
+        (o) => o.rentalId === rental.rentalId && o.status === 'READY' && o.type !== 'EXTENSION',
+      );
       if (!order) {
         order = createMockOrder(
           rental,
@@ -97,6 +175,9 @@ export const paymentHandlers = [
       // 이미 처리한 주문은 기존 결과(멱등)
       if (order.status !== 'READY') {
         return ok(toConfirmResponse(order));
+      }
+      if (order.type === 'EXTENSION') {
+        return confirmExtensionOrder(order, rental, amount);
       }
       const failure = takeFailure(CONFIRM_FAILURES);
       if (failure) {

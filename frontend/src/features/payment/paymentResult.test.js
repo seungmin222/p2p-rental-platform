@@ -62,4 +62,20 @@ describe('getConfirmOutcome', () => {
     expect(outcome.action).toBe(CONFIRM_ACTION.RETRY);
     expect(outcome.message).toBe('연결 오류');
   });
+
+  it('연장 결제(EXTENSION)는 연장 문구를 쓰고, 연장 문구가 없는 코드는 대여 결제와 같다', () => {
+    expect(getConfirmOutcome({ code: 'PAYMENT_AMOUNT_MISMATCH' }, 'EXTENSION').title).toBe(
+      '연장이 취소됐어요',
+    );
+    expect(getConfirmOutcome({ code: 'PAYMENT_CANCELED_AFTER_EXPIRY' }, 'EXTENSION').title).toBe(
+      '연장료를 환불해요',
+    );
+    expect(getConfirmOutcome({ code: 'PAYMENT_EXPIRED' }, 'EXTENSION').action).toBe(
+      CONFIRM_ACTION.TO_DETAIL,
+    );
+    expect(getConfirmOutcome({ code: 'PAYMENT_RESULT_UNKNOWN' }, 'EXTENSION')).toEqual(
+      getConfirmOutcome({ code: 'PAYMENT_RESULT_UNKNOWN' }),
+    );
+    expect(getConfirmOutcome({ code: 'PAYMENT_AMOUNT_MISMATCH' }).title).toBe('예약이 취소됐어요');
+  });
 });

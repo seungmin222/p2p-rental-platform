@@ -10692,7 +10692,7 @@
           "token": {
             "type": "string",
             "description": "재설정 메일 링크의 token 값(Base64URL 43자)",
-            "example": "q1w2e3r4t5y6u7i8o9p0a1s2d3f4g5h6j7k8l9z0x1c",
+            "example": "example-reset-token000000000000000000000000",
             "minLength": 1,
             "pattern": "^[A-Za-z0-9_-]{43}$"
           }
@@ -10963,6 +10963,34 @@
             "type": "string",
             "description": "주문명(물품 이름)",
             "example": "캠핑 텐트"
+          }
+        }
+      },
+      "PendingExtension": {
+        "type": "object",
+        "properties": {
+          "additionalFee": {
+            "type": "integer",
+            "format": "int32",
+            "description": "연장료(원)",
+            "example": 30000
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "결제 대기 만료 시각. 지나면 연장이 취소된다"
+          },
+          "extensionId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "연장 ID. POST /api/payments에 rentalId와 함께 보낸다",
+            "example": 1
+          },
+          "newEndDate": {
+            "type": "string",
+            "format": "date",
+            "description": "연장 후 종료일",
+            "example": "2026-11-08"
           }
         }
       },
@@ -11491,6 +11519,12 @@
             "description": "대여 종료일 (포함)",
             "example": "2026-11-05"
           },
+          "extensionCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "확정된 연장 횟수 (REQ-038). policies.md extension.max-count에 닿으면 더 연장할 수 없다",
+            "example": 0
+          },
           "handedOverAt": {
             "type": "string",
             "format": "date-time",
@@ -11521,6 +11555,10 @@
             "type": "string",
             "format": "date-time",
             "description": "결제 만료 시각. 결제 대기(PENDING_PAYMENT)일 때만 값이 있다"
+          },
+          "pendingExtension": {
+            "$ref": "#/components/schemas/PendingExtension",
+            "description": "결제를 기다리는 연장(REQ-038, 만료 전). 대여자 본인이고 대여 중(RENTING)일 때만 채우고, 없으면 null. extensionId로 POST /api/payments { rentalId, extensionId }를 다시 불러 결제를 이어 간다"
           },
           "previousRentalOverdue": {
             "type": "boolean",

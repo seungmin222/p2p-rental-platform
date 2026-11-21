@@ -9,6 +9,7 @@ import RentalStepBar from '../features/rental/components/RentalStepBar';
 import {
   CANCEL_REASON,
   CANCEL_TYPE,
+  EXTENSION_POLICY,
   PAYMENT_ENABLED,
   RENTAL_STATUS,
 } from '../features/rental/constants';
@@ -22,7 +23,7 @@ import {
 } from '../features/rental/rentalData';
 import { getRentalSteps } from '../features/rental/rentalSteps';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
-import { todayInSeoul } from '../shared/lib/date';
+import { formatMonthDay, todayInSeoul } from '../shared/lib/date';
 import { formatPrice } from '../shared/lib/format';
 import { isInitialLoadError } from '../shared/lib/queryState';
 import { Badge, ButtonLink, ErrorState, Skeleton } from '../shared/ui';
@@ -95,6 +96,20 @@ function CancelAgreementCard({ agreement, counterpartNickname }) {
       <p className="mt-0.5 text-ink-muted">
         {formatDateTime(agreement.expiresAt)}까지 응답이 없으면 요청이 만료돼요
       </p>
+    </section>
+  );
+}
+
+/** 결제를 기다리는 연장(REQ-038, 대여자에게만 온다). 결제는 하단 "연장 결제하기" */
+function PendingExtensionCard({ extension }) {
+  return (
+    <section aria-label="연장 요청" className="rounded-xl bg-accent-soft px-3.5 py-3 text-caption">
+      <p className="font-semibold text-accent-strong">
+        반납일을 {formatMonthDay(extension.newEndDate)}로 연장하려면 연장료를 결제해 주세요
+      </p>
+      {PAYMENT_ENABLED && (
+        <p className="mt-1 tabular-nums">연장료 {formatPrice(extension.additionalFee)}</p>
+      )}
     </section>
   );
 }
@@ -197,6 +212,14 @@ export default function RentalDetailPage() {
             counterpartNickname={rental.counterpart.nickname}
           />
         )}
+
+        {rental.extensionCount > 0 && (
+          <p className="-mt-2 text-caption text-ink-muted">
+            반납일을 {rental.extensionCount}번 연장했어요(최대 {EXTENSION_POLICY.MAX_COUNT}번)
+          </p>
+        )}
+
+        {rental.pendingExtension && <PendingExtensionCard extension={rental.pendingExtension} />}
 
         {depositNotice && <DepositNoticeCard notice={depositNotice} />}
 

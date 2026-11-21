@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { clearPendingPayment, readPendingPayment, savePendingPayment } from './pendingPayment';
+import {
+  clearPendingPayment,
+  PAYMENT_KIND,
+  readPendingPayment,
+  readPendingPaymentKind,
+  savePendingPayment,
+} from './pendingPayment';
 
 function fakeStorage(initial = {}) {
   const values = new Map(Object.entries(initial));
@@ -14,10 +20,25 @@ function fakeStorage(initial = {}) {
 describe('pendingPayment', () => {
   it('저장한 rentalId를 읽고 지우면 null', () => {
     const storage = fakeStorage();
-    savePendingPayment(7, storage);
+    savePendingPayment(7, undefined, storage);
     expect(readPendingPayment(storage)).toBe(7);
     clearPendingPayment(storage);
     expect(readPendingPayment(storage)).toBeNull();
+  });
+
+  it('결제 종류를 함께 기억하고, 없거나 모르는 값이면 RENTAL', () => {
+    const storage = fakeStorage();
+    savePendingPayment(7, PAYMENT_KIND.EXTENSION, storage);
+    expect(readPendingPayment(storage)).toBe(7);
+    expect(readPendingPaymentKind(storage)).toBe('EXTENSION');
+    savePendingPayment(8, undefined, storage);
+    expect(readPendingPaymentKind(storage)).toBe('RENTAL');
+    expect(readPendingPaymentKind(fakeStorage({ 'rental.pendingPayment': '{"rentalId":7}' }))).toBe(
+      'RENTAL',
+    );
+    expect(readPendingPaymentKind(fakeStorage({ 'rental.pendingPayment': 'not json' }))).toBe(
+      'RENTAL',
+    );
   });
 
   it.each(['not json', '{"rentalId":"7"}', '{"rentalId":-1}', 'null'])(
@@ -39,7 +60,7 @@ describe('pendingPayment', () => {
         throw new Error('blocked');
       },
     };
-    expect(() => savePendingPayment(1, broken)).not.toThrow();
+    expect(() => savePendingPayment(1, undefined, broken)).not.toThrow();
     expect(readPendingPayment(broken)).toBeNull();
     expect(() => clearPendingPayment(broken)).not.toThrow();
   });

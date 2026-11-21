@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createPaymentOrder } from './api';
+import { savePendingPayment } from './pendingPayment';
 import { openTossPaymentWindow } from './tossPayment';
 import {
   paymentKeys,
@@ -16,7 +17,10 @@ vi.mock('../rental/queries', () => ({
   rentalKeys: { all: ['rentals'], detail: (id) => ['rentals', id] },
 }));
 vi.mock('./api', () => ({ createPaymentOrder: vi.fn() }));
-vi.mock('./pendingPayment', () => ({ savePendingPayment: vi.fn() }));
+vi.mock('./pendingPayment', () => ({
+  PAYMENT_KIND: { RENTAL: 'RENTAL', EXTENSION: 'EXTENSION' },
+  savePendingPayment: vi.fn(),
+}));
 vi.mock('./tossPayment', async (importOriginal) => ({
   ...(await importOriginal()),
   openTossPaymentWindow: vi.fn(),
@@ -61,6 +65,26 @@ describe('startPayment', () => {
     expect(openTossPaymentWindow).not.toHaveBeenCalled();
     expect(toast.show).toHaveBeenCalledWith({
       message: '결제 시간이 지났어요. 다시 예약해 주세요',
+      tone: 'danger',
+    });
+  });
+
+  it('extensionId를 주면 연장료 주문을 만들고 결제 종류를 EXTENSION으로 기억한다(REQ-038)', async () => {
+    openTossPaymentWindow.mockResolvedValue();
+    await startPayment(queryClient, 1, { extensionId: 9 });
+    expect(createPaymentOrder).toHaveBeenCalledWith(1, 9);
+    expect(savePendingPayment).toHaveBeenCalledWith(1, 'EXTENSION');
+
+    await startPayment(queryClient, 1);
+    expect(createPaymentOrder).toHaveBeenLastCalledWith(1, undefined);
+    expect(savePendingPayment).toHaveBeenLastCalledWith(1, 'RENTAL');
+  });
+
+  it('연장료 주문이 만료로 실패하면 다시 연장을 요청하라고 알린다', async () => {
+    createPaymentOrder.mockRejectedValue({ code: 'PAYMENT_EXPIRED' });
+    await startPayment(queryClient, 1, { extensionId: 9 });
+    expect(toast.show).toHaveBeenCalledWith({
+      message: '연장 결제 시간이 지났어요. 다시 연장을 요청해 주세요',
       tone: 'danger',
     });
   });

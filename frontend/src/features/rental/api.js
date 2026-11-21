@@ -58,6 +58,14 @@ export function confirmReturn(rentalId, request, images) {
 }
 
 /**
+ * POST /api/rentals/{rentalId}/extensions { newEndDate } → RentalExtensionResponse
+ * (status PENDING_PAYMENT면 extensionId로 결제, CONFIRMED면 이미 종료일이 바뀜)
+ */
+export function requestExtension(rentalId, body) {
+  return apiClient.post(`/rentals/${rentalId}/extensions`, body);
+}
+
+/**
  * GET /api/members/me/rentals?role=renter&tab=&page= → PageResponse<RentalHistoryResponse>.
  * size는 보내지 않는다(서버가 rental-history.page로 고정). 정렬도 서버가 한다.
  */

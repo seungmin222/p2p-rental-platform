@@ -3,6 +3,7 @@
 import { delay, http } from 'msw';
 
 import {
+  addDays,
   buildMonthGrid,
   compareDate,
   countDaysInclusive,
@@ -26,7 +27,7 @@ import { hasFrozenDeposit } from './paymentLogic';
 import { DEPOSIT_REFUND_FAILED, takeFailure } from './paymentScenario';
 import { fail, ok } from './response';
 import { minutesFromNow } from './rentalSeed';
-import { db, nowServer, occupiesPeriod, saveDb } from './rentalStore';
+import { db, isPendingExtension, listOccupied, nowServer, saveDb } from './rentalStore';
 import { canWriteReview as canWriteReviewOf, hasWritten } from './reviewLogic';
 import { authenticateMockRequest } from './session';
 
@@ -53,7 +54,9 @@ const POLICY = {
   IMAGES_MAX: 5,
   CANCEL_FEE_FREE_UNTIL_DAYS_BEFORE: 3,
   CANCEL_FEE_RATE_PERCENT: 30,
-  PAYMENT_EXPIRE_BATCH_MINUTES: 1, // policies.md 배치 주기 "결제 만료"
+  PAYMENT_EXPIRE_BATCH_MINUTES: 1, // policies.md 배치 주기 "결제 만료"(연장 결제 만료도 1분)
+  EXTENSION_MAX_COUNT: 2, // extension.max-count
+  EXTENSION_MAX_DAYS: 7, // extension.max-days-per
 };
 
 // openapi.json 응답 예시의 메시지
@@ -86,7 +89,14 @@ const MESSAGES = {
   PAYMENT_AMOUNT_MISMATCH: '결제 금액이 일치하지 않아 예약이 취소되었습니다.',
   PAYMENT_APPROVAL_FAILED: '결제 승인에 실패했습니다. 다시 결제해 주세요.',
   PAYMENT_RESULT_UNKNOWN: '결제 결과를 확인하고 있습니다. 잠시 후 다시 시도해 주세요.',
-  PAYMENT_CANCELED_AFTER_EXPIRY: '결제 처리 중 예약이 만료되어 결제 금액을 전액 환불합니다.',
+  PAYMENT_CANCELED_AFTER_EXPIRY:
+    '결제 처리 중 예약 또는 연장이 만료·취소되어 결제 금액을 전액 환불합니다.',
+  RENTAL_RENTER_ONLY: '대여자만 처리할 수 있습니다.',
+  RENTAL_EXTENSION_LIMIT_EXCEEDED: '연장 횟수 또는 한 번에 연장할 수 있는 일수를 넘었습니다.',
+  RENTAL_EXTENSION_IN_PROGRESS: '결제를 기다리는 연장 요청이 있습니다.',
+  RENTAL_EXTENSION_OVERDUE: '연체 중에는 연장할 수 없습니다. 먼저 반납해 주세요.',
+  RENTAL_EXTENSION_PERIOD_CONFLICT: '연장하려는 기간에 다른 예약이 있습니다.',
+  RENTAL_EXTENSION_NOT_FOUND: '연장 요청을 찾을 수 없습니다.',
   REVIEW_ALREADY_WRITTEN: '이미 후기를 작성했습니다.',
   REVIEW_DEADLINE_PASSED: '후기 작성 기간이 지났습니다.',
   MEMBER_NOT_FOUND: '회원을 찾을 수 없습니다.',
@@ -113,6 +123,9 @@ const STATUS_BY_CODE = {
   PAYMENT_RESULT_UNKNOWN: 503,
   REVIEW_DEADLINE_PASSED: 400,
   MEMBER_NOT_FOUND: 404,
+  RENTAL_RENTER_ONLY: 403,
+  RENTAL_EXTENSION_LIMIT_EXCEEDED: 400,
+  RENTAL_EXTENSION_NOT_FOUND: 404,
 };
 
 /** 검사에서 던지고 핸들러가 공통 실패 응답으로 바꾼다 */
@@ -137,7 +150,7 @@ export function handle(resolver) {
   return async (info) => {
     await delay(400);
     requestMemberId = authenticateMockRequest(info.request)?.memberId ?? MOCK_ME;
-    const hasExpired = expirePendingPayments();
+    const hasExpired = expirePendingPayments() | expirePendingExtensions();
     try {
       const response = await resolver(info);
       if (hasExpired || info.request.method !== 'GET') {
@@ -253,6 +266,8 @@ function toDetail(rental) {
     cancelReasonText: rental.cancelReasonText,
     cancelFee: rental.cancelFee,
     previousRentalOverdue: hasPreviousOverdue(rental),
+    extensionCount: rental.extensionCount ?? 0,
+    pendingExtension: toPendingExtension(rental, myRole),
     canWriteReview: canWriteReview(rental),
     reviewWritten: hasWritten(db.reviews, rental.rentalId, currentMemberId()),
     activeCancelAgreement: agreement
@@ -265,6 +280,24 @@ function toDetail(rental) {
         }
       : null,
   };
+}
+
+/** 결제 대기 연장(REQ-038). 대여자 본인이고 RENTING일 때만(백엔드 RentalQueryService와 같다) */
+function toPendingExtension(rental, myRole) {
+  if (myRole !== 'RENTER' || rental.status !== 'RENTING') {
+    return null;
+  }
+  const extension = db.extensions.find(
+    (candidate) => candidate.rentalId === rental.rentalId && isPendingExtension(candidate),
+  );
+  return extension
+    ? {
+        extensionId: extension.extensionId,
+        newEndDate: extension.newEndDate,
+        additionalFee: extension.additionalFee,
+        expiresAt: extension.expiresAt,
+      }
+    : null;
 }
 
 /** 거래 완료 후 review.write-deadline-days 이내(정각 포함)이고 이 회원이 아직 쓰지 않았는지(REQ-034) */
@@ -290,6 +323,7 @@ function toHistoryItem(rental) {
     status: rental.status,
     totalAmount: rental.pricePerDay * rentalDays + rental.deposit,
     canWriteReview: canWriteReview(rental),
+    reviewWritten: hasWritten(db.reviews, rental.rentalId, currentMemberId()),
   };
 }
 
@@ -412,6 +446,64 @@ function expirePendingPayments() {
   return expired.length > 0;
 }
 
+/**
+ * 연장 결제 만료 배치 흉내(REQ-038, 1분): 만료 시각이 배치 주기만큼 지난 결제 대기 연장을 CANCELED로,
+ * 묶인 READY 주문은 FAILED로. 바뀐 게 있으면 true
+ */
+function expirePendingExtensions() {
+  const limit = minutesFromNow(-POLICY.PAYMENT_EXPIRE_BATCH_MINUTES);
+  const expired = db.extensions.filter(
+    (extension) => extension.status === 'PENDING_PAYMENT' && extension.expiresAt <= limit,
+  );
+  for (const extension of expired) {
+    extension.status = 'CANCELED';
+    for (const order of db.payments) {
+      if (order.extensionId === extension.extensionId && order.status === 'READY') {
+        order.status = 'FAILED';
+      }
+    }
+  }
+  return expired.length > 0;
+}
+
+/** 연장 확정: 종료일 갱신, 확정 횟수 + 1 (결제 없이 바로 확정·결제 승인 공통) */
+export function confirmExtension(rental, extension) {
+  extension.status = 'CONFIRMED';
+  rental.endDate = extension.newEndDate;
+  rental.extensionCount = (rental.extensionCount ?? 0) + 1;
+}
+
+/**
+ * 연장 가능한 최대 날짜(백엔드 ExtensionPeriodCalculator): 기존 종료일 + max-days-per, 종료일 다음 날이 든 가능 기간의 끝,
+ * 다음 점유 시작일 − 1 중 가장 이른 날. 하루도 안 되면 null
+ */
+function extensionMaxEndDate(rental) {
+  const firstDate = addDays(rental.endDate, 1);
+  const period = findMockItem(rental.itemId).availablePeriods.find(
+    (p) => compareDate(p.startDate, firstDate) <= 0 && compareDate(firstDate, p.endDate) <= 0,
+  );
+  if (!period) {
+    return null;
+  }
+  let max = addDays(rental.endDate, POLICY.EXTENSION_MAX_DAYS);
+  if (compareDate(period.endDate, max) < 0) {
+    max = period.endDate;
+  }
+  for (const occupied of listOccupied(rental.itemId)) {
+    if (
+      occupied.rentalId !== rental.rentalId &&
+      compareDate(occupied.endDate, firstDate) >= 0 &&
+      compareDate(occupied.startDate, max) <= 0
+    ) {
+      const before = addDays(occupied.startDate, -1);
+      if (compareDate(before, max) < 0) {
+        max = before;
+      }
+    }
+  }
+  return compareDate(max, firstDate) < 0 ? null : max;
+}
+
 /** multipart: request 파트는 application/json이어야 한다(아니면 415) */
 async function readMultipart(request, { isRequestRequired }) {
   const form = await request.formData();
@@ -476,7 +568,7 @@ function addInspection(inspection) {
 
 function calendarDays(item, month) {
   const today = todayInSeoul();
-  const occupying = db.rentals.filter((r) => r.itemId === item.itemId && occupiesPeriod(r));
+  const occupying = listOccupied(item.itemId);
   return buildMonthGrid(month)
     .filter(Boolean)
     .map((date) => {
@@ -600,12 +692,8 @@ export const rentalHandlers = [
       if (!isInPeriod) {
         reject('RENTAL_OUT_OF_AVAILABLE_PERIOD');
       }
-      const hasOverlap = db.rentals.some(
-        (r) =>
-          r.itemId === item.itemId &&
-          occupiesPeriod(r) &&
-          compareDate(r.startDate, endDate) <= 0 &&
-          compareDate(r.endDate, startDate) >= 0,
+      const hasOverlap = listOccupied(item.itemId).some(
+        (r) => compareDate(r.startDate, endDate) <= 0 && compareDate(r.endDate, startDate) >= 0,
       );
       if (item.itemId === CONFLICT_ITEM_ID || hasOverlap) {
         reject('RENTAL_PERIOD_CONFLICT');
@@ -789,6 +877,86 @@ export const rentalHandlers = [
       });
       Object.assign(rental, { status: 'RENTING', handedOverAt: now });
       return ok(toDetail(rental));
+    }),
+  ),
+
+  // REQ-038 대여 연장(openapi.json 그대로). 검사 순서: 입력 400 → 404 → 403 → 상태 409 → 기간·횟수 400 → 결제 대기 409 → 기간 400·409
+  http.post(
+    '/api/rentals/:rentalId/extensions',
+    handle(async ({ params, request }) => {
+      const newEndDate = readDate(await request.json(), 'newEndDate');
+      const rental = findParticipantRental(params.rentalId);
+      if (roleOf(rental) !== 'RENTER') {
+        reject('RENTAL_RENTER_ONLY');
+      }
+      const today = todayInSeoul();
+      if (
+        rental.status === 'OVERDUE' ||
+        (rental.status === 'RENTING' && compareDate(rental.endDate, today) < 0)
+      ) {
+        reject('RENTAL_EXTENSION_OVERDUE');
+      }
+      requireStatus(rental, 'RENTING');
+      if (compareDate(newEndDate, rental.endDate) <= 0) {
+        reject('RENTAL_INVALID_PERIOD');
+      }
+      const days = countDaysInclusive(addDays(rental.endDate, 1), newEndDate);
+      if (
+        (rental.extensionCount ?? 0) >= POLICY.EXTENSION_MAX_COUNT ||
+        days > POLICY.EXTENSION_MAX_DAYS
+      ) {
+        reject('RENTAL_EXTENSION_LIMIT_EXCEEDED');
+      }
+      if (db.extensions.some((e) => e.rentalId === rental.rentalId && isPendingExtension(e))) {
+        reject('RENTAL_EXTENSION_IN_PROGRESS');
+      }
+      const maxEndDate = extensionMaxEndDate(rental);
+      const maxEndDateDetails = maxEndDate ? [{ field: 'maxEndDate', reason: maxEndDate }] : [];
+      const firstDate = addDays(rental.endDate, 1);
+      const item = findMockItem(rental.itemId);
+      const isInPeriod = item.availablePeriods.some(
+        (p) => compareDate(p.startDate, firstDate) <= 0 && compareDate(newEndDate, p.endDate) <= 0,
+      );
+      if (!isInPeriod) {
+        reject('RENTAL_OUT_OF_AVAILABLE_PERIOD', maxEndDateDetails);
+      }
+      const hasOverlap = listOccupied(rental.itemId).some(
+        (r) =>
+          r.rentalId !== rental.rentalId &&
+          compareDate(r.startDate, newEndDate) <= 0 &&
+          compareDate(r.endDate, firstDate) >= 0,
+      );
+      if (hasOverlap) {
+        reject('RENTAL_EXTENSION_PERIOD_CONFLICT', maxEndDateDetails);
+      }
+      const additionalFee = rental.pricePerDay * days;
+      const isPending = PAYMENT_ENABLED && additionalFee > 0;
+      const extension = {
+        extensionId: Math.max(0, ...db.extensions.map((e) => e.extensionId)) + 1,
+        rentalId: rental.rentalId,
+        prevEndDate: rental.endDate,
+        firstDate,
+        newEndDate,
+        additionalFee,
+        status: isPending ? 'PENDING_PAYMENT' : 'CONFIRMED',
+        expiresAt: isPending ? minutesFromNow(POLICY.PAYMENT_EXPIRE_MINUTES) : nowServer(),
+      };
+      db.extensions.push(extension);
+      if (!isPending) {
+        confirmExtension(rental, extension);
+      }
+      return ok(
+        {
+          extensionId: extension.extensionId,
+          rentalId: rental.rentalId,
+          status: extension.status,
+          prevEndDate: extension.prevEndDate,
+          newEndDate,
+          additionalFee,
+          expiresAt: isPending ? extension.expiresAt : null,
+        },
+        { status: 201 },
+      );
     }),
   ),
 

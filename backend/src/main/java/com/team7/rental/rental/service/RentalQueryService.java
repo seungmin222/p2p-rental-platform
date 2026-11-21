@@ -23,9 +23,12 @@ import com.team7.rental.rental.dto.RentalDetailResponse;
 import com.team7.rental.rental.dto.RentalInspectionResponse;
 import com.team7.rental.rental.entity.Rental;
 import com.team7.rental.rental.entity.RentalCancelAgreement;
+import com.team7.rental.rental.entity.RentalExtension;
+import com.team7.rental.rental.entity.RentalRole;
 import com.team7.rental.rental.entity.RentalStatus;
 import com.team7.rental.rental.repository.ItemInspectionRepository;
 import com.team7.rental.rental.repository.RentalCancelAgreementRepository;
+import com.team7.rental.rental.repository.RentalExtensionRepository;
 import com.team7.rental.rental.repository.RentalRepository;
 import com.team7.rental.rental.service.RentalOccupancyReader.OccupiedPeriod;
 
@@ -39,6 +42,7 @@ public class RentalQueryService {
 	private final RentalRepository rentalRepository;
 	private final RentalCancelAgreementRepository rentalCancelAgreementRepository;
 	private final ItemInspectionRepository itemInspectionRepository;
+	private final RentalExtensionRepository rentalExtensionRepository;
 	private final RentalOccupancyReader rentalOccupancyReader;
 	private final ItemQueryService itemQueryService;
 	private final MemberQueryService memberQueryService;
@@ -77,11 +81,16 @@ public class RentalQueryService {
 		// 앞 대여 연체(open-issues #7). 값은 RESERVED·시작일 ≤ 오늘일 때만 쓰지만 조회는 상태와 상관없이 해 쿼리 수를 일정하게 둔다
 		boolean previousRentalOverdue = rentalRepository.existsPreviousOverdue(rental.getItemId(), rentalId, today)
 			&& rental.isPreviousOverdueExemptionCandidate(today);
-		return RentalDetailResponse.of(rental, rental.roleOf(memberId), item, counterpartId,
+		// 결제 대기 연장(REQ-038): 결제 화면을 떠났다 돌아와도 다시 결제할 수 있게 대여자에게만 준다. 조회는 상태와 상관없이 한다
+		RentalRole myRole = rental.roleOf(memberId);
+		RentalExtension pendingExtension = rentalExtensionRepository.findPending(rentalId, LocalDateTime.now(clock))
+			.filter(extension -> myRole == RentalRole.RENTER && rental.getStatus() == RentalStatus.RENTING)
+			.orElse(null);
+		return RentalDetailResponse.of(rental, myRole, item, counterpartId,
 			memberQueryService.getNickname(counterpartId), activeCancelAgreement, memberId,
 			overdueFeeCalculator.displayFee(rental, today),
 			rentalDepositQueryPort.findDepositInfo(rentalId).orElse(null), canWriteReview, reviewWritten,
-			previousRentalOverdue);
+			previousRentalOverdue, pendingExtension);
 	}
 
 	/**
