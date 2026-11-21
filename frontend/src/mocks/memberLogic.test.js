@@ -57,8 +57,8 @@ describe('validateSignup', () => {
     expect(
       validateSignup({ ...VALID, agreements: { termsOfService: false, ageOver14: true } }),
     ).toEqual([
-      { field: 'agreements.termsOfService', reason: '참이어야 합니다' },
-      { field: 'agreements.privacyCollection', reason: '널이어서는 안됩니다' },
+      { field: 'agreements.termsOfService', reason: '이용약관에 동의해 주세요.' },
+      { field: 'agreements.privacyCollection', reason: '개인정보 수집·이용에 동의해 주세요.' },
     ]);
   });
 

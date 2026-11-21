@@ -15,6 +15,8 @@ export default function TermsDocumentSheet({ documentType, onClose }) {
   let body;
   if (isInitialLoadError(query)) {
     body = <ErrorState message={getErrorMessage(query.error)} onRetry={query.refetch} />;
+  } else if (!document && query.data) {
+    body = <ErrorState title="문서를 찾을 수 없어요" />;
   } else if (!document) {
     body = (
       <div aria-busy="true" className="flex flex-col gap-2 py-2">

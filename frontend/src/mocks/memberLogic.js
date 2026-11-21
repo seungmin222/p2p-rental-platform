@@ -29,10 +29,14 @@ const EMAIL_MESSAGE = '올바른 형식의 이메일 주소여야 합니다';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+$/;
 const EMAIL_LOCAL_PART_MAX = 64;
 
-// 가입 필수 약관(MemberSignupRequest.agreements, @NotNull @AssertTrue). Bean Validation 기본 문구(한국어)
-const AGREEMENT_FIELDS = ['termsOfService', 'privacyCollection', 'ageOver14'];
+// 가입 필수 약관. 객체 생략은 MemberSignupRequest.agreements @NotNull 기본 문구,
+// 항목은 TermsAgreementsRequest의 @NotNull·@AssertTrue message(둘이 같은 문구)
 const NOT_NULL_MESSAGE = '널이어서는 안됩니다';
-const ASSERT_TRUE_MESSAGE = '참이어야 합니다';
+const AGREEMENT_MESSAGES = {
+  termsOfService: '이용약관에 동의해 주세요.',
+  privacyCollection: '개인정보 수집·이용에 동의해 주세요.',
+  ageOver14: '만 14세 이상만 가입할 수 있습니다.',
+};
 
 /** 백엔드 MemberTexts.length와 같이 코드 포인트로 센다 */
 function length(text) {
@@ -89,11 +93,9 @@ export function validateSignup(body, policy = MOCK_MEMBER_POLICY) {
   if (agreements == null || typeof agreements !== 'object') {
     details.push({ field: 'agreements', reason: NOT_NULL_MESSAGE });
   } else {
-    for (const field of AGREEMENT_FIELDS) {
-      if (agreements[field] == null) {
-        details.push({ field: `agreements.${field}`, reason: NOT_NULL_MESSAGE });
-      } else if (agreements[field] !== true) {
-        details.push({ field: `agreements.${field}`, reason: ASSERT_TRUE_MESSAGE });
+    for (const [field, reason] of Object.entries(AGREEMENT_MESSAGES)) {
+      if (agreements[field] !== true) {
+        details.push({ field: `agreements.${field}`, reason });
       }
     }
   }
