@@ -1,5 +1,10 @@
 # feat/fe-member-extra 결정 기록
 
+## 요약
+- 화면: 가입 약관 체크박스·재동의 전역 모달(`features/terms/components/TermsReagreeGate.jsx`), SCR-15 `/terms/:slug`(`pages/TermsPage.jsx`, 자체 파서 `shared/lib/markdown.js`), SCR-01 `/password-reset/request`·`/password-reset?token=`, SCR-13 `/users/:memberId`(`pages/UserProfilePage.jsx`, 등록 물품·받은 후기 탭).
+- 연동 API: `GET /api/terms`, `POST /api/members/me/terms-agreements`, `POST /api/auth/password-reset`·`/confirm`, `GET /api/members/{id}`·`/items`·`/reviews`. 목은 `mocks/terms.js`·`mocks/profile.js`(user2가 재동의 필요 계정).
+- 남은 일: 대여 상세 상대(`RentalCounterpart`)에 `isWithdrawn`이 없어 프로필 링크를 항상 둔다(open-issues #55 백엔드 후속). 재동의 거부 시 서버 차단은 open-issues #56. 빌린 내역 카드의 "작성 완료" 표시(`reviewWritten`, #54)는 아직 프론트 미반영.
+
 REQ-037 약관 동의(가입·재동의·SCR-15), REQ-036 비밀번호 재설정, REQ-021 사용자 프로필(SCR-13)의 프론트. 백엔드는 `feat/member-extra`(#60).
 
 ## 공통
