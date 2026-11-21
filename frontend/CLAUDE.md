@@ -37,6 +37,7 @@ src/
 │   ├── chat/           채팅(api·queries·constants·errorMessages·chatCache·messageView·pendingMessages·activeRoom·useChatRoomSession, components/)
 │   ├── notification/   알림(api·queries·constants·errorMessages·notificationTarget·notificationCache, components/)
 │   ├── review/         후기(api·queries·constants·errorMessages·reviewData, components/ReviewForm·ReceivedReviewList·ReceivedReviewItem)
+│   ├── payment/        결제창·결제 복귀(startPayment·tossPayment·pendingPayment·paymentResult), 결제·정산 내역(api·queries·constants·errorMessages·paymentHistory, components/)
 │   ├── profile/        사용자 프로필(api·queries·errorMessages·profileDisplay, components/ProfileHeader)
 │   ├── terms/          약관·재동의(api·queries·constants·errorMessages·termsPrompt, components/TermsAgreementField·TermsDocumentSheet·TermsDocumentView·TermsReagreeGate)
 │   └── rental/
@@ -150,6 +151,16 @@ export const RENTAL_STATUS = {
 - `/payments/fail`: `code`가 구매자 취소면 취소 안내, 그 밖에는 토스 `message`를 일반 텍스트로 보여 준다. 승인을 부르지 않는다.
 - 보증금 결과는 `getDepositNotice`(기존 필드로 추정, TODO), 취소 환불액은 취소 순간의 토스트로만 보여 준다. 대여 상세 응답에 보증금 상태·환불액·연체료가 없어서다. 이 필드를 지어내지 않는다.
 
+### 결제·정산 내역 화면 규칙 (SCR-12 `/me/payments`)
+- 한 화면 두 탭 `?tab=payments|settlements`(기본 결제·보증금, payment.md REQ-033 "정산 내역은 같은 화면 별도 탭"). RequireAuth 안. 진입은 `/me` 메뉴 "결제·정산 내역".
+- `VITE_PAYMENT_ENABLED`가 false면 `/me` 메뉴에서 빼고, 주소로 들어오면 API를 부르지 않고 "결제 기능이 꺼져 있어요" EmptyState만 보인다.
+- queryKey: 결제 내역 `['payments', 'me', {type, from, to}]`, 정산 `['settlements', 'me']`(`paymentHistoryKeys`). 둘 다 page/hasNext `useInfiniteQuery`(size 없음 — `payment-history.page`·`settlement.page` 고정). 정산 합계(scheduledTotal·heldTotal·paidTotal)는 마지막으로 받은 페이지 값을 쓴다. 결제 승인(`useConfirmPayment`) 뒤 결제 내역을 무효화한다.
+- 결제 내역 조건은 URL `?type=&from=&to=`(`paymentHistory.js` `readHistoryFilter`·`writeHistoryFilter`, 기본값은 주소·요청에 넣지 않음, 틀린 값·from > to는 없는 것으로). 비우면 서버 기본(최근 `PAYMENT_HISTORY_DEFAULT_RANGE_MONTHS`개월)이고 화면은 "최근 3개월"이라고만 쓴다(날짜는 프론트가 계산하지 않는다). 기간은 "기간 변경" 시트(`HistoryRangeSheet`)에서 고르고, `validateHistoryRange`가 from > to(to가 비면 오늘)이면 시트 안에 오류를 보이고 "적용"을 막는다. 그래도 400(details from·to)이 오면 ErrorState "기간을 확인해 주세요" + 다시 시도 = 기본 기간으로.
+- **open-issues #44 임시 해석은 `paymentHistory.js` 한 곳**: 구분 칩(`PAYMENT_HISTORY_TYPES` 전체·결제·환불·보증금 + 설명)과 카드 표시(`getPaymentHistoryView`). 한 결제가 여러 구분에 들어가므로 항목에 "구분" 라벨은 붙이지 않는다. 카드: 물품·결제 상태 배지(`PAYMENT_STATUS`)·종류(대여료·보증금/연장료)·결제 일시·기간·보증금 상태 배지(연장 결제는 없음)·결제 금액, 금액 줄(대여료·보증금 또는 연장료, 연체료·보증금 차감(빨강)·취소 수수료·환불 금액), 차감 사유·"환불을 처리하고 있어요"(`depositRefundPending`).
+- 정산 카드(`getSettlementView`): 물품·정산 상태 배지(`SETTLEMENT_STATUS`)·종류(거래 완료/취소 수수료)·기간, 금액 줄(대상 금액 − 플랫폼 수수료 + 보증금 차감액) = 지급액. SCHEDULED는 "M월 D일 지급 예정", PAID는 지급 일시, HELD는 "분쟁이 끝나면 지급돼요". 합계 상자는 지급 예정·보류·지급 완료 3칸 + 지급 시점 안내(`SETTLEMENT_PAYOUT_DELAY_BUSINESS_DAYS`).
+- 카드는 전체가 대여 상세(`/rentals/:rentalId`) 링크. 상태 라벨은 `features/payment/constants.js`(state-machines §2·§3·§4), 오류 문구는 `features/payment/errorMessages.js`.
+- 대여 상세의 보증금 상태·연체료(`getDepositNotice` TODO)는 이 화면과 별개로 그대로다.
+
 ### 인증 화면 규칙 (SCR-01, `/me`)
 - 로그인 성공: `useLogin`이 `queryClient.clear()`(이전 사용자 캐시) → `setAccessToken`. 안전한 redirect가 있으면 그곳으로 replace, 없으면 `['members', 'me']`를 fetchQuery해 대표 동네가 없으면 `/regions`(state `{ fromLogin: true }`), 있으면 `/`(조회 실패도 `/`).
 - 이미 로그인한 사용자가 `/login`·`/signup`에 오면 redirect(없으면 `/`)로 보낸다. 로그인 여부는 **마운트할 때 한 번만** 본다(제출 성공으로 토큰이 생겨 다시 그려질 때 폼이 정한 이동보다 먼저 `/`로 가지 않게).
@@ -261,4 +272,5 @@ export const RENTAL_STATUS = {
 - **알림 목**(`mocks/notification.js`, 시드 표는 `mocks/notificationSeed.js` 맨 위): user1 기준 31건(안 읽음 5 — `PREVIOUS_RENTAL_OVERDUE`(대여 12)·`OVERDUE`·`HANDOVER_REMINDER`·`RETURN_REQUESTED`, 2페이지), 남의 알림 900(읽음 403). 메모리라 새로고침하면 시드로 돌아간다. 콘솔 `window.__mockNotification.push(type, rentalId)`로 알림을 저장하고 가짜 STOMP로 보내 배지·목록 실시간 갱신을 볼 수 있다. 대여 목 12(대여자, 오늘 시작 RESERVED)는 같은 물품 101의 앞 대여 13(남의 OVERDUE)이 연체 중이라 `previousRentalOverdue` true다(`mocks/rental.js` `hasPreviousOverdue`, 단독 취소 수수료 0).
 - **후기 목**(`mocks/review.js`, 계산은 `mocks/reviewLogic.js` 순수 함수, 저장은 대여 목과 같은 db의 `reviews`): 검사 순서는 백엔드와 같다(입력 400 → 404 → 403 → 상태 409 → 기한 400 → 1회 409). 대여 목 14(어제 완료, 쓸 수 있음)·15(내가 씀)·10(기한 지남)·33(제공자로 쓸 수 있음). user1이 받은 후기 23건(2페이지, 탈퇴한 작성자 98 포함). 상대에게 가는 `REVIEW_RECEIVED` 알림은 흉내 내지 않는다. 대여 목과 함께 `window.__mockPayment.reset()`으로 시드로 돌아간다.
 - **연장 목**(REQ-038, `mocks/rental.js` `POST /rentals/:id/extensions` + `mocks/payment.js` 연장료 주문·승인, 저장은 대여 목 db의 `extensions`): 검사 순서·maxEndDate 계산은 백엔드와 같고, 결제 대기 연장은 캘린더·예약 겹침에 점유로 들어간다(`rentalStore.js` `listOccupied`, 검색 필터·007 기간 수정 목에는 넣지 않았다). 대여 목 16(물품 102, D+3·D+4만 연장 가능), 17(이미 2번 연장 → 비활성), 7(다음 날부터 예약이 있어 연장할 날 없음). 연장 결제 만료는 1분 배치 흉내.
+- **결제·정산 내역 목**(`mocks/paymentHistory.js`, 계산은 `mocks/paymentHistoryLogic.js` 순수 함수, 보충 표는 그 파일 맨 위): 대여 목 db(rentals·payments)에서 매번 만들어 금액이 빌린 내역·상세와 같다(주문이 없는 시드 대여는 결제 대기가 아니면 결제한 것으로 본다). user1 기준 결제 내역은 연체료·차감(10)·전액 차감(41)·반환 실패(45)·수수료 취소(11)·3개월 밖 지난 대여가 있고, 정산은 분쟁 보류(33)·차감 더함(30)·취소 수수료(34, 지급 예정)·지급 완료 22건으로 2페이지다. 결제 내역·정산은 결제가 켜져 있을 때(`VITE_PAYMENT_ENABLED=true`)만 화면에 나온다.
 - **결제 목**: 대여·결제 목은 `sessionStorage`(`mock.rentalDb`)에 저장해 결제창에 다녀와도 남는다. 콘솔 `window.__mockPayment.reset()`으로 시드로 되돌리고, `failNext(code)`로 다음 승인·반환 한 번을 실패시킨다(`mocks/paymentScenario.js`). 승인·환불은 토스를 부르지 않는 목 응답이고 결제창만 실제다.

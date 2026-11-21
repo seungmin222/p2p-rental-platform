@@ -41,7 +41,8 @@
 // | 30 | COMPLETED | D-30~D-28 | 이상 판정(1순위라 완료) |
 // | 31 | CANCELED | D+2~D+3 | 양측 동의 취소(MUTUAL) |
 // | 32 | RESERVED | D+5~D+6 | 물품 107 다가오는 예약(내 물품 대여 가능 탭) |
-// | 33 | COMPLETED | D-5~D-3 | 물품 108, 2일 전 완료 → 제공자로 후기 작성 가능 |
+// | 33 | COMPLETED | D-5~D-3 | 물품 108, 2일 전 완료 → 제공자로 후기 작성 가능, 정산 분쟁 보류(HELD, paymentHistoryLogic.js) |
+// | 34 | CANCELED | D+1~D+2 | 대여자 취소, 수수료 12,000(대여료 30%) → 정산 CANCEL_FEE |
 //
 // 목록용(빌린 내역 무한 스크롤·예약 현황 시트 더 불러오기). 상세 화면 경우는 위 표와 같고 새 경우는 없다
 // | id | 상태 | 기간 | 쓰임 |
@@ -274,6 +275,12 @@ export function createRentalSeed() {
       handedOverAt: at(-5, '18:00'),
       returnedAt: at(-3, '19:00'),
       completedAt: at(-2, '09:00'),
+    }),
+    rental(34, 104, RENTER, 'CANCELED', [1, 2], {
+      canceledAt,
+      cancelType: 'RENTER',
+      cancelReason: 'SCHEDULE_CHANGE',
+      cancelFee: 12000,
     }),
     ...pastRentals(),
     // 남의 대여

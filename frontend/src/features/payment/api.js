@@ -16,3 +16,16 @@ export function createPaymentOrder(rentalId, extensionId) {
 export function confirmPayment(body) {
   return apiClient.post('/payments/confirm', body);
 }
+
+/**
+ * GET /api/members/me/payments?type=&from=&to=&page= → PageResponse<PaymentHistoryResponse> (REQ-033, 대여자 본인).
+ * params는 paymentHistory.js toHistoryParams가 만든다(빈 값은 보내지 않음). size는 보내지 않는다(payment-history.page 고정)
+ */
+export function fetchPaymentHistory(params) {
+  return apiClient.get('/members/me/payments', { params });
+}
+
+/** GET /api/members/me/settlements?page= → SettlementListResponse { scheduledTotal, heldTotal, paidTotal, settlements } (REQ-039) */
+export function fetchSettlements(page) {
+  return apiClient.get('/members/me/settlements', { params: { page } });
+}

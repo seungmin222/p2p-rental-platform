@@ -1,8 +1,15 @@
-import { useIsMutating, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useIsMutating,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 
+import { flattenPages, getNextPageParam } from '../../shared/lib/listParams';
 import { rentalKeys } from '../rental/queries';
 
-import { confirmPayment } from './api';
+import { confirmPayment, fetchPaymentHistory, fetchSettlements } from './api';
+import { toHistoryParams } from './paymentHistory';
 import { runOnce } from './paymentResult';
 import { paymentKeys } from './startPayment';
 
@@ -28,6 +35,49 @@ export function useConfirmPayment() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: rentalKeys.all }),
         queryClient.invalidateQueries({ predicate: isItemCalendarQuery }),
+        // 결제·보증금 내역(REQ-033)에 새 결제가 생긴다
+        queryClient.invalidateQueries({ queryKey: paymentHistoryKeys.all }),
       ]),
+  });
+}
+
+export const paymentHistoryKeys = {
+  all: ['payments', 'me'],
+  list: (filter) => ['payments', 'me', filter],
+  settlements: () => ['settlements', 'me'],
+};
+
+/** REQ-033 결제·보증금 내역. filter: { type, from, to }(paymentHistory.js readHistoryFilter) */
+export function usePaymentHistory(filter) {
+  return useInfiniteQuery({
+    queryKey: paymentHistoryKeys.list(filter),
+    queryFn: ({ pageParam }) => fetchPaymentHistory(toHistoryParams(filter, pageParam)),
+    initialPageParam: 0,
+    getNextPageParam,
+    select: flattenPages,
+  });
+}
+
+// 합계는 페이지마다 같은 값이 오므로 가장 최근에 받은 페이지 것을 쓴다
+function selectSettlements(data) {
+  const last = data.pages.at(-1);
+  return {
+    totals: {
+      scheduledTotal: last.scheduledTotal,
+      heldTotal: last.heldTotal,
+      paidTotal: last.paidTotal,
+    },
+    items: data.pages.flatMap((page) => page.settlements?.items ?? []),
+  };
+}
+
+/** REQ-039 정산 내역(제공자 본인). 응답의 settlements가 PageResponse라 다음 페이지는 그 안의 page/hasNext로 정한다 */
+export function useSettlements() {
+  return useInfiniteQuery({
+    queryKey: paymentHistoryKeys.settlements(),
+    queryFn: ({ pageParam }) => fetchSettlements(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => getNextPageParam(lastPage?.settlements),
+    select: selectSettlements,
   });
 }
