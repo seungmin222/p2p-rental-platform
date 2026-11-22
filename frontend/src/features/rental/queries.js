@@ -69,7 +69,12 @@ export function useRental(rentalId) {
 }
 
 export function useRentalInspections(rentalId, { enabled }) {
-  return useQuery({
+  return useQuery(rentalInspectionsQueryOptions(rentalId, { enabled }));
+}
+
+/** 검사 기록 조회 옵션. 재조회 주기가 실제로 걸리는지 queries.test.js가 QueryObserver로 확인한다 */
+export function rentalInspectionsQueryOptions(rentalId, { enabled }) {
+  return {
     queryKey: rentalKeys.inspections(rentalId),
     queryFn: () => fetchInspections(rentalId),
     staleTime: SHORT_STALE_TIME,
@@ -80,7 +85,7 @@ export function useRentalInspections(rentalId, { enabled }) {
       isAiComparePending(findInspection(state.data, 'RETURN'), Date.now())
         ? SHORT_STALE_TIME
         : false,
-  });
+  };
 }
 
 // 모듈 함수라 참조가 바뀌지 않아, 결과가 그대로면 TanStack Query가 이전 값을 돌려준다(days가 렌더마다 새 배열이 아님)

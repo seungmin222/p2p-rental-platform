@@ -84,7 +84,7 @@ export function minutesFromNow(minutes) {
 }
 
 /** 오늘 + days일의 hh:mm */
-function at(days, time) {
+export function at(days, time) {
   return `${addDays(todayInSeoul(), days)}T${time}:00`;
 }
 
