@@ -1,5 +1,11 @@
 # feat/fe-deposit-deduction 결정 기록 (REQ-049, REQ-018 미반납 신고, REQ-025·023 표시 프론트)
 
+## 요약
+- 백엔드 API 변경 없음. 프론트에서 연동: `PATCH /api/rentals/{id}/deposit`(multipart, action PROPOSE·ACCEPT·REJECT), `GET /api/rentals/{id}/deposit/policy?grade=`(등급별 상한), `POST /api/rentals/{id}/lost-report`(REQ-018).
+- 새 파일: `features/rental/deposit.js`(보증금 카드·제안 상태·검사 순수 함수), `components/DepositCard.jsx`·`DeductionProposeSheet.jsx`·`DeductionRespondModal.jsx`·`LostReportModal.jsx`, `features/payment/keys.js`, `shared/hooks/useNow.js`, `mocks/depositLogic.js`.
+- 미반납 신고 건 판단은 임시(`isLostReportHold`, open-issues #57: 백엔드 `lostReported` 필드 제안). #58(policies §2 문장)은 #41과 함께 결정 필요.
+- 화면 확인은 MSW 서비스 워커 문제로 못 했고 msw/node로 목 흐름만 확인. 관리자 확정 화면(3순위)은 안내 문구만 있다.
+
 ## 화면 형태와 버튼 표
 - **새 화면 없이 SCR-08 안의 시트·모달로 넣었다(사용자 승인).** 차감 제안은 입력이 많아 바텀시트(`DeductionProposeSheet`), 수락·거절과 미반납 신고는 확인 모달(`DeductionRespondModal`·`LostReportModal`)이다. 제안 내용(사유·사진)은 모달이 아니라 상세의 보증금 카드에 둬서 결정 전에 볼 수 있게 했다.
 - **미반납 신고 버튼은 오늘 > 반납 예정일 + 7일이 될 때까지 숨긴다(사용자 결정).** 비활성 + 사유로 보이는 안도 있었지만 연체 직후부터 보이면 신고를 재촉하는 것처럼 읽힌다.
