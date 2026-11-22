@@ -29,8 +29,9 @@ import {
   respondCancelAgreement,
   toItemRental,
 } from './api';
+import { isAiComparePending } from './aiCompare';
 import { isExtensionRefetchError, isStaleStateError } from './errorMessages';
-import { isPaymentExpired, mergeCalendarDays } from './rentalData';
+import { findInspection, isPaymentExpired, mergeCalendarDays } from './rentalData';
 import { isExtensionPaymentExpired, readMaxEndDate } from './rentalExtension';
 
 // 상태가 바뀌는 화면이라 짧게(frontend/CLAUDE.md "API 연동 규칙")
@@ -73,6 +74,12 @@ export function useRentalInspections(rentalId, { enabled }) {
     queryFn: () => fetchInspections(rentalId),
     staleTime: SHORT_STALE_TIME,
     enabled,
+    // AI 상태 비교(REQ-040)를 기다리는 동안 다시 불러온다. DONE은 AI_COMPARE_DONE 알림도 ['rentals', id]
+    // 무효화로 이 키를 다시 받게 하지만, FAILED·LIMIT_EXCEEDED는 알림이 없다(open-issues #48)
+    refetchInterval: ({ state }) =>
+      isAiComparePending(findInspection(state.data, 'RETURN'), Date.now())
+        ? SHORT_STALE_TIME
+        : false,
   });
 }
 

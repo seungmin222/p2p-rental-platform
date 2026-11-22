@@ -9,6 +9,7 @@ import { DEDUCTION_POLICY } from '../constants';
 import { getDeductionGrades, parseDeductionAmount, validateDeductionImages } from '../deposit';
 import { getErrorMessage, readMaxDeductionAmount } from '../errorMessages';
 import { useDeductionPolicy, useDepositAction } from '../queries';
+import { AiCompareSummary } from './AiCompareCard';
 import { FormError, InspectionImageField } from './FormParts';
 
 // 서버 details[].field → 폼 필드
@@ -173,6 +174,7 @@ export default function DeductionProposeSheet({ rental, isLostReport, onClose })
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col gap-4"
       >
+        {!isLostReport && <AiCompareSummary rentalId={rental.rentalId} />}
         <p className="text-caption text-ink-muted">
           대여자가 {DEDUCTION_POLICY.RESPONSE_HOURS}시간 안에 응답하지 않으면 자동으로 수락돼요.
           {isLostReport && ' 미반납 신고 건은 D 등급으로만 제안할 수 있어요.'}

@@ -3,6 +3,7 @@ import { Badge, ErrorState, Skeleton } from '../../../shared/ui';
 import { INSPECTION_RESULT, RETURN_CHECKLIST_ITEM } from '../constants';
 import { getErrorMessage } from '../errorMessages';
 import { findInspection, formatShortDate } from '../rentalData';
+import AiCompareCard from './AiCompareCard';
 
 /** 사진을 누르면 원본을 새 탭으로 연다 */
 function Photo({ url, label, className }) {
@@ -79,7 +80,8 @@ function Note({ label, children }) {
 
 /**
  * 인계·반납 기록(GET /inspections). 반납 체크리스트의 '아니오'는 Danger로 강조하고,
- * 제공자가 대리 접수한 반납(writerRole OWNER)은 배지로 표시한다. 판정이 있으면 결과·내용·사진.
+ * 제공자가 대리 접수한 반납(writerRole OWNER)은 배지로 표시한다. 반납 기록 아래 AI 상태 비교(REQ-040),
+ * 판정이 있으면 결과·내용·사진.
  */
 export default function InspectionRecords({ query }) {
   if (query.isPending) {
@@ -120,6 +122,7 @@ export default function InspectionRecords({ query }) {
           )}
           {ret.checklist && <Checklist checklist={ret.checklist} />}
           {ret.note && <Note label="반납 메모">{ret.note}</Note>}
+          <AiCompareCard returnInspection={ret} />
         </div>
       )}
 

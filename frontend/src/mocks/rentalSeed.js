@@ -25,6 +25,9 @@
 // | 18 | RETURNED | D-9~D-7 | 이상 판정 → 보증금 보류, 차감 제안(C 20,000) 응답 대기 → 거절·수락(REQ-049) |
 // | 19 | RETURNED | D-12~D-10 | 이상 판정 → 보류 9일째(관리자 확정 대상), 응답 기한 지난 제안 → 자동 수락 안내 |
 //
+// AI 상태 비교(REQ-040, 반납 기록 aiResult): 9 DONE 긁힘(대여자로 봄) · 10 DONE 변화 없음 · 18 LIMIT_EXCEEDED ·
+// 28 DONE 얼룩·기타(상태 확인 모달·시트 요약) · 29 FAILED · 36 DONE 긁힘·파손(차감 제안 시트) · 그 밖 null(결과 없음).
+// 반납 요청(7·26 등)을 하면 aiResult null → 2초 뒤 PROCESSING → 8초 뒤 DONE + 양측 AI_COMPARE_DONE 알림(rental.js)
 // 후기(REQ-034, 시드 reviews): 내가 쓴 것은 15 하나. 내가 받은 것은 41~65(제공자가 씀, writerRole OWNER) 12건 +
 // 71~92(대여자가 씀, writerRole RENTER) 10건 + 탈퇴한 작성자(98) 1건 = 23건(받은 후기 2페이지)
 //
@@ -154,8 +157,19 @@ function returnRecord(rentalId, days, extra = {}) {
     result: null,
     resultNote: null,
     resultImageUrls: [],
+    // AI 상태 비교(REQ-040). 목 저장 형태 { status, startedAt, analyzedAt, result } — 응답은 rental.js toAiResultResponse
+    aiResult: null,
     ...extra,
   };
+}
+
+/** 끝난 AI 비교(반납 기록 days일 뒤 19:01) */
+function aiResult(days, status, result = null) {
+  return { status, startedAt: at(days, '19:00'), analyzedAt: at(days, '19:01'), result };
+}
+
+function aiChange(changeTypes, description, regions) {
+  return { changed: true, changeTypes, confidence: 0.8, description, regions };
 }
 
 function agreement(agreementId, rentalId, requesterId, extra = {}) {
@@ -333,9 +347,26 @@ export function createRentalSeed() {
     handover(7, -2),
     handover(8, -7, null),
     handover(9, -5),
-    returnRecord(9, -1),
+    returnRecord(9, -1, {
+      aiResult: aiResult(
+        -1,
+        'DONE',
+        aiChange(['SCRATCH'], '반납 사진 오른쪽 모서리에 인계 때 없던 긁힘이 보여요.', [
+          { imageIndex: 1, note: '오른쪽 아래 모서리' },
+        ]),
+      ),
+    }),
     handover(10, -20),
-    returnRecord(10, -18, { result: 'NORMAL' }),
+    returnRecord(10, -18, {
+      result: 'NORMAL',
+      aiResult: aiResult(-18, 'DONE', {
+        changed: false,
+        changeTypes: [],
+        confidence: 0.9,
+        description: '인계 사진과 비교해 눈에 띄는 변화가 없어요.',
+        regions: [],
+      }),
+    }),
     handover(14, -4),
     returnRecord(14, -2, { result: 'NORMAL' }),
     handover(15, -8),
@@ -346,9 +377,21 @@ export function createRentalSeed() {
     returnRecord(28, -2, {
       checklist: { ...ALL_YES, NO_CONTAMINATION: false },
       note: '옆면에 얼룩이 생겼어요',
+      aiResult: aiResult(
+        -2,
+        'DONE',
+        aiChange(['STAIN', 'OTHER'], '옆면에 얼룩이 있고, 손잡이 끈 색이 조금 달라 보여요.', [
+          { imageIndex: 0, note: '왼쪽 옆면 가운데' },
+          { imageIndex: 1, note: '손잡이 끈' },
+        ]),
+      ),
     }),
     handover(29, -8),
-    returnRecord(29, -1, { writerRole: 'OWNER', note: '대여자가 문 앞에 두고 가서 대신 접수해요' }),
+    returnRecord(29, -1, {
+      writerRole: 'OWNER',
+      note: '대여자가 문 앞에 두고 가서 대신 접수해요',
+      aiResult: aiResult(-1, 'FAILED'),
+    }),
     handover(33, -5),
     returnRecord(33, -3, { result: 'NORMAL' }),
     handover(30, -30),
@@ -364,6 +407,7 @@ export function createRentalSeed() {
       result: 'ABNORMAL',
       resultNote: '텐트 폴대 한 개가 휘었어요',
       resultImageUrls: photos('판정', 2),
+      aiResult: aiResult(-7, 'LIMIT_EXCEEDED'),
     }),
     handover(19, -12),
     returnRecord(19, -10, {
@@ -379,6 +423,14 @@ export function createRentalSeed() {
       result: 'ABNORMAL',
       resultNote: '렌즈 앞면 흠집, 수리 견적 받는 중',
       resultImageUrls: photos('판정', 2),
+      aiResult: aiResult(
+        -10,
+        'DONE',
+        aiChange(['SCRATCH', 'BROKEN'], '렌즈 앞면에 긁힘이 있고 렌즈 캡 고정부가 깨져 보여요.', [
+          { imageIndex: 0, note: '렌즈 앞면 가운데' },
+          { imageIndex: 1, note: '렌즈 캡 고정부' },
+        ]),
+      ),
     }),
     handover(37, -20),
     // 미반납 신고: 반납 사진·체크리스트 없이 제공자가 남긴 기록(판정 없음)
