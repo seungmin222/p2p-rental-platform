@@ -262,7 +262,8 @@ describe('getDepositView', () => {
       NOW,
     );
     expect(view.title).toBe('미반납 신고로 보증금이 보류됐어요');
-    expect(view.notes).toEqual(['보류 후 7일이 지나 관리자가 차감 금액을 정해요']);
+    // 응답을 기다리는 제안이 있으면 관리자 확정 안내를 붙이지 않는다(409 DEDUCTION_PROPOSAL_IN_PROGRESS)
+    expect(view.notes).toEqual([]);
     expect(view.proposal).toMatchObject({
       state: 'OPEN',
       gradeLabel: 'D 전손·분실',
@@ -270,6 +271,35 @@ describe('getDepositView', () => {
       deadlineText: '11월 22일 10:00까지 응답이 없으면 자동으로 수락돼요',
       evidenceImageUrls: ['/a.jpg'],
     });
+  });
+
+  it('보류 7일 지남: 기한 지난 제안(CLOSED)은 안내 없음, 거절된 제안은 관리자 확정 안내', () => {
+    const held = { depositStatus: 'HELD', depositHeldAt: '2026-11-10T09:00:00' };
+    const closed = getDepositView(
+      rental({
+        ...held,
+        latestDeductionProposal: proposal({ respondDeadline: '2026-11-19T10:00:00' }),
+      }),
+      { result: 'ABNORMAL' },
+      TODAY,
+      NOW,
+    );
+    expect(closed.proposal.state).toBe('CLOSED');
+    expect(closed.notes).toEqual([]);
+    const rejected = getDepositView(
+      rental({
+        ...held,
+        myRole: 'OWNER',
+        latestDeductionProposal: proposal({ status: 'REJECTED' }),
+      }),
+      { result: 'ABNORMAL' },
+      TODAY,
+      NOW,
+    );
+    expect(rejected.notes).toEqual([
+      '대여자가 제안을 거절했어요. 금액을 조정해 다시 제안할 수 있어요',
+      '보류 후 7일이 지나 관리자가 차감 금액을 정해요',
+    ]);
   });
 
   it('HELD 제공자, 거절된 제안: 다시 제안 안내', () => {
@@ -316,6 +346,18 @@ describe('getDepositView', () => {
       getDepositView(
         rental({ status: 'COMPLETED', depositStatus: 'FORFEITED', overdueFee: 50000 }),
         null,
+        TODAY,
+        NOW,
+      ).title,
+    ).toBe('연체료로 보증금이 모두 쓰였어요');
+    expect(
+      getDepositView(
+        rental({
+          status: 'COMPLETED',
+          depositStatus: 'FORFEITED',
+          deduction: { grade: 'D', amount: 50000, reason: '분실' },
+        }),
+        { result: null },
         TODAY,
         NOW,
       ).title,

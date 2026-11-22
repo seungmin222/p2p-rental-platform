@@ -137,7 +137,9 @@ function heldDescription(isOwner, proposalState, adminDue) {
   if (!isOwner && proposalState === 'NONE') {
     lines.push('제공자가 차감 금액을 정리하고 있어요');
   }
-  if (adminDue) {
+  // 응답을 기다리는 제안(기한 지나 자동 수락 대기 포함)이 있으면 관리자 확정은 409라 안내하지 않는다(REQ-049 5번)
+  const awaitingResponse = proposalState === 'OPEN' || proposalState === 'CLOSED';
+  if (adminDue && !awaitingResponse) {
     lines.push(
       `보류 후 ${DEDUCTION_POLICY.HOLD_AGREEMENT_DAYS}일이 지나 관리자가 차감 금액을 정해요`,
     );
@@ -162,7 +164,8 @@ function statusText(rental, isOwner, isLostReport) {
         ? `대여자에게 보증금 ${formatPrice(back)}을 돌려줬어요`
         : `보증금 ${formatPrice(back)}을 돌려드렸어요`;
     case 'FORFEITED':
-      return '보증금이 전액 차감됐어요';
+      // 차감 확정 없이 FORFEITED면 연체료가 보증금을 다 썼다(REQ-025)
+      return rental.deduction ? '보증금이 전액 차감됐어요' : '연체료로 보증금이 모두 쓰였어요';
     case 'REFUND_FAILED':
       return '보증금 반환이 늦어지고 있어요. 자동으로 다시 시도해요';
     default:
