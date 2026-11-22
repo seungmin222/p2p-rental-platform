@@ -22,6 +22,8 @@
 // | 17 | RENTING | D-1~D+1 | 이미 2번 연장(extensionCount 2) → 연장하기 비활성 |
 // | 7 | (위) | | 물품 105 다음 날(D+4)부터 예약(2)이 있어 연장할 수 있는 날이 없음 |
 // | 10 | (위) | | 17일 전 완료 → 후기 기한 지남 |
+// | 18 | RETURNED | D-9~D-7 | 이상 판정 → 보증금 보류, 차감 제안(C 20,000) 응답 대기 → 거절·수락(REQ-049) |
+// | 19 | RETURNED | D-12~D-10 | 이상 판정 → 보류 9일째(관리자 확정 대상), 응답 기한 지난 제안 → 자동 수락 안내 |
 //
 // 후기(REQ-034, 시드 reviews): 내가 쓴 것은 15 하나. 내가 받은 것은 41~65(제공자가 씀, writerRole OWNER) 12건 +
 // 71~92(대여자가 씀, writerRole RENTER) 10건 + 탈퇴한 작성자(98) 1건 = 23건(받은 후기 2페이지)
@@ -43,6 +45,9 @@
 // | 32 | RESERVED | D+5~D+6 | 물품 107 다가오는 예약(내 물품 대여 가능 탭) |
 // | 33 | COMPLETED | D-5~D-3 | 물품 108, 2일 전 완료 → 제공자로 후기 작성 가능, 정산 분쟁 보류(HELD, paymentHistoryLogic.js) |
 // | 34 | CANCELED | D+1~D+2 | 대여자 취소, 수수료 12,000(대여료 30%) → 정산 CANCEL_FEE |
+// | 35 | OVERDUE | D-14~D-9 | 물품 103, 보증금 100,000(스냅샷), 연체 9일 → 미반납 신고 가능(REQ-018) |
+// | 36 | RETURNED | D-12~D-10 | 물품 104(촬영 장비), 이상 판정 → 보류, 제안 없음 → 차감 제안(B 정액·C 실비·D) |
+// | 37 | RETURNED | D-20~D-17 | 물품 108, 보증금 100,000, D-8 미반납 신고 → 보류(연체료 67,500), 거절된 D 제안 → 다시 제안(D만, 사진 없이 가능) |
 //
 // 목록용(빌린 내역 무한 스크롤·예약 현황 시트 더 불러오기). 상세 화면 경우는 위 표와 같고 새 경우는 없다
 // | id | 상태 | 기간 | 쓰임 |
@@ -243,6 +248,16 @@ export function createRentalSeed() {
       handedOverAt: at(-1, '18:00'),
       extensionCount: 2,
     }),
+    rental(18, 101, MOCK_ME, 'RETURNED', [-9, -7], {
+      handedOverAt: at(-9, '18:00'),
+      returnedAt: at(-7, '19:00'),
+      depositExtra: { overdueFee: 0, held: true, heldAt: at(-6, '10:00') },
+    }),
+    rental(19, 105, MOCK_ME, 'RETURNED', [-12, -10], {
+      handedOverAt: at(-12, '18:00'),
+      returnedAt: at(-10, '19:00'),
+      depositExtra: { overdueFee: 0, held: true, heldAt: at(-9, '10:00') },
+    }),
     // 제공자 쪽
     rental(21, 104, RENTER, 'PENDING_PAYMENT', [6, 8], { paymentExpiresAt: minutesFromNow(9) }),
     rental(22, 104, RENTER, 'RESERVED', [3, 4]),
@@ -281,6 +296,22 @@ export function createRentalSeed() {
       cancelType: 'RENTER',
       cancelReason: 'SCHEDULE_CHANGE',
       cancelFee: 12000,
+    }),
+    rental(35, 103, RENTER, 'OVERDUE', [-14, -9], {
+      handedOverAt: at(-14, '18:00'),
+      deposit: 100000,
+    }),
+    rental(36, 104, RENTER, 'RETURNED', [-12, -10], {
+      handedOverAt: at(-12, '18:00'),
+      returnedAt: at(-10, '19:00'),
+      depositExtra: { overdueFee: 0, held: true, heldAt: at(-1, '11:00') },
+    }),
+    // 연체 9일(D-17 → D-8) × floor(5,000 × 1.5) = 67,500
+    rental(37, 108, RENTER, 'RETURNED', [-20, -17], {
+      handedOverAt: at(-20, '18:00'),
+      returnedAt: at(-8, '12:00'),
+      deposit: 100000,
+      depositExtra: { overdueFee: 67500, held: true, heldAt: at(-8, '12:00'), lostReported: true },
     }),
     ...pastRentals(),
     // 남의 대여
@@ -328,10 +359,90 @@ export function createRentalSeed() {
       resultNote: '렌즈 덮개 파손',
       resultImageUrls: photos('판정', 1),
     }),
+    handover(18, -9),
+    returnRecord(18, -7, {
+      result: 'ABNORMAL',
+      resultNote: '텐트 폴대 한 개가 휘었어요',
+      resultImageUrls: photos('판정', 2),
+    }),
+    handover(19, -12),
+    returnRecord(19, -10, {
+      result: 'ABNORMAL',
+      resultNote: '바닥 시트 오염',
+      resultImageUrls: photos('판정', 1),
+    }),
+    handover(35, -14),
+    handover(36, -12),
+    returnRecord(36, -10, {
+      checklist: { ...ALL_YES, NO_EXTERIOR_DAMAGE: false },
+      note: '렌즈 앞에 흠집이 생겼어요',
+      result: 'ABNORMAL',
+      resultNote: '렌즈 앞면 흠집, 수리 견적 받는 중',
+      resultImageUrls: photos('판정', 2),
+    }),
+    handover(37, -20),
+    // 미반납 신고: 반납 사진·체크리스트 없이 제공자가 남긴 기록(판정 없음)
+    returnRecord(37, -8, {
+      imageUrls: [],
+      checklist: null,
+      writerRole: 'OWNER',
+      note: '연락이 닿지 않고 물건을 돌려받지 못했어요',
+      createdAt: at(-8, '12:00'),
+    }),
   ].map((inspection, index) => ({ inspectionId: index + 1, ...inspection }));
 
+  // 차감 제안(REQ-049, depositLogic.js). 응답 기한은 제안 + 72시간
+  const deductionProposals = [
+    {
+      proposalId: 1,
+      rentalId: 18,
+      status: 'PROPOSED',
+      grade: 'C',
+      amount: 20000,
+      reason: '폴대 교체 수리비(견적서 첨부)',
+      evidenceImageUrls: photos('손상', 2),
+      receiptImageUrls: photos('견적서', 1),
+      proposedAt: minutesFromNow(-32 * 60),
+      respondDeadline: minutesFromNow(40 * 60),
+      respondedAt: null,
+    },
+    {
+      proposalId: 2,
+      rentalId: 19,
+      status: 'PROPOSED',
+      grade: 'B',
+      amount: 10000,
+      reason: '바닥 시트 세척비',
+      evidenceImageUrls: photos('손상', 1),
+      receiptImageUrls: [],
+      proposedAt: minutesFromNow(-73 * 60),
+      respondDeadline: minutesFromNow(-60),
+      respondedAt: null,
+    },
+    {
+      proposalId: 3,
+      rentalId: 37,
+      status: 'REJECTED',
+      grade: 'D',
+      amount: 32500,
+      reason: '물건을 돌려받지 못해 남은 보증금 전액을 차감해요',
+      evidenceImageUrls: [],
+      receiptImageUrls: [],
+      proposedAt: at(-6, '10:00'),
+      respondDeadline: at(-3, '10:00'),
+      respondedAt: at(-5, '09:00'),
+    },
+  ];
+
   // 연장(REQ-038): { extensionId, rentalId, prevEndDate, newEndDate, additionalFee, status, expiresAt }. 시드는 없고 화면에서 만든다
-  return { rentals, agreements, inspections, reviews: reviewSeed(rentals), extensions: [] };
+  return {
+    rentals,
+    agreements,
+    inspections,
+    reviews: reviewSeed(rentals),
+    extensions: [],
+    deductionProposals,
+  };
 }
 
 // 탈퇴한 회원(chatSeed.js WITHDRAWN_MEMBER_ID와 같은 값). 대여 시드에는 없다

@@ -288,6 +288,31 @@ describe('getRentalActions', () => {
       expect(types(result)).toEqual([A.RETURN_REQUEST]);
       expect(result.notice).toEqual({ tone: 'danger', text: '반납 예정일이 3일 지났어요' });
     });
+
+    describe('미반납 신고(REQ-018): 제공자, 오늘 > 반납 예정일 + 7일', () => {
+      const overdue = (myRole, endDate) =>
+        rental({ status: 'OVERDUE', myRole, startDate: '2026-10-10', endDate });
+
+      it('8일째 제공자: 미반납 신고(secondary) + 반납 대리 접수', () => {
+        const result = getRentalActions(overdue('OWNER', '2026-10-21'), undefined, TODAY);
+        expect(result.actions.map((a) => [a.type, a.variant])).toEqual([
+          [A.REPORT_LOST, 'secondary'],
+          [A.RETURN_REQUEST, 'primary'],
+        ]);
+      });
+
+      it('7일째 제공자: 아직 숨긴다', () => {
+        expect(types(getRentalActions(overdue('OWNER', '2026-10-22'), undefined, TODAY))).toEqual([
+          A.RETURN_REQUEST,
+        ]);
+      });
+
+      it('대여자에게는 보이지 않는다', () => {
+        expect(types(getRentalActions(overdue('RENTER', '2026-10-01'), undefined, TODAY))).toEqual([
+          A.RETURN_REQUEST,
+        ]);
+      });
+    });
   });
 
   describe('RETURNED', () => {
@@ -363,6 +388,92 @@ describe('getRentalActions', () => {
       expect(getRentalActions(rental({ status: 'CANCELED', myRole }), null, TODAY)).toEqual({
         actions: [],
         notice: null,
+      });
+    });
+  });
+
+  describe('RETURNED 보증금 보류(REQ-049)', () => {
+    // 2026-10-29T12:00 서울
+    const NOW = new Date('2026-10-29T12:00:00+09:00').getTime();
+    const held = (myRole, latestDeductionProposal = null) =>
+      rental({
+        status: 'RETURNED',
+        myRole,
+        startDate: '2026-10-20',
+        endDate: '2026-10-26',
+        depositStatus: 'HELD',
+        latestDeductionProposal,
+      });
+    const proposal = (overrides) => ({
+      proposalId: 7,
+      status: 'PROPOSED',
+      grade: 'C',
+      amount: 20000,
+      respondDeadline: '2026-10-31T10:00:00',
+      ...overrides,
+    });
+    const abnormal = { phase: 'RETURN', result: 'ABNORMAL' };
+    const lost = { phase: 'RETURN', result: null };
+    const actionsOf = (target, record = abnormal) =>
+      getRentalActions(target, record, TODAY, { now: NOW });
+
+    it.each(ROLES)('%s: inspections를 못 불러왔으면 아무것도 그리지 않는다', (myRole) => {
+      expect(getRentalActions(held(myRole), undefined, TODAY, { now: NOW })).toEqual({
+        actions: [],
+        notice: null,
+      });
+    });
+
+    it.each([
+      ['이상 판정', abnormal],
+      ['미반납 신고(판정 전이어도 상태 확인 버튼 없음, #41)', lost],
+    ])('제공자, 제안 없음(%s): 차감 제안만', (_, record) => {
+      const result = actionsOf(held('OWNER'), record);
+      expect(result.actions.map((a) => [a.type, a.label, a.variant])).toEqual([
+        [A.PROPOSE_DEDUCTION, '차감 제안', 'primary'],
+      ]);
+      expect(result.notice).toBeNull();
+    });
+
+    it('제공자, 거절된 제안: 다시 제안', () => {
+      const result = actionsOf(held('OWNER', proposal({ status: 'REJECTED' })));
+      expect(result.actions.map((a) => [a.type, a.label])).toEqual([
+        [A.PROPOSE_DEDUCTION, '다시 제안'],
+      ]);
+    });
+
+    it('제공자, 응답 대기: 버튼 없이 기한 안내', () => {
+      const result = actionsOf(held('OWNER', proposal()));
+      expect(result).toEqual({
+        actions: [],
+        notice: { tone: 'default', text: '10월 31일 10:00까지 대여자의 응답을 기다려요' },
+      });
+    });
+
+    it('대여자, 응답 대기: 거절(secondary)·수락(primary) + 자동 수락 안내', () => {
+      const result = actionsOf(held('RENTER', proposal()));
+      expect(result.actions.map((a) => [a.type, a.variant])).toEqual([
+        [A.REJECT_DEDUCTION, 'secondary'],
+        [A.ACCEPT_DEDUCTION, 'primary'],
+      ]);
+      expect(result.notice.text).toBe('10월 31일 10:00까지 응답하지 않으면 자동으로 수락돼요');
+    });
+
+    it.each(ROLES)('%s, 기한 지난 제안: 응답 버튼 없이 자동 수락 안내(#43)', (myRole) => {
+      const result = actionsOf(held(myRole, proposal({ respondDeadline: '2026-10-29T11:59:59' })));
+      expect(result).toEqual({
+        actions: [],
+        notice: { tone: 'default', text: '응답 기한이 지나 자동 수락을 처리하고 있어요' },
+      });
+    });
+
+    it.each([
+      [null, '제공자가 보증금 차감을 정리하고 있어요'],
+      [proposal({ status: 'REJECTED' }), '제안을 거절했어요. 제공자가 다시 제안할 수 있어요'],
+    ])('대여자, 응답할 제안 없음: 안내만', (target, text) => {
+      expect(actionsOf(held('RENTER', target))).toEqual({
+        actions: [],
+        notice: { tone: 'default', text },
       });
     });
   });

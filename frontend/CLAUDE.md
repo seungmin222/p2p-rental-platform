@@ -50,7 +50,7 @@ src/
 │   ├── ws/         STOMP 클라이언트 싱글톤(stompClient: 연결·구독 등록·publish), 연결 상태 스토어, useStompSubscription
 │   ├── ui/         Button, ButtonLink, Badge, CountBadge, Chip, TextField, Calendar, ImageUploader, Spinner, Skeleton, EmptyState, ErrorState, Modal, ConfirmModal, BottomSheet, Tabs, Thumbnail, InfiniteListFooter, Toaster(+ toast) — index.js로 모아 export. 선택·목록 로직은 calendarSelection.js·imageList.js(순수 함수, 테스트)
 │   ├── lib/        format(가격·경과시간), date(대여 기간 날짜 문자열), listParams(페이지·탭 쿼리), queryState(조회 실패 표시), validators(회원 입력, 글자 수는 코드 포인트), formErrors(오류 문구 함수·필드 오류 붙이기), markdown(약관 본문 → 블록, 라이브러리 없음)
-│   └── hooks/      useInfiniteScroll, useTabParam, useRefetchErrorToast, useSubmitErrorHandler, useDebouncedValue, useMediaQuery
+│   └── hooks/      useInfiniteScroll, useTabParam, useRefetchErrorToast, useSubmitErrorHandler, useDebouncedValue, useMediaQuery, useNow(렌더 밖에서 갱신하는 지금 시각)
 ├── mocks/          MSW 핸들러 (Swagger 응답 형태 그대로)
 └── styles/
 ```
@@ -135,12 +135,19 @@ export const RENTAL_STATUS = {
 - 오류 문구는 `features/rental/errorMessages.js` 한 곳(code → 문구). `RENTAL_INVALID_TRANSITION`·`COMMON_CONCURRENT_UPDATE`·`RENTAL_CANCEL_AGREEMENT_CLOSED`는 "상태가 바뀌었어요. 다시 불러왔어요" + 상세·inspections 무효화(`queries.js`가 뮤테이션 onError에서 처리).
 - 상태 변경 응답이 RentalDetailResponse면 `['rentals', id]`에 `setQueryData`, `['rentals', 'me']`·`['items', 'me']`(내 물품 탭·다가오는 예약 수) 무효화. 기간 점유가 바뀌면(예약·취소·동의 수락·반납 요청(대리 접수 포함)) 물품 캘린더·예약 현황도, 기록이 생기면(인계·반납·상태 확인) inspections도 무효화. 동의 요청(`CancelAgreementResponse`)은 상세를 다시 불러온다.
 - 모달·시트는 열린 동안만 렌더해 폼이 매번 새로 시작한다. 모달 안의 오류는 모달 안에.
-- 결제 금액·수수료·보증금 보관 안내는 `VITE_PAYMENT_ENABLED`가 true일 때만 보인다(1순위엔 받지 않음). 연체료·손상 등급·차감·AI 비교는 2순위라 표시하지 않는다.
-- 정책 수치는 `features/rental/constants.js`(`RENTAL_TEXT_MAX`·`CANCEL_FEE`·`RETURN_AUTO_CONFIRM_DAYS`·`PAYMENT_EXPIRE_MINUTES`·`CANCEL_AGREEMENT_EXPIRE_HOURS`·`EXTENSION_POLICY`).
+- 결제 금액·수수료·보증금 카드(상태·연체료·차감)는 `VITE_PAYMENT_ENABLED`가 true일 때만 보인다(1순위엔 받지 않음). AI 비교(REQ-040)는 아직 표시하지 않는다.
+- 정책 수치는 `features/rental/constants.js`(`RENTAL_TEXT_MAX`·`CANCEL_FEE`·`RETURN_AUTO_CONFIRM_DAYS`·`PAYMENT_EXPIRE_MINUTES`·`CANCEL_AGREEMENT_EXPIRE_HOURS`·`EXTENSION_POLICY`·`LOST_REPORT_AFTER_DAYS`·`DEDUCTION_POLICY`).
 - 대여 연장(REQ-038): 버튼 표 RENTING 대여자에 "연장하기"(secondary) + "반납 요청". 종료일이 지났으면(연체 배치 전) 연장 버튼 없음, 확정 연장 `extensionCount`가 `EXTENSION_POLICY.MAX_COUNT`면 비활성 + 사유, 결제 대기 연장(`pendingExtension`)이 있으면 "연장 결제하기"(primary) + 남은 연장 결제 시간(notice `paymentKind: 'EXTENSION'`). 제공자·OVERDUE는 그대로.
   - 연장 시트(`ExtensionSheet`): 새 반납일을 종료일 + 1 ~ + `MAX_DAYS` 칩으로 고른다. 물품 캘린더(그 날들이 걸친 달)에서 처음 AVAILABLE이 아닌 날부터 막고(연장 구간은 이어져야 한다), 409 `RENTAL_EXTENSION_PERIOD_CONFLICT`·400 `RENTAL_OUT_OF_AVAILABLE_PERIOD`의 `details` maxEndDate로 다시 좁혀 "M월 D일까지 연장할 수 있어요"(비었으면 "연장할 수 있는 날이 없어요")를 시트 안에 보인다(`rentalExtension.js` 순수 함수, 테스트). 캘린더를 못 불러오면 서버 검사에 맡긴다. 연장료·안내는 결제가 켜져 있을 때만.
   - 응답 PENDING_PAYMENT면 시트를 닫고 `startPayment(…, { extensionId })`, CONFIRMED(0원·결제 꺼짐)면 "반납일이 M월 D일로 바뀌었어요". 성공은 상세·빌린 내역·내 물품·물품 캘린더·예약 현황 무효화, `RENTAL_EXTENSION_IN_PROGRESS`·`RENTAL_EXTENSION_OVERDUE`는 상세를, maxEndDate 오류는 캘린더를 다시 불러온다. 결제 대기 연장의 만료 시각이 지나면 상세를 5초마다 다시 불러온다(만료 배치까지).
   - 상세 본문: 연장했으면 "반납일을 n번 연장했어요", 결제 대기 연장이 있으면 새 반납일·연장료 카드. 연장 이력 목록은 응답에 없어 그리지 않는다.
+- 보증금·연체료(REQ-025·049·023)는 상세 응답 필드(`depositStatus`·`depositHeldAt`·`deduction`·`latestDeductionProposal`·`overdueFee`·`refundedAmount`·`depositRefundPending`)만 보고 `features/rental/deposit.js` 순수 함수(테스트)가 정한다.
+  - 보증금 카드(`DepositCard`, `getDepositView`): `depositStatus` null·NONE이면 없음. 상태 문구 + 배지(`payment/constants.js` `DEPOSIT_STATUS`), 금액 줄(보증금 · 연체료(OVERDUE·종료일 지난 RENTING은 "현재까지 연체료") · 보증금 차감(등급) · 반환액(REFUNDED·FORFEITED, 보증금 − 연체료 − 차감) · 누적 환불액 · 보류 시작), 차감 사유, 보류(HELD) 중이면 최신 차감 제안(상태·등급·금액·사유·증빙 사진·응답 기한)과 보류 후 `DEDUCTION_POLICY.HOLD_AGREEMENT_DAYS`가 지나면 관리자 확정 안내. 지금 시각은 `useNow`(30초)로 넘긴다.
+  - **미반납 신고 건 판단은 `isLostReportHold` 한 곳**: 상세에 표시 필드가 없어(open-issues #57) "HELD이고 RETURN 기록의 result가 null"로 본다(이상 판정은 항상 ABNORMAL을 남긴다).
+  - 버튼 표: OVERDUE 제공자는 오늘 > 반납 예정일 + `LOST_REPORT_AFTER_DAYS`일 때만 "미반납 신고"(secondary, 그 전에는 숨김) → `LostReportModal`(메모 선택). RETURNED이고 HELD면 상태 확인 버튼 대신 차감 협의(미반납 신고 건은 판정 전이어도 상태 확인을 하지 않는다, #41): 제공자는 제안 없음·거절됨이면 "차감 제안"/"다시 제안" → `DeductionProposeSheet`, 응답 대기면 안내만. 대여자는 기한 전 제안이면 "거절"·"수락" → `DeductionRespondModal`(`proposalId` 전송), 그 밖은 안내. 기한이 지난 PROPOSED는 양쪽 모두 "자동 수락을 처리하고 있어요"(#43). inspections를 불러오기 전에는 그리지 않는다.
+  - 차감 제안 시트: 등급 칩 B·C·D(A 없음, 미반납 건은 D만 — `getDeductionGrades`) → `GET deposit/policy?grade`(`useDeductionPolicy`)로 보증금·연체료·남은 보증금·최대 금액 표시, 정액·전액(FIXED·FULL)은 최대 금액을 미리 채운다. 금액은 `parseDeductionAmount`(0 ~ maxAmount), 사유 `DEDUCTION_POLICY.REASON_MAX`자, 사진은 손상 사진·견적서·영수증 두 칸(`INSPECTION_IMAGES`, `validateDeductionImages`: 손상 1장 이상(미반납 건은 0장 가능, #38), `receiptRequired`면 영수증 1장 이상, #40). 400 `DEDUCTION_EXCEEDS_CAP`은 details maxAmount로 금액 칸에 안내하고 그 등급 상한을 다시 불러온다. multipart 파트는 `request`·`evidenceImages`·`receiptImages`(`api.js` `actOnDeposit`, toMultipart를 쓰지 않음).
+  - 보증금 오류 중 `DEPOSIT_NOT_HELD`·`DEDUCTION_PROPOSAL_IN_PROGRESS`·`DEDUCTION_PROPOSAL_NOT_FOUND`·`DEDUCTION_PROPOSAL_CLOSED`·`RENTAL_LOST_REPORT_TOO_EARLY`는 상세를 다시 불러온다(`errorMessages.js` STALE_CODES).
+- 돈이 움직이는 뮤테이션(예약 취소·취소 동의 수락·반납 요청(연체료 확정)·상태 확인·미반납 신고·차감 제안·수락·거절) 성공 뒤 결제·정산 내역 `['payments', 'me']`·`['settlements', 'me']`도 무효화한다(`queries.js` `applyRentalDetail`의 `hasPaymentChanged`). 키는 순환 import를 피하려고 `features/payment/keys.js`에 둔다.
 
 ### 결제 화면 규칙 (SCR-07·08, `/payments/*`)
 - 결제창은 `features/payment/startPayment.js` `startPayment`(주문 생성 → 토스 결제창) 하나로 연다. SCR-07은 결제 대기가 되면 대여 상세로 replace한 뒤 부르고, SCR-08 "결제하기"(대여자만, 남은 시간 0이면 비활성)도 같은 함수를 쓴다. 뮤테이션 캐시에서 실행해 진행 중 재호출은 무시하고, SCR-08은 `useIsPaymentStarting`으로 `결제하기` 로딩·`예약 취소` 비활성을 정한다. bfcache 복원(`pageshow` persisted)이면 진행 상태를 푼다. 창을 닫거나 주문을 못 만들면 대여는 결제 대기로 남고 SCR-08에서 다시 결제한다.
@@ -149,7 +156,7 @@ export const RENTAL_STATUS = {
 - 연장료 결제(REQ-038)도 같은 `startPayment`·`/payments/*`다(`extensionId`로 주문). 승인 성공은 응답 `type`이 EXTENSION이면 "연장료를 결제했어요. 반납일이 바뀌었어요", 실패는 `getConfirmOutcome(error, kind)`의 연장 문구(금액 불일치 = 연장 취소, `PAYMENT_CANCELED_AFTER_EXPIRY` = 연장료 환불, `PAYMENT_EXPIRED` = 다시 연장 요청). `/payments/fail`의 구매자 취소도 연장이면 "연장 결제 시간 안에 다시 결제"로 안내한다.
 - `/payments/success`: 쿼리 검사(`parseSuccessParams`) → 승인 → 대여 상세로 replace. 같은 `orderId`의 진행 중 요청은 `runOnce`로 하나만 보내고, 그 뒤의 재호출은 서버가 멱등하게 처리한다. 실패 안내는 `getConfirmOutcome` 표 하나로 정하고, 결과를 모르면 "다시 확인"(같은 요청, 자동 재시도 없음)을 둔다.
 - `/payments/fail`: `code`가 구매자 취소면 취소 안내, 그 밖에는 토스 `message`를 일반 텍스트로 보여 준다. 승인을 부르지 않는다.
-- 보증금 결과는 `getDepositNotice`(기존 필드로 추정, TODO), 취소 환불액은 취소 순간의 토스트로만 보여 준다. 대여 상세 응답에 보증금 상태·환불액·연체료가 없어서다. 이 필드를 지어내지 않는다.
+- 보증금 결과는 대여 상세의 보증금 카드(위 "보증금·연체료")가 보인다. 취소 환불액은 취소 순간의 토스트와 카드의 누적 환불액으로 보인다.
 
 ### 결제·정산 내역 화면 규칙 (SCR-12 `/me/payments`)
 - 한 화면 두 탭 `?tab=payments|settlements`(기본 결제·보증금, payment.md REQ-033 "정산 내역은 같은 화면 별도 탭"). RequireAuth 안. 진입은 `/me` 메뉴 "결제·정산 내역".
@@ -159,7 +166,7 @@ export const RENTAL_STATUS = {
 - **open-issues #44 임시 해석은 `paymentHistory.js` 한 곳**: 구분 칩(`PAYMENT_HISTORY_TYPES` 전체·결제·환불·보증금 + 설명)과 카드 표시(`getPaymentHistoryView`). 한 결제가 여러 구분에 들어가므로 항목에 "구분" 라벨은 붙이지 않는다. 카드: 물품·결제 상태 배지(`PAYMENT_STATUS`)·종류(대여료·보증금/연장료)·결제 일시·기간·보증금 상태 배지(연장 결제는 없음)·결제 금액, 금액 줄(대여료·보증금 또는 연장료, 연체료·보증금 차감(빨강)·취소 수수료·환불 금액), 차감 사유·"환불을 처리하고 있어요"(`depositRefundPending`).
 - 정산 카드(`getSettlementView`): 물품·정산 상태 배지(`SETTLEMENT_STATUS`)·종류(거래 완료/취소 수수료)·기간, 금액 줄(대상 금액 − 플랫폼 수수료 + 보증금 차감액) = 지급액. SCHEDULED는 "M월 D일 지급 예정", PAID는 지급 일시, HELD는 "분쟁이 끝나면 지급돼요". 합계 상자는 지급 예정·보류·지급 완료 3칸 + 지급 시점 안내(`SETTLEMENT_PAYOUT_DELAY_BUSINESS_DAYS`).
 - 카드는 전체가 대여 상세(`/rentals/:rentalId`) 링크. 상태 라벨은 `features/payment/constants.js`(state-machines §2·§3·§4), 오류 문구는 `features/payment/errorMessages.js`.
-- 대여 상세의 보증금 상태·연체료(`getDepositNotice` TODO)는 이 화면과 별개로 그대로다.
+- 대여 상세의 보증금 카드와 결제 내역 목은 같은 계산(`mocks/paymentHistoryLogic.js` `rentalPaymentState`)을 써서 금액이 어긋나지 않는다.
 
 ### 인증 화면 규칙 (SCR-01, `/me`)
 - 로그인 성공: `useLogin`이 `queryClient.clear()`(이전 사용자 캐시) → `setAccessToken`. 안전한 redirect가 있으면 그곳으로 replace, 없으면 `['members', 'me']`를 fetchQuery해 대표 동네가 없으면 `/regions`(state `{ fromLogin: true }`), 있으면 `/`(조회 실패도 `/`).
@@ -273,4 +280,5 @@ export const RENTAL_STATUS = {
 - **후기 목**(`mocks/review.js`, 계산은 `mocks/reviewLogic.js` 순수 함수, 저장은 대여 목과 같은 db의 `reviews`): 검사 순서는 백엔드와 같다(입력 400 → 404 → 403 → 상태 409 → 기한 400 → 1회 409). 대여 목 14(어제 완료, 쓸 수 있음)·15(내가 씀)·10(기한 지남)·33(제공자로 쓸 수 있음). user1이 받은 후기 23건(2페이지, 탈퇴한 작성자 98 포함). 상대에게 가는 `REVIEW_RECEIVED` 알림은 흉내 내지 않는다. 대여 목과 함께 `window.__mockPayment.reset()`으로 시드로 돌아간다.
 - **연장 목**(REQ-038, `mocks/rental.js` `POST /rentals/:id/extensions` + `mocks/payment.js` 연장료 주문·승인, 저장은 대여 목 db의 `extensions`): 검사 순서·maxEndDate 계산은 백엔드와 같고, 결제 대기 연장은 캘린더·예약 겹침에 점유로 들어간다(`rentalStore.js` `listOccupied`, 검색 필터·007 기간 수정 목에는 넣지 않았다). 대여 목 16(물품 102, D+3·D+4만 연장 가능), 17(이미 2번 연장 → 비활성), 7(다음 날부터 예약이 있어 연장할 날 없음). 연장 결제 만료는 1분 배치 흉내.
 - **결제·정산 내역 목**(`mocks/paymentHistory.js`, 계산은 `mocks/paymentHistoryLogic.js` 순수 함수, 보충 표는 그 파일 맨 위): 대여 목 db(rentals·payments)에서 매번 만들어 금액이 빌린 내역·상세와 같다(주문이 없는 시드 대여는 결제 대기가 아니면 결제한 것으로 본다). user1 기준 결제 내역은 연체료·차감(10)·전액 차감(41)·반환 실패(45)·수수료 취소(11)·3개월 밖 지난 대여가 있고, 정산은 분쟁 보류(33)·차감 더함(30)·취소 수수료(34, 지급 예정)·지급 완료 22건으로 2페이지다. 결제 내역·정산은 결제가 켜져 있을 때(`VITE_PAYMENT_ENABLED=true`)만 화면에 나온다.
+- **보증금 차감·미반납 신고 목**(REQ-049·018, `mocks/rental.js` `POST /lost-report`·`GET /deposit/policy`·`PATCH /deposit`, 계산은 `mocks/depositLogic.js` 순수 함수, 제안은 대여 목 db의 `deductionProposals`, 보류·확정 기록은 대여의 `depositExtra`): 검사 순서는 openapi 설명과 같다. user1 기준 대여자 18(차감 제안 응답 대기 → 수락·거절)·19(응답 기한 지남, 보류 7일 지남), 제공자 35(연체 9일 → 미반납 신고)·36(이상 판정 보류, 제안 없음 → 차감 제안)·37(미반납 신고 보류, 거절된 D 제안 → 다시 제안). 결제가 켜져 있을 때(`VITE_PAYMENT_ENABLED=true`)만 보증금이 보인다. 수락 때 `window.__mockPayment.failNext('DEPOSIT_REFUND_FAILED')`면 반환 실패(200 + RETURNED, REFUND_FAILED)를 흉내 낸다.
 - **결제 목**: 대여·결제 목은 `sessionStorage`(`mock.rentalDb`)에 저장해 결제창에 다녀와도 남는다. 콘솔 `window.__mockPayment.reset()`으로 시드로 되돌리고, `failNext(code)`로 다음 승인·반환 한 번을 실패시킨다(`mocks/paymentScenario.js`). 승인·환불은 토스를 부르지 않는 목 응답이고 결제창만 실제다.

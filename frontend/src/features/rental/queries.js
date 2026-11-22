@@ -8,17 +8,21 @@ import {
 
 import { flattenPages, getNextPageParam } from '../../shared/lib/listParams';
 import { itemKeys } from '../item/queries';
+import { paymentHistoryKeys } from '../payment/keys';
 
 import {
+  actOnDeposit,
   cancelRental,
   confirmReturn,
   createRental,
   fetchCalendar,
+  fetchDeductionPolicy,
   fetchInspections,
   fetchItemRentals,
   fetchRental,
   fetchRentalHistory,
   handoverRental,
+  reportLost,
   requestCancelAgreement,
   requestExtension,
   requestReturn,
@@ -42,6 +46,8 @@ export const rentalKeys = {
   calendar: (itemId) => ['items', itemId, 'calendar'],
   calendarMonth: (itemId, month) => ['items', itemId, 'calendar', month],
   itemRentals: (itemId) => ['items', itemId, 'rentals'],
+  // detail의 하위라 상세 무효화(refetchIfStale)에 함께 걸린다
+  deductionPolicy: (rentalId, grade) => ['rentals', rentalId, 'deposit-policy', grade],
 };
 
 export function useRental(rentalId) {
@@ -122,11 +128,12 @@ export function useItemRentals(itemId) {
  * 상태 변경 응답(RentalDetailResponse)을 캐시에 넣고 관련 목록을 무효화한다.
  * 내 물품 목록도 무효화한다(대여 중 탭 소속·다가오는 예약 수가 바뀐다).
  * 기간 점유가 바뀌는 경우(예약·취소·동의 수락·반납 요청)는 물품 캘린더·예약 현황도, 기록이 생기는 경우는 inspections도.
+ * 돈이 움직이는 경우(취소 환불·연체료 확정·보증금 반환·보류·차감)는 결제·정산 내역(REQ-033·039)도.
  */
 function applyRentalDetail(
   queryClient,
   rental,
-  { hasPeriodChanged = false, hasInspectionsChanged = false },
+  { hasPeriodChanged = false, hasInspectionsChanged = false, hasPaymentChanged = false },
 ) {
   queryClient.setQueryData(rentalKeys.detail(rental.rentalId), rental);
   queryClient.invalidateQueries({ queryKey: rentalKeys.mine() });
@@ -138,6 +145,15 @@ function applyRentalDetail(
   if (hasInspectionsChanged) {
     queryClient.invalidateQueries({ queryKey: rentalKeys.inspections(rental.rentalId) });
   }
+  if (hasPaymentChanged) {
+    invalidatePaymentHistory(queryClient);
+  }
+}
+
+/** 결제·보증금 내역과 정산 내역 */
+function invalidatePaymentHistory(queryClient) {
+  queryClient.invalidateQueries({ queryKey: paymentHistoryKeys.all });
+  queryClient.invalidateQueries({ queryKey: paymentHistoryKeys.settlements() });
 }
 
 /**
@@ -175,6 +191,7 @@ export function useCreateRental() {
 export function useCancelRental(rentalId) {
   return useRentalMutation(rentalId, (body) => cancelRental(rentalId, body), {
     hasPeriodChanged: true,
+    hasPaymentChanged: true,
   });
 }
 
@@ -194,7 +211,10 @@ export function useRespondCancelAgreement(rentalId) {
   return useMutation({
     mutationFn: ({ agreementId, action }) => respondCancelAgreement(rentalId, agreementId, action),
     onSuccess: (rental, { action }) =>
-      applyRentalDetail(queryClient, rental, { hasPeriodChanged: action === 'ACCEPT' }),
+      applyRentalDetail(queryClient, rental, {
+        hasPeriodChanged: action === 'ACCEPT',
+        hasPaymentChanged: action === 'ACCEPT',
+      }),
     onError: (error) => refetchIfStale(queryClient, rentalId, error),
   });
 }
@@ -213,7 +233,8 @@ export function useRequestReturn(rentalId) {
   return useRentalMutation(
     rentalId,
     ({ request, images }) => requestReturn(rentalId, request, images),
-    { hasPeriodChanged: true, hasInspectionsChanged: true },
+    // 반납 때 연체료가 확정된다
+    { hasPeriodChanged: true, hasInspectionsChanged: true, hasPaymentChanged: true },
   );
 }
 
@@ -222,7 +243,7 @@ export function useConfirmReturn(rentalId) {
   return useRentalMutation(
     rentalId,
     ({ request, images }) => confirmReturn(rentalId, request, images),
-    { hasInspectionsChanged: true },
+    { hasInspectionsChanged: true, hasPaymentChanged: true },
   );
 }
 
@@ -252,6 +273,50 @@ export function useRequestExtension(rental) {
       }
       if (readMaxEndDate(error) !== undefined) {
         queryClient.invalidateQueries({ queryKey: rentalKeys.calendar(itemId) });
+      }
+    },
+  });
+}
+
+/**
+ * 미반납 신고(REQ-018, 제공자). variables: { note? }. 반납 완료가 되며 기간 점유가 풀리고 RETURN 기록이 생기고,
+ * 연체료 확정·보증금 보류(또는 동결 보증금이 없으면 바로 거래 완료)로 결제·정산 내역이 바뀐다.
+ */
+export function useReportLost(rentalId) {
+  return useRentalMutation(rentalId, (body) => reportLost(rentalId, body), {
+    hasPeriodChanged: true,
+    hasInspectionsChanged: true,
+    hasPaymentChanged: true,
+  });
+}
+
+/** 등급별 차감 상한(REQ-049). grade가 없으면 부르지 않는다 */
+export function useDeductionPolicy(rentalId, grade) {
+  return useQuery({
+    queryKey: rentalKeys.deductionPolicy(rentalId, grade),
+    queryFn: () => fetchDeductionPolicy(rentalId, grade),
+    staleTime: SHORT_STALE_TIME,
+    enabled: grade != null,
+  });
+}
+
+/**
+ * 보증금 차감 협의(REQ-049). variables: { request: DepositActionRequest, evidenceImages?, receiptImages? }.
+ * 제안·거절은 보류가 이어지고 수락은 반환·거래 완료로 가므로 모두 결제·정산 내역을 무효화한다.
+ * 상한 초과(DEDUCTION_EXCEEDS_CAP)면 그 등급 상한을 다시 불러온다.
+ */
+export function useDepositAction(rentalId) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ request, evidenceImages, receiptImages }) =>
+      actOnDeposit(rentalId, request, { evidenceImages, receiptImages }),
+    onSuccess: (rental) => applyRentalDetail(queryClient, rental, { hasPaymentChanged: true }),
+    onError: (error, { request }) => {
+      refetchIfStale(queryClient, rentalId, error);
+      if (error?.code === 'DEDUCTION_EXCEEDS_CAP' && request.grade) {
+        queryClient.invalidateQueries({
+          queryKey: rentalKeys.deductionPolicy(rentalId, request.grade),
+        });
       }
     },
   });

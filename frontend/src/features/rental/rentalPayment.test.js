@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getDepositNotice, isPaymentExpired, refundOnCancel, requiresPayment } from './rentalData';
+import { isPaymentExpired, refundOnCancel, requiresPayment } from './rentalData';
 
 describe('requiresPayment', () => {
   it.each([
@@ -10,40 +10,6 @@ describe('requiresPayment', () => {
     [5000, 50000, true],
   ])('일 대여료 %i, 보증금 %i → %s', (pricePerDay, deposit, expected) => {
     expect(requiresPayment(pricePerDay, deposit)).toBe(expected);
-  });
-});
-
-describe('getDepositNotice', () => {
-  const rental = (status, deposit = 50000) => ({ status, deposit });
-
-  it('정상 확인 후 완료면 보증금 반환 완료', () => {
-    expect(getDepositNotice(rental('COMPLETED'), { result: 'NORMAL' })).toEqual({
-      kind: 'REFUNDED',
-      amount: 50000,
-    });
-  });
-
-  it('정상 확인인데 RETURNED면 반환 처리 중', () => {
-    expect(getDepositNotice(rental('RETURNED'), { result: 'NORMAL' })).toEqual({
-      kind: 'REFUNDING',
-    });
-  });
-
-  it('이상 판정으로 RETURNED면 처리 대기', () => {
-    expect(getDepositNotice(rental('RETURNED'), { result: 'ABNORMAL' })).toEqual({
-      kind: 'WAITING',
-    });
-  });
-
-  it.each([
-    ['보증금 0원', rental('COMPLETED', 0), { result: 'NORMAL' }],
-    ['기록 로딩 중', rental('COMPLETED'), undefined],
-    ['기록 없음', rental('COMPLETED'), null],
-    ['판정 전', rental('RETURNED'), { result: null }],
-    ['이상 판정으로 완료', rental('COMPLETED'), { result: 'ABNORMAL' }],
-    ['대여 중', rental('RENTING'), { result: null }],
-  ])('%s면 안내 없음', (_, target, inspection) => {
-    expect(getDepositNotice(target, inspection)).toBeNull();
   });
 });
 

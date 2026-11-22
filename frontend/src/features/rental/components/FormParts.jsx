@@ -18,16 +18,26 @@ export function FormError({ message }) {
 /**
  * 인계·반납·판정 사진(INSPECTION_IMAGES, 1장 이상). 값은 ImageUploader value 그대로이고 제출할 때 file만 꺼낸다.
  * 오류 시 shouldFocusError가 이 영역으로 포커스를 옮기도록 감싼 div에 ref를 단다.
+ * validate를 넘기면 기본 검사(1장 이상) 대신 쓴다(보증금 차감 증빙처럼 0장이 되는 경우).
  */
-export function InspectionImageField({ control, name = 'images', label, hint, disabled }) {
+export function InspectionImageField({
+  control,
+  name = 'images',
+  label,
+  hint,
+  disabled,
+  validate,
+}) {
   return (
     <Controller
       name={name}
       control={control}
       rules={{
-        validate: (images) =>
-          images.length >= INSPECTION_IMAGES.MIN_COUNT ||
-          `사진을 ${INSPECTION_IMAGES.MIN_COUNT}장 이상 올려 주세요`,
+        validate:
+          validate ??
+          ((images) =>
+            images.length >= INSPECTION_IMAGES.MIN_COUNT ||
+            `사진을 ${INSPECTION_IMAGES.MIN_COUNT}장 이상 올려 주세요`),
       }}
       render={({ field, fieldState }) => (
         <div ref={field.ref} tabIndex={-1} className="flex flex-col gap-1 outline-none">

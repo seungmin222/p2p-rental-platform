@@ -42,6 +42,14 @@ export const PAYMENT_SEED_EXTRA = {
   30: { deduction: { amount: 30000, grade: 'C', reason: '렌즈 덮개 파손 수리비' } },
 };
 
+/**
+ * 보충 표 + 화면에서 일어난 보증금 기록(rental.depositExtra: 반납·신고 때 확정한 연체료, 보류, 차감 확정 —
+ * mocks/depositLogic.js). 둘 다 있으면 기록이 이긴다
+ */
+export function paymentExtraOf(rental) {
+  return { ...PAYMENT_SEED_EXTRA[rental.rentalId], ...rental.depositExtra };
+}
+
 export const SETTLEMENT_SEED_EXTRA = {
   33: { status: 'HELD' },
 };
@@ -134,8 +142,11 @@ function receivedExtensionFees(orders, rentalId) {
     .reduce((sum, order) => sum + order.amount - extensionRefundedOf(order), 0);
 }
 
-/** 대여료·보증금 결제 한 건의 상태·환불액(대여 상태에서 정한다. rental.js cancel과 같은 규칙) */
-function rentalPaymentState(rental, rentalFee, extra) {
+/**
+ * 대여료·보증금 결제 한 건의 상태·환불액(대여 상태에서 정한다. rental.js cancel과 같은 규칙).
+ * 대여 상세 목(rental.js)도 보증금 상태를 여기서 받는다.
+ */
+export function rentalPaymentState(rental, rentalFee, extra) {
   const { deposit, cancelFee } = rental;
   const amount = rentalFee + deposit;
   const overdueFee = Math.min(extra.overdueFee ?? 0, deposit);
@@ -155,6 +166,20 @@ function rentalPaymentState(rental, rentalFee, extra) {
       depositStatus: deposit > 0 ? 'REFUNDED' : 'NONE',
       refundedAmount: amount - cancelFee,
     };
+  }
+  // 반납 완료: 연체료는 반납·신고 때 확정, 이상 판정·미반납 신고면 보류(REQ-049)
+  // 차감 확정 뒤 반환이 실패했으면 REFUND_FAILED(재시도 배치가 완료한다)
+  if (rental.status === 'RETURNED' && deposit > 0) {
+    if (extra.refundFailed) {
+      return {
+        ...state,
+        overdueFee,
+        deduction: extra.deduction ?? null,
+        depositStatus: 'REFUND_FAILED',
+        depositRefundPending: true,
+      };
+    }
+    return { ...state, overdueFee, depositStatus: extra.held ? 'HELD' : 'FROZEN' };
   }
   if (rental.status !== 'COMPLETED' || deposit === 0) {
     return state;
@@ -209,7 +234,7 @@ export function buildPaymentHistory(rentals, orders, renterId, itemOf) {
             deposit: rental.deposit,
             extensionFee: 0,
             createdAt: order?.createdAt ?? rental.createdAt,
-            ...rentalPaymentState(rental, rentalFee, PAYMENT_SEED_EXTRA[rental.rentalId] ?? {}),
+            ...rentalPaymentState(rental, rentalFee, paymentExtraOf(rental)),
           },
         });
       }
@@ -296,7 +321,7 @@ export function buildSettlements(rentals, orders, ownerId, itemOf, today) {
     if ((!isCompleted && !isFeeCancel) || !isRentalPaid(rental, orders)) {
       continue;
     }
-    const extra = PAYMENT_SEED_EXTRA[rental.rentalId] ?? {};
+    const extra = paymentExtraOf(rental);
     let grossAmount;
     let deductionAmount = 0;
     if (isCompleted) {

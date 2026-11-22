@@ -3,6 +3,7 @@
 // RENTAL_OWNER_ONLY는 대여 API, ITEM_NOT_OWNER는 물품별 예약 현황의 제공자 전용 403.
 // 필드 오류 붙이기(applyFieldErrors)·제출 실패 처리(useSubmitErrorHandler)는 shared에 있다.
 import { createErrorMessageGetter } from '../../shared/lib/formErrors';
+import { LOST_REPORT_AFTER_DAYS } from './constants';
 
 const STALE_MESSAGE = '상태가 바뀌었어요. 다시 불러왔어요';
 
@@ -41,6 +42,17 @@ const MESSAGES = {
   RENTAL_EXTENSION_IN_PROGRESS: '결제를 기다리는 연장이 있어요. 대여 상세에서 결제해 주세요',
   RENTAL_EXTENSION_PERIOD_CONFLICT: '그 기간에 다른 예약이 있어요',
   RENTAL_EXTENSION_NOT_FOUND: '연장 요청을 찾을 수 없어요',
+  // 미반납 신고(REQ-018)
+  RENTAL_LOST_REPORT_TOO_EARLY: `반납 예정일로부터 ${LOST_REPORT_AFTER_DAYS}일이 지나야 미반납 신고를 할 수 있어요`,
+  // 보증금 보류·차감(REQ-049). DEDUCTION_EXCEEDS_CAP은 차감 시트가 details maxAmount로 따로 안내한다
+  DEPOSIT_NOT_HELD: STALE_MESSAGE,
+  DEDUCTION_PROPOSAL_IN_PROGRESS: '대여자의 응답을 기다리는 제안이 있어요',
+  DEDUCTION_GRADE_NOT_ALLOWED: '선택할 수 없는 손상 등급이에요',
+  DEDUCTION_EXCEEDS_DEPOSIT: '남은 보증금보다 많이 차감할 수 없어요',
+  DEDUCTION_EXCEEDS_CAP: '이 등급의 차감 상한을 넘었어요',
+  DEDUCTION_EVIDENCE_REQUIRED: '증빙 사진을 올려 주세요',
+  DEDUCTION_PROPOSAL_NOT_FOUND: STALE_MESSAGE,
+  DEDUCTION_PROPOSAL_CLOSED: '응답 기한이 지나 자동으로 수락돼요. 다시 불러왔어요',
 };
 
 // 화면이 보던 대여가 이미 바뀐 경우. 문구를 보여 주고 상세·inspections를 다시 불러온다(queries.js).
@@ -48,6 +60,12 @@ const STALE_CODES = [
   'RENTAL_INVALID_TRANSITION',
   'COMMON_CONCURRENT_UPDATE',
   'RENTAL_CANCEL_AGREEMENT_CLOSED',
+  // 보증금: 보류가 끝났거나(DEPOSIT_NOT_HELD) 제안이 바뀌었거나(IN_PROGRESS·NOT_FOUND) 기한이 지남(CLOSED, #43)
+  'DEPOSIT_NOT_HELD',
+  'DEDUCTION_PROPOSAL_IN_PROGRESS',
+  'DEDUCTION_PROPOSAL_NOT_FOUND',
+  'DEDUCTION_PROPOSAL_CLOSED',
+  'RENTAL_LOST_REPORT_TOO_EARLY',
 ];
 
 /** code에 맞는 문구. 모르는 code면 ApiError.message(CLIENT_* 포함 이미 한국어)를 쓴다. */
@@ -62,4 +80,14 @@ const EXTENSION_REFETCH_CODES = ['RENTAL_EXTENSION_IN_PROGRESS', 'RENTAL_EXTENSI
 
 export function isExtensionRefetchError(error) {
   return EXTENSION_REFETCH_CODES.includes(error?.code);
+}
+
+/** 차감 상한 초과(400 DEDUCTION_EXCEEDS_CAP)의 details maxAmount(숫자). 없으면 null */
+export function readMaxDeductionAmount(error) {
+  if (error?.code !== 'DEDUCTION_EXCEEDS_CAP') {
+    return null;
+  }
+  const detail = (error.details ?? []).find((d) => d.field === 'maxAmount');
+  const value = Number(detail?.reason);
+  return Number.isSafeInteger(value) ? value : null;
 }

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router';
 import PageHeader from '../app/layout/PageHeader';
 import { getProfilePath } from '../features/profile/profileDisplay';
 import AmountSummary from '../features/rental/components/AmountSummary';
+import DepositCard from '../features/rental/components/DepositCard';
 import InspectionRecords from '../features/rental/components/InspectionRecords';
 import RentalActionBar from '../features/rental/components/RentalActionBar';
 import RentalStepBar from '../features/rental/components/RentalStepBar';
@@ -14,14 +15,11 @@ import {
   RENTAL_STATUS,
 } from '../features/rental/constants';
 import { getErrorMessage } from '../features/rental/errorMessages';
+import { getDepositView } from '../features/rental/deposit';
 import { useRental, useRentalInspections } from '../features/rental/queries';
-import {
-  findInspection,
-  formatDateTime,
-  formatShortRange,
-  getDepositNotice,
-} from '../features/rental/rentalData';
+import { findInspection, formatDateTime, formatShortRange } from '../features/rental/rentalData';
 import { getRentalSteps } from '../features/rental/rentalSteps';
+import { useNow } from '../shared/hooks/useNow';
 import { useRefetchErrorToast } from '../shared/hooks/useRefetchErrorToast';
 import { formatMonthDay, todayInSeoul } from '../shared/lib/date';
 import { formatPrice } from '../shared/lib/format';
@@ -31,6 +29,7 @@ import { Badge, ButtonLink, ErrorState, Skeleton } from '../shared/ui';
 // 인계 이후 상태만 인계·반납 기록이 있다
 const STATUSES_WITH_RECORDS = ['RENTING', 'OVERDUE', 'RETURNED', 'COMPLETED'];
 const UNAVAILABLE_CODES = ['RENTAL_NOT_FOUND', 'RENTAL_NOT_PARTICIPANT'];
+const NOW_INTERVAL_MS = 30_000;
 
 function reasonText(reason, text) {
   const label = CANCEL_REASON[reason]?.label ?? reason;
@@ -65,20 +64,6 @@ function CancelInfoCard({ rental }) {
           <InfoRow label="취소 수수료">{formatPrice(rental.cancelFee)}</InfoRow>
         )}
       </dl>
-    </section>
-  );
-}
-
-/** 보증금 처리 결과. 결제가 켜져 있을 때만(rentalData.getDepositNotice의 TODO 참고) */
-function DepositNoticeCard({ notice }) {
-  const text = {
-    REFUNDED: `보증금 ${formatPrice(notice.amount)} 반환을 완료했어요`,
-    REFUNDING: '보증금 반환을 처리하고 있어요',
-    WAITING: '보증금 처리를 기다리고 있어요',
-  }[notice.kind];
-  return (
-    <section aria-label="보증금" className="rounded-xl bg-accent-soft px-3.5 py-3 text-caption">
-      <p className="font-semibold text-accent-strong">{text}</p>
     </section>
   );
 }
@@ -135,6 +120,8 @@ export default function RentalDetailPage() {
   const hasRecords = rental != null && STATUSES_WITH_RECORDS.includes(rental.status);
   const inspectionsQuery = useRentalInspections(rentalId, { enabled: hasRecords });
   const today = todayInSeoul();
+  // 차감 제안 응답 기한·관리자 확정 대상(보류 7일) 판단용. 분 단위면 충분하다
+  const now = useNow(NOW_INTERVAL_MS);
   // 이미 보던 화면은 재조회가 실패해도 그대로 둔다(열린 모달·시트 유지)
   useRefetchErrorToast([rentalQuery, inspectionsQuery]);
   const isLoadFailed = isInitialLoadError(rentalQuery);
@@ -179,7 +166,8 @@ export default function RentalDetailPage() {
   // undefined = 아직 못 불러옴(getRentalActions가 버튼을 그리지 않는다)
   const returnInspection = hasRecords ? findInspection(inspectionsQuery.data, 'RETURN') : null;
   const itemName = rental.item.isDeleted ? '삭제된 물품' : rental.item.name;
-  const depositNotice = PAYMENT_ENABLED ? getDepositNotice(rental, returnInspection) : null;
+  // 보증금 상태·연체료·차감(REQ-025·049·023)은 결제가 켜져 있을 때만. 승인된 결제가 없거나 보증금 0원이면 null
+  const depositView = PAYMENT_ENABLED ? getDepositView(rental, returnInspection, today, now) : null;
 
   return (
     <>
@@ -221,7 +209,7 @@ export default function RentalDetailPage() {
 
         {rental.pendingExtension && <PendingExtensionCard extension={rental.pendingExtension} />}
 
-        {depositNotice && <DepositNoticeCard notice={depositNotice} />}
+        {depositView && <DepositCard view={depositView} />}
 
         {hasRecords && <InspectionRecords query={inspectionsQuery} />}
 
@@ -233,7 +221,12 @@ export default function RentalDetailPage() {
           totalAmount={rental.totalAmount}
         />
       </div>
-      <RentalActionBar rental={rental} returnInspection={returnInspection} today={today} />
+      <RentalActionBar
+        rental={rental}
+        returnInspection={returnInspection}
+        today={today}
+        now={now}
+      />
     </>
   );
 }

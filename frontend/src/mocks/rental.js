@@ -23,6 +23,25 @@ import {
   readPathId,
   toPageResponse,
 } from './pageList';
+import {
+  calcOverdueFee,
+  DEDUCTION_REASON_MAX,
+  DEDUCTION_RESPONSE_HOURS,
+  deductionPolicyOf,
+  isLostReportOpen,
+  isProposalClosed,
+  latestProposalOf,
+  overdueFeeOf,
+  settleDeduction,
+  toProposalResponse,
+  validateProposal,
+} from './depositLogic';
+import {
+  isRentalPaid,
+  paymentExtraOf,
+  rentalFeeOf,
+  rentalPaymentState,
+} from './paymentHistoryLogic';
 import { hasFrozenDeposit } from './paymentLogic';
 import { DEPOSIT_REFUND_FAILED, takeFailure } from './paymentScenario';
 import { fail, ok } from './response';
@@ -73,6 +92,16 @@ const MESSAGES = {
   RENTAL_NOT_PARTICIPANT: '대여 당사자만 이용할 수 있습니다.',
   RENTAL_NOT_FOUND: '대여 내역을 찾을 수 없습니다.',
   RENTAL_OWNER_ONLY: '물품 제공자만 처리할 수 있습니다.',
+  RENTAL_LOST_REPORT_TOO_EARLY:
+    '반납 예정일로부터 정해진 기간이 지난 연체 건만 미반납 신고할 수 있습니다.',
+  DEPOSIT_NOT_HELD: '보증금이 보류 중이 아닙니다.',
+  DEDUCTION_PROPOSAL_IN_PROGRESS: '응답을 기다리는 차감 제안이 있습니다.',
+  DEDUCTION_GRADE_NOT_ALLOWED: '선택할 수 없는 손상 등급입니다.',
+  DEDUCTION_EXCEEDS_DEPOSIT: '차감액이 남은 보증금을 넘습니다.',
+  DEDUCTION_EXCEEDS_CAP: '차감액이 등급별 상한을 넘습니다.',
+  DEDUCTION_EVIDENCE_REQUIRED: '증빙 자료가 필요합니다.',
+  DEDUCTION_PROPOSAL_NOT_FOUND: '차감 제안을 찾을 수 없습니다.',
+  DEDUCTION_PROPOSAL_CLOSED: '응답 기한이 지난 차감 제안입니다.',
   RENTAL_INVALID_TRANSITION: '현재 대여 상태에서는 처리할 수 없는 요청입니다.',
   RENTAL_HANDOVER_TOO_EARLY: '대여 시작일부터 인계를 확인할 수 있습니다.',
   RENTAL_CANCEL_NOT_ALLOWED:
@@ -126,6 +155,11 @@ const STATUS_BY_CODE = {
   RENTAL_RENTER_ONLY: 403,
   RENTAL_EXTENSION_LIMIT_EXCEEDED: 400,
   RENTAL_EXTENSION_NOT_FOUND: 404,
+  DEDUCTION_GRADE_NOT_ALLOWED: 400,
+  DEDUCTION_EXCEEDS_DEPOSIT: 400,
+  DEDUCTION_EXCEEDS_CAP: 400,
+  DEDUCTION_EVIDENCE_REQUIRED: 400,
+  DEDUCTION_PROPOSAL_NOT_FOUND: 404,
 };
 
 /** 검사에서 던지고 핸들러가 공통 실패 응답으로 바꾼다 */
@@ -269,6 +303,7 @@ function toDetail(rental) {
     extensionCount: rental.extensionCount ?? 0,
     pendingExtension: toPendingExtension(rental, myRole),
     canWriteReview: canWriteReview(rental),
+    ...toDepositFields(rental),
     reviewWritten: hasWritten(db.reviews, rental.rentalId, currentMemberId()),
     activeCancelAgreement: agreement
       ? {
@@ -279,6 +314,37 @@ function toDetail(rental) {
           requestedByMe: agreement.requesterId === currentMemberId(),
         }
       : null,
+  };
+}
+
+/**
+ * 상세의 보증금·연체료 필드(REQ-025·049·023). 상태·환불액은 결제 내역 목과 같은 계산(paymentHistoryLogic.js)이라
+ * 두 화면이 어긋나지 않는다. 승인된 결제가 없으면(결제 꺼짐·결제 대기·무료 대여) depositStatus null
+ */
+function toDepositFields(rental) {
+  const extra = paymentExtraOf(rental);
+  const today = todayInSeoul();
+  const proposal = latestProposalOf(db.deductionProposals, rental.rentalId);
+  const fields = {
+    depositStatus: null,
+    refundedAmount: 0,
+    depositRefundPending: false,
+    depositHeldAt: extra.heldAt ?? null,
+    deduction: null,
+    latestDeductionProposal: toProposalResponse(proposal),
+    overdueFee: overdueFeeOf(rental, extra, today),
+  };
+  const rentalFee = PAYMENT_ENABLED ? rentalFeeOf(rental, db.payments) : 0;
+  if (!PAYMENT_ENABLED || !isRentalPaid(rental, db.payments) || rentalFee + rental.deposit === 0) {
+    return fields;
+  }
+  const state = rentalPaymentState(rental, rentalFee, extra);
+  return {
+    ...fields,
+    depositStatus: state.depositStatus,
+    refundedAmount: state.refundedAmount,
+    depositRefundPending: state.depositRefundPending,
+    deduction: state.deduction,
   };
 }
 
@@ -513,12 +579,12 @@ async function readMultipart(request, { isRequestRequired }) {
     if (isRequestRequired) {
       invalidInput('request', '필수 항목입니다.');
     }
-    return { body: {}, images };
+    return { body: {}, images, form };
   }
   if (typeof part === 'string' || part.type !== 'application/json') {
     reject('COMMON_UNSUPPORTED_MEDIA_TYPE');
   }
-  return { body: JSON.parse(await part.text()), images };
+  return { body: JSON.parse(await part.text()), images, form };
 }
 
 function requireImageCount(images) {
@@ -1001,6 +1067,11 @@ export const rentalHandlers = [
         resultNote: null,
         resultImageUrls: [],
       });
+      // 연체료는 반납 요청일 기준으로 확정한다(REQ-023)
+      rental.depositExtra = {
+        ...rental.depositExtra,
+        overdueFee: calcOverdueFee(rental, todayInSeoul()),
+      };
       Object.assign(rental, { status: 'RETURNED', returnedAt: now });
       return ok(toDetail(rental));
     }),
@@ -1025,7 +1096,8 @@ export const rentalHandlers = [
       const record = db.inspections.find(
         (i) => i.rentalId === rental.rentalId && i.phase === 'RETURN',
       );
-      if (!record || record.result) {
+      // 미반납 신고 건은 물건이 돌아와도 상태 확인을 하지 않는다(open-issues #41)
+      if (!record || record.result || rental.depositExtra?.lostReported) {
         reject('RENTAL_INVALID_TRANSITION');
       }
       // NORMAL에 사진을 보내면 400(rental.md REQ-018)
@@ -1043,6 +1115,7 @@ export const rentalHandlers = [
       const isFrozen = hasFrozenDeposit(rental, db.payments, PAYMENT_ENABLED);
       // 동결 보증금이 있는 ABNORMAL은 RETURNED 유지(REQ-049), 없으면 처리할 금액이 없어 완료(백엔드와 같음)
       if (result === 'ABNORMAL' && isFrozen) {
+        rental.depositExtra = { ...rental.depositExtra, held: true, heldAt: nowServer() };
         return ok(toDetail(rental));
       }
       // 보증금 반환 실패는 200 + RETURNED(재시도 배치가 완료한다)
@@ -1050,6 +1123,192 @@ export const rentalHandlers = [
         return ok(toDetail(rental));
       }
       Object.assign(rental, { status: 'COMPLETED', completedAt: nowServer() });
+      return ok(toDetail(rental));
+    }),
+  ),
+
+  // 미반납 신고(REQ-018). 검사 순서는 openapi 설명 그대로(400 → 404 → 403 → 409)
+  http.post(
+    '/api/rentals/:rentalId/lost-report',
+    handle(async ({ params, request }) => {
+      const body = await request.json().catch(() => ({}));
+      const note = trimToNull(body?.note);
+      validateLength('note', note, POLICY.RETURN_NOTE_MAX);
+      const rental = findParticipantRental(params.rentalId);
+      requireOwner(rental);
+      requireStatus(rental, 'OVERDUE');
+      const today = todayInSeoul();
+      if (!isLostReportOpen(rental, today)) {
+        reject('RENTAL_LOST_REPORT_TOO_EARLY');
+      }
+      const now = nowServer();
+      addInspection({
+        rentalId: rental.rentalId,
+        phase: 'RETURN',
+        imageUrls: [],
+        note,
+        checklist: null,
+        writerRole: 'OWNER',
+        createdAt: now,
+        result: null,
+        resultNote: null,
+        resultImageUrls: [],
+      });
+      // 연체료는 신고일 기준으로 확정. 동결 보증금이 없으면 처리할 금액이 없어 바로 완료(open-issues #39)
+      const isFrozen = hasFrozenDeposit(rental, db.payments, PAYMENT_ENABLED);
+      rental.depositExtra = {
+        ...rental.depositExtra,
+        overdueFee: calcOverdueFee(rental, today),
+        lostReported: true,
+        ...(isFrozen ? { held: true, heldAt: now } : {}),
+      };
+      Object.assign(rental, {
+        status: isFrozen ? 'RETURNED' : 'COMPLETED',
+        returnedAt: now,
+        completedAt: isFrozen ? null : now,
+      });
+      return ok(toDetail(rental));
+    }),
+  ),
+
+  // 등급별 차감 상한(REQ-049, 당사자)
+  http.get(
+    '/api/rentals/:rentalId/deposit/policy',
+    handle(({ params, request }) => {
+      const grade = new URL(request.url).searchParams.get('grade');
+      const rental = findParticipantRental(params.rentalId);
+      const policy = deductionPolicyOf({
+        deposit: rental.deposit,
+        overdueFee: overdueFeeOf(rental, paymentExtraOf(rental), todayInSeoul()),
+        categoryId: findMockItem(rental.itemId).categoryId,
+        grade,
+        isLostReport: rental.depositExtra?.lostReported === true,
+      });
+      if (policy.error === 'COMMON_INVALID_INPUT') {
+        invalidInput('grade', '형식이 올바르지 않습니다.');
+      }
+      if (policy.error) {
+        reject(policy.error);
+      }
+      return ok(policy);
+    }),
+  ),
+
+  // 보증금 차감 협의(REQ-049). 응답은 대여 상세
+  http.patch(
+    '/api/rentals/:rentalId/deposit',
+    handle(async ({ params, request }) => {
+      const { body, form } = await readMultipart(request, { isRequestRequired: true });
+      const evidenceImages = form.getAll('evidenceImages');
+      const receiptImages = form.getAll('receiptImages');
+      const { action } = body;
+      if (!['PROPOSE', 'ACCEPT', 'REJECT'].includes(action)) {
+        invalidInput('action', '형식이 올바르지 않습니다.');
+      }
+      const reason = trimToNull(body.reason);
+      if (action === 'PROPOSE') {
+        if (!Number.isSafeInteger(body.amount) || body.amount < 0) {
+          invalidInput('amount', '0 이상이어야 합니다.');
+        }
+        if (!reason) {
+          invalidInput('reason', '차감 사유를 입력해 주세요.');
+        }
+        validateLength('reason', reason, DEDUCTION_REASON_MAX);
+      } else if (!Number.isSafeInteger(body.proposalId)) {
+        invalidInput('proposalId', '필수 항목입니다.');
+      }
+      const rental = findParticipantRental(params.rentalId);
+      if (action === 'PROPOSE') {
+        requireOwner(rental);
+      } else if (roleOf(rental) !== 'RENTER') {
+        reject('RENTAL_RENTER_ONLY');
+      }
+      requireStatus(rental, 'RETURNED');
+      const extra = paymentExtraOf(rental);
+      if (!extra.held) {
+        reject('DEPOSIT_NOT_HELD');
+      }
+      const now = nowServer();
+      const overdueFee = overdueFeeOf(rental, extra, todayInSeoul());
+      const latest = latestProposalOf(db.deductionProposals, rental.rentalId);
+
+      if (action === 'PROPOSE') {
+        if (latest?.status === 'PROPOSED') {
+          reject('DEDUCTION_PROPOSAL_IN_PROGRESS');
+        }
+        const isLostReport = extra.lostReported === true;
+        const policy = deductionPolicyOf({
+          deposit: rental.deposit,
+          overdueFee,
+          categoryId: findMockItem(rental.itemId).categoryId,
+          grade: body.grade,
+          isLostReport,
+        });
+        if (policy.error === 'COMMON_INVALID_INPUT') {
+          invalidInput('grade', '형식이 올바르지 않습니다.');
+        }
+        const invalid = validateProposal(policy, {
+          amount: body.amount,
+          evidenceCount: evidenceImages.length,
+          receiptCount: receiptImages.length,
+          isLostReport,
+        });
+        if (invalid) {
+          reject(invalid.code, invalid.details);
+        }
+        db.deductionProposals.push({
+          proposalId: Math.max(0, ...db.deductionProposals.map((p) => p.proposalId)) + 1,
+          rentalId: rental.rentalId,
+          status: 'PROPOSED',
+          grade: body.grade,
+          amount: body.amount,
+          reason,
+          evidenceImageUrls: toImageUrls(evidenceImages),
+          receiptImageUrls: toImageUrls(receiptImages),
+          proposedAt: now,
+          respondDeadline: minutesFromNow(DEDUCTION_RESPONSE_HOURS * 60),
+          respondedAt: null,
+        });
+        return ok(toDetail(rental));
+      }
+
+      // ACCEPT·REJECT: 사진을 보내면 400, 최신 제안에만 응답(404), 기한이 지나면 409(open-issues #43)
+      if (evidenceImages.length > 0 || receiptImages.length > 0) {
+        invalidInput('evidenceImages', '응답에는 사진을 보낼 수 없습니다.');
+      }
+      const proposal = db.deductionProposals.find(
+        (p) => p.rentalId === rental.rentalId && p.proposalId === body.proposalId,
+      );
+      if (!proposal) {
+        reject('DEDUCTION_PROPOSAL_NOT_FOUND');
+      }
+      if (proposal.status !== 'PROPOSED' || isProposalClosed(proposal, now)) {
+        reject('DEDUCTION_PROPOSAL_CLOSED');
+      }
+      Object.assign(proposal, {
+        status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED',
+        respondedAt: now,
+      });
+      if (action === 'ACCEPT') {
+        // 확정: 결과를 기록하고 거래 완료(반환 실패 시나리오는 200 + RETURNED, 재시도 배치가 완료)
+        const deduction = {
+          grade: proposal.grade,
+          amount: proposal.amount,
+          reason: proposal.reason,
+        };
+        const { refund } = settleDeduction(rental.deposit, overdueFee, proposal.amount);
+        if (refund > 0 && takeFailure([DEPOSIT_REFUND_FAILED])) {
+          rental.depositExtra = {
+            ...rental.depositExtra,
+            deduction,
+            held: false,
+            refundFailed: true,
+          };
+          return ok(toDetail(rental));
+        }
+        rental.depositExtra = { ...rental.depositExtra, deduction, held: false };
+        Object.assign(rental, { status: 'COMPLETED', completedAt: now });
+      }
       return ok(toDetail(rental));
     }),
   ),
