@@ -6,6 +6,7 @@ import { BottomSheet, Button, TextField, toast } from '../../../shared/ui';
 import { PAYMENT_ENABLED, RENTAL_TEXT_MAX } from '../constants';
 import { getErrorMessage } from '../errorMessages';
 import { useConfirmReturn } from '../queries';
+import { AiCompareSummary } from './AiCompareCard';
 import { FormError, InspectionImageField } from './FormParts';
 
 const FIELD_MAP = { resultNote: 'resultNote' };
@@ -67,6 +68,7 @@ export default function AbnormalSheet({ rental, onClose }) {
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col gap-4"
       >
+        <AiCompareSummary rentalId={rental.rentalId} />
         <p className="text-caption text-ink-muted">
           {PAYMENT_ENABLED
             ? '반납된 물품의 문제를 기록해요.'

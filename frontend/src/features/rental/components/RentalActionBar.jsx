@@ -13,6 +13,7 @@ import { getErrorMessage } from '../errorMessages';
 import { useConfirmReturn, useRespondCancelAgreement } from '../queries';
 import { getRentalActions, RENTAL_ACTION as A } from '../rentalActions';
 import AbnormalSheet from './AbnormalSheet';
+import { AiCompareSummary } from './AiCompareCard';
 import CancelModal from './CancelModal';
 import DeductionProposeSheet from './DeductionProposeSheet';
 import DeductionRespondModal from './DeductionRespondModal';
@@ -141,6 +142,7 @@ function NormalConfirmModal({ rental, onClose }) {
       isLoading={mutation.isPending}
     >
       <div className="flex flex-col gap-2">
+        <AiCompareSummary rentalId={rental.rentalId} />
         <p>
           돌려받은 물품에 이상이 없으면 확인해 주세요.
           {PAYMENT_ENABLED ? ' 보증금이 반환되고 거래가 완료돼요.' : ' 확인하면 거래가 완료돼요.'}

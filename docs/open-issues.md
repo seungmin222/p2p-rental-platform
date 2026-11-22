@@ -64,6 +64,7 @@
 | 56 | ⬜ | 회원·약관 | REQ-037 "재동의 거부 시 이용 제한"의 범위가 정해지지 않았다. 지금은 로그인·재발급 응답 `requiresTermsAgreement`와 재동의 API만 있고, 서버는 미동의 회원의 API를 막지 않는다(프론트 안내만) | (2026-11-20 사용자 결정, `feat/member-extra`) 이번엔 안내만. 서버 차단(예: 미동의 시 회원 API 403)은 보안 필터를 건드리는 변경이라 나중에 정한다 |
 | 57 | ⬜ | 보증금 | 대여 상세 응답에 보증금 보류가 미반납 신고 때문인지 상태 확인 '이상' 때문인지 알려 주는 필드가 없다(`item_inspections.lost_reported`는 inspections 응답에도 없음). 프론트는 차감 등급 선택지(미반납 건은 D만)·손상 사진 0장 허용(#38)·문구를 이것으로 정한다 | (임시, `feat/fe-deposit-deduction`) "depositStatus HELD이고 RETURN 기록의 result가 null"이면 미반납 신고 건으로 본다(이상 판정은 항상 result ABNORMAL을 남긴다). `features/rental/deposit.js` `isLostReportHold` 한 곳. 제안: `RentalDetailResponse`에 `lostReported`(또는 보류 사유) 필드 추가 — 백엔드 확인 필요 |
 | 58 | ⬜ | 보증금 | `policies.md` §2 "장기 미반납·분실" 문장은 "대여자가 물건을 돌려주면 일반 반납 확인으로 처리한다"인데, `rental.md` REQ-018·#41의 현재 결정은 신고 건의 상태 확인을 막는다(409 `RENTAL_INVALID_TRANSITION`) | 미결. #41(정상 반환 경로를 둘지)과 함께 정한다. 프론트(`feat/fe-deposit-deduction`)는 현재 결정대로 신고 건에 상태 확인 버튼을 두지 않았다 |
+| 59 | ⬜ | AI | 반납 기록의 `aiResult`가 null이면 "아직 워커가 맡지 않음(적재 직후)"인지 "적재 실패로 결과 없음"인지 응답으로 구분할 수 없다(PROCESSING은 워커가 맡을 때 기록, 적재 실패는 다시 적재하지 않음). 반납 요청 직후 다시 받은 inspections는 거의 항상 null이라 화면이 "AI 결과 없음"으로 보이고 재조회도 시작하지 않는다 | (임시, `feat/fe-ai-compare`) 반납 사진이 있고 aiResult null이며 반납 기록 `createdAt`이 `ai.compare.processing-timeout-minutes`(10분) 안이면 "비교 준비 중"으로 보고 PROCESSING처럼 재조회, 그 뒤에는 "AI 결과 없음". `features/rental/aiCompare.js` `getAiCompareView` 한 곳. 제안: 백엔드가 적재 시점에 PROCESSING(또는 새 상태 `QUEUED`)을 기록 — 백엔드 확인 필요 |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

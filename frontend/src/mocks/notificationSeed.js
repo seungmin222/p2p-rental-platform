@@ -27,6 +27,7 @@ export const NOTIFICATION_CONTENT = {
   PREVIOUS_RENTAL_OVERDUE:
     '앞선 대여가 아직 반납되지 않아 예약한 날에 물품을 받지 못할 수 있어요. 수수료 없이 취소할 수 있어요.',
   REVIEW_RECEIVED: '새 후기가 도착했어요.',
+  AI_COMPARE_DONE: 'AI 상태 비교 결과가 나왔어요.',
 };
 
 const HOUR_MS = 60 * 60 * 1000;

@@ -90,14 +90,14 @@
 | 037 | 약관 동의 | B | | ✅ 백엔드(`feat/member-extra`). 약관 본문은 초안. 프론트 SCR-01 가입 체크박스·재동의 모달·SCR-15 `/terms/:slug` ✅(`feat/fe-member-extra`). 거부 시 서버 차단은 open-issues #56 |
 | 038 | 대여 연장 | A | | ✅ 대여 상세에 결제 대기 연장(`pendingExtension`)·연장 횟수(`extensionCount`). 프론트 SCR-08 연장 시트·연장료 결제·결제 복귀 분기 ✅(`feat/fe-rental-extension`) |
 | 039 | 제공자 정산 | A | | ✅ HELD 전이는 063에서 구현(분쟁 접수 → HELD, 목록 heldTotal). 프론트 SCR-12 `/me/payments?tab=settlements` 정산 탭(합계·상태·지급 예정일) ✅(`feat/fe-payment-settlement`) |
-| 040 | AI 상태 비교 | A | | ✅ 검증 실험 미실행 (`docs/experiments/ai-compare.md`) |
+| 040 | AI 상태 비교 | A | | ✅ 검증 실험 미실행 (`docs/experiments/ai-compare.md`). 프론트 SCR-08 반납 기록 AI 비교 카드·상태 확인/차감 제안 요약 ✅(`feat/fe-ai-compare`, 결과 대기 판단은 임시 open-issues #59) |
 | 049 | 보증금 보류·차감 | A | ✔ | ✅ 프론트 SCR-08 보증금 카드·차감 제안 시트·수락/거절·미반납 신고(018) ✅(`feat/fe-deposit-deduction`, 신고 건 판단은 임시 open-issues #57) |
 
 ### 프론트 정리
 | 브랜치 | 내용 | 상태 |
 | --- | --- | --- |
 | `docs/fe-design-system` | 현재 디자인 문서화(`docs/design/design-system.md`)와 정리 대상 목록 | ✅ |
-| `chore/fe-design-refactor` | 정리 대상 리팩터링 | ⬜ |
+| `chore/fe-design-refactor` | 정리 대상 리팩터링 | ✅ (#43) |
 
 ### 3순위 (착수 시 추가)
 | REQ | 이름 | 담당 | 필수 | 상태 |

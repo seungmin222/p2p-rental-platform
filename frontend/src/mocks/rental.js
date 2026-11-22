@@ -42,6 +42,7 @@ import {
   rentalFeeOf,
   rentalPaymentState,
 } from './paymentHistoryLogic';
+import { scheduleAiCompare, toAiResultResponse } from './aiCompare';
 import { hasFrozenDeposit } from './paymentLogic';
 import { DEPOSIT_REFUND_FAILED, takeFailure } from './paymentScenario';
 import { fail, ok } from './response';
@@ -454,6 +455,7 @@ function toInspectionResponse(inspection) {
     result: inspection.result,
     resultNote: inspection.resultNote,
     resultImageUrls: inspection.resultImageUrls,
+    aiResult: toAiResultResponse(inspection.aiResult),
   };
 }
 
@@ -630,6 +632,7 @@ function validateLength(field, text, max) {
 function addInspection(inspection) {
   const inspectionId = Math.max(0, ...db.inspections.map((i) => i.inspectionId)) + 1;
   db.inspections.push({ inspectionId, ...inspection });
+  return inspectionId;
 }
 
 function calendarDays(item, month) {
@@ -1055,7 +1058,7 @@ export const rentalHandlers = [
       requireStatus(rental, 'RENTING', 'OVERDUE');
       requireImageCount(images);
       const now = nowServer();
-      addInspection({
+      const inspectionId = addInspection({
         rentalId: rental.rentalId,
         phase: 'RETURN',
         imageUrls: toImageUrls(images),
@@ -1073,6 +1076,8 @@ export const rentalHandlers = [
         overdueFee: calcOverdueFee(rental, todayInSeoul()),
       };
       Object.assign(rental, { status: 'RETURNED', returnedAt: now });
+      // 커밋 뒤 ai.compare 적재(REQ-040)
+      scheduleAiCompare(inspectionId, rental);
       return ok(toDetail(rental));
     }),
   ),

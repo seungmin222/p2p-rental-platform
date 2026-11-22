@@ -99,6 +99,19 @@ export const INSPECTION_RESULT = {
   ABNORMAL: { label: '이상' },
 };
 
+/** AI 상태 비교 변화 유형(REQ-040, ai.md 출력 스키마 changeTypes). 라벨은 UI 표시용 */
+export const AI_CHANGE_TYPE = {
+  SCRATCH: { label: '긁힘' },
+  STAIN: { label: '얼룩' },
+  MISSING_PART: { label: '부품 없음' },
+  BROKEN: { label: '파손' },
+  OTHER: { label: '기타' },
+};
+
+// policies.md ai.compare.processing-timeout-minutes (open-issues #46). 프론트는 aiResult가 아직 없는 반납 기록을
+// 이 시간 동안 "비교 준비 중"으로 본다(open-issues #59, 임시)
+export const AI_COMPARE_PROCESSING_TIMEOUT_MINUTES = 10;
+
 // policies.md lost-report.after-days (반납 예정일 + 7일이 지난 연체 건부터 제공자가 미반납 신고, REQ-018)
 export const LOST_REPORT_AFTER_DAYS = 7;
 
