@@ -8,14 +8,18 @@ import { Button, ConfirmModal, toast } from '../../../shared/ui';
 import { useIsPaymentStarting } from '../../payment/queries';
 import { startPayment } from '../../payment/startPayment';
 import { PAYMENT_ENABLED } from '../constants';
+import { isLostReportHold } from '../deposit';
 import { getErrorMessage } from '../errorMessages';
 import { useConfirmReturn, useRespondCancelAgreement } from '../queries';
 import { getRentalActions, RENTAL_ACTION as A } from '../rentalActions';
 import AbnormalSheet from './AbnormalSheet';
 import CancelModal from './CancelModal';
+import DeductionProposeSheet from './DeductionProposeSheet';
+import DeductionRespondModal from './DeductionRespondModal';
 import ExtensionSheet from './ExtensionSheet';
 import { FormError } from './FormParts';
 import HandoverSheet from './HandoverSheet';
+import LostReportModal from './LostReportModal';
 import ReturnRequestSheet from './ReturnRequestSheet';
 
 /** 결제 만료까지 남은 초(1초마다 갱신). 만료 시각이 없으면 null */
@@ -148,7 +152,7 @@ function NormalConfirmModal({ rental, onClose }) {
 }
 
 /** 열린 모달·시트(한 번에 하나). 열린 동안만 렌더해 폼이 매번 새로 시작한다. */
-function ActionDialog({ type, rental, today, onClose }) {
+function ActionDialog({ type, rental, returnInspection, today, onClose }) {
   switch (type) {
     case A.CANCEL:
       return <CancelModal mode="cancel" rental={rental} today={today} onClose={onClose} />;
@@ -168,6 +172,26 @@ function ActionDialog({ type, rental, today, onClose }) {
       return <NormalConfirmModal rental={rental} onClose={onClose} />;
     case A.EXTEND:
       return <ExtensionSheet rental={rental} onClose={onClose} />;
+    case A.REPORT_LOST:
+      return <LostReportModal rental={rental} onClose={onClose} />;
+    case A.PROPOSE_DEDUCTION:
+      return (
+        <DeductionProposeSheet
+          rental={rental}
+          isLostReport={isLostReportHold(rental, returnInspection)}
+          onClose={onClose}
+        />
+      );
+    case A.ACCEPT_DEDUCTION:
+    case A.REJECT_DEDUCTION:
+      // 다시 불러온 상세에 제안이 없으면(보류가 끝남) 그리지 않는다
+      return rental.latestDeductionProposal ? (
+        <DeductionRespondModal
+          rental={rental}
+          action={type === A.ACCEPT_DEDUCTION ? 'ACCEPT' : 'REJECT'}
+          onClose={onClose}
+        />
+      ) : null;
     default:
       return null;
   }
@@ -177,10 +201,10 @@ function ActionDialog({ type, rental, today, onClose }) {
  * 대여 상세 하단 바. 무엇을 보여 줄지는 getRentalActions(표 하나)만 보고 정한다.
  * 비활성 버튼은 사유를 버튼 아래에 쓰고 aria-describedby로 잇는다. "결제하기"·"연장 결제하기"는 모달 없이 토스 결제창을 연다.
  */
-export default function RentalActionBar({ rental, returnInspection, today }) {
+export default function RentalActionBar({ rental, returnInspection, today, now }) {
   const reasonId = useId();
   const [openType, setOpenType] = useState(null);
-  const { actions, notice } = getRentalActions(rental, returnInspection, today);
+  const { actions, notice } = getRentalActions(rental, returnInspection, today, { now });
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   // SCR-07에서 시작한 결제창도 여기서 기다린다
@@ -189,7 +213,13 @@ export default function RentalActionBar({ rental, returnInspection, today }) {
 
   // 열어 둔 액션이 표에서 사라졌으면(다시 불러온 상태가 바뀜) 그 모달은 그대로 두고 닫힐 때까지 기다린다
   const dialog = openType && (
-    <ActionDialog type={openType} rental={rental} today={today} onClose={() => setOpenType(null)} />
+    <ActionDialog
+      type={openType}
+      rental={rental}
+      returnInspection={returnInspection}
+      today={today}
+      onClose={() => setOpenType(null)}
+    />
   );
 
   if (actions.length === 0 && !notice) {

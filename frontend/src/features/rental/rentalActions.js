@@ -2,6 +2,7 @@
 // 서버가 최종 검증하므로 UI는 보조다(state-machines.md §1 전이 표).
 import { compareDate, formatMonthDay } from '../../shared/lib/date';
 import { EXTENSION_POLICY, PAYMENT_ENABLED, RETURN_AUTO_CONFIRM_DAYS } from './constants';
+import { canReportLost, getProposalState } from './deposit';
 import { formatDateTime, isOverdueCancelWaiver, overdueDays } from './rentalData';
 
 /** 버튼 종류. 화면은 이 값으로 열 모달·시트를 고른다. */
@@ -19,6 +20,10 @@ export const RENTAL_ACTION = {
   WRITE_REVIEW: 'WRITE_REVIEW', // 후기 쓰기(SCR-14로 이동, REQ-034)
   EXTEND: 'EXTEND', // 연장하기(대여자, REQ-038) → 새 종료일 시트
   PAY_EXTENSION: 'PAY_EXTENSION', // 결제 대기 연장의 연장료 결제(모달 없이 결제창)
+  REPORT_LOST: 'REPORT_LOST', // 미반납 신고(제공자, REQ-018) → 확인 모달
+  PROPOSE_DEDUCTION: 'PROPOSE_DEDUCTION', // 보증금 차감 제안(제공자, REQ-049) → 시트
+  REJECT_DEDUCTION: 'REJECT_DEDUCTION', // 차감 제안 거절(대여자) → 확인 모달
+  ACCEPT_DEDUCTION: 'ACCEPT_DEDUCTION', // 차감 제안 수락(대여자) → 확인 모달
 };
 
 const A = RENTAL_ACTION;
@@ -31,7 +36,7 @@ function action(type, label, variant, disabledReason = null) {
  * @param {object} rental RentalDetailResponse
  * @param {object | null | undefined} returnInspection RETURN 기록. undefined = 아직 못 불러옴, null = 없음
  * @param {string} today "YYYY-MM-DD" (호출부가 todayInSeoul()로 넘긴다)
- * @param {{isPaymentEnabled?: boolean}} [options]
+ * @param {{isPaymentEnabled?: boolean, now?: number}} [options] now(밀리초)는 차감 제안 응답 기한 판단용
  * @returns {{actions: {type: string, label: string, variant: string, disabledReason: string | null}[],
  *   notice: {text?: string, tone: 'default' | 'danger', paymentExpiresAt?: string, paymentKind?: 'RENTAL' | 'EXTENSION'} | null}}
  *   disabledReason이 있으면 비활성 버튼 + 그 사유를 보여 준다. notice.paymentExpiresAt이면 남은 결제 시간을 센다
@@ -41,7 +46,7 @@ export function getRentalActions(
   rental,
   returnInspection,
   today,
-  { isPaymentEnabled = PAYMENT_ENABLED } = {},
+  { isPaymentEnabled = PAYMENT_ENABLED, now = Date.now() } = {},
 ) {
   const isOwner = rental.myRole === 'OWNER';
 
@@ -134,7 +139,10 @@ export function getRentalActions(
       );
       if (isOwner || rental.status !== 'RENTING') {
         return {
-          actions: [returnAction],
+          // 미반납 신고는 반납 예정일 + lost-report.after-days가 지난 제공자에게만(그 전에는 숨김)
+          actions: canReportLost(rental, today)
+            ? [action(A.REPORT_LOST, '미반납 신고', 'secondary'), returnAction]
+            : [returnAction],
           notice: days > 0 ? { tone: 'danger', text: `반납 예정일이 ${days}일 지났어요` } : null,
         };
       }
@@ -142,6 +150,12 @@ export function getRentalActions(
     }
 
     case 'RETURNED':
+      // 보증금 보류(이상 판정·미반납 신고)는 차감 협의(REQ-049). 미반납 신고 건은 판정 전이어도 상태 확인을 하지 않는다(#41)
+      if (rental.depositStatus === 'HELD') {
+        return returnInspection === undefined
+          ? { actions: [], notice: null }
+          : getHeldActions(rental, isOwner, now);
+      }
       // 기록을 못 불러왔거나 이미 판정했으면 버튼·안내를 그리지 않는다
       if (!returnInspection || returnInspection.result != null) {
         return { actions: [], notice: null };
@@ -212,4 +226,51 @@ function getRenterRentingActions(rental, today, returnAction) {
     ],
     notice: null,
   };
+}
+
+/**
+ * 보증금 보류(HELD) 중인 RETURNED: 최신 차감 제안(latestDeductionProposal) 상태로 정한다.
+ * - 제공자: 제안 없음·거절됨이면 "차감 제안", 응답 대기면 안내만
+ * - 대여자: 응답 기한 전 제안이 있으면 거절·수락, 그 밖에는 안내만
+ * 기한이 지난 PROPOSED는 응답할 수 없어(409 DEDUCTION_PROPOSAL_CLOSED, open-issues #43) 자동 수락 안내만 둔다.
+ */
+function getHeldActions(rental, isOwner, now) {
+  const proposal = rental.latestDeductionProposal;
+  const state = getProposalState(proposal, now);
+  const info = (text) => ({ actions: [], notice: { tone: 'default', text } });
+
+  if (state === 'CLOSED') {
+    return info('응답 기한이 지나 자동 수락을 처리하고 있어요');
+  }
+  if (state === 'DONE') {
+    return info('보증금 반환을 처리하고 있어요');
+  }
+  if (isOwner) {
+    if (state === 'OPEN') {
+      return info(`${formatDateTime(proposal.respondDeadline)}까지 대여자의 응답을 기다려요`);
+    }
+    return {
+      actions: [
+        action(A.PROPOSE_DEDUCTION, state === 'REJECTED' ? '다시 제안' : '차감 제안', 'primary'),
+      ],
+      notice: null,
+    };
+  }
+  if (state === 'OPEN') {
+    return {
+      actions: [
+        action(A.REJECT_DEDUCTION, '거절', 'secondary'),
+        action(A.ACCEPT_DEDUCTION, '수락', 'primary'),
+      ],
+      notice: {
+        tone: 'default',
+        text: `${formatDateTime(proposal.respondDeadline)}까지 응답하지 않으면 자동으로 수락돼요`,
+      },
+    };
+  }
+  return info(
+    state === 'REJECTED'
+      ? '제안을 거절했어요. 제공자가 다시 제안할 수 있어요'
+      : '제공자가 보증금 차감을 정리하고 있어요',
+  );
 }

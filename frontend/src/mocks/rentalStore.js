@@ -21,6 +21,10 @@ function loadDb() {
       inspection.imageUrls = reviveImageUrls(inspection.imageUrls);
       inspection.resultImageUrls = reviveImageUrls(inspection.resultImageUrls);
     }
+    for (const proposal of saved.deductionProposals ?? []) {
+      proposal.evidenceImageUrls = reviveImageUrls(proposal.evidenceImageUrls);
+      proposal.receiptImageUrls = reviveImageUrls(proposal.receiptImageUrls);
+    }
     return saved;
   } catch {
     return null;
@@ -32,6 +36,8 @@ export const db = loadDb() ?? { ...createRentalSeed(), payments: [] };
 db.reviews ??= createRentalSeed().reviews;
 // 연장(REQ-038) 전에 저장한 데이터
 db.extensions ??= [];
+// 보증금 차감(REQ-049) 전에 저장한 데이터
+db.deductionProposals ??= [];
 
 export function saveDb() {
   try {

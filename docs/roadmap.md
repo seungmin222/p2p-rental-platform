@@ -91,7 +91,7 @@
 | 038 | 대여 연장 | A | | ✅ 대여 상세에 결제 대기 연장(`pendingExtension`)·연장 횟수(`extensionCount`). 프론트 SCR-08 연장 시트·연장료 결제·결제 복귀 분기 ✅(`feat/fe-rental-extension`) |
 | 039 | 제공자 정산 | A | | ✅ HELD 전이는 063에서 구현(분쟁 접수 → HELD, 목록 heldTotal). 프론트 SCR-12 `/me/payments?tab=settlements` 정산 탭(합계·상태·지급 예정일) ✅(`feat/fe-payment-settlement`) |
 | 040 | AI 상태 비교 | A | | ✅ 검증 실험 미실행 (`docs/experiments/ai-compare.md`) |
-| 049 | 보증금 보류·차감 | A | ✔ | ✅ |
+| 049 | 보증금 보류·차감 | A | ✔ | ✅ 프론트 SCR-08 보증금 카드·차감 제안 시트·수락/거절·미반납 신고(018) ✅(`feat/fe-deposit-deduction`, 신고 건 판단은 임시 open-issues #57) |
 
 ### 프론트 정리
 | 브랜치 | 내용 | 상태 |

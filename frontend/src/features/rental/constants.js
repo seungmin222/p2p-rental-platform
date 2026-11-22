@@ -98,3 +98,14 @@ export const INSPECTION_RESULT = {
   NORMAL: { label: '정상' },
   ABNORMAL: { label: '이상' },
 };
+
+// policies.md lost-report.after-days (반납 예정일 + 7일이 지난 연체 건부터 제공자가 미반납 신고, REQ-018)
+export const LOST_REPORT_AFTER_DAYS = 7;
+
+// policies.md deduction.reason.max · deduction.renter-response-hours · deposit.hold-agreement-days (REQ-049)
+// 증빙·영수증 사진 장수·용량은 INSPECTION_IMAGES를 그대로 쓴다(open-issues #40)
+export const DEDUCTION_POLICY = {
+  REASON_MAX: 500,
+  RESPONSE_HOURS: 72,
+  HOLD_AGREEMENT_DAYS: 7,
+};

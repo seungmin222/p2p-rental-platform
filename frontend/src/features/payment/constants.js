@@ -50,3 +50,20 @@ export const PAYMENT_HISTORY_DEFAULT_RANGE_MONTHS = 3;
 
 // policies.md settlement.payout-delay (거래 완료일 기준 영업일 +2일, 주말만 제외). 정산 탭 안내 문구에만 쓴다
 export const SETTLEMENT_PAYOUT_DELAY_BUSINESS_DAYS = 2;
+
+/** 손상 등급(§5 DamageGrade, policies.md §4). A는 차감할 수 없어 선택지에 없다 */
+export const DAMAGE_GRADE = {
+  A: { label: 'A 정상', description: '자연 마모, 차감할 수 없어요' },
+  B: { label: 'B 경미', description: '세척·간단 조치로 복구' },
+  C: { label: 'C 부분 손상', description: '수리하면 사용 가능, 견적서·영수증 필요' },
+  D: { label: 'D 전손·분실', description: '수리 불가 또는 미반납, 보증금 전액까지' },
+};
+
+/** 차감 제안 상태(§5 DeductionProposalStatus) */
+export const DEDUCTION_PROPOSAL_STATUS = {
+  PROPOSED: { label: '응답 대기', tone: 'amber' },
+  ACCEPTED: { label: '수락', tone: 'green' },
+  REJECTED: { label: '거절', tone: 'gray' },
+  AUTO_ACCEPTED: { label: '자동 수락', tone: 'green' },
+  ADMIN_DECIDED: { label: '관리자 확정', tone: 'ink' },
+};

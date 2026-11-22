@@ -9,6 +9,7 @@ import { flattenPages, getNextPageParam } from '../../shared/lib/listParams';
 import { rentalKeys } from '../rental/queries';
 
 import { confirmPayment, fetchPaymentHistory, fetchSettlements } from './api';
+import { paymentHistoryKeys } from './keys';
 import { toHistoryParams } from './paymentHistory';
 import { runOnce } from './paymentResult';
 import { paymentKeys } from './startPayment';
@@ -41,11 +42,7 @@ export function useConfirmPayment() {
   });
 }
 
-export const paymentHistoryKeys = {
-  all: ['payments', 'me'],
-  list: (filter) => ['payments', 'me', filter],
-  settlements: () => ['settlements', 'me'],
-};
+export { paymentHistoryKeys };
 
 /** REQ-033 결제·보증금 내역. filter: { type, from, to }(paymentHistory.js readHistoryFilter) */
 export function usePaymentHistory(filter) {

@@ -65,6 +65,34 @@ export function requestExtension(rentalId, body) {
   return apiClient.post(`/rentals/${rentalId}/extensions`, body);
 }
 
+/** POST /api/rentals/{rentalId}/lost-report { note? } → RentalDetailResponse (제공자, REQ-018) */
+export function reportLost(rentalId, body) {
+  return apiClient.post(`/rentals/${rentalId}/lost-report`, body);
+}
+
+/** GET /api/rentals/{rentalId}/deposit/policy?grade= → DeductionPolicyResponse (REQ-049) */
+export function fetchDeductionPolicy(rentalId, grade) {
+  return apiClient.get(`/rentals/${rentalId}/deposit/policy`, { params: { grade } });
+}
+
+/**
+ * PATCH /api/rentals/{rentalId}/deposit (multipart) → RentalDetailResponse (REQ-049).
+ * request 파트 DepositActionRequest { action, proposalId?, grade?, amount?, reason? } +
+ * evidenceImages(손상 사진)·receiptImages(견적서·영수증) 파트. ACCEPT·REJECT는 사진을 보내지 않는다.
+ * 사진 파트 이름이 images가 아니라 toMultipart를 쓰지 않는다.
+ */
+export function actOnDeposit(rentalId, request, { evidenceImages = [], receiptImages = [] } = {}) {
+  const form = new FormData();
+  form.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }));
+  for (const file of evidenceImages) {
+    form.append('evidenceImages', file);
+  }
+  for (const file of receiptImages) {
+    form.append('receiptImages', file);
+  }
+  return apiClient.patch(`/rentals/${rentalId}/deposit`, form);
+}
+
 /**
  * GET /api/members/me/rentals?role=renter&tab=&page= → PageResponse<RentalHistoryResponse>.
  * size는 보내지 않는다(서버가 rental-history.page로 고정). 정렬도 서버가 한다.
