@@ -3,6 +3,7 @@
 import { http } from 'msw';
 
 import { todayInSeoul } from '../shared/lib/date';
+import { openDisputeRentalIds } from './inquiryLogic';
 import { findMockItem } from './item';
 import { readPage, toPageResponse } from './pageList';
 import {
@@ -49,6 +50,7 @@ export const paymentHistoryHandlers = [
         currentMemberId(),
         findMockItem,
         todayInSeoul(),
+        openDisputeRentalIds(db.inquiries),
       );
       return ok({ ...sumSettlements(settlements), settlements: toPageResponse(settlements, page) });
     }),

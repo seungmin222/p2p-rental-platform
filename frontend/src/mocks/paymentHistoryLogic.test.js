@@ -227,6 +227,15 @@ describe('buildSettlements', () => {
       heldTotal: 0,
       paidTotal: 84000,
     });
+
+    // 분쟁(REQ-063): 지급 예정은 보류, 이미 지급된 정산은 그대로
+    const disputed = buildSettlements(rentals, [], MOCK_ME, itemOf, TODAY, new Set([34, 30]));
+    expect(disputed.map((s) => s.status)).toEqual(['HELD', 'PAID']);
+    expect(sumSettlements(disputed)).toEqual({
+      scheduledTotal: 0,
+      heldTotal: 10800,
+      paidTotal: 84000,
+    });
   });
 
   it('연장료는 APPROVED·PARTIAL_CANCELED 결제의 받은 금액만 더한다(REQ-039)', () => {

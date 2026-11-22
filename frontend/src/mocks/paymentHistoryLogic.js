@@ -311,8 +311,18 @@ export function filterPaymentHistory(entries, { type, from, to }) {
     .map((entry) => entry.payment);
 }
 
-/** 제공자 본인의 정산(최신 생성 순). payment.md REQ-039 금액 공식 그대로 */
-export function buildSettlements(rentals, orders, ownerId, itemOf, today) {
+/**
+ * 제공자 본인의 정산(최신 생성 순). payment.md REQ-039 금액 공식 그대로.
+ * disputedRentalIds: 열린 분쟁이 있는 대여(REQ-063, inquiryLogic.js openDisputeRentalIds) — PAID가 아니면 HELD
+ */
+export function buildSettlements(
+  rentals,
+  orders,
+  ownerId,
+  itemOf,
+  today,
+  disputedRentalIds = new Set(),
+) {
   const settlements = [];
   for (const rental of rentals.filter((candidate) => candidate.ownerId === ownerId)) {
     const isCompleted = rental.status === 'COMPLETED';
@@ -339,9 +349,13 @@ export function buildSettlements(rentals, orders, ownerId, itemOf, today) {
     }
     const createdAt = isCompleted ? rental.completedAt : rental.canceledAt;
     const scheduledDate = addBusinessDays(createdAt.slice(0, 10), SETTLEMENT_PAYOUT_BUSINESS_DAYS);
-    const status =
+    let status =
       SETTLEMENT_SEED_EXTRA[rental.rentalId]?.status ??
       (compareDate(scheduledDate, today) <= 0 ? 'PAID' : 'SCHEDULED');
+    // 분쟁 보류(state-machines §3): 이미 지급된 정산은 그대로
+    if (status !== 'PAID' && disputedRentalIds.has(rental.rentalId)) {
+      status = 'HELD';
+    }
     settlements.push({
       createdAt,
       settlement: {

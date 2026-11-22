@@ -3,6 +3,7 @@ import { authHandlers } from './auth';
 import { chatHandlers } from './chat';
 import { chatStompHandlers } from './chatStomp';
 import { feedHandlers } from './feed';
+import { inquiryHandlers } from './inquiry';
 import { itemHandlers } from './item';
 import { itemWriteHandlers } from './itemWrite';
 import { memberHandlers } from './member';
@@ -26,6 +27,7 @@ export const handlers = [
   ...reviewHandlers,
   ...paymentHandlers,
   ...paymentHistoryHandlers,
+  ...inquiryHandlers,
   ...chatHandlers,
   ...chatStompHandlers,
   ...notificationHandlers,

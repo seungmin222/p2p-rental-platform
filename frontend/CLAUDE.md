@@ -30,7 +30,7 @@ src/
 │   └── layout/         AppLayout, DesktopHeader(PC 상단 헤더), AppLogo, PageHeader, BackButton, BottomActionBar, FloatingActionButton
 ├── pages/          화면 단위 (SCR-xx와 1:1)
 ├── dev/            개발 서버 전용 화면(`/dev/ui` 공통 UI 미리보기, 빌드에서 제외)
-├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review, profile, terms)
+├── features/       도메인별 컴포넌트·훅·API  (auth, region, item, rental, payment, chat, notification, review, profile, terms, inquiry)
 │   ├── auth/           로그인·가입·로그아웃·비밀번호 재설정(api·queries·constants·errorMessages·passwordReset, components/)
 │   ├── region/         동네(api·queries·constants·errorMessages·geolocation·guestRegionStore·myRegions·regionStatus, components/)
 │   ├── item/           물품(api·queries·constants·errorMessages·homeRegion·useFeedRegion·searchParams·filterCalendar·itemDisplay·itemId·itemForm·kakaoPlace, components/)
@@ -40,6 +40,7 @@ src/
 │   ├── payment/        결제창·결제 복귀(startPayment·tossPayment·pendingPayment·paymentResult), 결제·정산 내역(api·queries·constants·errorMessages·paymentHistory, components/)
 │   ├── profile/        사용자 프로필(api·queries·errorMessages·profileDisplay, components/ProfileHeader)
 │   ├── terms/          약관·재동의(api·queries·constants·errorMessages·termsPrompt, components/TermsAgreementField·TermsDocumentSheet·TermsDocumentView·TermsReagreeGate)
+│   ├── inquiry/        문의·분쟁 접수(api·queries·constants·errorMessages·inquiryForm, components/InquiryForm·InquiryCard)
 │   └── rental/
 │       ├── api.js          axios 호출 함수
 │       ├── queries.js      useQuery/useMutation 훅 + queryKey
@@ -73,7 +74,7 @@ src/
 | 12 | 나의 대여 | `/me`, `/me/rentals`, `/me/items`, `/me/wishes`, `/me/recent`, `/me/payments`, `/me/settings`, `/me/profile` | 005, 019, 020, 022, 033, 035, 039 | 1 |
 | 13 | 사용자 프로필 | `/users/:memberId` | 021, 054 | 2 |
 | 14 | 후기 작성 | `/rentals/:id/review` | 034 | 2 |
-| 15 | 약관·정책 | `/terms/:slug`(`service`·`privacy`·`prohibited-items`) | 037 | 2 |
+| 15 | 약관·정책·문의 | `/terms/:slug`(`service`·`privacy`·`prohibited-items`), `/me/inquiries`, `/me/inquiries/new?rentalId=` | 037, 063 | 2 (문의 3) |
 | 16 | 관리자 | `/admin/*` | 057 | 3 |
 
 - 현재 순위의 라우트만 등록한다. 아직 만들지 않은 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(지금은 없음). 채팅(`/chats`, `/chats/:roomId`)·알림(`/notifications`)은 `RequireAuth` 안이다. 프로필(`/users/:memberId`)·약관(`/terms/:slug`)·비밀번호 재설정(`/password-reset*`, AppLayout 밖)은 비회원도 연다.
@@ -227,7 +228,14 @@ export const RENTAL_STATUS = {
 ### 프로필·약관 화면 규칙 (SCR-13 `/users/:memberId` · SCR-15 `/terms/:slug`)
 - 프로필: queryKey `['members', memberId]`(`profileKeys.detail`)·등록 물품 `['members', memberId, 'items']`(받은 후기 `['members', memberId, 'reviews']`와 같은 줄기, 내 정보 `['members', 'me']`와는 둘째 자리가 달라 겹치지 않는다). 경로 id는 `parseItemId`와 같은 규칙으로 걸러 잘못되면 요청하지 않는다. 머리(`ProfileHeader`): 사진·닉네임·대표 동네·가입 월(`formatJoinedMonth`)·거래 n회. 아래 탭 `?tab=items|reviews`(기본 등록 물품): 등록 물품은 `ItemListView`(한 줄 목록, page/hasNext 무한 스크롤, `toItemCard`), 받은 후기는 `ReceivedReviewList`. 탈퇴 회원(`isWithdrawn`)은 "탈퇴한 사용자"만, 탭 없음. 404 `MEMBER_NOT_FOUND`·400은 ErrorState + 홈. 신뢰 점수·칭찬 항목별 횟수(054)·신고·차단(055·056)은 없다.
 - 프로필 진입: 물품 상세 판매자 카드(`ItemOwnerCard` 전체가 링크), 채팅방 헤더 상대 닉네임, 대여 상세 상대 닉네임, 받은 후기 작성자, `/me` 프로필 요약 "프로필 보기". 링크 경로는 `profileDisplay.js` `getProfilePath`(탈퇴·id 없음은 null → 링크 없음).
-- 약관 화면: 문서 세 개를 칩 링크(replace)로 오가고 본문은 `TermsDocumentView`(마크다운 → `shared/lib/markdown.js` 블록, HTML로 넣지 않음, 첫 `#` 제목은 화면 제목과 겹쳐 뺀다). 문서 목록은 `['terms']`(`staleTime` 10분). 모르는 slug는 ErrorState. 진입: `/me` 아래 약관·정책 링크, 가입 "보기"(시트), 재동의 모달. 문의·분쟁 접수(063)는 없다.
+- 약관 화면: 문서 세 개를 칩 링크(replace)로 오가고 본문은 `TermsDocumentView`(마크다운 → `shared/lib/markdown.js` 블록, HTML로 넣지 않음, 첫 `#` 제목은 화면 제목과 겹쳐 뺀다). 문서 목록은 `['terms']`(`staleTime` 10분). 모르는 slug는 ErrorState. 진입: `/me` 아래 약관·정책 링크, 가입 "보기"(시트), 재동의 모달.
+
+### 문의·분쟁 화면 규칙 (SCR-15 `/me/inquiries` · `/me/inquiries/new`, REQ-063)
+- RequireAuth 안. 진입: `/me` 아래 약관 링크 줄의 "문의 내역", 문의 내역 헤더 "문의하기"(대여 없는 일반 문의), SCR-08 본문 맨 아래 "거래에 문제가 있나요? 문의·분쟁 접수"(대여자·제공자, 모든 상태 — 버튼 표 `getRentalActions` 밖의 링크, `getInquiryWritePath({ rentalId })`).
+- 내 문의(`MyInquiriesPage`): `GET /api/inquiries` page/hasNext `useInfiniteQuery`(`['inquiries', 'me']`, size 없음 — `inquiry.page` 고정). 카드(`InquiryCard`): 종류 배지(`INQUIRY_TYPE` 일반 문의 gray·분쟁 red)·처리 상태 배지(`INQUIRY_STATUS` 접수됨 gray·처리 중 amber·처리 완료 green, state-machines §5)·내용 3줄·접수 일시·대여가 있으면 "대여 #id 보기"(응답에 물품 정보가 없다, open-issues #60). 답변·처리는 057.
+- 작성(`InquiryWritePage`, hideTabBar): 주소 `?rentalId=`는 `inquiryForm.js` `readInquiryRentalId`가 거른다(양의 정수가 아니면 대여 없음). 종류는 주소로 받지 않고 항상 일반 문의로 시작한다(분쟁은 사용자가 직접 고른다). 대여가 있으면 상세(`useRental`)를 불러와 "연결한 대여" 요약(물품·기간·상태)을 보이고, 없는·남의 대여는 ErrorState + "일반 문의하기". 종류 칩 일반 문의·분쟁: 분쟁은 대여가 없거나 결제 대기면 비활성 + 사유(`getDisputeBlockReason`). 분쟁을 고르면 안내 상자(결제가 켜져 있으면 "정산 지급이 분쟁이 끝날 때까지 보류, 이미 지급된 정산은 그대로"). 내용 필수(공백만 불가)·`INQUIRY_CONTENT_MAX`(1,000, 코드 포인트, 힌트 "n/1,000")·원문 그대로 보낸다.
+- 제출: 성공 → 토스트 + `/me/inquiries` replace, `['inquiries', 'me']` 무효화, 분쟁이면 정산 `['settlements', 'me']`도(대여 상세는 응답 필드가 바뀌지 않아 그대로). 오류는 폼 안(`errorMessages.js`): 409 `INQUIRY_DISPUTE_ALREADY_OPEN`은 안내 + "내 문의 보기" 링크(상세에 열린 분쟁 필드가 없어 미리 막지 못한다, #60), `INQUIRY_DISPUTE_NOT_ALLOWED`는 상세를 다시 불러와 분쟁 칩을 막는다, 403·404·400 문구.
+- 정산 탭의 보류(`heldTotal`·HELD 카드 "분쟁이 끝나면 지급돼요")는 결제·정산 내역 규칙 그대로다.
 
 ### 동네 화면 규칙 (SCR-02, `/regions`)
 - 로그인하면 `MyRegionManager`(내 동네 목록 `MyRegionList` + 추가), 아니면 `GuestRegionPicker`(임시 동네 하나). 검색·현재 위치로 찾기는 둘이 `RegionFinder`를 같이 쓴다.
@@ -287,4 +295,5 @@ export const RENTAL_STATUS = {
 - **결제·정산 내역 목**(`mocks/paymentHistory.js`, 계산은 `mocks/paymentHistoryLogic.js` 순수 함수, 보충 표는 그 파일 맨 위): 대여 목 db(rentals·payments)에서 매번 만들어 금액이 빌린 내역·상세와 같다(주문이 없는 시드 대여는 결제 대기가 아니면 결제한 것으로 본다). user1 기준 결제 내역은 연체료·차감(10)·전액 차감(41)·반환 실패(45)·수수료 취소(11)·3개월 밖 지난 대여가 있고, 정산은 분쟁 보류(33)·차감 더함(30)·취소 수수료(34, 지급 예정)·지급 완료 22건으로 2페이지다. 결제 내역·정산은 결제가 켜져 있을 때(`VITE_PAYMENT_ENABLED=true`)만 화면에 나온다.
 - **보증금 차감·미반납 신고 목**(REQ-049·018, `mocks/rental.js` `POST /lost-report`·`GET /deposit/policy`·`PATCH /deposit`, 계산은 `mocks/depositLogic.js` 순수 함수, 제안은 대여 목 db의 `deductionProposals`, 보류·확정 기록은 대여의 `depositExtra`): 검사 순서는 openapi 설명과 같다. user1 기준 대여자 18(차감 제안 응답 대기 → 수락·거절)·19(응답 기한 지남, 보류 7일 지남), 제공자 35(연체 9일 → 미반납 신고)·36(이상 판정 보류, 제안 없음 → 차감 제안)·37(미반납 신고 보류, 거절된 D 제안 → 다시 제안). 결제가 켜져 있을 때(`VITE_PAYMENT_ENABLED=true`)만 보증금이 보인다. 수락 때 `window.__mockPayment.failNext('DEPOSIT_REFUND_FAILED')`면 반환 실패(200 + RETURNED, REFUND_FAILED)를 흉내 낸다.
 - **AI 상태 비교 목**(REQ-040, 반납 기록 `aiResult`, 응답 변환·진행 흉내는 `mocks/aiCompare.js`): 대여 9 DONE 긁힘(대여자로 봄)·10 DONE 변화 없음·18 LIMIT_EXCEEDED·28 DONE 얼룩(상태 확인 요약)·29 FAILED·36 DONE 긁힘·파손(차감 제안 요약), 그 밖 null. 반납 요청을 하면 null → 2초 뒤 PROCESSING → 8초 뒤 DONE + 양측 `AI_COMPARE_DONE` 알림. 그 사이 새로고침하면 null로 남아 10분 뒤 "AI 결과 없음"이 된다.
+- **문의·분쟁 목**(REQ-063, `mocks/inquiry.js` 맨 위 시드 표, 계산은 `mocks/inquiryLogic.js` 순수 함수, 저장은 대여 목 db의 `inquiries`): 검사 순서는 백엔드 `InquiryService`와 같다. user1 문의 3건(처리 완료·분쟁 처리 중(대여 10 → 다시 분쟁하면 409)·접수됨). 열린 분쟁이 있는 대여의 지급 예정 정산은 정산 목이 HELD로 본다(`openDisputeRentalIds`) — user1로 대여 34(취소 수수료, 지급 예정)에 분쟁을 접수하면 정산 탭 보류에 더해진다. 대여 1(결제 대기)은 분쟁 409. 처리 상태는 바뀌지 않는다(057).
 - **결제 목**: 대여·결제 목은 `sessionStorage`(`mock.rentalDb`)에 저장해 결제창에 다녀와도 남는다. 콘솔 `window.__mockPayment.reset()`으로 시드로 되돌리고, `failNext(code)`로 다음 승인·반환 한 번을 실패시킨다(`mocks/paymentScenario.js`). 승인·환불은 토스를 부르지 않는 목 응답이고 결제창만 실제다.

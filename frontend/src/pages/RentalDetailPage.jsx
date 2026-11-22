@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router';
 
 import PageHeader from '../app/layout/PageHeader';
+import { getInquiryWritePath } from '../features/inquiry/inquiryForm';
 import { getProfilePath } from '../features/profile/profileDisplay';
 import AmountSummary from '../features/rental/components/AmountSummary';
 import DepositCard from '../features/rental/components/DepositCard';
@@ -220,6 +221,14 @@ export default function RentalDetailPage() {
           deposit={rental.deposit}
           totalAmount={rental.totalAmount}
         />
+
+        {/* REQ-063 문의·분쟁 접수. 대여자·제공자, 모든 상태(결제 대기는 작성 화면이 분쟁을 막는다) */}
+        <Link
+          to={getInquiryWritePath({ rentalId: rental.rentalId })}
+          className="inline-flex min-h-11 items-center self-start text-caption text-ink-muted underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          거래에 문제가 있나요? 문의·분쟁 접수
+        </Link>
       </div>
       <RentalActionBar
         rental={rental}

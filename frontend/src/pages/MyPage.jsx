@@ -45,8 +45,8 @@ export default function MyPage() {
           ))}
         </ul>
       </nav>
-      {/* SCR-15 약관·정책(REQ-037). 문의·분쟁 접수(REQ-063)는 해당 브랜치에서 더한다 */}
-      <nav aria-label="약관·정책" className="mt-6 flex flex-wrap gap-x-4">
+      {/* SCR-15 약관·정책(REQ-037)·문의 내역(REQ-063) */}
+      <nav aria-label="약관·정책·문의" className="mt-6 flex flex-wrap gap-x-4">
         {TERMS_DOCUMENTS.map((document) => (
           <Link
             key={document.slug}
@@ -56,6 +56,12 @@ export default function MyPage() {
             {document.title}
           </Link>
         ))}
+        <Link
+          to="/me/inquiries"
+          className="inline-flex min-h-11 items-center text-caption text-ink-muted underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          문의 내역
+        </Link>
       </nav>
       <div className="mt-4">
         <LogoutButton />

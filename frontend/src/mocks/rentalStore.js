@@ -1,6 +1,7 @@
 // 대여·결제 목의 저장소와 기간 점유 판정. 대여 핸들러(rental.js)와 물품 검색 핸들러(feed.js)가 같이 쓴다.
 // 토스 결제창에 다녀오면 페이지가 새로 뜨므로 sessionStorage에 둔다(탭을 닫으면 시드로 돌아간다).
 // 처음부터 다시 하려면 콘솔에서 window.__mockPayment.reset().
+import { createInquirySeed } from './inquirySeed';
 import { placeholderImage } from './item';
 import { createRentalSeed, toServerDateTime } from './rentalSeed';
 
@@ -38,6 +39,8 @@ db.reviews ??= createRentalSeed().reviews;
 db.extensions ??= [];
 // 보증금 차감(REQ-049) 전에 저장한 데이터
 db.deductionProposals ??= [];
+// 문의·분쟁(REQ-063) 전에 저장한 데이터
+db.inquiries ??= createInquirySeed();
 
 export function saveDb() {
   try {

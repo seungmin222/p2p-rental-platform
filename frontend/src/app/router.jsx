@@ -4,8 +4,10 @@ import ChatListPage from '../pages/ChatListPage';
 import ChatRoomPage from '../pages/ChatRoomPage';
 import HomePage from '../pages/HomePage';
 import ItemDetailPage from '../pages/ItemDetailPage';
+import InquiryWritePage from '../pages/InquiryWritePage';
 import ItemFormPage from '../pages/ItemFormPage';
 import LoginPage from '../pages/LoginPage';
+import MyInquiriesPage from '../pages/MyInquiriesPage';
 import MyItemsPage from '../pages/MyItemsPage';
 import MyPage from '../pages/MyPage';
 import MyPaymentsPage from '../pages/MyPaymentsPage';
@@ -90,6 +92,9 @@ export const router = createBrowserRouter([
           { path: '/me/items', element: <MyItemsPage /> },
           { path: '/me/payments', element: <MyPaymentsPage /> }, // REQ-033·039
           { path: '/me/profile', element: <MyProfilePage /> },
+          // SCR-15 문의·분쟁 접수(REQ-063)
+          { path: '/me/inquiries', element: <MyInquiriesPage /> },
+          { path: '/me/inquiries/new', element: <InquiryWritePage />, handle: hideTabBar },
         ],
       },
       ...devRoutes,

@@ -103,6 +103,8 @@ const MESSAGES = {
   DEDUCTION_EVIDENCE_REQUIRED: '증빙 자료가 필요합니다.',
   DEDUCTION_PROPOSAL_NOT_FOUND: '차감 제안을 찾을 수 없습니다.',
   DEDUCTION_PROPOSAL_CLOSED: '응답 기한이 지난 차감 제안입니다.',
+  INQUIRY_DISPUTE_NOT_ALLOWED: '결제 대기 중인 대여에는 분쟁을 접수할 수 없습니다.',
+  INQUIRY_DISPUTE_ALREADY_OPEN: '이 대여에 처리 중인 분쟁이 있습니다.',
   RENTAL_INVALID_TRANSITION: '현재 대여 상태에서는 처리할 수 없는 요청입니다.',
   RENTAL_HANDOVER_TOO_EARLY: '대여 시작일부터 인계를 확인할 수 있습니다.',
   RENTAL_CANCEL_NOT_ALLOWED:
