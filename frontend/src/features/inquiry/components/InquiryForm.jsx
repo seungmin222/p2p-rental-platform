@@ -26,7 +26,7 @@ const FIELD_MAP = { content: 'content', type: 'type' };
  * rental은 연결한 대여의 상세(없거나 불러오는 중이면 undefined) — 결제 대기면 분쟁 칩을 막는다.
  * 이미 열린 분쟁(409)은 응답에 미리 알 수 있는 필드가 없어 제출 뒤 폼 안에 안내 + 내 문의 링크로 보인다.
  */
-export default function InquiryForm({ rentalId, rental, initialType }) {
+export default function InquiryForm({ rentalId, rental }) {
   const formId = useId();
   const typeLabelId = useId();
   const navigate = useNavigate();
@@ -42,7 +42,8 @@ export default function InquiryForm({ rentalId, rental, initialType }) {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      type: initialType === 'DISPUTE' && !disputeBlock ? 'DISPUTE' : 'GENERAL',
+      // 분쟁은 정산을 보류시키므로 항상 일반 문의로 시작해 사용자가 직접 고르게 한다
+      type: 'GENERAL',
       content: '',
     },
     shouldFocusError: true,

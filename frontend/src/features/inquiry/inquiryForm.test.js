@@ -6,7 +6,7 @@ import {
   getInquiryWritePath,
   INQUIRY_CONTENT_REQUIRED,
   INQUIRY_CONTENT_TOO_LONG,
-  readInquiryParams,
+  readInquiryRentalId,
   toInquiryRequest,
   validateInquiryContent,
 } from './inquiryForm';
@@ -28,31 +28,27 @@ describe('validateInquiryContent', () => {
   });
 });
 
-describe('readInquiryParams', () => {
-  const read = (query) => readInquiryParams(new URLSearchParams(query));
+describe('readInquiryRentalId', () => {
+  const read = (query) => readInquiryRentalId(new URLSearchParams(query));
 
-  it('대여와 분쟁을 읽는다', () => {
-    expect(read('rentalId=10&type=DISPUTE')).toEqual({ rentalId: 10, type: 'DISPUTE' });
-    expect(read('rentalId=10')).toEqual({ rentalId: 10, type: 'GENERAL' });
+  it('대여 id를 읽고 종류(type)는 무시한다', () => {
+    expect(read('rentalId=10')).toBe(10);
+    expect(read('rentalId=10&type=DISPUTE')).toBe(10);
+    expect(read('type=DISPUTE')).toBeNull();
   });
 
-  it('대여가 없으면 분쟁 대신 일반 문의, 틀린 값은 없는 것으로', () => {
-    expect(read('type=DISPUTE')).toEqual({ rentalId: null, type: 'GENERAL' });
-    expect(read('rentalId=0&type=DISPUTE')).toEqual({ rentalId: null, type: 'GENERAL' });
-    expect(read('rentalId=-1')).toEqual({ rentalId: null, type: 'GENERAL' });
-    expect(read('rentalId=1.5')).toEqual({ rentalId: null, type: 'GENERAL' });
-    expect(read('rentalId=99999999999999999999')).toEqual({ rentalId: null, type: 'GENERAL' });
-    expect(read('rentalId=3&type=OTHER')).toEqual({ rentalId: 3, type: 'GENERAL' });
+  it('틀린 값은 없는 것으로', () => {
+    expect(read('rentalId=0')).toBeNull();
+    expect(read('rentalId=-1')).toBeNull();
+    expect(read('rentalId=1.5')).toBeNull();
+    expect(read('rentalId=99999999999999999999')).toBeNull();
   });
 });
 
 describe('getInquiryWritePath', () => {
-  it('대여·분쟁을 주소에 넣고 기본값은 뺀다', () => {
+  it('대여만 주소에 넣는다', () => {
     expect(getInquiryWritePath()).toBe('/me/inquiries/new');
     expect(getInquiryWritePath({ rentalId: 10 })).toBe('/me/inquiries/new?rentalId=10');
-    expect(getInquiryWritePath({ rentalId: 10, type: 'DISPUTE' })).toBe(
-      '/me/inquiries/new?rentalId=10&type=DISPUTE',
-    );
   });
 });
 

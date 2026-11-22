@@ -23,29 +23,18 @@ function readPositiveId(value) {
 }
 
 /**
- * 작성 화면 주소 `?rentalId=&type=`. 틀린 값은 없는 것으로(rentalId null, type GENERAL).
- * 분쟁은 대여가 있어야 하므로 rentalId가 없으면 GENERAL로 시작한다.
+ * 작성 화면 주소 `?rentalId=`의 대여 id. 틀린 값은 없는 것으로(null).
+ * 종류는 주소로 받지 않는다: 분쟁은 정산을 보류시키므로 사용자가 폼에서 직접 고른다(항상 일반 문의로 시작).
  */
-export function readInquiryParams(searchParams) {
-  const rentalId = readPositiveId(searchParams.get('rentalId'));
-  const type = searchParams.get('type');
-  return {
-    rentalId,
-    type: type === 'DISPUTE' && rentalId != null ? 'DISPUTE' : 'GENERAL',
-  };
+export function readInquiryRentalId(searchParams) {
+  return readPositiveId(searchParams.get('rentalId'));
 }
 
-/** 작성 화면 주소. 대여 상세에서 들어갈 때 쓴다 */
-export function getInquiryWritePath({ rentalId, type } = {}) {
-  const params = new URLSearchParams();
-  if (rentalId != null) {
-    params.set('rentalId', String(rentalId));
-  }
-  if (type && type !== 'GENERAL') {
-    params.set('type', type);
-  }
-  const query = params.toString();
-  return query ? `/me/inquiries/new?${query}` : '/me/inquiries/new';
+/** 작성 화면 주소. 대여 상세에서 들어갈 때 rentalId를 넣는다 */
+export function getInquiryWritePath({ rentalId } = {}) {
+  return rentalId != null
+    ? `/me/inquiries/new?${new URLSearchParams({ rentalId: String(rentalId) })}`
+    : '/me/inquiries/new';
 }
 
 /**

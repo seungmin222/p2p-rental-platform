@@ -74,7 +74,7 @@ src/
 | 12 | 나의 대여 | `/me`, `/me/rentals`, `/me/items`, `/me/wishes`, `/me/recent`, `/me/payments`, `/me/settings`, `/me/profile` | 005, 019, 020, 022, 033, 035, 039 | 1 |
 | 13 | 사용자 프로필 | `/users/:memberId` | 021, 054 | 2 |
 | 14 | 후기 작성 | `/rentals/:id/review` | 034 | 2 |
-| 15 | 약관·정책·문의 | `/terms/:slug`(`service`·`privacy`·`prohibited-items`), `/me/inquiries`, `/me/inquiries/new?rentalId=&type=` | 037, 063 | 2 (문의 3) |
+| 15 | 약관·정책·문의 | `/terms/:slug`(`service`·`privacy`·`prohibited-items`), `/me/inquiries`, `/me/inquiries/new?rentalId=` | 037, 063 | 2 (문의 3) |
 | 16 | 관리자 | `/admin/*` | 057 | 3 |
 
 - 현재 순위의 라우트만 등록한다. 아직 만들지 않은 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(지금은 없음). 채팅(`/chats`, `/chats/:roomId`)·알림(`/notifications`)은 `RequireAuth` 안이다. 프로필(`/users/:memberId`)·약관(`/terms/:slug`)·비밀번호 재설정(`/password-reset*`, AppLayout 밖)은 비회원도 연다.
@@ -233,7 +233,7 @@ export const RENTAL_STATUS = {
 ### 문의·분쟁 화면 규칙 (SCR-15 `/me/inquiries` · `/me/inquiries/new`, REQ-063)
 - RequireAuth 안. 진입: `/me` 아래 약관 링크 줄의 "문의 내역", 문의 내역 헤더 "문의하기"(대여 없는 일반 문의), SCR-08 본문 맨 아래 "거래에 문제가 있나요? 문의·분쟁 접수"(대여자·제공자, 모든 상태 — 버튼 표 `getRentalActions` 밖의 링크, `getInquiryWritePath({ rentalId })`).
 - 내 문의(`MyInquiriesPage`): `GET /api/inquiries` page/hasNext `useInfiniteQuery`(`['inquiries', 'me']`, size 없음 — `inquiry.page` 고정). 카드(`InquiryCard`): 종류 배지(`INQUIRY_TYPE` 일반 문의 gray·분쟁 red)·처리 상태 배지(`INQUIRY_STATUS` 접수됨 gray·처리 중 amber·처리 완료 green, state-machines §5)·내용 3줄·접수 일시·대여가 있으면 "대여 #id 보기"(응답에 물품 정보가 없다, open-issues #60). 답변·처리는 057.
-- 작성(`InquiryWritePage`, hideTabBar): 주소 `?rentalId=&type=`는 `inquiryForm.js` `readInquiryParams`가 거른다(양의 정수가 아니면 대여 없음, 대여가 없으면 GENERAL). 대여가 있으면 상세(`useRental`)를 불러와 "연결한 대여" 요약(물품·기간·상태)을 보이고, 없는·남의 대여는 ErrorState + "일반 문의하기". 종류 칩 일반 문의·분쟁: 분쟁은 대여가 없거나 결제 대기면 비활성 + 사유(`getDisputeBlockReason`). 분쟁을 고르면 안내 상자(결제가 켜져 있으면 "정산 지급이 분쟁이 끝날 때까지 보류, 이미 지급된 정산은 그대로"). 내용 필수(공백만 불가)·`INQUIRY_CONTENT_MAX`(1,000, 코드 포인트, 힌트 "n/1,000")·원문 그대로 보낸다.
+- 작성(`InquiryWritePage`, hideTabBar): 주소 `?rentalId=`는 `inquiryForm.js` `readInquiryRentalId`가 거른다(양의 정수가 아니면 대여 없음). 종류는 주소로 받지 않고 항상 일반 문의로 시작한다(분쟁은 사용자가 직접 고른다). 대여가 있으면 상세(`useRental`)를 불러와 "연결한 대여" 요약(물품·기간·상태)을 보이고, 없는·남의 대여는 ErrorState + "일반 문의하기". 종류 칩 일반 문의·분쟁: 분쟁은 대여가 없거나 결제 대기면 비활성 + 사유(`getDisputeBlockReason`). 분쟁을 고르면 안내 상자(결제가 켜져 있으면 "정산 지급이 분쟁이 끝날 때까지 보류, 이미 지급된 정산은 그대로"). 내용 필수(공백만 불가)·`INQUIRY_CONTENT_MAX`(1,000, 코드 포인트, 힌트 "n/1,000")·원문 그대로 보낸다.
 - 제출: 성공 → 토스트 + `/me/inquiries` replace, `['inquiries', 'me']` 무효화, 분쟁이면 정산 `['settlements', 'me']`도(대여 상세는 응답 필드가 바뀌지 않아 그대로). 오류는 폼 안(`errorMessages.js`): 409 `INQUIRY_DISPUTE_ALREADY_OPEN`은 안내 + "내 문의 보기" 링크(상세에 열린 분쟁 필드가 없어 미리 막지 못한다, #60), `INQUIRY_DISPUTE_NOT_ALLOWED`는 상세를 다시 불러와 분쟁 칩을 막는다, 403·404·400 문구.
 - 정산 탭의 보류(`heldTotal`·HELD 카드 "분쟁이 끝나면 지급돼요")는 결제·정산 내역 규칙 그대로다.
 

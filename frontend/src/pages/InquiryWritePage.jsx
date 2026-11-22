@@ -2,7 +2,7 @@ import { useSearchParams } from 'react-router';
 
 import PageHeader from '../app/layout/PageHeader';
 import InquiryForm from '../features/inquiry/components/InquiryForm';
-import { getInquiryWritePath, readInquiryParams } from '../features/inquiry/inquiryForm';
+import { getInquiryWritePath, readInquiryRentalId } from '../features/inquiry/inquiryForm';
 import { RENTAL_STATUS } from '../features/rental/constants';
 import { getErrorMessage as getRentalErrorMessage } from '../features/rental/errorMessages';
 import { useRental } from '../features/rental/queries';
@@ -51,7 +51,7 @@ function FormSkeleton() {
 }
 
 /** 대여를 연결한 접수: 대여 상세를 불러와 요약을 보이고, 결제 대기면 분쟁을 막는다 */
-function RentalInquiry({ rentalId, initialType }) {
+function RentalInquiry({ rentalId }) {
   const rentalQuery = useRental(rentalId);
   const rental = rentalQuery.data;
   const isUnavailable = isRentalUnavailable(rentalQuery);
@@ -86,25 +86,25 @@ function RentalInquiry({ rentalId, initialType }) {
   return (
     <>
       <RentalSummary rental={rental} />
-      <InquiryForm rentalId={rentalId} rental={rental} initialType={initialType} />
+      <InquiryForm rentalId={rentalId} rental={rental} />
     </>
   );
 }
 
 /**
- * SCR-15 문의·분쟁 접수(`/me/inquiries/new?rentalId=&type=`, REQ-063).
+ * SCR-15 문의·분쟁 접수(`/me/inquiries/new?rentalId=`, REQ-063).
  * 대여 상세에서 들어오면 그 대여를 연결하고(일반 문의·분쟁), `/me`·문의 내역에서 들어오면 대여 없이 일반 문의만.
  */
 export default function InquiryWritePage() {
   const [searchParams] = useSearchParams();
-  const { rentalId, type } = readInquiryParams(searchParams);
+  const rentalId = readInquiryRentalId(searchParams);
   return (
     <>
       <PageHeader title={TITLE} />
       {rentalId == null ? (
-        <InquiryForm rentalId={null} initialType="GENERAL" />
+        <InquiryForm rentalId={null} />
       ) : (
-        <RentalInquiry key={rentalId} rentalId={rentalId} initialType={type} />
+        <RentalInquiry key={rentalId} rentalId={rentalId} />
       )}
     </>
   );
