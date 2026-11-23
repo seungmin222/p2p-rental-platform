@@ -1,6 +1,7 @@
 package com.team7.rental.item.controller;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -222,7 +223,7 @@ class WishIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	@DisplayName("관심 목록은 최근 추가순이고 삭제·숨김 물품도 status와 함께 남는다")
+	@DisplayName("관심 목록은 최근 추가순이고 삭제·숨김 물품도 status와 함께 남되 itemId·status·wishedAt 외 필드는 비운다")
 	void listShowsLatestFirstWithStatus() throws Exception {
 		Item second = fixture.createItem(verifiedOwner, FROM, TO).item();
 		Item third = fixture.createItem(verifiedOwner, FROM, TO).item();
@@ -236,8 +237,21 @@ class WishIntegrationTest extends IntegrationTestSupport {
 			.andExpect(jsonPath("$.data.items.length()").value(3))
 			.andExpect(jsonPath("$.data.items[0].itemId").value(second.getId()))
 			.andExpect(jsonPath("$.data.items[0].status").value("HIDDEN"))
+			.andExpect(jsonPath("$.data.items[0].wishedAt").exists())
+			.andExpect(jsonPath("$.data.items[0].name").value(nullValue()))
+			.andExpect(jsonPath("$.data.items[0].thumbnailUrl").value(nullValue()))
+			.andExpect(jsonPath("$.data.items[0].regionName").value(nullValue()))
+			.andExpect(jsonPath("$.data.items[0].pricePerDay").value(0))
+			.andExpect(jsonPath("$.data.items[0].deposit").value(0))
+			.andExpect(jsonPath("$.data.items[0].wishCount").value(0))
+			.andExpect(jsonPath("$.data.items[0].chatCount").value(0))
+			.andExpect(jsonPath("$.data.items[0].isRenting").value(false))
 			.andExpect(jsonPath("$.data.items[1].itemId").value(third.getId()))
 			.andExpect(jsonPath("$.data.items[1].status").value("DELETED"))
+			.andExpect(jsonPath("$.data.items[1].wishedAt").exists())
+			.andExpect(jsonPath("$.data.items[1].name").value(nullValue()))
+			.andExpect(jsonPath("$.data.items[1].regionName").value(nullValue()))
+			.andExpect(jsonPath("$.data.items[1].wishCount").value(0))
 			.andExpect(jsonPath("$.data.items[2].itemId").value(item.getId()))
 			.andExpect(jsonPath("$.data.items[2].status").value("AVAILABLE"))
 			.andExpect(jsonPath("$.data.items[2].name").value(item.getName()))

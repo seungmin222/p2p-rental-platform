@@ -236,16 +236,20 @@ public class ItemQueryService {
 	}
 
 	/**
-	 * 내 관심 목록 (REQ-022). 최근 추가순, 페이지 크기는 wish.page 고정. 삭제·숨김 물품도 status와 함께 담는다. 쿼리는 목록 1(+ count) + 동네 이름 1 +
+	 * 내 관심 목록 (REQ-022). 최근 추가순, 페이지 크기는 wish.page 고정. 삭제·숨김 물품도 status와 함께 담되, 상세가 404인 물품이므로
+	 * itemId·status·wishedAt만 남기고 나머지는 null·0·false로 비운다(동네 이름·썸네일도 조회하지 않는다). 쿼리는 목록 1(+ count) + 동네 이름 1 +
 	 * 썸네일 1이다.
 	 */
 	public PageResponse<WishItemResponse> getWishes(Long memberId, int page) {
 		var rows = itemRepository.findWishes(memberId, PageRequest.of(page, policies.wish().page()));
-		var names = regions.getNames(rows.stream().map(WishListRow::regionId).distinct().toList());
-		var thumbnails = thumbnailsOf(rows.stream().map(WishListRow::itemId).toList());
-		return PageResponse.of(rows, row -> new WishItemResponse(row.itemId(), row.name(),
-			thumbnails.get(row.itemId()), names.get(row.regionId()), row.pricePerDay(), row.deposit(), row.status(),
-			row.wishCount(), row.chatCount(), row.renting(), row.wishedAt()));
+		var visible = rows.stream().filter(row -> row.status() == ItemStatus.AVAILABLE).toList();
+		var names = regions.getNames(visible.stream().map(WishListRow::regionId).distinct().toList());
+		var thumbnails = thumbnailsOf(visible.stream().map(WishListRow::itemId).toList());
+		return PageResponse.of(rows, row -> row.status() == ItemStatus.AVAILABLE
+			? new WishItemResponse(row.itemId(), row.name(), thumbnails.get(row.itemId()), names.get(row.regionId()),
+				row.pricePerDay(), row.deposit(), row.status(), row.wishCount(), row.chatCount(), row.renting(),
+				row.wishedAt())
+			: WishItemResponse.unavailable(row.itemId(), row.status(), row.wishedAt()));
 	}
 
 	/**

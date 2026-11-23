@@ -44,8 +44,9 @@ public class WishTxService {
 		if (wishRepository.existsByMemberIdAndItemId(memberId, itemId)) {
 			return new WishResponse(itemId, true, wishCount);
 		}
-		itemRepository.increaseWishCount(itemId);
+		// 해제와 같은 순서(물품 락 → wishes → 카운트)
 		wishRepository.saveAndFlush(Wish.of(memberId, itemId));
+		itemRepository.increaseWishCount(itemId);
 		// REQ-060 구현 시 적용: 커밋 뒤 추천 캐시 recommend:{memberId}를 무효화한다(domains/item.md).
 		return new WishResponse(itemId, true, wishCount + 1);
 	}

@@ -12656,18 +12656,18 @@
           "chatCount": {
             "type": "integer",
             "format": "int32",
-            "description": "채팅 수",
+            "description": "채팅 수. HIDDEN·DELETED면 0",
             "example": 3
           },
           "deposit": {
             "type": "integer",
             "format": "int32",
-            "description": "보증금(원)",
+            "description": "보증금(원). HIDDEN·DELETED면 0",
             "example": 50000
           },
           "isRenting": {
             "type": "boolean",
-            "description": "지금 대여 중(RENTING·OVERDUE 대여 있음)이면 true → \"대여 중\" 배지"
+            "description": "지금 대여 중(RENTING·OVERDUE 대여 있음)이면 true → \"대여 중\" 배지. HIDDEN·DELETED면 false"
           },
           "itemId": {
             "type": "integer",
@@ -12677,23 +12677,23 @@
           },
           "name": {
             "type": "string",
-            "description": "물품 이름",
+            "description": "물품 이름. HIDDEN·DELETED면 null",
             "example": "4인용 거실형 텐트"
           },
           "pricePerDay": {
             "type": "integer",
             "format": "int32",
-            "description": "일 대여료(원). 0이면 무료",
+            "description": "일 대여료(원). 0이면 무료. HIDDEN·DELETED면 0",
             "example": 15000
           },
           "regionName": {
             "type": "string",
-            "description": "물품 동네(등록 시 대표 동네) 이름",
+            "description": "물품 동네(등록 시 대표 동네) 이름. HIDDEN·DELETED면 null",
             "example": "송도1동"
           },
           "status": {
             "type": "string",
-            "description": "물품 상태. DELETED면 \"삭제된 물품\", HIDDEN이면 \"볼 수 없는 물품\"으로 표시한다(둘 다 상세는 404)",
+            "description": "물품 상태. DELETED면 \"삭제된 물품\", HIDDEN이면 \"볼 수 없는 물품\"으로 표시한다(둘 다 상세는 404). 이때 itemId·status·wishedAt 외 필드는 null·0·false다",
             "enum": [
               "AVAILABLE",
               "HIDDEN",
@@ -12702,13 +12702,13 @@
           },
           "thumbnailUrl": {
             "type": "string",
-            "description": "대표 이미지 썸네일 URL. 이미지가 없으면 null",
+            "description": "대표 이미지 썸네일 URL. 이미지가 없거나 HIDDEN·DELETED면 null",
             "example": "/files/items/101/thumb_a1b2c3.jpg"
           },
           "wishCount": {
             "type": "integer",
             "format": "int32",
-            "description": "관심 수",
+            "description": "관심 수. HIDDEN·DELETED면 0",
             "example": 5
           },
           "wishedAt": {

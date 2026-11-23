@@ -2,6 +2,7 @@ package com.team7.rental.item.service;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionException;
 
 import com.team7.rental.global.error.BusinessException;
 import com.team7.rental.item.dto.ItemDetailResponse;
@@ -32,8 +33,8 @@ public class ItemDetailService {
 		if (memberId != null && !detail.isOwner()) {
 			try {
 				recentItemWriter.record(memberId, itemId);
-			} catch (DataAccessException failure) {
-				// 부가 기록 장애가 상세 조회를 막지 않게 한다. 회원 정보는 로그에 남기지 않는다.
+			} catch (DataAccessException | TransactionException failure) {
+				// 부가 기록 장애(쿼리 실패, 커넥션·트랜잭션 시작·커밋 실패)가 상세 조회를 막지 않게 한다. 회원 정보는 로그에 남기지 않는다.
 				log.warn("최근 본 상품 기록 실패: itemId={}, cause={}", itemId, failure.getClass().getSimpleName());
 			}
 		}
