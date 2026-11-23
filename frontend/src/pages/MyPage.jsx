@@ -5,11 +5,12 @@ import ProfileSummary from '../features/auth/components/ProfileSummary';
 import { PAYMENT_ENABLED } from '../features/rental/constants';
 import { TERMS_DOCUMENTS } from '../features/terms/constants';
 
-// 빌린 내역·내 물품(REQ-019·020), 결제·정산 내역(REQ-033·039, 결제가 켜져 있을 때만).
-// 프로필 수정·관심·최근 본은 해당 기능 브랜치에서 더한다
+// 빌린 내역·내 물품(REQ-019·020), 관심 목록·최근 본 물품(REQ-022·035), 결제·정산 내역(REQ-033·039, 결제가 켜져 있을 때만)
 const MENU = [
   { to: '/me/rentals', label: '빌린 내역' },
   { to: '/me/items', label: '내 물품 관리' },
+  { to: '/me/wishes', label: '관심 목록' },
+  { to: '/me/recent', label: '최근 본 물품' },
   ...(PAYMENT_ENABLED ? [{ to: '/me/payments', label: '결제·정산 내역' }] : []),
 ];
 

@@ -16,8 +16,9 @@ import {
   ItemTradePlace,
 } from '../features/item/components/ItemInfo';
 import { getDeletedMessage, getErrorMessage } from '../features/item/errorMessages';
+import WishButton from '../features/item/components/WishButton';
 import { parseItemId } from '../features/item/itemId';
-import { useItemDetail } from '../features/item/queries';
+import { useItemDetail, useToggleWish } from '../features/item/queries';
 import { RENTAL_DAY_STATUS } from '../features/rental/constants';
 import { useCalendarDays } from '../features/rental/queries';
 import { useAuthStore } from '../shared/api';
@@ -77,25 +78,39 @@ function ItemCalendar({ itemId }) {
   );
 }
 
-function HeartIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-      className="size-6"
-    >
-      <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.6-7 10-7 10z" />
-    </svg>
-  );
-}
+/**
+ * 관심(REQ-022) 하트. 비회원은 로그인 화면으로(돌아올 경로 = 이 상세). 누르면 바로 바뀌고(낙관적) 실패하면 되돌린 뒤 알린다.
+ * 요청 중에 다시 누르면 무시한다(추가·해제가 엇갈려 도착하지 않게). 관심 수는 시안대로 상세에 그리지 않는다.
+ */
+function DetailWishButton({ item }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isLoggedIn = useAuthStore((state) => state.accessToken !== null);
+  const toggleWish = useToggleWish();
 
-// 관심(REQ-022)은 아직 없다. 시안 자리는 두고 누르면 안내만 한다
-function showComingSoon() {
-  toast.show({ message: '준비 중인 기능이에요' });
+  function handleClick() {
+    if (!isLoggedIn) {
+      navigate(toLoginPath(location.pathname + location.search));
+      return;
+    }
+    if (toggleWish.isPending) {
+      return;
+    }
+    toggleWish.mutate(
+      { itemId: item.itemId, wished: !item.isWished },
+      { onError: (error) => toast.show({ message: getErrorMessage(error), tone: 'danger' }) },
+    );
+  }
+
+  return (
+    <WishButton
+      label="관심 목록에 담기"
+      isWished={item.isWished}
+      isPending={toggleWish.isPending}
+      onClick={handleClick}
+      className="mr-2"
+    />
+  );
 }
 
 /** 내 물품의 수정·삭제. 삭제하면 내 물품 관리로 옮긴다(삭제 중 이 화면을 떠났으면 옮기지 않는다) */
@@ -167,14 +182,7 @@ function DetailActions({ item }) {
   }
   return (
     <div className="flex w-full items-center gap-2">
-      <button
-        type="button"
-        aria-label="관심 등록(준비 중)"
-        onClick={showComingSoon}
-        className="mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        <HeartIcon />
-      </button>
+      <DetailWishButton item={item} />
       <ChatButton itemId={item.itemId} />
       <ButtonLink to={`/items/${item.itemId}/reserve`} className="flex-1 px-0">
         예약하기

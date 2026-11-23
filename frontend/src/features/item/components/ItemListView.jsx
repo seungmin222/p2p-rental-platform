@@ -43,13 +43,17 @@ function GridSkeleton() {
  * 홈 피드·검색 결과가 같이 쓰는 목록. query는 useInfiniteQuery 결과이고 items는 카드 배열(없으면 아직 못 받음).
  * 처음 불러오기 실패만 전체 오류로 바꾸고, 이미 목록이 있으면 그대로 둔다(재조회 실패는 화면이 토스트로 알린다).
  * layout: 'list'(검색, 기본 — 구분선 있는 한 줄 카드) · 'grid'(홈 — 사진 그리드, 테두리·구분선 없음)
+ * renderItem: 한 줄을 다르게 그릴 때(관심 목록의 하트 줄). 없으면 ItemCard
+ * emptyAction: 빈 상태 아래 버튼
  */
 export default function ItemListView({
   query,
   items,
   emptyTitle,
   emptyDescription,
+  emptyAction,
   layout = 'list',
+  renderItem,
 }) {
   const isGrid = layout === 'grid';
   if (isInitialLoadError(query)) {
@@ -59,14 +63,14 @@ export default function ItemListView({
     return isGrid ? <GridSkeleton /> : <ListSkeleton />;
   }
   if (items.length === 0) {
-    return <EmptyState title={emptyTitle} description={emptyDescription} />;
+    return <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />;
   }
   return (
     <>
       <ul className={isGrid ? GRID : undefined}>
         {items.map((item) => (
           <li key={item.itemId} className={isGrid ? 'min-w-0' : 'border-b border-divider'}>
-            <ItemCard item={item} layout={layout} />
+            {renderItem ? renderItem(item) : <ItemCard item={item} layout={layout} />}
           </li>
         ))}
       </ul>

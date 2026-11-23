@@ -12,7 +12,9 @@ import MyItemsPage from '../pages/MyItemsPage';
 import MyPage from '../pages/MyPage';
 import MyPaymentsPage from '../pages/MyPaymentsPage';
 import MyProfilePage from '../pages/MyProfilePage';
+import MyRecentItemsPage from '../pages/MyRecentItemsPage';
 import MyRentalsPage from '../pages/MyRentalsPage';
+import MyWishesPage from '../pages/MyWishesPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import NotificationListPage from '../pages/NotificationListPage';
 import PasswordResetConfirmPage from '../pages/PasswordResetConfirmPage';
@@ -90,6 +92,8 @@ export const router = createBrowserRouter([
           { path: '/me', element: <MyPage /> },
           { path: '/me/rentals', element: <MyRentalsPage /> },
           { path: '/me/items', element: <MyItemsPage /> },
+          { path: '/me/wishes', element: <MyWishesPage /> }, // REQ-022
+          { path: '/me/recent', element: <MyRecentItemsPage /> }, // REQ-035
           { path: '/me/payments', element: <MyPaymentsPage /> }, // REQ-033·039
           { path: '/me/profile', element: <MyProfilePage /> },
           // SCR-15 문의·분쟁 접수(REQ-063)

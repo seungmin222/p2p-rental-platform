@@ -58,6 +58,7 @@
 | `feat/fe-chat` | SCR-09 채팅 목록, SCR-10 채팅방(026–029): STOMP 공통 모듈(`shared/ws`), 하단 탭·PC 헤더 안 읽은 수 배지, 상세 "채팅하기" 연결 (사진 050·약속 051·차단 056·알림 화면 제외) | FE |
 | `feat/fe-notification` | SCR-11 알림 목록·읽음·모두 읽음(032, 031 확인 경로), 하단 탭·PC 헤더 알림 안 읽은 수 배지, `/user/queue/notifications` 실시간 갱신, SCR-08 앞 대여 연체 시 수수료 없는 예약 취소(open-issues #7 프론트) (052·053·061 제외) | FE |
 | `feat/item-wish-recent` | 022 관심(추가·해제·목록, 상세 isWished), 035 최근 본 상품 — 백엔드만 (프론트 화면·060 추천 제외) | B |
+| `feat/fe-item-wish-recent` | 022·035 프론트: SCR-05 상세 하트 연결, SCR-12 `/me/wishes` 관심 목록·`/me/recent` 최근 본 물품, `/me` 진입 메뉴 (피드·검색 카드 하트·060 추천·백엔드 변경 제외) | FE |
 
 `feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
 

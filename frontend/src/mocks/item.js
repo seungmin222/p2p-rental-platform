@@ -26,6 +26,8 @@ import { MOCK_REGION_MASTER } from './memberSeed';
 import { readPathId } from './pageList';
 import { fail, ok } from './response';
 import { authenticateMockRequest } from './session';
+import { recordView } from './wishLogic';
+import { nowServerDateTime, wishDb } from './wishStore';
 
 /** 로그인한 나 */
 export const MOCK_ME = 1;
@@ -279,6 +281,21 @@ export const itemHandlers = [
       return fail(404, 'ITEM_NOT_FOUND', '물품을 찾을 수 없습니다.');
     }
     const owner = MOCK_MEMBERS[item.ownerId];
+    // 로그인한 회원 기준(토큰이 있을 때만). 토큰이 없거나 만료면 비회원처럼 isOwner·isWished false, 기록 없음
+    const memberId = authenticateMockRequest(request)?.memberId ?? null;
+    const isOwner = memberId === item.ownerId;
+    // 남의 물품을 보면 최근 본 상품에 기록(REQ-035, 본인 물품 제외)
+    if (memberId != null && !isOwner) {
+      wishDb.views = recordView(wishDb.views, {
+        memberId,
+        itemId,
+        viewedAt: nowServerDateTime(),
+      });
+    }
+    const isWished =
+      memberId != null &&
+      !isOwner &&
+      wishDb.wishes.some((wish) => wish.memberId === memberId && wish.itemId === itemId);
     return ok({
       itemId: item.itemId,
       name: item.name,
@@ -297,15 +314,14 @@ export const itemHandlers = [
       viewCount: item.counts.viewCount,
       wishCount: item.counts.wishCount,
       chatCount: item.counts.chatCount,
-      isWished: false,
+      isWished,
       owner: {
         memberId: item.ownerId,
         nickname: owner.nickname,
         profileImageUrl: null,
         regionName: owner.regionName,
       },
-      // 로그인한 회원 기준(토큰이 있을 때만). 토큰이 없거나 만료면 비회원처럼 false
-      isOwner: authenticateMockRequest(request)?.memberId === item.ownerId,
+      isOwner,
     });
   }),
 ];

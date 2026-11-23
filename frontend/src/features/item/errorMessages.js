@@ -13,6 +13,7 @@ const MESSAGES = {
   ITEM_NOT_OWNER: '내 물품만 수정하거나 삭제할 수 있어요',
   ITEM_HAS_ACTIVE_RENTAL: '진행 중인 대여가 있어 삭제할 수 없어요',
   ITEM_PERIOD_CONFLICT: '예약이 있는 날짜는 대여 가능 기간에서 뺄 수 없어요',
+  WISH_OWN_ITEM: '내 물품은 관심 목록에 담을 수 없어요',
   REGION_NOT_VERIFIED: '동네 인증 후 등록할 수 있어요',
   IMAGE_COUNT_INVALID: `사진은 ${ITEM_IMAGES.MIN_COUNT}~${ITEM_IMAGES.MAX_COUNT}장 올려 주세요`,
   IMAGE_INVALID_TYPE: 'jpg 또는 png 사진만 올릴 수 있어요',

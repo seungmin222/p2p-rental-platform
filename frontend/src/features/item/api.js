@@ -43,7 +43,10 @@ export function toItemCard(item) {
   };
 }
 
-/** 상세 화면(openapi.json ItemDetailResponse 기준, 화면이 쓰는 필드만). 조회·관심·채팅 수는 쓰지 않는다. 좌표는 지도용(REQ-030) */
+/**
+ * 상세 화면(openapi.json ItemDetailResponse 기준, 화면이 쓰는 필드만). 조회·관심·채팅 수는 쓰지 않는다. 좌표는 지도용(REQ-030).
+ * isWished는 하단 바 하트(REQ-022). 비회원·제공자 본인은 서버가 false로 준다
+ */
 export function toItemDetail(item) {
   return {
     itemId: item.itemId,
@@ -66,6 +69,7 @@ export function toItemDetail(item) {
       regionName: item.owner?.regionName ?? '',
     },
     isOwner: item.isOwner === true,
+    isWished: item.isWished === true,
   };
 }
 
@@ -114,6 +118,47 @@ export function deleteItem(itemId) {
 /** GET /api/items/deposit-guide → ItemDepositGuideResponse { minDeposit, maxDeposit }. 로그인 필요 */
 export function fetchDepositGuide({ categoryId, itemPrice }) {
   return apiClient.get('/items/deposit-guide', { params: { categoryId, itemPrice } });
+}
+
+/** POST /api/items/{itemId}/wishes → WishResponse { itemId, isWished, wishCount }. 멱등(이미 관심이어도 200) */
+export function addWish(itemId) {
+  return apiClient.post(`/items/${itemId}/wishes`);
+}
+
+/** DELETE /api/items/{itemId}/wishes → WishResponse. 멱등. 삭제·숨김 물품도 해제할 수 있다 */
+export function removeWish(itemId) {
+  return apiClient.delete(`/items/${itemId}/wishes`);
+}
+
+/** GET /api/members/me/wishes?page= → PageResponse<WishItemResponse>. size는 보내지 않는다(서버가 wish.page로 고정) */
+export function fetchMyWishes(page) {
+  return apiClient.get('/members/me/wishes', { params: { page } });
+}
+
+/** GET /api/members/me/recent-items → ItemSummaryResponse[](최대 recent-items.max건, 페이지 없음) */
+export function fetchRecentItems() {
+  return apiClient.get('/members/me/recent-items');
+}
+
+/**
+ * 관심 목록 카드(openapi.json WishItemResponse 기준). 등록 시각(bumpedAt)이 없어 카드에 경과 시간이 없다.
+ * DELETED·HIDDEN이면 itemId·status·wishedAt 외 필드가 비어 있어 isUnavailable로 따로 그린다.
+ */
+export function toWishItem(item) {
+  return {
+    itemId: item.itemId,
+    status: item.status,
+    isUnavailable: item.status === 'DELETED' || item.status === 'HIDDEN',
+    name: item.name ?? '',
+    thumbnailUrl: item.thumbnailUrl ?? null,
+    regionName: item.regionName ?? '',
+    bumpedAt: null,
+    pricePerDay: item.pricePerDay,
+    deposit: item.deposit,
+    isRenting: item.isRenting === true,
+    wishCount: item.wishCount ?? 0,
+    chatCount: item.chatCount ?? 0,
+  };
 }
 
 /** ItemEditResponse → 폼 값(itemForm.js). 금액 칸은 문자열, 사진은 ImageUploader value 모양 */

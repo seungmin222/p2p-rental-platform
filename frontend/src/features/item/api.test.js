@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { toMultipart } from '../../shared/api';
-import { toItemCard, toItemDetail, toItemEditForm, toItemSummary, toMyItem } from './api';
+import {
+  toItemCard,
+  toItemDetail,
+  toItemEditForm,
+  toItemSummary,
+  toMyItem,
+  toWishItem,
+} from './api';
 
 describe('toMultipart', () => {
   it('request는 JSON 파트, 사진은 images 파트를 반복한다', async () => {
@@ -225,12 +232,71 @@ describe('toItemDetail', () => {
       bumpedAt: '2026-10-27T10:00:00',
       owner: { memberId: 2, nickname: '캠핑조아', profileImageUrl: null, regionName: '연수1동' },
       isOwner: false,
+      isWished: false,
     });
   });
 
-  it('이미지가 없으면 빈 배열, isOwner는 true일 때만 true', () => {
+  it('이미지가 없으면 빈 배열, isOwner·isWished는 true일 때만 true', () => {
     expect(toItemDetail({ ...detail, images: undefined }).images).toEqual([]);
     expect(toItemDetail({ ...detail, isOwner: true }).isOwner).toBe(true);
     expect(toItemDetail({ ...detail, isOwner: undefined }).isOwner).toBe(false);
+    expect(toItemDetail({ ...detail, isWished: true }).isWished).toBe(true);
+    expect(toItemDetail({ ...detail, isWished: undefined }).isWished).toBe(false);
+  });
+});
+
+describe('toWishItem', () => {
+  const wish = {
+    itemId: 101,
+    name: '4인용 거실형 텐트',
+    thumbnailUrl: '/files/101_thumb.jpg',
+    regionName: '송도1동',
+    pricePerDay: 15000,
+    deposit: 50000,
+    isRenting: true,
+    wishCount: 5,
+    chatCount: 3,
+    status: 'AVAILABLE',
+    wishedAt: '2026-11-22T10:00:00',
+  };
+
+  it('볼 수 있는 물품은 피드 카드 모양(등록 시각 없음)', () => {
+    expect(toWishItem(wish)).toEqual({
+      itemId: 101,
+      status: 'AVAILABLE',
+      isUnavailable: false,
+      name: '4인용 거실형 텐트',
+      thumbnailUrl: '/files/101_thumb.jpg',
+      regionName: '송도1동',
+      bumpedAt: null,
+      pricePerDay: 15000,
+      deposit: 50000,
+      isRenting: true,
+      wishCount: 5,
+      chatCount: 3,
+    });
+  });
+
+  it.each(['DELETED', 'HIDDEN'])('%s는 isUnavailable, 빈 필드는 빈 값으로', (status) => {
+    const result = toWishItem({
+      itemId: 7,
+      name: null,
+      thumbnailUrl: null,
+      regionName: null,
+      pricePerDay: 0,
+      deposit: 0,
+      isRenting: false,
+      wishCount: 0,
+      chatCount: 0,
+      status,
+      wishedAt: '2026-11-22T10:00:00',
+    });
+    expect(result).toMatchObject({
+      itemId: 7,
+      status,
+      isUnavailable: true,
+      name: '',
+      regionName: '',
+    });
   });
 });

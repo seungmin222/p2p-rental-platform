@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { flattenPages, getNextCursorParam, getNextPageParam } from '../../shared/lib/listParams';
 import {
+  addWish,
   createItem,
   deleteItem,
   fetchCategories,
@@ -10,15 +11,20 @@ import {
   fetchItem,
   fetchItemForEdit,
   fetchMyItems,
+  fetchMyWishes,
+  fetchRecentItems,
+  removeWish,
   searchItems,
   toItemCard,
   toItemDetail,
   toItemSummary,
   toMyItem,
+  toWishItem,
   updateItem,
 } from './api';
 import { CATEGORY_STALE_TIME, ITEM_DETAIL_STALE_TIME } from './constants';
 import { hasSearchCondition, resolveCategory, toApiParams } from './searchParams';
+import { isCardListKey, patchCardWishCount, patchDetailWish } from './wishCache';
 
 export const itemKeys = {
   // 동네 피드 전체. 필터 키 ['items', 'feed', { regionId, categoryId }]의 앞부분이라 대표 동네가 바뀌면 이 키로 무효화한다
@@ -40,6 +46,9 @@ export const itemKeys = {
   mine: () => ['items', 'me'],
   mineTab: (tab) => ['items', 'me', { tab }],
   categories: () => ['categories'],
+  // 내 관심 목록(REQ-022)·최근 본 상품(REQ-035). 'items' 밖에 둬서 물품 목록 무효화와 따로 다룬다
+  wishes: () => ['wishes', 'me'],
+  recent: () => ['recent-items', 'me'],
 };
 
 /** 활성 카테고리(sortOrder 순). 홈·검색의 칩이 쓴다 */
@@ -236,4 +245,83 @@ export function useMyItems(tab) {
     getNextPageParam,
     select: selectMyItems,
   });
+}
+
+function selectWishes(data) {
+  return flattenPages(data, toWishItem);
+}
+
+/**
+ * REQ-022 내 관심 목록(page/hasNext, size 없음 — wish.page 고정). data는 지금까지 받은 페이지를 합친 카드 배열.
+ * 다른 화면에서 담거나 해제한 것이 들어올 때마다 보이도록 staleTime 0(관심 토글은 이 키를 무효화하지 않는다)
+ */
+export function useMyWishes() {
+  return useInfiniteQuery({
+    queryKey: itemKeys.wishes(),
+    queryFn: ({ pageParam }) => fetchMyWishes(pageParam),
+    initialPageParam: 0,
+    getNextPageParam,
+    select: selectWishes,
+    staleTime: 0,
+  });
+}
+
+function selectRecentItems(data) {
+  return data.map(toItemCard);
+}
+
+/** REQ-035 최근 본 상품(배열, 페이지 없음). 상세를 볼 때마다 서버가 기록하므로 들어올 때마다 새로 받는다(staleTime 0) */
+export function useRecentItems() {
+  return useQuery({
+    queryKey: itemKeys.recent(),
+    queryFn: fetchRecentItems,
+    select: selectRecentItems,
+    staleTime: 0,
+  });
+}
+
+/** 관심 토글 응답(WishResponse)으로 상세의 관심 상태와 카드 목록의 관심 수를 맞춘다(다시 받지 않는다) */
+function applyWishResponse(queryClient, { itemId, isWished, wishCount }) {
+  queryClient.setQueryData(itemKeys.detail(itemId), (data) =>
+    patchDetailWish(data, { isWished, wishCount }),
+  );
+  queryClient.setQueriesData({ predicate: (query) => isCardListKey(query.queryKey) }, (data) =>
+    patchCardWishCount(data, itemId, wishCount),
+  );
+}
+
+/**
+ * REQ-022 관심 추가·해제. variables는 { itemId, wished }(true = 담기).
+ * 상세 하트는 바로 바뀌게 상세 캐시의 isWished를 먼저 고치고(낙관적), 실패하면 되돌린다.
+ * 없는 물품(404)·본인 물품(400 WISH_OWN_ITEM)이면 상세를 다시 불러와 화면이 지금 상태를 따르게 한다.
+ * 캐시 정리는 훅 옵션에 둬서 화면을 벗어나도 빠지지 않는다.
+ */
+export function toggleWishMutationOptions(queryClient) {
+  return {
+    mutationFn: ({ itemId, wished }) => (wished ? addWish(itemId) : removeWish(itemId)),
+    onMutate: async ({ itemId, wished }) => {
+      const key = itemKeys.detail(itemId);
+      await queryClient.cancelQueries({ queryKey: key, exact: true });
+      const previous = queryClient.getQueryData(key)?.isWished;
+      queryClient.setQueryData(key, (data) => patchDetailWish(data, { isWished: wished }));
+      return { previous };
+    },
+    onError: (error, { itemId }, context) => {
+      const key = itemKeys.detail(itemId);
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(key, (data) =>
+          patchDetailWish(data, { isWished: context.previous }),
+        );
+      }
+      if (error?.code === 'ITEM_NOT_FOUND' || error?.code === 'WISH_OWN_ITEM') {
+        queryClient.invalidateQueries({ queryKey: key, exact: true });
+      }
+    },
+    onSuccess: (data) => applyWishResponse(queryClient, data),
+  };
+}
+
+export function useToggleWish() {
+  const queryClient = useQueryClient();
+  return useMutation(toggleWishMutationOptions(queryClient));
 }
