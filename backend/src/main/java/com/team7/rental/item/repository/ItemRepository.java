@@ -22,4 +22,25 @@ public interface ItemRepository extends JpaRepository<Item, Long>, ItemListingRe
 		+ "and i.status <> com.team7.rental.item.entity.ItemStatus.DELETED")
 	int increaseChatCount(@org.springframework.data.repository.query.Param("id")
 	Long id);
+
+	/**
+	 * 관심 추가·해제 (REQ-022) 트랜잭션의 첫 문장. 같은 물품의 관심 변경을 물품 행 락에서 줄 세운다. wishes insert(FK 검사로 물품 행 S 락)
+	 * 뒤에 카운트를 올리면 동시 요청끼리 교착이 나므로 이 락을 먼저 잡는다(ChatRoomTxService와 같은 이유).
+	 */
+	@org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+	@org.springframework.data.jpa.repository.Query("select i from Item i where i.id = :id")
+	java.util.Optional<Item> findWithLockById(@org.springframework.data.repository.query.Param("id")
+	Long id);
+
+	/** 관심 추가 (REQ-022). {@link #findWithLockById}로 물품 행을 잠근 트랜잭션에서만 부른다 */
+	@org.springframework.data.jpa.repository.Modifying
+	@org.springframework.data.jpa.repository.Query("update Item i set i.wishCount = i.wishCount + 1 where i.id = :id")
+	int increaseWishCount(@org.springframework.data.repository.query.Param("id")
+	Long id);
+
+	/** 관심 해제 (REQ-022). 0 아래로 내려가지 않는다. {@link #findWithLockById}로 물품 행을 잠근 트랜잭션에서만 부른다 */
+	@org.springframework.data.jpa.repository.Modifying
+	@org.springframework.data.jpa.repository.Query("update Item i set i.wishCount = i.wishCount - 1 where i.id = :id and i.wishCount > 0")
+	int decreaseWishCount(@org.springframework.data.repository.query.Param("id")
+	Long id);
 }

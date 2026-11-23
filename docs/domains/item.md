@@ -78,7 +78,10 @@
 POST/DELETE `/api/items/{itemId}/wishes`, `GET /api/members/me/wishes`
 - 토글. UK(member, item). wishCount 함께 갱신(원자적 `UPDATE ... SET wish_count = wish_count ± 1`)
 - 본인 물품 불가 400 `WISH_OWN_ITEM`, 비회원은 프론트에서 로그인 유도
-- 목록 최근 추가순, 삭제 물품은 "삭제된 물품" 표시
+- 추가·해제는 멱등: 이미 관심인데 추가하거나 관심이 아닌데 해제하면 바꾸지 않고 200으로 현재 상태(isWished, wishCount)를 돌려준다. wishCount는 0 아래로 내려가지 않는다
+- 추가는 상세(REQ-011)와 같은 공개 규칙(없음·DELETED·남의 HIDDEN 404). 해제는 삭제·숨김 물품도 가능(없는 물품만 404)
+- 목록 최근 추가순, 삭제 물품은 "삭제된 물품" 표시. 숨김 물품도 목록에 남기고 "볼 수 없는 물품"으로 표시(응답 status로 구분). 페이지 크기 `wish.page`
+- 상세의 isWished: 로그인 회원이 담았으면 true(비회원·제공자 본인은 false). 피드·검색 카드에는 넣지 않는다
 - 관심 추가 시 추천 캐시 무효화(REQ-060 이후)
 
 ## REQ-035 / REQ-060 최근 본 상품 [2] · 개인화 추천 [3]

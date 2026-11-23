@@ -92,6 +92,9 @@ public record PolicyProperties(
 	PageSize search,
 	@Valid @NotNull
 	PageSize profileItems,
+	/** wish.page: 내 관심 목록 페이지 크기 (REQ-022). size 파라미터를 받지 않는다 */
+	@Valid @NotNull
+	PageSize wish,
 	@Valid @NotNull
 	PasswordReset passwordReset) {
 

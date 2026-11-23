@@ -126,6 +126,9 @@ app:
     # profile-items.page: 사용자 프로필의 등록 물품 페이지 크기. size 파라미터를 받지 않는다 (REQ-021)
     profile-items:
       page: 20
+    # wish.page: 내 관심 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-022)
+    wish:
+      page: 20
     item-rentals:
       page: 20
     # notification.page: 알림 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-032)

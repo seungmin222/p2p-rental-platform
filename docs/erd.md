@@ -25,7 +25,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V17 | `V17__create_chat_tables.sql` | `feat/chat-core` | 머지 |
 | V18 | `V18__create_review_tables.sql` | `feat/review` | 머지 |
 | V19 | `V19__create_terms_agreements.sql` | `feat/member-extra` | 머지 |
-| V20 | `V20__create_wishes.sql` | `feat/item-wish-recent` | 진행 중 |
+| V20 | `V20__create_wishes.sql` | `feat/item-wish-recent` | 작업 중 |
 
 ## 규칙
 
@@ -184,7 +184,7 @@ erDiagram
 
 ## 관심·조회 [2]
 
-**wishes** — id, member_id, item_id, created_at, UK(member_id, item_id)
+**wishes** — id, member_id FK→members, item_id FK→items, created_at(관심 추가 시각), updated_at, UK(member_id, item_id), 인덱스 `(member_id, id)`(내 관심 목록 최근 추가순)·`(item_id)` — 생성됨(`V20`). 추가·해제는 물품 행을 잠근(SELECT ... FOR UPDATE) 트랜잭션에서 items.wish_count와 함께 갱신한다
 **item_view_logs** — id, member_id, item_id, viewed_at, UK(member_id, item_id) (재조회 시 viewed_at 갱신, 회원당 20건 유지)
 
 ## 채팅 [2]

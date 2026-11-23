@@ -2118,7 +2118,7 @@
         ]
       },
       "get": {
-        "description": "비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). 조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 관심 기능(REQ-022) 전에는 항상 false.",
+        "description": "비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). 조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 로그인 회원이 관심 목록에 담았는지(REQ-022)이고 비회원·제공자 본인은 false.",
         "operationId": "getItem",
         "parameters": [
           {
@@ -2624,6 +2624,211 @@
         "summary": "물품별 예약 현황 (REQ-020)",
         "tags": [
           "Rental"
+        ]
+      }
+    },
+    "/api/items/{itemId}/wishes": {
+      "delete": {
+        "description": "멱등: 관심이 아니면 아무것도 바꾸지 않고 200으로 현재 상태를 돌려준다. 실제로 해제했을 때만 wishCount가 1 내려가며 0 아래로는 내려가지 않는다. 응답은 처리 뒤의 isWished(항상 false)·wishCount. 관심 목록에 남은 항목을 지울 수 있도록 삭제·숨김 물품도 해제할 수 있다. 없는 물품만 404 ITEM_NOT_FOUND.",
+        "operationId": "removeWish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWishResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "관심 해제 (REQ-022)",
+        "tags": [
+          "Item"
+        ]
+      },
+      "post": {
+        "description": "멱등: 이미 관심이면 아무것도 바꾸지 않고 200으로 현재 상태를 돌려준다. 새로 담을 때만 물품 관심 수(wishCount)가 1 오른다. 응답은 처리 뒤의 isWished(항상 true)·wishCount. 상세 조회와 같은 공개 규칙: 없거나 삭제된 물품, 남의 숨김 물품은 404 ITEM_NOT_FOUND. 본인 물품은 400 WISH_OWN_ITEM.",
+        "operationId": "addWish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWishResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  },
+                  "WISH_OWN_ITEM": {
+                    "summary": "본인 물품은 관심 목록에 담을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "WISH_OWN_ITEM",
+                        "details": [],
+                        "message": "본인 물품은 관심 목록에 담을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT, WISH_OWN_ITEM"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ITEM_NOT_FOUND": {
+                    "summary": "물품을 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "ITEM_NOT_FOUND",
+                        "details": [],
+                        "message": "물품을 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "ITEM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "관심 추가 (REQ-022)",
+        "tags": [
+          "Item"
         ]
       }
     },
@@ -4074,6 +4279,90 @@
         "summary": "약관 재동의 (REQ-037)",
         "tags": [
           "Member"
+        ]
+      }
+    },
+    "/api/members/me/wishes": {
+      "get": {
+        "description": "최근 추가순. 페이지 크기는 policies.md wish.page로 고정(size를 받지 않음). 삭제(DELETED)·숨김(HIDDEN) 물품도 status와 함께 남는다: DELETED는 \"삭제된 물품\", HIDDEN은 \"볼 수 없는 물품\"으로 표시하고 두 경우 모두 상세는 404다.",
+        "operationId": "getMyWishes",
+        "parameters": [
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseWishItemResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "내 관심 목록 (REQ-022)",
+        "tags": [
+          "Item"
         ]
       }
     },
@@ -8462,6 +8751,20 @@
           }
         }
       },
+      "ApiResponsePageResponseWishItemResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponseWishItemResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "ApiResponsePaymentConfirmResponse": {
         "type": "object",
         "properties": {
@@ -8620,6 +8923,20 @@
         "type": "object",
         "properties": {
           "data": {},
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseWishResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WishResponse"
+          },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
           },
@@ -9609,7 +9926,7 @@
           },
           "isWished": {
             "type": "boolean",
-            "description": "조회한 회원이 관심 추가했으면 true. 관심 기능(REQ-022) 전에는 항상 false"
+            "description": "조회한 회원이 관심 목록에 담았으면 true (REQ-022). 비회원·제공자 본인은 false"
           },
           "itemId": {
             "type": "integer",
@@ -10657,6 +10974,40 @@
             "description": "이 페이지의 항목",
             "items": {
               "$ref": "#/components/schemas/SettlementResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
+          }
+        }
+      },
+      "PageResponseWishItemResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/WishItemResponse"
             }
           },
           "page": {
@@ -12232,6 +12583,96 @@
             "format": "int64",
             "description": "안 읽은 알림 수 (상단 알림 아이콘 배지)",
             "example": 3
+          }
+        }
+      },
+      "WishItemResponse": {
+        "type": "object",
+        "properties": {
+          "chatCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "채팅 수",
+            "example": 3
+          },
+          "deposit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "보증금(원)",
+            "example": 50000
+          },
+          "isRenting": {
+            "type": "boolean",
+            "description": "지금 대여 중(RENTING·OVERDUE 대여 있음)이면 true → \"대여 중\" 배지"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 101
+          },
+          "name": {
+            "type": "string",
+            "description": "물품 이름",
+            "example": "4인용 거실형 텐트"
+          },
+          "pricePerDay": {
+            "type": "integer",
+            "format": "int32",
+            "description": "일 대여료(원). 0이면 무료",
+            "example": 15000
+          },
+          "regionName": {
+            "type": "string",
+            "description": "물품 동네(등록 시 대표 동네) 이름",
+            "example": "송도1동"
+          },
+          "status": {
+            "type": "string",
+            "description": "물품 상태. DELETED면 \"삭제된 물품\", HIDDEN이면 \"볼 수 없는 물품\"으로 표시한다(둘 다 상세는 404)",
+            "enum": [
+              "AVAILABLE",
+              "HIDDEN",
+              "DELETED"
+            ]
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "description": "대표 이미지 썸네일 URL. 이미지가 없으면 null",
+            "example": "/files/items/101/thumb_a1b2c3.jpg"
+          },
+          "wishCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "관심 수",
+            "example": 5
+          },
+          "wishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "관심 목록에 담은 시각",
+            "example": "2026-11-22T10:00:00"
+          }
+        }
+      },
+      "WishResponse": {
+        "type": "object",
+        "properties": {
+          "isWished": {
+            "type": "boolean",
+            "description": "처리 뒤 내가 이 물품을 관심 목록에 담았는지"
+          },
+          "itemId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "물품 ID",
+            "example": 101
+          },
+          "wishCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "처리 뒤 물품의 관심 수",
+            "example": 6
           }
         }
       }

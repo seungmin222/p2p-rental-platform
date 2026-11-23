@@ -2,6 +2,7 @@ package com.team7.rental.item.repository;
 
 import static com.team7.rental.item.entity.QItem.item;
 import static com.team7.rental.item.entity.QItemAvailablePeriod.itemAvailablePeriod;
+import static com.team7.rental.item.entity.QWish.wish;
 import static com.team7.rental.rental.entity.QRental.rental;
 import static com.team7.rental.rental.entity.QRentalExtension.rentalExtension;
 
@@ -173,6 +174,19 @@ public class ItemListingRepositoryImpl implements ItemListingRepository {
 			.fetch();
 		return PageableExecutionUtils.getPage(content, pageable,
 			() -> queryFactory.select(item.count()).from(item).where(conditions).fetchOne());
+	}
+
+	@Override
+	public Page<WishListRow> findWishes(Long memberId, Pageable pageable) {
+		// 삭제·숨김 물품도 남긴다: 화면이 status로 "삭제된 물품"·"볼 수 없는 물품"을 표시하고, 사용자가 관심을 해제할 수 있어야 한다.
+		var content = queryFactory
+			.select(Projections.constructor(WishListRow.class, item.id, item.regionId, item.name, item.pricePerDay,
+				item.deposit, item.status, item.wishCount, item.chatCount, renting(), wish.createdAt))
+			.from(wish).join(item).on(item.id.eq(wish.itemId))
+			.where(wish.memberId.eq(memberId))
+			.orderBy(wish.id.desc()).offset(pageable.getOffset()).limit(pageable.getPageSize()).fetch();
+		return PageableExecutionUtils.getPage(content, pageable,
+			() -> queryFactory.select(wish.count()).from(wish).where(wish.memberId.eq(memberId)).fetchOne());
 	}
 
 	private ConstructorExpression<ItemListRow> projection(LocalDateTime now) {

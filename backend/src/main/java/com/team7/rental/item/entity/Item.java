@@ -121,6 +121,19 @@ public class Item extends BaseTimeEntity {
 	}
 
 	/**
+	 * 상세 조회(REQ-011)의 공개 규칙: AVAILABLE은 누구나, HIDDEN은 소유자만, DELETED는 아무도 못 본다.
+	 *
+	 * @param memberId 비회원이면 null
+	 */
+	public boolean isVisibleTo(Long memberId) {
+		return switch (status) {
+			case AVAILABLE -> true;
+			case HIDDEN -> memberId != null && isOwnedBy(memberId);
+			case DELETED -> false;
+		};
+	}
+
+	/**
 	 * 수정(REQ-007). null인 인자는 바꾸지 않는다. 입력 검증은 호출하는 서비스가 한다. 가격·보증금은 대여 건에 스냅샷이 있어 이후 신규 예약부터
 	 * 적용된다.
 	 */

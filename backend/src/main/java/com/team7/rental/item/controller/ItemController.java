@@ -150,7 +150,7 @@ public class ItemController {
 	}
 
 	@Operation(summary = "물품 상세 (REQ-011)", description = "비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). "
-		+ "조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 관심 기능(REQ-022) 전에는 항상 false.")
+		+ "조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 로그인 회원이 관심 목록에 담았는지(REQ-022)이고 비회원·제공자 본인은 false.")
 	@ApiErrorCodes({COMMON_INVALID_INPUT, ITEM_NOT_FOUND})
 	@GetMapping("/{itemId}")
 	public ApiResponse<ItemDetailResponse> getItem(@LoginMember(required = false)
