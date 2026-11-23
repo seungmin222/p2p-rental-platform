@@ -1,10 +1,25 @@
-import { MutationObserver, QueryClient } from '@tanstack/query-core';
+import {
+  focusManager,
+  InfiniteQueryObserver,
+  MutationObserver,
+  QueryClient,
+} from '@tanstack/query-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { addWish, removeWish } from './api';
-import { itemKeys, toggleWishMutationOptions } from './queries';
+import { addWish, fetchMyWishes, removeWish } from './api';
+import {
+  itemKeys,
+  myWishesQueryOptions,
+  removeWishRowFromCache,
+  toggleWishMutationOptions,
+} from './queries';
 
-vi.mock('./api', () => ({ addWish: vi.fn(), removeWish: vi.fn() }));
+vi.mock('./api', async (importOriginal) => ({
+  ...(await importOriginal()),
+  addWish: vi.fn(),
+  removeWish: vi.fn(),
+  fetchMyWishes: vi.fn(),
+}));
 
 const ITEM_ID = 101;
 const FEED_KEY = itemKeys.feedList({ regionId: 1101, categoryId: null });
@@ -94,4 +109,44 @@ describe('관심 토글 뮤테이션', () => {
       });
     },
   );
+});
+
+describe('관심 목록 쿼리', () => {
+  let queryClient;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    queryClient = new QueryClient();
+  });
+
+  it('창 포커스로는 다시 받지 않는다(해제해 남긴 줄이 사라지지 않게)', async () => {
+    fetchMyWishes.mockResolvedValue({
+      items: [{ itemId: 1, status: 'AVAILABLE' }],
+      hasNext: false,
+    });
+    queryClient.mount(); // 포커스 알림을 받으려면 필요(QueryClientProvider가 하는 일)
+    const observer = new InfiniteQueryObserver(queryClient, myWishesQueryOptions());
+    const unsubscribe = observer.subscribe(() => {});
+    await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true));
+
+    focusManager.setFocused(false);
+    focusManager.setFocused(true);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(fetchMyWishes).toHaveBeenCalledTimes(1);
+    unsubscribe();
+    queryClient.unmount();
+    focusManager.setFocused(undefined);
+  });
+
+  it('해제한 삭제·숨김 줄을 캐시에서도 뺀다', () => {
+    queryClient.setQueryData(itemKeys.wishes(), {
+      pages: [{ items: [{ itemId: 1 }, { itemId: 2, status: 'DELETED' }], hasNext: false }],
+      pageParams: [0],
+    });
+
+    removeWishRowFromCache(queryClient, 2);
+
+    expect(queryClient.getQueryData(itemKeys.wishes()).pages[0].items).toEqual([{ itemId: 1 }]);
+  });
 });

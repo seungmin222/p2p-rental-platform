@@ -16,9 +16,9 @@ import {
   ItemTradePlace,
 } from '../features/item/components/ItemInfo';
 import { getDeletedMessage, getErrorMessage } from '../features/item/errorMessages';
-import WishButton from '../features/item/components/WishButton';
+import DetailWishButton from '../features/item/components/DetailWishButton';
 import { parseItemId } from '../features/item/itemId';
-import { useItemDetail, useToggleWish } from '../features/item/queries';
+import { useItemDetail } from '../features/item/queries';
 import { RENTAL_DAY_STATUS } from '../features/rental/constants';
 import { useCalendarDays } from '../features/rental/queries';
 import { useAuthStore } from '../shared/api';
@@ -75,41 +75,6 @@ function ItemCalendar({ itemId }) {
         />
       )}
     </section>
-  );
-}
-
-/**
- * 관심(REQ-022) 하트. 비회원은 로그인 화면으로(돌아올 경로 = 이 상세). 누르면 바로 바뀌고(낙관적) 실패하면 되돌린 뒤 알린다.
- * 요청 중에 다시 누르면 무시한다(추가·해제가 엇갈려 도착하지 않게). 관심 수는 시안대로 상세에 그리지 않는다.
- */
-function DetailWishButton({ item }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isLoggedIn = useAuthStore((state) => state.accessToken !== null);
-  const toggleWish = useToggleWish();
-
-  function handleClick() {
-    if (!isLoggedIn) {
-      navigate(toLoginPath(location.pathname + location.search));
-      return;
-    }
-    if (toggleWish.isPending) {
-      return;
-    }
-    toggleWish.mutate(
-      { itemId: item.itemId, wished: !item.isWished },
-      { onError: (error) => toast.show({ message: getErrorMessage(error), tone: 'danger' }) },
-    );
-  }
-
-  return (
-    <WishButton
-      label="관심 목록에 담기"
-      isWished={item.isWished}
-      isPending={toggleWish.isPending}
-      onClick={handleClick}
-      className="mr-2"
-    />
   );
 }
 

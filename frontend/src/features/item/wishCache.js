@@ -63,3 +63,22 @@ export function isCardListKey(queryKey) {
   }
   return root === 'recent-items' || root === 'wishes';
 }
+
+/**
+ * 관심 목록 캐시({ pages: [{ items }] })에서 itemId 줄을 뺀다. 해제한 삭제·숨김 줄을 캐시에서도 지울 때 쓴다
+ * (화면 state만 고치면 캐시를 다시 그릴 때 줄이 되살아난다). 없으면 같은 참조.
+ */
+export function removeWishRow(data, itemId) {
+  if (!Array.isArray(data?.pages)) {
+    return data;
+  }
+  let changed = false;
+  const pages = data.pages.map((page) => {
+    if (!Array.isArray(page?.items) || !page.items.some((item) => item?.itemId === itemId)) {
+      return page;
+    }
+    changed = true;
+    return { ...page, items: page.items.filter((item) => item?.itemId !== itemId) };
+  });
+  return changed ? { ...data, pages } : data;
+}

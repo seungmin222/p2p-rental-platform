@@ -24,7 +24,7 @@ import {
 } from './api';
 import { CATEGORY_STALE_TIME, ITEM_DETAIL_STALE_TIME } from './constants';
 import { hasSearchCondition, resolveCategory, toApiParams } from './searchParams';
-import { isCardListKey, patchCardWishCount, patchDetailWish } from './wishCache';
+import { isCardListKey, patchCardWishCount, patchDetailWish, removeWishRow } from './wishCache';
 
 export const itemKeys = {
   // 동네 피드 전체. 필터 키 ['items', 'feed', { regionId, categoryId }]의 앞부분이라 대표 동네가 바뀌면 이 키로 무효화한다
@@ -253,17 +253,28 @@ function selectWishes(data) {
 
 /**
  * REQ-022 내 관심 목록(page/hasNext, size 없음 — wish.page 고정). data는 지금까지 받은 페이지를 합친 카드 배열.
- * 다른 화면에서 담거나 해제한 것이 들어올 때마다 보이도록 staleTime 0(관심 토글은 이 키를 무효화하지 않는다)
+ * 다른 화면에서 담거나 해제한 것이 들어올 때마다 보이도록 staleTime 0(관심 토글은 이 키를 무효화하지 않는다).
+ * 창 포커스로는 다시 받지 않는다 — 이 화면에서 해제해 빈 하트로 남긴 줄이 사라지지 않게.
  */
-export function useMyWishes() {
-  return useInfiniteQuery({
+export function myWishesQueryOptions() {
+  return {
     queryKey: itemKeys.wishes(),
     queryFn: ({ pageParam }) => fetchMyWishes(pageParam),
     initialPageParam: 0,
     getNextPageParam,
     select: selectWishes,
     staleTime: 0,
-  });
+    refetchOnWindowFocus: false,
+  };
+}
+
+export function useMyWishes() {
+  return useInfiniteQuery(myWishesQueryOptions());
+}
+
+/** 관심 목록 캐시에서 해제한 삭제·숨김 줄을 뺀다(다시 담을 수 없는 줄이라 남기지 않는다) */
+export function removeWishRowFromCache(queryClient, itemId) {
+  queryClient.setQueryData(itemKeys.wishes(), (data) => removeWishRow(data, itemId));
 }
 
 function selectRecentItems(data) {

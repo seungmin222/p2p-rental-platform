@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isCardListKey, patchCardWishCount, patchDetailWish } from './wishCache';
+import { isCardListKey, patchCardWishCount, patchDetailWish, removeWishRow } from './wishCache';
 
 describe('patchCardWishCount', () => {
   const pages = {
@@ -68,5 +68,29 @@ describe('isCardListKey', () => {
     [['rentals', 'me'], false],
   ])('%j → %s', (key, expected) => {
     expect(isCardListKey(key)).toBe(expected);
+  });
+});
+
+describe('removeWishRow', () => {
+  const data = {
+    pages: [
+      { items: [{ itemId: 1 }, { itemId: 2, status: 'DELETED' }], hasNext: true },
+      { items: [{ itemId: 3 }], hasNext: false },
+    ],
+    pageParams: [0, 1],
+  };
+
+  it('그 줄만 빼고 다른 페이지는 같은 참조로 둔다', () => {
+    const next = removeWishRow(data, 2);
+
+    expect(next.pages[0].items).toEqual([{ itemId: 1 }]);
+    expect(next.pages[0].hasNext).toBe(true);
+    expect(next.pages[1]).toBe(data.pages[1]);
+    expect(next.pageParams).toBe(data.pageParams);
+  });
+
+  it('없는 줄이거나 캐시가 없으면 그대로 돌려준다', () => {
+    expect(removeWishRow(data, 99)).toBe(data);
+    expect(removeWishRow(undefined, 1)).toBeUndefined();
   });
 });
