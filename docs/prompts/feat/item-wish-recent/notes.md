@@ -1,5 +1,10 @@
 # feat/item-wish-recent 결정 기록
 
+## 요약
+- API: `POST`·`DELETE /api/items/{itemId}/wishes`(멱등, 200, `{itemId, isWished, wishCount}`), `GET /api/members/me/wishes`(`wish.page` 20 고정, 삭제·숨김도 status로 남김), `GET /api/members/me/recent-items`(피드 카드 배열 최대 20, 삭제·숨김 제외). 상세 `isWished` 실제 값, 상세 조회 시 최근 본 상품 기록(본인 물품 제외).
+- 주요 파일: `item/service/WishService`·`WishTxService`(물품 행 FOR UPDATE 후 wish_count ± 1), `item/service/ItemDetailService`(상세 + 기록, 트랜잭션 밖)·`RecentItemWriter`, `item/controller/WishController`·`RecentItemController`, `item/repository/WishRepository`·`ItemViewLogRepository`(네이티브 upsert), `V20__create_wishes.sql`·`V21__create_item_view_logs.sql`. 새 ErrorCode `WISH_OWN_ITEM`, 정책 `wish.page`·`recent-items.max` 바인딩.
+- 남은 일: 프론트(상세 하트·관심 목록·최근 본 목록 화면), 피드·검색 카드 isWished는 넣지 않음(필요하면 목록마다 1쿼리), 추천(060)은 `WishTxService.add`의 캐시 무효화 지점과 item_view_logs를 쓴다, 차단 사용자 제외(056)는 `findRecentItems` 조건에 더한다.
+
 REQ-022 관심(찜), REQ-035 최근 본 상품 (백엔드). 프론트 화면·REQ-060 추천은 범위 밖.
 
 ## REQ-022 관심
