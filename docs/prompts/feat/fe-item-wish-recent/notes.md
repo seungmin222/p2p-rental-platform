@@ -1,5 +1,11 @@
 # feat/fe-item-wish-recent 결정 기록
 
+## 요약
+- 백엔드 변경 없음. 프론트 연동: `POST`·`DELETE /api/items/{itemId}/wishes`(상세 하트, 낙관적 토글), `GET /api/members/me/wishes`(관심 목록), `GET /api/members/me/recent-items`(최근 본), 상세 `isWished`.
+- 화면: SCR-12 `/me/wishes`(`pages/MyWishesPage.jsx`)·`/me/recent`(`pages/MyRecentItemsPage.jsx`), 진입은 `/me` 메뉴. 상세 하트는 `ItemDetailPage` `DetailWishButton`.
+- 새 파일: `features/item/wishCache.js`(+테스트, 카드 관심 수 캐시 패치)·`wishQueries.test.js`·`components/WishButton`·`WishItemRow`, 목 `mocks/wish.js`·`wishLogic.js`(+테스트)·`wishStore.js`. `ItemListView`에 `renderItem`·`emptyAction`, queries에 `useToggleWish`·`useMyWishes`·`useRecentItems`.
+- 남은 일: 피드·검색 카드 하트(카드 응답에 isWished 없음, 필요하면 백엔드에 필드 추가), 추천(060), 숨김(044) 뒤 목의 숨김 흉내(`hiddenMock`) 교체. 브라우저 확인은 MSW 서비스 워커 문제로 못 했다.
+
 REQ-022 관심(찜)·REQ-035 최근 본 상품 프론트. 백엔드 변경 없음. 추천(060)·피드·검색 카드 하트는 범위 밖.
 
 ## 결정
