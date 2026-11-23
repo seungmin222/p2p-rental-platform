@@ -96,6 +96,8 @@ public record PolicyProperties(
 	@Valid @NotNull
 	PageSize wish,
 	@Valid @NotNull
+	RecentItems recentItems,
+	@Valid @NotNull
 	PasswordReset passwordReset) {
 
 	/**
@@ -126,6 +128,15 @@ public record PolicyProperties(
 
 	public record PageSize(@Positive
 	int page) {
+	}
+
+	/**
+	 * 최근 본 상품 (REQ-035)
+	 *
+	 * @param max 회원당 남기는 기록 수이자 목록 최대 건수 (recent-items.max)
+	 */
+	public record RecentItems(@Positive
+	int max) {
 	}
 
 	public record ViewCount(@Positive

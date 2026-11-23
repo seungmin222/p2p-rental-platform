@@ -2118,7 +2118,7 @@
         ]
       },
       "get": {
-        "description": "비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). 조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 로그인 회원이 관심 목록에 담았는지(REQ-022)이고 비회원·제공자 본인은 false.",
+        "description": "비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). 조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 로그인 회원이 관심 목록에 담았는지(REQ-022)이고 비회원·제공자 본인은 false. 로그인 회원이 남의 물품을 보면 최근 본 상품(REQ-035)에 기록한다(기록 실패는 응답에 영향 없음).",
         "operationId": "getItem",
         "parameters": [
           {
@@ -3537,6 +3537,53 @@
         "summary": "결제·보증금 내역 조회 (REQ-033)",
         "tags": [
           "Payment"
+        ]
+      }
+    },
+    "/api/members/me/recent-items": {
+      "get": {
+        "description": "로그인 회원이 상세를 본 남의 물품을 최근 본 순으로 최대 policies.md recent-items.max건 (페이지 없음). 카드는 피드와 같다. 기록은 회원당 최신 recent-items.max건만 남기며, 삭제·숨김 물품은 응답에서 빼므로 그보다 적을 수 있다. 본인 물품 조회는 기록하지 않는다.",
+        "operationId": "getRecentItems",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListItemSummaryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "최근 본 상품 (REQ-035)",
+        "tags": [
+          "Item"
         ]
       }
     },
@@ -8505,6 +8552,23 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/HeldDepositResponse"
+            }
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseListItemSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemSummaryResponse"
             }
           },
           "error": {

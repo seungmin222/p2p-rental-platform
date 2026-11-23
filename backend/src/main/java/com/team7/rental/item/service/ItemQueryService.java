@@ -248,6 +248,15 @@ public class ItemQueryService {
 			row.wishCount(), row.chatCount(), row.renting(), row.wishedAt()));
 	}
 
+	/**
+	 * 최근 본 상품 (REQ-035). 최근 본 순, 최대 recent-items.max건 배열(페이지 없음). 삭제·숨김 물품은 뺀다. 카드는 피드와 같다. 쿼리는 목록 1 + 동네
+	 * 이름 1 + 썸네일 1이다.
+	 */
+	public List<ItemSummaryResponse> getRecentItems(Long memberId) {
+		return toSummaries(
+			itemRepository.findRecentItems(memberId, policies.recentItems().max(), LocalDateTime.now(clock)));
+	}
+
 	private Map<Long, String> thumbnails(List<com.team7.rental.item.repository.ItemListRow> rows) {
 		return thumbnailsOf(rows.stream().map(com.team7.rental.item.repository.ItemListRow::itemId).toList());
 	}

@@ -2,6 +2,7 @@ package com.team7.rental.item.repository;
 
 import static com.team7.rental.item.entity.QItem.item;
 import static com.team7.rental.item.entity.QItemAvailablePeriod.itemAvailablePeriod;
+import static com.team7.rental.item.entity.QItemViewLog.itemViewLog;
 import static com.team7.rental.item.entity.QWish.wish;
 import static com.team7.rental.rental.entity.QRental.rental;
 import static com.team7.rental.rental.entity.QRentalExtension.rentalExtension;
@@ -187,6 +188,14 @@ public class ItemListingRepositoryImpl implements ItemListingRepository {
 			.orderBy(wish.id.desc()).offset(pageable.getOffset()).limit(pageable.getPageSize()).fetch();
 		return PageableExecutionUtils.getPage(content, pageable,
 			() -> queryFactory.select(wish.count()).from(wish).where(wish.memberId.eq(memberId)).fetchOne());
+	}
+
+	@Override
+	public List<ItemListRow> findRecentItems(Long memberId, int limit, LocalDateTime now) {
+		// 삭제·숨김 제외(domains/item.md REQ-035). 차단 사용자 제외(REQ-056)는 이 조건에 더한다.
+		return queryFactory.select(projection(now)).from(itemViewLog).join(item).on(item.id.eq(itemViewLog.itemId))
+			.where(itemViewLog.memberId.eq(memberId), item.status.eq(ItemStatus.AVAILABLE))
+			.orderBy(itemViewLog.viewedAt.desc(), itemViewLog.id.desc()).limit(limit).fetch();
 	}
 
 	private ConstructorExpression<ItemListRow> projection(LocalDateTime now) {

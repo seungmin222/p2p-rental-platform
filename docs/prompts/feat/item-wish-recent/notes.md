@@ -14,3 +14,14 @@ REQ-022 관심(찜), REQ-035 최근 본 상품 (백엔드). 프론트 화면·RE
 - **상세 isWished**: 로그인 + 본인 물품 아님일 때만 exists 1쿼리. 피드·검색 카드에는 넣지 않았다(문서에 없음, 사용자 승인 B).
 - **wishes.updated_at**: erd에는 created_at만 있었지만 conventions §4(모든 테이블 created_at·updated_at)와 BaseTimeEntity를 따라 추가하고 erd를 고쳤다.
 - **추천 캐시 무효화**: `WishTxService.add`에 REQ-060 확장 지점 주석만. Redis 키는 만들지 않았다.
+
+## REQ-035 최근 본 상품
+
+- **기록 위치는 상세 트랜잭션 밖**: 트랜잭션 없는 `ItemDetailService`가 `ItemQueryService.getDetail`(readOnly) 뒤에 `RecentItemWriter.record`(@Transactional)를 부른다. 상세 안에서 REQUIRES_NEW로 하면 요청 하나가 커넥션 두 개를 잡아 풀 고갈 위험이 있어서. ItemController 상세는 이제 ItemDetailService를 부른다.
+- **조회할 때마다 upsert**(조회수 24시간 중복 제거와 별개): `INSERT ... AS new ON DUPLICATE KEY UPDATE viewed_at = GREATEST(...)` 네이티브 1쿼리. 저장 여부를 알 필요가 없어 알림(NotificationTxService)이 이 방식을 피한 이유가 해당하지 않는다. 동시 조회도 한 행, viewed_at은 앞으로만.
+- **본인 물품은 기록하지 않는다**(사용자 승인 D): 수정·관리 목적 조회라 잡음이고, 060 추천도 본인 물품을 뺀다. 비회원·404도 기록 없음.
+- **기록 실패는 상세를 막지 않는다**: DataAccessException을 잡고 경고 로그(회원 정보 없음). 조회수 Redis 실패와 같은 방식. 테스트는 회원 행이 없는 토큰의 FK 위반으로 재현했다(목 빈 없이).
+- **20건 유지는 쓰기 때**: upsert 뒤 최근 본 순 20번째 이후 id를 조회해 삭제(최대 3쿼리). 같은 회원 동시 조회로 잠깐 넘을 수 있지만 다음 기록 때 정리되고, 읽을 때도 limit 20이라 응답은 항상 20건 이하.
+- **목록은 피드 카드 배열**(사용자 승인 E): `List<ItemSummaryResponse>`, 페이지 없음, AVAILABLE만, viewed_at·id 내림차순. 보관 20건 안에 삭제·숨김이 있으면 20건보다 적다(문서대로). 쿼리 3개(목록·동네 이름·썸네일, toSummaries 재사용).
+- **item_view_logs에 created_at·updated_at 추가**: wishes와 같은 이유(conventions §4). 엔티티 `ItemViewLog`는 스키마 검증·조회용이고 쓰기는 네이티브 upsert로만.
+- **추천(060) 확장 지점**: 조회 기록은 이 테이블을 그대로 쓰면 된다. Redis 키·새 정책 값은 만들지 않았다.

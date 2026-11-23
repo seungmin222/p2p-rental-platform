@@ -129,6 +129,9 @@ app:
     # wish.page: 내 관심 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-022)
     wish:
       page: 20
+    # recent-items.max: 최근 본 상품 회원당 보관·표시 건수 (REQ-035)
+    recent-items:
+      max: 20
     item-rentals:
       page: 20
     # notification.page: 알림 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-032)
