@@ -1,0 +1,24 @@
+# feat/fe-item-wish-recent 결정 기록
+
+## 요약
+- 백엔드 변경 없음. 프론트 연동: `POST`·`DELETE /api/items/{itemId}/wishes`(상세 하트, 낙관적 토글), `GET /api/members/me/wishes`(관심 목록), `GET /api/members/me/recent-items`(최근 본), 상세 `isWished`.
+- 화면: SCR-12 `/me/wishes`(`pages/MyWishesPage.jsx`)·`/me/recent`(`pages/MyRecentItemsPage.jsx`), 진입은 `/me` 메뉴. 상세 하트는 `components/DetailWishButton`(누름 처리 `wishClick.js`).
+- 새 파일: `features/item/wishCache.js`(+테스트, 카드 관심 수 캐시 패치)·`wishQueries.test.js`·`components/WishButton`·`WishItemRow`, 목 `mocks/wish.js`·`wishLogic.js`(+테스트)·`wishStore.js`. `ItemListView`에 `renderItem`·`emptyAction`, queries에 `useToggleWish`·`useMyWishes`·`useRecentItems`.
+- 남은 일: 피드·검색 카드 하트(카드 응답에 isWished 없음, 필요하면 백엔드에 필드 추가), 추천(060), 숨김(044) 때 목의 숨김 흉내(`hiddenMock`) 교체와 목 최근 본 목록에서 숨김 물품 빼기(백엔드와 맞춤). 브라우저 확인은 MSW 서비스 워커 문제로 못 했다.
+
+REQ-022 관심(찜)·REQ-035 최근 본 상품 프론트. 백엔드 변경 없음. 추천(060)·피드·검색 카드 하트는 범위 밖.
+
+## 결정
+
+- **상세 하트는 낙관적 토글, 요청 중 재클릭 무시**: 누르면 상세 캐시 `isWished`를 먼저 바꾸고 실패하면 그 값만 되돌린다(전체 스냅샷을 되돌리면 그사이 다시 받은 상세를 덮는다). 추가·해제가 엇갈려 도착하면 최종 상태가 꼬여서 요청 중에는 누름을 무시한다. 404·`WISH_OWN_ITEM`은 상세를 다시 불러와 화면이 지금 상태(찾을 수 없음·내 물품)를 따르게 한다.
+- **상세에 관심 수를 그리지 않음**(사용자 승인 B): Figma 시안 유지. 응답 `wishCount`는 캐시에만 넣는다.
+- **카드 관심 수는 다시 받지 않고 캐시에서 고침**(사용자 승인 C, `wishCache.js`): 피드·검색·최근 본·관심 목록·프로필 등록 물품 캐시에서 그 itemId의 `wishCount`만 응답 값으로 바꾼다. 무효화하면 상세 → 뒤로 가기 때 무한 목록이 페이지마다 다시 받아 스크롤이 튄다.
+- **관심 목록에서 해제한 줄은 남김**(사용자 승인 A): 빈 하트로 바꿔 다시 담을 수 있게 한다. page/hasNext라 캐시에서 줄을 빼면 다음 페이지가 한 칸 밀려 항목을 건너뛴다. 이 화면의 상태는 화면 state(Map)에 두고 서버 캐시에 섞지 않는다. 삭제·숨김 줄은 다시 담을 수 없어 해제하면 화면 state와 쿼리 캐시 양쪽에서 뺀다(리뷰 반영: state만 고치면 캐시를 다시 그릴 때 되살아난다).
+- **관심 목록은 창 포커스로 다시 받지 않음**(`refetchOnWindowFocus: false`, 리뷰 반영): 다시 받으면 해제해 빈 하트로 남긴 줄이 서버 목록에서 빠져 사라진다. 들어올 때의 새로 받기(staleTime 0)는 유지.
+- **관심 목록·최근 본은 `staleTime: 0`, 토글·상세 조회에서 무효화하지 않음**: 들어올 때마다 새로 받으면 충분하고, 보고 있는 관심 목록을 토글마다 다시 받으면 해제한 줄이 사라진다.
+- **물품 수정·삭제 뒤 `['wishes','me']`·`['recent-items','me']`는 무효화하지 않음**: 수정·삭제는 내 물품만 할 수 있고, 내 물품은 관심 추가가 400(`WISH_OWN_ITEM`)·최근 본 미기록이라 두 목록에 들어 있지 않다.
+- **목 최근 본 목록은 숨김 물품을 빼지 않음(넘김)**: 물품 목에 HIDDEN이 없어서. 044(숨김) 때 백엔드 동작과 맞춘다.
+- **queryKey는 `['wishes','me']`·`['recent-items','me']`**: `['items', …]` 아래에 두면 물품 등록·수정의 목록 무효화(`['items','me']` 등)와 섞이고, `['members','me', …]` 아래면 동네 변경 때마다 다시 받는다.
+- **관심 목록 카드는 `ItemListView`에 `renderItem`을 더해 재사용**: 스켈레톤·오류·빈 상태·무한 스크롤 푸터를 그대로 쓴다. WishItemResponse에 bumpedAt이 없어 `toWishItem`은 `bumpedAt: null`(카드는 동네만).
+- **목 숨김 물품은 관심 행 플래그로 흉내**(`wishStore.js` 210 `hiddenMock`): 물품 목에 HIDDEN(REQ-044)이 없어서. 물품 210 자체는 피드·상세에 그대로 보인다.
+- **브라우저 확인은 못 함**: MSW 서비스 워커 등록 실패(앞 브랜치와 같음). msw/node로 목 흐름(2페이지·삭제 표시·멱등 추가·본인 400·삭제 물품 추가 404/해제 200·없는 물품 404·비회원 401·상세 조회 → 최근 본 기록·본인 물품 미기록)만 확인했다.

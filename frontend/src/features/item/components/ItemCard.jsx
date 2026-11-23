@@ -50,7 +50,7 @@ function ChatIcon() {
   );
 }
 
-/** 관심·채팅 수(표시만. 관심 등록 REQ-022·채팅 REQ-026은 2순위라 누를 수 없다). 채팅 0은 시안처럼 그리지 않는다 */
+/** 관심·채팅 수(표시만. 카드 응답에 isWished가 없어 관심은 상세·관심 목록에서 누른다). 채팅 0은 시안처럼 그리지 않는다 */
 function Counts({ wishCount, chatCount }) {
   const wish = wishCount ?? 0;
   const chat = chatCount ?? 0;

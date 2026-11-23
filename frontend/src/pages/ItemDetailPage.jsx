@@ -16,6 +16,7 @@ import {
   ItemTradePlace,
 } from '../features/item/components/ItemInfo';
 import { getDeletedMessage, getErrorMessage } from '../features/item/errorMessages';
+import DetailWishButton from '../features/item/components/DetailWishButton';
 import { parseItemId } from '../features/item/itemId';
 import { useItemDetail } from '../features/item/queries';
 import { RENTAL_DAY_STATUS } from '../features/rental/constants';
@@ -75,27 +76,6 @@ function ItemCalendar({ itemId }) {
       )}
     </section>
   );
-}
-
-function HeartIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-      className="size-6"
-    >
-      <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.6-7 10-7 10z" />
-    </svg>
-  );
-}
-
-// 관심(REQ-022)은 아직 없다. 시안 자리는 두고 누르면 안내만 한다
-function showComingSoon() {
-  toast.show({ message: '준비 중인 기능이에요' });
 }
 
 /** 내 물품의 수정·삭제. 삭제하면 내 물품 관리로 옮긴다(삭제 중 이 화면을 떠났으면 옮기지 않는다) */
@@ -167,14 +147,7 @@ function DetailActions({ item }) {
   }
   return (
     <div className="flex w-full items-center gap-2">
-      <button
-        type="button"
-        aria-label="관심 등록(준비 중)"
-        onClick={showComingSoon}
-        className="mr-2 flex size-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        <HeartIcon />
-      </button>
+      <DetailWishButton item={item} />
       <ChatButton itemId={item.itemId} />
       <ButtonLink to={`/items/${item.itemId}/reserve`} className="flex-1 px-0">
         예약하기
