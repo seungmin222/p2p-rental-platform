@@ -56,6 +56,7 @@ public class ItemController {
 
 	private final ItemService itemService;
 	private final ItemQueryService itemQueryService;
+	private final com.team7.rental.item.service.ItemDetailService itemDetailService;
 
 	@Operation(summary = "물품 등록 (REQ-006)", description = "대표 동네가 인증된(유효기간 내) 회원만 등록할 수 있다(403 REGION_NOT_VERIFIED). "
 		+ "물품 동네 = 대표 동네, status = AVAILABLE. "
@@ -150,12 +151,13 @@ public class ItemController {
 	}
 
 	@Operation(summary = "물품 상세 (REQ-011)", description = "비회원도 볼 수 있다. 없거나 삭제된 물품은 404, 숨김 물품은 등록자만 볼 수 있다(그 외 404). "
-		+ "조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 관심 기능(REQ-022) 전에는 항상 false.")
+		+ "조회 수는 (회원 또는 IP, 물품)당 policies.md view-count.dedupe에 한 번 오른다. isWished는 로그인 회원이 관심 목록에 담았는지(REQ-022)이고 비회원·제공자 본인은 false. "
+		+ "로그인 회원이 남의 물품을 보면 최근 본 상품(REQ-035)에 기록한다(기록 실패는 응답에 영향 없음).")
 	@ApiErrorCodes({COMMON_INVALID_INPUT, ITEM_NOT_FOUND})
 	@GetMapping("/{itemId}")
 	public ApiResponse<ItemDetailResponse> getItem(@LoginMember(required = false)
 	Long memberId, @PathVariable
 	Long itemId, jakarta.servlet.http.HttpServletRequest request) {
-		return ApiResponse.ok(itemQueryService.getDetail(itemId, memberId, request.getRemoteAddr()));
+		return ApiResponse.ok(itemDetailService.getDetail(itemId, memberId, request.getRemoteAddr()));
 	}
 }

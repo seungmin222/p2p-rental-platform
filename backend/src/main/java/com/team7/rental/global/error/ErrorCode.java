@@ -51,6 +51,7 @@ public enum ErrorCode {
 	ITEM_PERIOD_CONFLICT(HttpStatus.CONFLICT, "예약이 있는 날짜는 대여 가능 기간에서 뺄 수 없습니다."),
 	/** details에 해당 대여 건을 한 건씩 담는다: { field: "rentals", reason: "..." } (REQ-008) */
 	ITEM_HAS_ACTIVE_RENTAL(HttpStatus.CONFLICT, "진행 중인 대여가 있어 삭제할 수 없습니다."),
+	WISH_OWN_ITEM(HttpStatus.BAD_REQUEST, "본인 물품은 관심 목록에 담을 수 없습니다."),
 
 	// 대여
 	RENTAL_NOT_FOUND(HttpStatus.NOT_FOUND, "대여 내역을 찾을 수 없습니다."),

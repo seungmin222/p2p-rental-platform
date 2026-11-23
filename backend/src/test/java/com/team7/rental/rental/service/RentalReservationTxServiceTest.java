@@ -43,7 +43,7 @@ class RentalReservationTxServiceTest {
 	private final PolicyProperties policyProperties = new PolicyProperties(null, null, null, null,
 		new PolicyProperties.Payment(EXPIRE_MINUTES), null, null, null, null, null, null, null, null, null, null, null,
 		null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-		null);
+		null, null, null);
 
 	@BeforeEach
 	void setUp() {

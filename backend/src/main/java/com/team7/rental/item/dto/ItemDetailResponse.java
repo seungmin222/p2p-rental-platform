@@ -70,7 +70,7 @@ public record ItemDetailResponse(
 	@Schema(description = "조회한 회원이 제공자면 true → 예약 대신 수정·관리 버튼. 비회원은 false")
 	boolean isOwner,
 
-	@Schema(description = "조회한 회원이 관심 추가했으면 true. 관심 기능(REQ-022) 전에는 항상 false")
+	@Schema(description = "조회한 회원이 관심 목록에 담았으면 true (REQ-022). 비회원·제공자 본인은 false")
 	boolean isWished) {
 
 	public record Category(

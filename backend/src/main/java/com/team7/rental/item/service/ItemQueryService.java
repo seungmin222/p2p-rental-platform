@@ -28,12 +28,14 @@ import com.team7.rental.item.dto.ItemSummary;
 import com.team7.rental.item.dto.ItemSummaryResponse;
 import com.team7.rental.item.dto.MyItemRequest;
 import com.team7.rental.item.dto.MyItemResponse;
+import com.team7.rental.item.dto.WishItemResponse;
 import com.team7.rental.item.entity.Item;
 import com.team7.rental.item.entity.ItemImage;
 import com.team7.rental.item.entity.ItemStatus;
 import com.team7.rental.item.repository.ItemAvailablePeriodRepository;
 import com.team7.rental.item.repository.ItemImageRepository;
 import com.team7.rental.item.repository.ItemRepository;
+import com.team7.rental.item.repository.WishListRow;
 
 import lombok.RequiredArgsConstructor;
 
@@ -60,6 +62,7 @@ public class ItemQueryService {
 	private final com.team7.rental.item.repository.ItemViewRepository views;
 	private final ItemAvailablePeriodRepository itemAvailablePeriodRepository;
 	private final ItemImageRepository itemImageRepository;
+	private final com.team7.rental.item.repository.WishRepository wishRepository;
 
 	/** 권장 보증금 범위 (REQ-006) */
 	public ItemDepositGuideResponse getDepositGuide(ItemDepositGuideRequest request) {
@@ -148,13 +151,16 @@ public class ItemQueryService {
 			// 부가 집계 장애가 상세 조회를 막지 않게 한다. IP/회원 정보는 로그에 남기지 않는다.
 			log.warn("조회수 Redis 집계 실패: itemId={}, cause={}", itemId, failure.getClass().getSimpleName());
 		}
+		boolean isOwner = memberId != null && item.isOwnedBy(memberId);
+		// 본인 물품은 관심에 담을 수 없으므로(WISH_OWN_ITEM) 비회원·소유자는 쿼리 없이 false
+		boolean isWished = memberId != null && !isOwner && wishRepository.existsByMemberIdAndItemId(memberId, itemId);
 		return new ItemDetailResponse(item.getId(), item.getName(), item.getDescription(), images,
 			new ItemDetailResponse.Category(category.getId(), category.getName()), item.getItemCondition(),
 			item.getPricePerDay(), item.getDeposit(), regionName, item.getAddress(), item.getLatitude(),
 			item.getLongitude(), item.getStatus(), item.getBumpedAt(), viewCount, item.getWishCount(),
 			item.getChatCount(), new ItemDetailResponse.Owner(owner.memberId(), owner.nickname(),
 				owner.profileImageUrl(), owner.regionName()),
-			memberId != null && item.isOwnedBy(memberId), false);
+			isOwner, isWished);
 	}
 
 	/**
@@ -229,11 +235,40 @@ public class ItemQueryService {
 			rows.getPageable(), rows.getTotalElements()));
 	}
 
+	/**
+	 * 내 관심 목록 (REQ-022). 최근 추가순, 페이지 크기는 wish.page 고정. 삭제·숨김 물품도 status와 함께 담되, 상세가 404인 물품이므로
+	 * itemId·status·wishedAt만 남기고 나머지는 null·0·false로 비운다(동네 이름·썸네일도 조회하지 않는다). 쿼리는 목록 1(+ count) + 동네 이름 1 +
+	 * 썸네일 1이다.
+	 */
+	public PageResponse<WishItemResponse> getWishes(Long memberId, int page) {
+		var rows = itemRepository.findWishes(memberId, PageRequest.of(page, policies.wish().page()));
+		var visible = rows.stream().filter(row -> row.status() == ItemStatus.AVAILABLE).toList();
+		var names = regions.getNames(visible.stream().map(WishListRow::regionId).distinct().toList());
+		var thumbnails = thumbnailsOf(visible.stream().map(WishListRow::itemId).toList());
+		return PageResponse.of(rows, row -> row.status() == ItemStatus.AVAILABLE
+			? new WishItemResponse(row.itemId(), row.name(), thumbnails.get(row.itemId()), names.get(row.regionId()),
+				row.pricePerDay(), row.deposit(), row.status(), row.wishCount(), row.chatCount(), row.renting(),
+				row.wishedAt())
+			: WishItemResponse.unavailable(row.itemId(), row.status(), row.wishedAt()));
+	}
+
+	/**
+	 * 최근 본 상품 (REQ-035). 최근 본 순, 최대 recent-items.max건 배열(페이지 없음). 삭제·숨김 물품은 뺀다. 카드는 피드와 같다. 쿼리는 목록 1 + 동네
+	 * 이름 1 + 썸네일 1이다.
+	 */
+	public List<ItemSummaryResponse> getRecentItems(Long memberId) {
+		return toSummaries(
+			itemRepository.findRecentItems(memberId, policies.recentItems().max(), LocalDateTime.now(clock)));
+	}
+
 	private Map<Long, String> thumbnails(List<com.team7.rental.item.repository.ItemListRow> rows) {
+		return thumbnailsOf(rows.stream().map(com.team7.rental.item.repository.ItemListRow::itemId).toList());
+	}
+
+	private Map<Long, String> thumbnailsOf(List<Long> itemIds) {
 		Map<Long, String> result = new HashMap<>();
-		if (!rows.isEmpty()) {
-			for (var image : itemImageRepository
-				.findMainImages(rows.stream().map(com.team7.rental.item.repository.ItemListRow::itemId).toList())) {
+		if (!itemIds.isEmpty()) {
+			for (var image : itemImageRepository.findMainImages(itemIds)) {
 				result.putIfAbsent(image.getItemId(), image.getThumbnailUrl());
 			}
 		}
@@ -335,12 +370,7 @@ public class ItemQueryService {
 
 	private Item getVisibleItem(Long itemId, Long requesterId) {
 		Item item = itemRepository.findById(itemId).orElseThrow(() -> new BusinessException(ErrorCode.ITEM_NOT_FOUND));
-		boolean isVisible = switch (item.getStatus()) {
-			case AVAILABLE -> true;
-			case HIDDEN -> requesterId != null && item.isOwnedBy(requesterId);
-			case DELETED -> false;
-		};
-		if (!isVisible) {
+		if (!item.isVisibleTo(requesterId)) {
 			throw new BusinessException(ErrorCode.ITEM_NOT_FOUND);
 		}
 		return item;

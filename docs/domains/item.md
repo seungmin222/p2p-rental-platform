@@ -65,7 +65,7 @@
 `GET /api/items/{itemId}` — 비회원 가능
 - 반환: 이미지들, 이름, 설명, 카테고리, condition, pricePerDay, deposit, 거래 장소(주소·좌표), bumpedAt, viewCount, wishCount, chatCount, 제공자 요약(id, 닉네임, 동네명, 신뢰 점수[054 이후]), `isOwner`, `isWished`
 - 조회수: Redis `view:{itemId}:{memberId|ip}` 24시간 1회 → `viewcount:{itemId}` 증가 → 5분마다 DB 반영(누적 스냅샷을 더 큰 값일 때만 갱신하여 재시도 중복 방지)
-- 로그인 회원 조회 → item_view_logs 기록(REQ-035 구현 시)
+- 로그인 회원이 남의 물품 조회 → item_view_logs 기록(REQ-035). 본인 물품은 기록하지 않는다
 - 예외: 없음/DELETED 404, HIDDEN은 소유자만(그 외 404)
 - 본인 물품이면 프론트는 예약 대신 수정·관리 버튼
 
@@ -78,11 +78,16 @@
 POST/DELETE `/api/items/{itemId}/wishes`, `GET /api/members/me/wishes`
 - 토글. UK(member, item). wishCount 함께 갱신(원자적 `UPDATE ... SET wish_count = wish_count ± 1`)
 - 본인 물품 불가 400 `WISH_OWN_ITEM`, 비회원은 프론트에서 로그인 유도
-- 목록 최근 추가순, 삭제 물품은 "삭제된 물품" 표시
+- 추가·해제는 멱등: 이미 관심인데 추가하거나 관심이 아닌데 해제하면 바꾸지 않고 200으로 현재 상태(isWished, wishCount)를 돌려준다. wishCount는 0 아래로 내려가지 않는다
+- 추가는 상세(REQ-011)와 같은 공개 규칙(없음·DELETED·남의 HIDDEN 404). 해제는 삭제·숨김 물품도 가능(없는 물품만 404)
+- 목록 최근 추가순, 삭제 물품은 "삭제된 물품" 표시. 숨김 물품도 목록에 남기고 "볼 수 없는 물품"으로 표시(응답 status로 구분). 삭제·숨김 항목은 itemId·status·wishedAt만 담고 나머지 필드는 비운다(null·0·false). 페이지 크기 `wish.page`
+- 상세의 isWished: 로그인 회원이 담았으면 true(비회원·제공자 본인은 false). 피드·검색 카드에는 넣지 않는다
 - 관심 추가 시 추천 캐시 무효화(REQ-060 이후)
 
 ## REQ-035 / REQ-060 최근 본 상품 [2] · 개인화 추천 [3]
 - 최근 본 상품: 상세 조회 시 (member, item) upsert(viewedAt 갱신), 회원당 최신 20건 유지. 삭제·숨김 물품 제외해서 반환
+  - 조회할 때마다 기록(조회수 24시간 중복 제거와 별개). 본인 물품은 기록하지 않는다. 기록 실패는 상세 응답에 영향 없음
+  - 20건 유지는 기록할 때 넘는 것을 지운다. 목록은 페이지 없이 최대 `recent-items.max`건 배열, 카드는 피드와 같다(삭제·숨김을 빼므로 그보다 적을 수 있음)
 - 추천(규칙 기반, 학습 모델 아님):
   - 선호 카테고리 점수 = Σ(관심 3점 + 조회 1점) × 최근성(7일 이내 1.0, 8~30일 0.5, 이후 0)
   - 상위 3개 카테고리 × 내 동네 범위 × 오늘 대여 가능 → 최신순

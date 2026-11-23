@@ -92,6 +92,11 @@ public record PolicyProperties(
 	PageSize search,
 	@Valid @NotNull
 	PageSize profileItems,
+	/** wish.page: 내 관심 목록 페이지 크기 (REQ-022). size 파라미터를 받지 않는다 */
+	@Valid @NotNull
+	PageSize wish,
+	@Valid @NotNull
+	RecentItems recentItems,
 	@Valid @NotNull
 	PasswordReset passwordReset) {
 
@@ -123,6 +128,15 @@ public record PolicyProperties(
 
 	public record PageSize(@Positive
 	int page) {
+	}
+
+	/**
+	 * 최근 본 상품 (REQ-035)
+	 *
+	 * @param max 회원당 남기는 기록 수이자 목록 최대 건수 (recent-items.max)
+	 */
+	public record RecentItems(@Positive
+	int max) {
 	}
 
 	public record ViewCount(@Positive

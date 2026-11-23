@@ -21,4 +21,10 @@ public interface ItemListingRepository {
 
 	/** 사용자 프로필의 등록 물품 (REQ-021): 회원의 AVAILABLE 물품, bumpedAt·id 내림차순 */
 	Page<ItemListRow> findMemberItems(Long ownerId, Pageable pageable, LocalDateTime now);
+
+	/** 내 관심 목록 (REQ-022): 최근 추가순(wishes.id 내림차순), 물품 상태와 상관없이 전부 */
+	Page<WishListRow> findWishes(Long memberId, Pageable pageable);
+
+	/** 최근 본 상품 (REQ-035): 회원의 기록 중 AVAILABLE 물품만(삭제·숨김 제외), 최근 본 순으로 limit건 */
+	List<ItemListRow> findRecentItems(Long memberId, int limit, LocalDateTime now);
 }
