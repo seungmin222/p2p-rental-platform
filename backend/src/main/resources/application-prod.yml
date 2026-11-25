@@ -8,6 +8,8 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      # 운영 Redis는 다른 서버에서도 접속하므로 requirepass를 건다 (infra/docker-compose.server1.yml)
+      password: ${REDIS_PASSWORD}
   rabbitmq:
     host: ${RABBITMQ_HOST}
     port: ${RABBITMQ_PORT}
@@ -35,7 +37,7 @@ app:
     s3:
       region: ${AWS_REGION}
       bucket: ${AWS_S3_BUCKET}
-      # CDN을 붙이면 AWS_S3_PUBLIC_URL로 교체
+      # 운영은 CloudFront 주소 + /files (infra/README.md). 키가 없으면 버킷 주소(빈 값은 기본값을 쓰지 않는다)
       public-url: ${AWS_S3_PUBLIC_URL:https://${AWS_S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com}
 
 # 운영에서는 Swagger UI와 API 문서를 노출하지 않는다

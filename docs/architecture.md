@@ -13,7 +13,7 @@
 | 캐시·락 | Redis + Redisson | 분산 락, Refresh Token, 조회수, 인기 검색어, 추천 캐시, 비밀번호 재설정 토큰. **Pub/Sub 용도로 쓰지 않는다** |
 | 메시지 브로커 | RabbitMQ 4.x | STOMP 브로커 릴레이(채팅·알림), AI 비교 작업 큐 (3.13은 커뮤니티 지원 종료) |
 | 파일 | AWS S3 (운영) / 로컬 디스크 (local 프로필) | `FileStorage` 인터페이스 뒤에 두고 프로필로 교체. 업로드 시 서버에서 가로 400px 썸네일 생성, DB에는 URL만. 로컬 개발에 AWS 키가 필요 없게 함 |
-| 배포 | AWS EC2 + Docker Compose | Spring Boot 2개 이상 인스턴스로 실행 가능해야 함 |
+| 배포 | AWS EC2 t3.small ×2 + Docker Compose, RDS for MySQL, S3 + CloudFront | Spring Boot 2개 인스턴스(서버당 1개). 이미지는 GitHub Actions가 빌드해 GHCR에 올리고 서버는 pull만. 구성·런북 `infra/README.md` |
 | 외부 API | 토스페이먼츠(테스트 키, 카드만), 카카오맵 JS API, 카카오 로컬 API(좌표→행정동), Claude API(`claude-haiku-4-5`, 이미지 입력) | |
 | 문서화 | **springdoc-openapi(Swagger)** (확정) | 필드 명세는 DTO 코드 → Swagger → `docs/openapi.json` |
 | 테스트 | JUnit5, Testcontainers(MySQL·Redis·RabbitMQ), JMeter | |
@@ -26,14 +26,16 @@
 [브라우저: React SPA] ──REST /api/** ──┐
         │   └──WebSocket /ws (STOMP)──┤
         └── 카카오맵 JS API            ▼
-                         ┌─────────── Nginx (HTTPS, LB) ───────────┐
-                         │  Spring Boot #1      Spring Boot #2     │
-                         └──┬───────┬────────┬────────┬──────┬─────┘
+                  CloudFront (HTTPS) ── /files/* ──▶ S3
+                         ┌──────────── Nginx (LB) ────────────┐
+                         │  Spring Boot #1      Spring Boot #2│
+                         └──┬───────┬────────┬────────┬──────┬┘
                           MySQL   Redis   RabbitMQ    S3   외부 API
                                                          (토스·카카오 로컬·Claude)
 ```
 
 - 서버는 **무상태(stateless)**. 세션 없음, 인증은 JWT. 어느 인스턴스로 요청이 가도 동작해야 한다.
+- 운영 배치: EC2 1번 = Nginx + Spring Boot #1 + Redis, EC2 2번 = Spring Boot #2 + RabbitMQ, MySQL = RDS. 외부에 열린 것은 CloudFront뿐이고 서버 간 포트는 보안 그룹으로 제한한다(`infra/README.md`).
 - 서버 간 공유 상태는 반드시 MySQL/Redis/RabbitMQ를 거친다. JVM 메모리 캐시는 카테고리 목록처럼 변경이 드문 것만 허용(변경 시 무효화).
 - 스케줄러(연체 감지, 결제 만료, 자동 상태 확인, 정산, 재시도, 조정 배치)는 인스턴스가 여러 개여도 **한 번만** 실행되게 한다 → 모든 `@Scheduled`에 ShedLock `@SchedulerLock` 필수.
 
@@ -82,7 +84,7 @@ STOMP 목적지는 확정(open-issues #14): 앱 `/pub/**`, 방 구독 `/topic/ch
 ### 인증
 - Access Token: `Authorization: Bearer <JWT>`, 30분.
 - Refresh Token: HttpOnly 쿠키(`SameSite=Lax`, `Path=/api/auth`, local 외 `Secure`), 14일. 로그인마다 토큰 묶음(family)을 새로 만들어 Redis `rt:{memberId}:{familyId}`에 저장하고 재발급마다 교체(Rotation). 이미 교체된 토큰을 재사용하면 **그 family만** 무효화(다른 기기는 유지). 상세는 `domains/member.md` REQ-002·003.
-- 프론트·백엔드는 브라우저 기준 **같은 출처**로 동작시킨다: 로컬은 Vite 개발 서버 프록시(`/api`, `/ws` → `localhost:8080`), 운영은 Nginx가 정적 파일과 API를 같은 도메인으로 서빙. 그래서 CORS 설정 없이 쿠키가 전달된다. 백엔드 CORS는 기본 차단으로 둔다.
+- 프론트·백엔드는 브라우저 기준 **같은 출처**로 동작시킨다: 로컬은 Vite 개발 서버 프록시(`/api`, `/ws` → `localhost:8080`), 운영은 CloudFront 한 도메인 뒤에서 Nginx가 정적 파일과 `/api`·`/ws`를, S3가 `/files/*` 이미지를 서빙. 그래서 CORS 설정 없이 쿠키가 전달된다. 백엔드 CORS는 기본 차단으로 둔다.
 - WebSocket: STOMP CONNECT 프레임 헤더의 JWT로 인증.
 
 ## 5. 데이터 규약

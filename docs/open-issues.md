@@ -66,6 +66,7 @@
 | 58 | ⬜ | 보증금 | `policies.md` §2 "장기 미반납·분실" 문장은 "대여자가 물건을 돌려주면 일반 반납 확인으로 처리한다"인데, `rental.md` REQ-018·#41의 현재 결정은 신고 건의 상태 확인을 막는다(409 `RENTAL_INVALID_TRANSITION`) | 미결. #41(정상 반환 경로를 둘지)과 함께 정한다. 프론트(`feat/fe-deposit-deduction`)는 현재 결정대로 신고 건에 상태 확인 버튼을 두지 않았다 |
 | 59 | ⬜ | AI | 반납 기록의 `aiResult`가 null이면 "아직 워커가 맡지 않음(적재 직후)"인지 "적재 실패로 결과 없음"인지 응답으로 구분할 수 없다(PROCESSING은 워커가 맡을 때 기록, 적재 실패는 다시 적재하지 않음). 반납 요청 직후 다시 받은 inspections는 거의 항상 null이라 화면이 "AI 결과 없음"으로 보이고 재조회도 시작하지 않는다 | (임시, `feat/fe-ai-compare`) 반납 사진이 있고 aiResult null이며 반납 기록 `createdAt`이 `ai.compare.processing-timeout-minutes`(10분) 안이면 "비교 준비 중"으로 보고 PROCESSING처럼 재조회, 그 뒤에는 "AI 결과 없음". `features/rental/aiCompare.js` `getAiCompareView` 한 곳. 제안: 백엔드가 적재 시점에 PROCESSING(또는 새 상태 `QUEUED`)을 기록 — 백엔드 확인 필요 |
 | 60 | ⬜ | 문의 | REQ-063 대여 상세 응답에 "내가 연 분쟁이 있음"을 알려 주는 필드가 없어, SCR-08·작성 화면은 분쟁을 미리 막지 못하고 제출 뒤 409 `INQUIRY_DISPUTE_ALREADY_OPEN`으로만 안내한다. 내 문의 목록 첫 페이지로 판단하면 `inquiry.page`(20) 밖을 놓친다. 또 `InquiryResponse`에 물품 정보가 없어 목록은 대여를 번호로만 보인다 | (제안, 백엔드 확인 필요) 대여 상세에 `hasOpenDispute`(본인 기준) 추가, `InquiryResponse`에 `RentalItem` 요약 추가. 프론트 임시: 409 안내 + "내 문의 보기" 링크, 목록은 "대여 #id 보기"(`feat/fe-inquiry`) |
+| 61 | ⬜ | 파일 | 운영 이미지는 모두 CloudFront `/files/*`(S3 비공개 버킷 + OAC)로 URL만 알면 누구나 볼 수 있다(`chore/infra-deploy`). 물품·프로필 사진은 공개가 맞지만 인계·반납 검수 사진(`inspections/`)과 차감 증빙·영수증 사진(`deductions/`)은 거래 당사자·관리자만 봐야 한다. URL이 UUID라 추측은 어렵지만 링크가 새면 막을 수 없다. 후보: 비공개 경로를 분리해 CloudFront 서명 URL·서명 쿠키, 또는 백엔드가 권한 확인 후 S3 사전 서명 URL 발급 | |
 
 ## 2. 정책 결정 기록 (기획 담당 결정, 2026-10-08)
 

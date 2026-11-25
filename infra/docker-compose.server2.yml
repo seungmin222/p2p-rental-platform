@@ -1,0 +1,54 @@
+# 운영 2번 서버(EC2 t3.small): Spring Boot + RabbitMQ. 런북: infra/README.md
+# 실행: infra/deploy/deploy.sh server2 [이미지 태그]
+# 8080·5672·61613은 사설 IP에만 바인딩하고 보안 그룹으로 1번 서버만 허용한다. 관리 콘솔(15672)은 쓰지 않는다.
+name: rental
+
+services:
+  backend:
+    image: ${IMAGE_REGISTRY:-ghcr.io/seungmin222}/rental-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+    env_file: ["${ENV_FILE:-/opt/rental/.env}"]
+    environment:
+      REDIS_HOST: ${SERVER1_PRIVATE_IP:?1번 서버 사설 IP}
+      REDIS_PORT: "6379"
+      RABBITMQ_HOST: rabbitmq
+      # 1번 Nginx 컨테이너가 보낸 요청은 1번 서버 사설 IP로 관측된다(Docker SNAT). .env의 TRUSTED_PROXY_REGEX에 그 주소를 정규식으로
+    ports: ["${SERVER2_PRIVATE_IP:?2번 서버 사설 IP}:8080:8080"]
+    networks: [app]
+    mem_limit: 1200m
+    logging: &logging
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  rabbitmq:
+    # 로컬(docker-compose.local.yml)과 같은 4.x. 관리 플러그인 없는 이미지 + STOMP 플러그인(채팅·알림 브로커 릴레이)
+    image: rabbitmq:4
+    restart: unless-stopped
+    hostname: rental-rabbitmq
+    environment:
+      # guest는 원격 접속이 막혀 있으므로 별도 계정. 앱은 같은 RABBITMQ_USERNAME/PASSWORD를 쓴다
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:?RabbitMQ 계정}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RabbitMQ 비밀번호}
+    command: >
+      bash -c "rabbitmq-plugins enable --offline rabbitmq_stomp && rabbitmq-server"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    ports:
+      - "${SERVER2_PRIVATE_IP:?2번 서버 사설 IP}:5672:5672"
+      - "${SERVER2_PRIVATE_IP:?2번 서버 사설 IP}:61613:61613"
+    networks: [app]
+    volumes: [rabbitmq-data:/var/lib/rabbitmq]
+    mem_limit: 512m
+    logging: *logging
+
+networks:
+  app: {}
+
+volumes:
+  rabbitmq-data:
