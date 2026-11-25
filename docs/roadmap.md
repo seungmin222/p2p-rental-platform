@@ -99,6 +99,11 @@
 | `docs/fe-design-system` | 현재 디자인 문서화(`docs/design/design-system.md`)와 정리 대상 목록 | ✅ |
 | `chore/fe-design-refactor` | 정리 대상 리팩터링 | ✅ (#43) |
 
+### 인프라·배포
+| 브랜치 | 내용 | 상태 |
+| --- | --- | --- |
+| `chore/infra-deploy` | AWS 운영 배포 구성(저장소 쪽): 이미지·운영 compose·Nginx·GHCR 워크플로·배포 스크립트·런북 | ✅ 저장소 구성. AWS 리소스 생성과 운영망 검증(REQ-011 실제 IP, 서버 간 차단)은 런북대로 별도 진행 |
+
 ### 3순위 (착수 시 추가)
 | REQ | 이름 | 담당 | 필수 | 상태 |
 | --- | --- | --- | --- | --- |

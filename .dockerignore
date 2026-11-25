@@ -1,0 +1,9 @@
+# 저장소 루트를 컨텍스트로 쓰는 빌드(infra/nginx/Dockerfile: 프론트 + Nginx)용. 필요한 것만 남긴다.
+*
+!frontend/
+!infra/nginx/
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
