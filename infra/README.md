@@ -34,31 +34,52 @@ AWS 리소스는 이 문서를 보고 사람이 콘솔에서 만든다(코드로
 
 ## 2. AWS 리소스 (리전 ap-northeast-2)
 
+학교 공용 AWS 계정(운영진 관리)을 쓴다. 콘솔은 MFA로 로그인한다.
+
+- 사용 가능 서비스: EC2(t3.nano~t3.medium), Lambda, RDS, DynamoDB, S3, API Gateway, Amplify, SQS, SNS. CloudFront는 목록에 없다(4절).
+- Access Key를 발급받을 수 없고 IAM 정책·역할도 직접 만들 수 없다. 권한이 필요하면 운영진에게 요청한다.
+- 새로 만드는 리소스 이름은 `inha-capstone-19-` 접두사를 붙인다(S3 버킷은 필수).
+- 인스턴스 ID 등 계정 식별 값은 이 문서에 적지 않는다(이름만).
+
 | 리소스 | 설정 |
 | --- | --- |
-| EC2 ×2 | t3.small, Amazon Linux 2023 x86_64. **인스턴스 메타데이터 홉 제한 2**(IMDSv2 필수 유지) — 컨테이너가 IAM 역할 자격 증명을 받으려면 필요(기본 1이면 S3 업로드 실패). 1번에만 Elastic IP |
-| IAM 역할 | EC2용 인스턴스 프로파일, 두 서버에 연결. 정책: 버킷 `arn:aws:s3:::<버킷>/*`에 `s3:PutObject`·`s3:GetObject`·`s3:DeleteObject`만. 운영 `.env`에 액세스 키를 두지 않는다 |
-| RDS for MySQL | 8.4, 단일 AZ, 퍼블릭 액세스 없음, 두 EC2와 같은 VPC. 사용자 파라미터 그룹: `time_zone=Asia/Seoul`, `character_set_server=utf8mb4`, `collation_server=utf8mb4_unicode_ci`(로컬 compose와 같게). 초기 DB 이름 `rental` |
-| S3 | 비공개 버킷(퍼블릭 액세스 차단 전부 켬). 버킷 정책은 CloudFront OAC가 만든 문구(해당 배포의 `s3:GetObject`)만 |
+| EC2 ×2 | `inha-capstone-19-1`(1번)·`inha-capstone-19-2`(2번), 기본 VPC. t3.small, Amazon Linux 2023 x86_64. **인스턴스 메타데이터 홉 제한 2**(IMDSv2 필수 유지) — 컨테이너가 인스턴스 프로필 자격 증명을 받으려면 필요(기본 1이면 S3 업로드 실패). Elastic IP는 1번에만, 운영진이 할당 |
+| 인스턴스 프로필 | 운영진이 만든 `SafeInstanceProfile-inha-capstone-19`를 두 서버에 연결(직접 만들지 않는다). S3 권한은 버킷 이름을 운영진에게 보내 이 프로필에 추가받는다: `s3:PutObject`·`s3:GetObject`·`s3:DeleteObject`, 리소스 `arn:aws:s3:::inha-capstone-19-rental-files/*`. 운영 `.env`에 액세스 키를 두지 않는다 |
+| RDS for MySQL | 템플릿 **프리 티어**, 생성 시 "EC2 컴퓨팅 리소스에 연결 안 함". 8.4, 단일 AZ, 퍼블릭 액세스 없음, 기본 VPC, 보안 그룹 `inha-capstone-19-sg`. 초기 DB 이름 `rental`. 파라미터 그룹은 아래 |
+| S3 | 버킷 `inha-capstone-19-rental-files`. 비공개(퍼블릭 액세스 차단 전부 켬). 버킷 정책은 CloudFront OAC가 만든 문구(해당 배포의 `s3:GetObject`)만 |
 | CloudFront | 아래 4절 |
-| CloudFront Function | `cloudfront/strip-files-prefix.js` 내용 그대로, 런타임 cloudfront-js-2.0, 게시 후 `/files/*` 동작의 뷰어 요청에 연결 |
+| CloudFront Function | 이름 `inha-capstone-19-strip-files-prefix`. `cloudfront/strip-files-prefix.js` 내용 그대로, 런타임 cloudfront-js-2.0, 게시 후 `/files/*` 동작의 뷰어 요청에 연결 |
+
+### RDS 파라미터 그룹
+
+만들 수 있으면 사용자 파라미터 그룹 `inha-capstone-19-mysql84`: `time_zone=Asia/Seoul`, `character_set_server=utf8mb4`, `collation_server=utf8mb4_unicode_ci`(로컬 compose와 같게).
+
+권한이 없어 기본 그룹(`time_zone`=UTC)을 쓰게 돼도 기동·저장에는 문제가 없다.
+
+- 시각: 앱이 쓰는 시각은 Java가 만든다. `created_at`·`updated_at`은 JPA Auditing이 `Clock` 빈으로 채우고, 마이그레이션·코드에 `DEFAULT CURRENT_TIMESTAMP`·`NOW()`가 없다. JDBC URL(`application-prod.yml`)의 `connectionTimeZone=Asia/Seoul`로 Java 쪽 시각도 맞다.
+- 나중에 DB 함수로 시각을 만들거나 콘솔에서 `NOW()`로 조회할 때까지 서울 시각으로 맞추려면(선택) `.env`에 `SPRING_DATASOURCE_URL`을 넣어 yml URL을 덮어쓴다(코드 수정 없음, `.env.prod.example` 참고). compose가 `.env`를 백엔드 컨테이너에 `env_file`로 넘기고 환경 변수가 yml보다 우선한다. 값에는 `${DB_HOST}` 대신 실제 RDS 엔드포인트를 적는다:
+  `jdbc:mysql://<RDS 엔드포인트>:3306/rental?characterEncoding=UTF-8&connectionTimeZone=Asia/Seoul&forceConnectionTimeZoneToSession=true`
+- 문자셋: 마이그레이션이 테이블마다 `DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci`를 지정하므로 기본 그룹이어도 된다. 다만 DB 기본 collation과 Flyway가 만드는 `flyway_schema_history`는 MySQL 8.4 기본값 `utf8mb4_0900_ai_ci`가 된다(앱 테이블에는 영향 없음).
 
 ## 3. 보안 그룹
 
-| 보안 그룹 | 인바운드 | 출처 |
-| --- | --- | --- |
-| `rental-server1` | TCP 80 | 관리형 접두사 목록 `com.amazonaws.global.cloudfront.origin-facing` |
-| | TCP 22 | 내 IP/32 |
-| | TCP 6379 (Redis) | `rental-server2` |
-| `rental-server2` | TCP 22 | 내 IP/32 |
-| | TCP 8080 (앱) · 5672 (AMQP) · 61613 (STOMP) | `rental-server1` |
-| `rental-rds` | TCP 3306 | `rental-server1`, `rental-server2` |
+이미 있는 보안 그룹 `inha-capstone-19-sg` 하나를 두 서버와 RDS에 단다.
 
+| 인바운드 | 출처 | 용도 |
+| --- | --- | --- |
+| TCP 80 | 관리형 접두사 목록 `com.amazonaws.global.cloudfront.origin-facing` | CloudFront → 1번 Nginx |
+| TCP 22 | 내 IP/32 | SSH |
+| 모든 TCP | `inha-capstone-19-sg`(자기 자신) | 서버 간 6379(Redis)·8080(앱)·5672(AMQP)·61613(STOMP), 앱 → RDS 3306 |
+
+- 하나로 합쳐도 되는 이유: 이 그룹을 단 것은 서버 2대와 RDS뿐이다. 2번은 80에서 듣지 않고, RDS는 3306만 듣는다. 그래서 서버별로 그룹을 나눈 것과 열리는 포트가 사실상 같다.
+- 서버 간 포트를 한 줄(모든 TCP ← 자기 자신)로 둔다. CloudFront 접두사 목록이 규칙 55개로 계산되므로(보안 그룹 기본 한도 60) 포트 5개를 따로 넣으면 55 + 1 + 5 = 61로 한도를 넘는다. 규칙을 더 넣을 때 주의한다.
+- 공용 계정 주의: 다른 팀이 이 그룹을 자기 리소스에 붙이면 서버 간 포트(Redis·RabbitMQ·앱·RDS)에 접근할 수 있다. 이 그룹은 우리 리소스에만 쓴다.
 - 아웃바운드는 기본(전체 허용). 외부 API(토스·카카오·Claude), S3, GHCR pull에 필요하다.
-- CloudFront 접두사 목록은 규칙 55개로 계산된다(보안 그룹 기본 한도 60). 1번 그룹에 규칙을 더 넣을 때 주의한다.
 - 2번 서버에 공인 IP가 자동 할당돼 있어도 위 규칙으로 22 외에는 막힌다. compose는 6379·8080·5672·61613을 사설 IP에만 바인딩하지만 EC2의 공인 IP 트래픽도 같은 사설 IP로 들어오므로 **실제 차단은 보안 그룹이 한다**. 15672(RabbitMQ 관리 콘솔)는 컨테이너에 없다.
 
 ## 4. CloudFront 배포
+
+CloudFront는 공용 계정의 사용 가능 서비스 목록에 없다. 먼저 만들어 보고, 권한 오류로 막히면 운영진에게 허용을 요청한다. 배포·OAC·함수 등 새로 만드는 리소스 이름은 `inha-capstone-19-` 접두사를 붙인다.
 
 오리진 2개:
 
@@ -73,7 +94,7 @@ AWS 리소스는 이 문서를 보고 사람이 콘솔에서 만든다(코드로
 | --- | --- | --- | --- | --- | --- |
 | `/api/*` | EC2 | 전부 | CachingDisabled | AllViewerAndCloudFrontHeaders-2022-06 | |
 | `/ws*` | EC2 | 전부 | CachingDisabled | AllViewerAndCloudFrontHeaders-2022-06 | 웹소켓은 별도 설정 없이 지원 |
-| `/files/*` | S3 | GET, HEAD | CachingOptimized | 없음 | 뷰어 요청 함수 `strip-files-prefix` |
+| `/files/*` | S3 | GET, HEAD | CachingOptimized | 없음 | 뷰어 요청 함수 `inha-capstone-19-strip-files-prefix` |
 | 기본(`*`) | EC2 | GET, HEAD | UseOriginCacheControlHeaders | AllViewerAndCloudFrontHeaders-2022-06 | SPA. Nginx가 index.html `no-cache`, `/assets/` 1년 |
 
 - `AllViewerAndCloudFrontHeaders-2022-06`이 모든 쿠키·헤더·쿼리와 `CloudFront-Viewer-Address`(실제 클라이언트 IP, REQ-011)를 넘긴다. RT 쿠키(`Path=/api/auth`, `Secure`)도 이것으로 전달된다.
@@ -89,7 +110,7 @@ AWS 리소스는 이 문서를 보고 사람이 콘솔에서 만든다(코드로
 
 1. 두 서버에 `infra/deploy/setup.sh`를 올려 `sudo bash setup.sh` (Docker·Compose 플러그인·git, 스왑 2GB, `/opt/rental`). 다시 로그인.
 2. 두 서버: `git clone https://github.com/seungmin222/p2p-rental-platform.git /opt/rental/repo`
-3. 두 서버: `cp /opt/rental/repo/infra/.env.prod.example /opt/rental/.env && chmod 600 /opt/rental/.env` 후 값 채우기. 두 서버 내용은 같게 두고, `TRUSTED_PROXY_REGEX`는 2번 서버에서만 쓰인다.
+3. 두 서버: `cp /opt/rental/repo/infra/.env.prod.example /opt/rental/.env && chmod 600 /opt/rental/.env` 후 값 채우기. 두 서버 내용은 같게 두고, `TRUSTED_PROXY_REGEX`는 2번 서버에서만 쓰인다. RDS가 기본 파라미터 그룹이면 `SPRING_DATASOURCE_URL`(선택, 2절 "RDS 파라미터 그룹")도 정한다.
 4. 순서대로 기동한다. 서로의 Redis·RabbitMQ를 쓰기 때문이다.
    1. 2번: `cd /opt/rental/repo && docker compose -f infra/docker-compose.server2.yml --env-file /opt/rental/.env up -d rabbitmq`
    2. 1번: `/opt/rental/repo/infra/deploy/deploy.sh server1` — 첫 기동에서 Flyway가 스키마를 만든다. `docker compose -p rental logs -f backend`로 `Started` 확인
@@ -115,5 +136,4 @@ AWS 리소스는 이 문서를 보고 사람이 콘솔에서 만든다(코드로
 
 - 쓰지 않을 때 EC2 두 대를 **중지**한다(중지 중엔 인스턴스 요금 없음, EBS·퍼블릭 IPv4 요금은 계속).
 - RDS는 중지해도 **7일 뒤 자동으로 다시 시작**된다. 오래 안 쓰면 다시 중지하거나 스냅샷 후 삭제한다.
-- 프로젝트 종료 시 삭제: CloudFront 배포(먼저 비활성화) → EC2·Elastic IP 해제 → RDS(최종 스냅샷 여부 선택) → S3 버킷 비우기·삭제 → IAM 역할.
-- AWS Budgets에 월 예산 알림을 걸어 둔다.
+- 프로젝트 종료 시 삭제: CloudFront 배포(먼저 비활성화) → EC2 → Elastic IP 해제(운영진에게 요청) → RDS(최종 스냅샷 여부 선택) → S3 버킷 비우기·삭제 → 인스턴스 프로필의 버킷 권한·IAM 역할 정리(운영진에게 요청).

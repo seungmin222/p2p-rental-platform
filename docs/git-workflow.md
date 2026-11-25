@@ -60,6 +60,7 @@
 | `feat/item-wish-recent` | 022 관심(추가·해제·목록, 상세 isWished), 035 최근 본 상품 — 백엔드만 (프론트 화면·060 추천 제외) | B |
 | `feat/fe-item-wish-recent` | 022·035 프론트: SCR-05 상세 하트 연결, SCR-12 `/me/wishes` 관심 목록·`/me/recent` 최근 본 물품, `/me` 진입 메뉴 (피드·검색 카드 하트·060 추천·백엔드 변경 제외) | FE |
 | `chore/infra-deploy` | AWS 운영 배포 구성(저장소 쪽): 백엔드·Nginx(프론트 포함) 이미지, 서버별 운영 compose 2개, Nginx 설정(CloudFront 뒤 실제 IP·오리진 비밀 헤더), GHCR 이미지 워크플로, 서버 배포 스크립트, 런북 `infra/README.md` (AWS 리소스 생성·서버 배포 자동화 제외) | A |
+| `docs/infra-shared-account` | 런북 `infra/README.md`·`infra/.env.prod.example`을 학교 공용 AWS 계정 제약(Access Key·IAM 생성 불가, 이름 접두사, 보안 그룹 1개, RDS 프리 티어)에 맞춤. 문서만 (코드·compose·Nginx·AWS 리소스 제외) | A |
 
 `feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
 
