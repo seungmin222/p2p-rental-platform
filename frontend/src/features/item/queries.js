@@ -5,6 +5,7 @@ import {
   addWish,
   createItem,
   deleteItem,
+  draftItem,
   fetchCategories,
   fetchDepositGuide,
   fetchFeed,
@@ -149,6 +150,33 @@ export function useDepositGuide({ categoryId, itemPrice }) {
     enabled: Number.isInteger(categoryId) && Number.isInteger(itemPrice),
     staleTime: CATEGORY_STALE_TIME,
   });
+}
+
+/**
+ * AI 등록 보조(REQ-067). 응답의 권장 보증금 범위는 deposit-guide와 같은 계산이라
+ * 그 조회 키에 미리 넣어, 폼이 같은 카테고리·원가로 다시 부르지 않게 한다.
+ */
+export function draftItemMutationOptions(queryClient) {
+  return {
+    mutationFn: draftItem,
+    onSuccess: (draft) => {
+      const { categoryId, itemPrice, minDeposit, maxDeposit } = draft;
+      if (
+        draft.status === 'DONE' &&
+        [categoryId, itemPrice, minDeposit, maxDeposit].every((value) => value != null)
+      ) {
+        queryClient.setQueryData(itemKeys.depositGuide({ categoryId, itemPrice }), {
+          minDeposit,
+          maxDeposit,
+        });
+      }
+    },
+  };
+}
+
+export function useDraftItem() {
+  const queryClient = useQueryClient();
+  return useMutation(draftItemMutationOptions(queryClient));
 }
 
 function invalidateItemLists(queryClient) {

@@ -1,15 +1,50 @@
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/query-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createItem, deleteItem, updateItem } from './api';
+import { createItem, deleteItem, draftItem, updateItem } from './api';
 import {
   createItemMutationOptions,
   deleteItemMutationOptions,
+  draftItemMutationOptions,
   itemKeys,
   updateItemMutationOptions,
 } from './queries';
 
-vi.mock('./api', () => ({ createItem: vi.fn(), updateItem: vi.fn(), deleteItem: vi.fn() }));
+vi.mock('./api', () => ({
+  createItem: vi.fn(),
+  updateItem: vi.fn(),
+  deleteItem: vi.fn(),
+  draftItem: vi.fn(),
+}));
+
+describe('AI 등록 보조 뮤테이션', () => {
+  const DONE = {
+    status: 'DONE',
+    categoryId: 1,
+    itemPrice: 200000,
+    minDeposit: 60000,
+    maxDeposit: 100000,
+  };
+
+  it('DONE이면 권장 보증금 범위를 deposit-guide 키에 넣는다', async () => {
+    const queryClient = new QueryClient();
+    draftItem.mockResolvedValue(DONE);
+    await new MutationObserver(queryClient, draftItemMutationOptions(queryClient)).mutate([]);
+    expect(
+      queryClient.getQueryData(itemKeys.depositGuide({ categoryId: 1, itemPrice: 200000 })),
+    ).toEqual({ minDeposit: 60000, maxDeposit: 100000 });
+  });
+
+  it.each([
+    ['원가 null', { ...DONE, itemPrice: null, minDeposit: null, maxDeposit: null }],
+    ['FAILED', { status: 'FAILED' }],
+  ])('%s면 캐시에 넣지 않는다', async (_, draft) => {
+    const queryClient = new QueryClient();
+    draftItem.mockResolvedValue(draft);
+    await new MutationObserver(queryClient, draftItemMutationOptions(queryClient)).mutate([]);
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+});
 
 const LATITUDE = 37.391234;
 

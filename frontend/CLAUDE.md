@@ -261,6 +261,7 @@ export const RENTAL_STATUS = {
 - 빈 상태·로딩·에러 상태를 모든 목록에 구현 (`EmptyState`, 스켈레톤).
 - 본인 물품 상세에서는 예약하기 대신 수정·관리 버튼.
 - 물품 가격(itemPrice)은 등록·수정 화면에서만 입력, 상세에 표시하지 않는다. 등록 시 권장 보증금 범위를 보증금 입력란 아래 안내.
+- AI 등록 보조(REQ-067, 등록만): 사진 아래 "AI로 채우기"(`AiDraftField`) → `POST /api/items/ai-draft`(`useDraftItem`). 사용자가 고치지 않은 칸(처음 값도, AI가 넣은 값도 아닌 값이면 고친 것)만 카테고리·이름·설명·일 대여료·물품 가격을 채우고, 보증금은 비워 둔 채 응답 범위를 deposit-guide 캐시에 넣어 기존 안내로 보인다. 요청 중에도 입력·등록은 막지 않는다. 판단·문구는 `features/item/aiDraft.js`(테스트). 목은 첫 사진 파일 이름으로 결과를 고른다(`mocks/aiDraft.js`: `fail`·`limit`·`etc`·`partial`).
 - 접근성: 버튼에 텍스트 또는 aria-label, 터치 영역 44px 이상.
 - 디자인 기준은 `docs/design/`(정확한 값은 `mockups/*.html` 인라인 스타일, PNG는 전체 모양 참고). 단, SCR-03 홈·SCR-05 상세와 PC 상단 헤더는 저장소 밖 Figma 시안을 따랐다(`chore/fe-design-refactor`). 지금 모양과 시안 값 차이는 `design-system.md` §5·§6. 시안과 명세가 다르면 명세가 우선이고 사용자에게 확인한다.
 - 지금 코드가 쓰는 토큰·공통 컴포넌트·레이아웃 패턴과 정리 대상 목록은 `docs/design/design-system.md`. 새 화면은 그 문서의 패턴을 먼저 찾아 쓴다.

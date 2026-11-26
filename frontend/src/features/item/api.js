@@ -115,7 +115,20 @@ export function deleteItem(itemId) {
   return apiClient.delete(`/items/${itemId}`);
 }
 
-/** GET /api/items/deposit-guide → ItemDepositGuideResponse { minDeposit, maxDeposit }. 로그인 필요 */
+/**
+ * POST /api/items/ai-draft (REQ-067, multipart images만) → AiDraftResponse. 사진은 저장하지 않는다.
+ * AI를 쓸 수 없으면 200에 status FAILED·LIMIT_EXCEEDED, 사진 오류만 400
+ * @param {File[]} images
+ */
+export function draftItem(images) {
+  const form = new FormData();
+  for (const file of images) {
+    form.append('images', file);
+  }
+  return apiClient.post('/items/ai-draft', form);
+}
+
+/** GET /api/items/deposit-guide →ItemDepositGuideResponse { minDeposit, maxDeposit }. 로그인 필요 */
 export function fetchDepositGuide({ categoryId, itemPrice }) {
   return apiClient.get('/items/deposit-guide', { params: { categoryId, itemPrice } });
 }
