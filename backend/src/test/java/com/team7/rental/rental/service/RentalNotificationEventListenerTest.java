@@ -10,6 +10,7 @@ import static org.mockito.Mockito.mock;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.team7.rental.global.config.NotificationListenerExecutor;
 import com.team7.rental.rental.event.RentalNotificationEvent;
 import com.team7.rental.rental.service.RentalNotificationPort.Type;
 
@@ -22,7 +23,7 @@ class RentalNotificationEventListenerTest {
 		RentalNotificationPort port = mock(RentalNotificationPort.class);
 		willThrow(new IllegalStateException("boom")).given(port)
 			.send(anyLong(), any(), any(), anyLong(), anyString());
-		var listener = new RentalNotificationEventListener(port);
+		var listener = new RentalNotificationEventListener(port, NotificationListenerExecutor.synchronous());
 
 		// when & then
 		assertThatCode(() -> listener.onNotification(

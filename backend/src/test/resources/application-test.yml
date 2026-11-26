@@ -31,6 +31,10 @@ app:
   mail:
     # 재설정 메일을 호출 스레드에서 바로 보내(FakePasswordResetMailSender) 결과를 결정적으로 검증한다
     async: false
+  notification:
+    executor:
+      # 알림 저장을 호출 스레드에서 바로 해(AFTER_COMMIT) 결과를 결정적으로 검증한다. 비동기 경로는 NotificationAsyncPoolIntegrationTest
+      async: false
   storage:
     local:
       root-dir: build/test-uploads

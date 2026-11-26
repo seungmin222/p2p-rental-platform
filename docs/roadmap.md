@@ -108,7 +108,8 @@
 ### 테스트·성능 실험 (14주차)
 | 브랜치 | 내용 | 상태 |
 | --- | --- | --- |
-| `chore/load-test` | 부하 테스트: 로컬 docker 앱 2개 + k6, 더미 회원 1만·물품 3만·대여 10만 (`docs/experiments/load-test.md`, `scripts/load/`) | ✅ 실행. 조회 p95·예약 중복 0건은 목표 충족(200명까지). **예약 200명에서 알림 저장의 커넥션 풀 교착으로 멈춤** — 수정은 별도 fix 브랜치. 미실행(별도 브랜치): 운영 환경 짧은 확인, 피드 전후 비교(§8-4), 장애 주입(§8-2), 락 전략 비교(§8-1) |
+| `chore/load-test` | 부하 테스트: 로컬 docker 앱 2개 + k6, 더미 회원 1만·물품 3만·대여 10만 (`docs/experiments/load-test.md`, `scripts/load/`) | ✅ 실행. 조회 p95·예약 중복 0건은 목표 충족(200명까지). 예약 200명에서 알림 저장의 커넥션 풀 교착으로 멈춤 → `fix/notification-async-listener`에서 수정. 미실행(별도 브랜치): 운영 환경 짧은 확인, 피드 전후 비교(§8-4), 장애 주입(§8-2), 락 전략 비교(§8-1) |
+| `fix/notification-async-listener` | 커넥션 풀 교착 수정: 알림 저장 AFTER_COMMIT 리스너를 전용 실행기(`NotificationListenerExecutor`)에서 실행, 작은 풀 회귀 테스트 | ✅ 개선 후 예약 200명 실패 0·p99 38.1ms, 100명 쉼 0 실패 0·p95 약 350ms. 쉼 0에서는 알림 약 65%를 큐 포화로 버림(받아들인 한계, `docs/experiments/load-test.md`). 남은 일: 알림 묶어 저장(배치 INSERT), 운영 dropped 로그 경보 |
 
 ### 3순위 (착수 시 추가)
 | REQ | 이름 | 담당 | 필수 | 상태 |

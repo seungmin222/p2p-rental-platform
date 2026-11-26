@@ -6,7 +6,7 @@
 - 별도 브로커 추가 없음. **채팅과 같은 WebSocket(STOMP) 연결의 개인 큐** `/user/queue/notifications` 사용, 다중 서버 전달은 RabbitMQ 브로커 릴레이
 - **DB 저장이 기준, 실시간 전달은 부가 경로**. 실시간 실패 시 재전송하지 않는다(재접속 시 목록 API)
 - Redis Pub/Sub·SSE는 검토 후 채택하지 않음
-- 다른 도메인은 알림을 직접 만들지 않고 `NotificationService.send(memberId, type, target, eventId, args)` 또는 도메인 이벤트 리스너를 통해서만 발행한다. 트랜잭션 커밋 후 발행(`AFTER_COMMIT`)
+- 다른 도메인은 알림을 직접 만들지 않고 `NotificationService.send(memberId, type, target, eventId, args)` 또는 도메인 이벤트 리스너를 통해서만 발행한다. 트랜잭션 커밋 후 발행(`AFTER_COMMIT`). 리스너는 요청 스레드가 아니라 알림 전용 실행기에서 저장한다(커넥션 풀 교착 방지, `fix/notification-async-listener`)
 
 ## REQ-032 거래 활동 알림 [2]
 - 이벤트: `state-machines.md` §5 `NotificationType` 전체(3순위 표시 항목 제외). 수신자는 아래 표
