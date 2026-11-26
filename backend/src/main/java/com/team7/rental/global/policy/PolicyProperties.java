@@ -256,7 +256,7 @@ public record PolicyProperties(
 	}
 
 	/**
-	 * AI 공통·상태 비교(REQ-040)·카테고리 추천(REQ-067). ai.compare.per-rental(대여 건당 1회)은 수치가 아니라 반납 기록의 ai_result가 비어 있을 때만
+	 * AI 공통·상태 비교(REQ-040)·등록 보조(REQ-067). ai.compare.per-rental(대여 건당 1회)은 수치가 아니라 반납 기록의 ai_result가 비어 있을 때만
 	 * 맡는 규칙이다
 	 *
 	 * @param monthlyLimit 월 호출 한도 (ai.monthly-limit). 기능 공통, 재시도도 1건으로 센다. 넘으면 호출하지 않고 LIMIT_EXCEEDED
@@ -273,7 +273,7 @@ public record PolicyProperties(
 		@Valid @NotNull
 		Compare compare,
 		@Valid @NotNull
-		Category category) {
+		Draft draft) {
 
 		/**
 		 * @param processingTimeoutMinutes 이 시간이 지나도 PROCESSING이면 응답에서 FAILED로 보인다 (ai.compare.processing-timeout-minutes)
@@ -284,12 +284,12 @@ public record PolicyProperties(
 		}
 
 		/**
-		 * 카테고리 추천 (REQ-067)
+		 * 등록 보조 (REQ-067)
 		 *
-		 * @param timeoutSeconds 요청 하나에서 AI를 기다리는 총 시간, 형식 오류 재시도 포함 (ai.category.timeout-seconds)
-		 * @param perMemberDaily 회원당 하루 추천 횟수 (ai.category.per-member-daily). 넘으면 호출하지 않고 LIMIT_EXCEEDED
+		 * @param timeoutSeconds 요청 하나에서 AI를 기다리는 총 시간, 형식 오류 재시도 포함 (ai.draft.timeout-seconds)
+		 * @param perMemberDaily 회원당 하루 요청 횟수 (ai.draft.per-member-daily). 넘으면 호출하지 않고 LIMIT_EXCEEDED
 		 */
-		public record Category(
+		public record Draft(
 			@Positive
 			int timeoutSeconds,
 			@Positive

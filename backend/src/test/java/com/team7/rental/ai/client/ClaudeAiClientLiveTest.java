@@ -40,7 +40,7 @@ class ClaudeAiClientLiveTest {
 		assumeTrue(apiKey != null && !apiKey.isBlank(), "ANTHROPIC_API_KEY 없음");
 		assumeTrue(sampleDir != null && Files.isDirectory(Path.of(sampleDir)), "AI_COMPARE_SAMPLE_DIR 없음");
 
-		AiProperties properties = new AiProperties(apiKey, configuredModel(), 1024, Duration.ofSeconds(30), 2);
+		AiProperties properties = new AiProperties(apiKey, configuredModel(), 1024, 2048, Duration.ofSeconds(30), 2);
 		ClaudeAiClient client = new ClaudeAiClient(AnthropicOkHttpClient.builder()
 			.apiKey(apiKey)
 			.timeout(properties.timeout())

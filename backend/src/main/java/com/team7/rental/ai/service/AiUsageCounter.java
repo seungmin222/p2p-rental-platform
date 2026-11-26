@@ -55,23 +55,23 @@ public class AiUsageCounter {
 	}
 
 	/**
-	 * 회원의 오늘 카테고리 추천 한 건을 잡는다 (ai.category.per-member-daily, REQ-067). 한도를 넘으면 false. 키는 다음 날이 끝날 때 만료된다.
-	 * 추천 요청 단위로 세고 형식 오류 재시도는 세지 않는다(월 한도는 호출마다 {@link #tryAcquire}로 따로 센다).
+	 * 회원의 오늘 등록 보조 한 건을 잡는다 (ai.draft.per-member-daily, REQ-067). 한도를 넘으면 false. 키는 다음 날이 끝날 때 만료된다.
+	 * 요청 단위로 세고 형식 오류 재시도는 세지 않는다(월 한도는 호출마다 {@link #tryAcquire}로 따로 센다).
 	 *
 	 * @throws org.springframework.dao.DataAccessException Redis 실패 (부르는 쪽이 FAILED로 끝낸다)
 	 */
-	public boolean tryAcquireCategory(Long memberId) {
+	public boolean tryAcquireDraft(Long memberId) {
 		LocalDate today = LocalDate.now(clock);
 		long expireAt = today.plusDays(2).atStartOfDay(clock.getZone()).toEpochSecond();
-		Long count = redis.execute(INCREMENT, List.of(categoryKey(memberId, today)), Long.toString(expireAt));
+		Long count = redis.execute(INCREMENT, List.of(draftKey(memberId, today)), Long.toString(expireAt));
 		if (count == null) {
-			throw new IllegalStateException("AI 카테고리 추천 횟수 카운터 응답 없음");
+			throw new IllegalStateException("AI 등록 보조 횟수 카운터 응답 없음");
 		}
-		return count <= policyProperties.ai().category().perMemberDaily();
+		return count <= policyProperties.ai().draft().perMemberDaily();
 	}
 
-	public static String categoryKey(Long memberId, LocalDate day) {
-		return "ai:category:" + memberId + ":" + day.format(DAY);
+	public static String draftKey(Long memberId, LocalDate day) {
+		return "ai:draft:" + memberId + ":" + day.format(DAY);
 	}
 
 	public static String key(YearMonth month) {

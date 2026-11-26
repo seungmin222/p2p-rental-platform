@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ClaudeAiClient implements AiClient {
 
 	private final AnthropicClient client;
-	/** 카테고리 추천용: 사용자가 기다리는 요청이라 SDK 재시도를 끄고 제한 시간은 호출마다 준다 */
+	/** 등록 보조용: 사용자가 기다리는 요청이라 SDK 재시도를 끄고 제한 시간은 호출마다 준다 */
 	private final AnthropicClient noRetryClient;
 	private final AiProperties properties;
 
@@ -50,14 +50,15 @@ public class ClaudeAiClient implements AiClient {
 	}
 
 	@Override
-	public String recommendCategory(List<AiImage> images, List<CategoryOption> categories, Duration timeout) {
+	public String draft(List<AiImage> images, List<CategoryOption> categories, int titleMax, int descriptionMax,
+		Duration timeout) {
 		List<ContentBlockParam> blocks = new ArrayList<>();
 		images.forEach(image -> blocks.add(image(image)));
-		blocks.add(text(CategoryPrompt.instruction(images.size(), categories)));
+		blocks.add(text(DraftPrompt.instruction(images.size(), categories, titleMax, descriptionMax)));
 		MessageCreateParams params = MessageCreateParams.builder()
 			.model(properties.model())
-			.maxTokens(properties.maxTokens())
-			.system(CategoryPrompt.SYSTEM)
+			.maxTokens(properties.draftMaxTokens())
+			.system(DraftPrompt.SYSTEM)
 			.addUserMessageOfContentBlockParams(blocks)
 			.build();
 		Message message;
@@ -66,7 +67,7 @@ public class ClaudeAiClient implements AiClient {
 		} catch (AnthropicException e) {
 			throw new AiClientException("Claude 호출 실패: " + e.getClass().getSimpleName(), e);
 		}
-		return textOf(message, "category");
+		return textOf(message, "draft");
 	}
 
 	private String textOf(Message message, String purpose) {

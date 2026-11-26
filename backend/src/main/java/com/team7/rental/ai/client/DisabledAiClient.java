@@ -18,8 +18,9 @@ public class DisabledAiClient implements AiClient {
 	}
 
 	@Override
-	public String recommendCategory(List<AiImage> images, List<CategoryOption> categories, Duration timeout) {
-		throw new AiClientException("ANTHROPIC_API_KEY가 없어 AI 카테고리 추천을 하지 않는다");
+	public String draft(List<AiImage> images, List<CategoryOption> categories, int titleMax, int descriptionMax,
+		Duration timeout) {
+		throw new AiClientException("ANTHROPIC_API_KEY가 없어 AI 등록 보조를 하지 않는다");
 	}
 
 	@Override
