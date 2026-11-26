@@ -108,6 +108,14 @@ app:
   mail:
     from: ${MAIL_FROM:no-reply@rental.local}
     async: true
+  # 알림 저장 AFTER_COMMIT 리스너 전용 실행기 (NotificationListenerExecutor). 정책 수치가 아니라 운영 튜닝 값이다(docs/experiments/load-test.md).
+  # 스레드 4개는 Hikari 풀 10개 중 최대 4개만 알림에 쓰게 한다. 큐가 넘치면 버리고 경고 로그, 종료 때 최대 10초 기다린다. 테스트만 async=false
+  notification:
+    executor:
+      async: true
+      pool-size: 4
+      queue-capacity: 1000
+      await-termination-seconds: 10
   # 약관·정책 문서 버전 (REQ-037). 본문은 resources/terms/*.md. 본문을 고치면 버전을 올린다(20자 이내).
   # 이용약관·개인정보처리방침·만 14세 확인의 버전이 바뀌면 다음 로그인 응답 requiresTermsAgreement가 true가 된다
   terms:
