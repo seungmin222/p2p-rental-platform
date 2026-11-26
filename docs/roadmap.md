@@ -103,6 +103,7 @@
 | 브랜치 | 내용 | 상태 |
 | --- | --- | --- |
 | `chore/infra-deploy` | AWS 운영 배포 구성(저장소 쪽): 이미지·운영 compose·Nginx·GHCR 워크플로·배포 스크립트·런북 | ✅ 저장소 구성. AWS 리소스 생성과 운영망 검증(REQ-011 실제 IP, 서버 간 차단)은 런북대로 별도 진행 |
+| `docs/infra-shared-account` | 런북·`.env.prod.example`을 학교 공용 AWS 계정 제약에 맞춤: 운영진 인스턴스 프로필, 보안 그룹 1개, `inha-capstone-19-` 이름, RDS 기본 파라미터 그룹 대안, Budgets 제외 | ✅ 문서 |
 
 ### 3순위 (착수 시 추가)
 | REQ | 이름 | 담당 | 필수 | 상태 |
