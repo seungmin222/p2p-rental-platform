@@ -81,6 +81,30 @@ class ItemSearchIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("FULLTEXT(ngram)로 찾는 한글·숫자 검색어도 LIKE 부분 일치와 결과가 같고, 한 글자·영문·공백 검색어는 LIKE로 찾는다")
+	void fulltextKeywordMatchesLikeSemantics() {
+		var gaNaNaGa = create("가나나가 스피커", "설명", 1000, now.minusMinutes(1));
+		var gaNaGa = create("다가나가라 스피커", "설명", 1000, now.minusMinutes(2));
+		var n2112 = create("모델 2112", "설명", 1000, now.minusMinutes(3));
+		var n21212 = create("모델 21212", "설명", 1000, now.minusMinutes(4));
+		var led = create("led 조명", "설명", 1000, now.minusMinutes(5));
+		var snowboard = create("스노보드", "설명", 1000, now.minusMinutes(6));
+		var described = create("판", "보드게임 판입니다", 1000, now.minusMinutes(7));
+		var tent = create("캠핑 텐트", "설명", 1000, now.minusMinutes(8));
+
+		// 겹치는 2-gram이 이어져야 일치: 가나가는 가나나가에, 212는 2112에 없다
+		assertThat(ids(search(builder().keyword("가나가")))).containsExactly(gaNaGa.getId());
+		assertThat(ids(search(builder().keyword("212")))).containsExactly(n21212.getId());
+		assertThat(ids(search(builder().keyword("보드")))).containsExactly(snowboard.getId(), described.getId());
+		assertThat(ids(search(builder().keyword("2112")))).containsExactly(n2112.getId());
+		// 한 글자(ngram 토큰 크기 2 미만)·영문(불용어)·공백 포함은 LIKE
+		assertThat(ids(search(builder().keyword("LED")))).containsExactly(led.getId());
+		assertThat(ids(search(builder().keyword("텐")))).containsExactly(tent.getId());
+		assertThat(ids(search(builder().keyword("캠핑 텐트")))).containsExactly(tent.getId());
+		assertThat(ids(search(builder().keyword("가 스")))).containsExactly(gaNaNaGa.getId());
+	}
+
+	@Test
 	@DisplayName("검색어의 %·_는 문자 그대로 찾는다")
 	void keywordEscapesLikeWildcards() {
 		var percent = create("면 100% 담요", "설명", 1000, now);

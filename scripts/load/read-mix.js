@@ -12,6 +12,11 @@ const VUS = Number(__ENV.VUS || 100);
 const LOGIN_USERS = Number(__ENV.LOGIN_USERS || 200);
 // 사용자 한 명이 요청 사이에 쉬는 시간(초). 0.5~1.5초 무작위(평균 THINK)
 const THINK = Number(__ENV.THINK ?? 1);
+// ONLY=feed|search면 그 API만 보낸다(조회 인덱스 실험에서 피드·검색을 따로 잰다). 비우면 피드 50%·검색 30%·상세 20%
+const ONLY = __ENV.ONLY || '';
+if (ONLY && !['feed', 'search'].includes(ONLY)) {
+	throw new Error('ONLY는 feed 또는 search다');
+}
 
 const failed = new Rate('read_failed');
 
@@ -86,7 +91,7 @@ export default function (data) {
 	// 짝수 VU는 회원(대표 동네 기준), 홀수 VU는 비회원(regionId 지정)
 	const token = __VU % 2 === 0 ? data.tokens[__VU % data.tokens.length] : null;
 	const regionParam = token ? '' : `regionId=${pick(data.regionIds)}&`;
-	const r = Math.random();
+	const r = ONLY === 'feed' ? 0 : ONLY === 'search' ? 0.5 : Math.random();
 
 	if (r < 0.5) {
 		let q = regionParam;
@@ -131,4 +136,4 @@ export default function (data) {
 	}
 }
 
-export const handleSummary = makeSummary(`read-mix-vus${VUS}`);
+export const handleSummary = makeSummary(`read-mix${ONLY ? `-${ONLY}` : ''}-vus${VUS}`);

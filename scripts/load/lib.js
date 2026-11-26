@@ -5,7 +5,8 @@ import { check } from 'k6';
 export const BASE = __ENV.BASE_URL || 'http://localhost:18080';
 export const PASSWORD = 'loadtest123!';
 export const MEMBER_COUNT = 10000;
-export const ITEM_COUNT = 30000;
+// seed.sql @item_count와 같게(기본 30000)
+export const ITEM_COUNT = Number(__ENV.ITEM_COUNT || 30000);
 export const CATEGORY_COUNT = 8;
 export const KEYWORDS = ['텐트', '캠핑의자', '드릴', '카메라', '삼각대', '유모차', '카시트', '스피커', '빔프로젝터',
 	'보드게임', '스키', '제습기', '청소기', '캐리어', '한복', '자전거'];

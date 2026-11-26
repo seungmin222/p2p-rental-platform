@@ -3,7 +3,7 @@
 -- 앱(Flyway)이 한 번 기동해 테이블·카테고리·행정동을 만든 뒤 실행한다. 난수 대신 id의 CRC32를 써서 매번 같은 데이터가 나온다.
 -- k6 스크립트(lib.js)가 아래 규칙을 그대로 따라 쓴다. 규칙을 바꾸면 lib.js도 같이 바꾼다:
 --   회원 id 1..10000, 이메일 load{id}@load.test, 비밀번호 loadtest123! (테스트 전용), 대표 동네 인증 완료
---   물품 id 1..30000, 소유자 = (id*7 % 10000) + 1, 상태 DELETED(id%50=0)·HIDDEN(id%50=1)·그 밖 AVAILABLE
+--   물품 id 1..@item_count(기본 30000. 늘리려면 mysql에 --init-command="SET @item_count=300000"), 소유자 = (id*7 % 10000) + 1, 상태 DELETED(id%50=0)·HIDDEN(id%50=1)·그 밖 AVAILABLE
 --   대여 가능 기간 = 오늘-400일 ~ 오늘+240일 (물품당 1개)
 
 DROP PROCEDURE IF EXISTS load_seed_guard;
@@ -26,21 +26,24 @@ DELIMITER ;
 CALL load_seed_guard();
 DROP PROCEDURE load_seed_guard;
 
+SET @item_count = IFNULL(@item_count, 30000);
 SET @now = NOW(6);
 SET @today = CURDATE();
 -- 모든 더미 회원이 같은 BCrypt(강도 10) 해시를 쓴다. 평문 loadtest123! (부하 테스트 전용 값)
 SET @pw = '$2a$10$IUw.iMd7g266226X4p2sZOxKpvbWUQRqfvYwnxbJ7BE0GmoPqqN/u';
 
--- 1..100000 숫자 테이블
+-- 1..GREATEST(100000, @item_count) 숫자 테이블(최대 1,000,000)
 DROP TEMPORARY TABLE IF EXISTS seq;
 CREATE TEMPORARY TABLE seq (n INT PRIMARY KEY);
 INSERT INTO seq (n)
-SELECT a.d + b.d * 10 + c.d * 100 + e.d * 1000 + f.d * 10000 + 1
+SELECT a.d + b.d * 10 + c.d * 100 + e.d * 1000 + f.d * 10000 + g.d * 100000 + 1
 FROM (SELECT 0 d UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) a,
      (SELECT 0 d UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) b,
      (SELECT 0 d UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) c,
      (SELECT 0 d UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) e,
-     (SELECT 0 d UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) f;
+     (SELECT 0 d UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) f,
+     (SELECT 0 d UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) g
+WHERE a.d + b.d * 10 + c.d * 100 + e.d * 1000 + f.d * 10000 + g.d * 100000 + 1 <= GREATEST(100000, @item_count);
 
 -- 서울 행정동에 번호(rn)를 붙인다. rn 1..10은 회원 20%가 몰리는 밀집 동네(종로구 일대, id 순 앞쪽)
 DROP TEMPORARY TABLE IF EXISTS seed_regions;
@@ -100,17 +103,17 @@ FROM seq s
 JOIN member_rn o ON o.member_id = (s.n * 7) % 10000 + 1
 JOIN seed_regions r ON r.rn = o.rn
 JOIN categories c ON c.sort_order = s.n % 8 + 1
-WHERE s.n <= 30000;
+WHERE s.n <= @item_count;
 
 INSERT INTO item_images (item_id, url, thumbnail_url, sort_order, created_at, updated_at)
 SELECT n, '/files/load/item.jpg', '/files/load/item-thumb.jpg', 0, @now - INTERVAL 100 DAY, @now - INTERVAL 100 DAY
-FROM seq WHERE n <= 30000;
+FROM seq WHERE n <= @item_count;
 
 INSERT INTO item_available_periods (item_id, start_date, end_date, created_at, updated_at)
 SELECT n, @today - INTERVAL 400 DAY, @today + INTERVAL 240 DAY, @now - INTERVAL 100 DAY, @now - INTERVAL 100 DAY
-FROM seq WHERE n <= 30000;
+FROM seq WHERE n <= @item_count;
 
--- 대여 10만. k = 1..100000, 물품 = (k-1) % 30000 + 1, 같은 물품 안에서 겹치지 않게 80일 간격 슬롯을 쓴다
+-- 대여 10만(물품 수와 무관하게 물품 1..30000에만). k = 1..100000, 물품 = (k-1) % 30000 + 1, 같은 물품 안에서 겹치지 않게 80일 간격 슬롯을 쓴다
 --   k  1..90000 : 과거(오늘-30일보다 앞) COMPLETED, k%12=0이면 CANCELED
 --   k 90001..93000 : 진행 중 RENTING (물품 1..3000, 어제 ~ 오늘+1~5일) — 피드 "대여 중" 배지·기간 검색 점유
 --   k 93001..95000 : 과거 COMPLETED (물품 3001..5000)
@@ -134,7 +137,7 @@ SELECT n,
            WHEN n % 12 = 0 THEN 'CANCELED'
            ELSE 'COMPLETED'
        END
-FROM seq;
+FROM seq WHERE n <= 100000;
 
 INSERT INTO rentals (id, item_id, owner_id, renter_id, start_date, end_date, rental_fee, deposit, price_per_day, status,
                      payment_expires_at, handed_over_at, returned_at, completed_at, canceled_at, cancel_type,
