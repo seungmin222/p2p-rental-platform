@@ -55,6 +55,7 @@ rental/
 - `controller → service → repository / entity`. entity는 다른 계층을 모른다.
 - **다른 도메인의 Repository를 직접 호출하지 않는다.** 다른 도메인의 Service(또는 조회용 Facade)를 통해서만. 예: rental이 item 소유자를 알아야 하면 `ItemQueryService.getOwnerId(itemId)`.
 - 도메인 간 후속 동작(알림, AI 큐)은 **도메인 이벤트 + `@TransactionalEventListener(phase = AFTER_COMMIT)`**로. 직접 호출로 트랜잭션을 묶지 않는다.
+  - 알림 저장 리스너(`RentalNotificationEventListener`·`ReviewNotificationListener`)는 본문을 `global/config/NotificationListenerExecutor`(전용 실행기)에 맡긴다. AFTER_COMMIT 콜백은 원래 트랜잭션의 커넥션을 반납하기 전에 같은 스레드에서 돌아, 거기서 REQUIRES_NEW로 저장하면 요청 하나가 커넥션 2개를 잡아 풀이 교착되기 때문이다(`docs/experiments/load-test.md` "병목"). 새 알림 리스너도 같은 실행기를 쓴다. 큐가 넘치거나 종료 대기(10초)를 넘긴 알림은 버리고 경고 로그만 남긴다. 테스트 프로필은 `app.notification.executor.async=false`(호출 스레드에서 바로 실행).
   - 예외: 상태와 함께 커밋돼야 하는 돈의 기록(환불 TX1 `RentalRefundPort`, 정산 생성 `RentalSettlementPort`)은 호출하는 도메인이 정의한 **포트를 같은 트랜잭션에서** 부른다. 커밋 뒤 리스너가 실패하면 정산 없는 거래 완료가 남아 복구 배치가 따로 필요해지기 때문이다. 포트 구현은 결제 도메인에 두어 rental이 payment를 직접 알지 않는다.
   - 예외의 예외(분쟁 정산 보류, REQ-063): payment가 `SettlementDisputePort`를 정의하고 admin이 구현하며, admin은 payment 서비스(`SettlementTxService.holdForDispute`)를 :56 규칙대로 직접 부른다. 포트 구현이 InquiryRepository만 써서 빈 순환은 없다.
 - 순환 의존이 생기면 이벤트로 끊는다.
