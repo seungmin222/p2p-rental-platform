@@ -8,9 +8,11 @@
 
 DROP PROCEDURE IF EXISTS load_seed_guard;
 DELIMITER //
+-- 이 가드는 mysql 클라이언트를 --force 없이 실행할 때만 뒤 문장을 막는다(--force면 오류 뒤에도 계속 실행된다).
+-- 스키마를 고르지 않으면 DATABASE()가 NULL이라 IFNULL로 비교한다.
 CREATE PROCEDURE load_seed_guard()
 BEGIN
-    IF DATABASE() <> 'rental_load' THEN
+    IF IFNULL(DATABASE(), '') <> 'rental_load' THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'seed.sql은 rental_load 스키마에서만 실행한다';
     END IF;
     IF (SELECT COUNT(*) FROM members) > 0 THEN
@@ -112,7 +114,9 @@ FROM seq WHERE n <= 30000;
 --   k  1..90000 : 과거(오늘-30일보다 앞) COMPLETED, k%12=0이면 CANCELED
 --   k 90001..93000 : 진행 중 RENTING (물품 1..3000, 어제 ~ 오늘+1~5일) — 피드 "대여 중" 배지·기간 검색 점유
 --   k 93001..95000 : 과거 COMPLETED (물품 3001..5000)
---   k 95001..100000 : 미래 RESERVED (물품 6,12,..,30000, 오늘+200~229일) — 시나리오 B·C 날짜(오늘+1~170일)와 겹치지 않는다
+--   k 95001..100000 : 미래 RESERVED (물품 6,12,..,30000, 오늘+200~228일) — 시나리오 B(오늘+1~152일)·C(오늘+160~162일)와 겹치지 않는다
+--   RENTING·RESERVED 일부는 DELETED·HIDDEN 물품(id%50=0·1)에 붙는다. k6는 이런 물품을 고르지 않고(lib.js isListed)
+--   피드·검색에도 나오지 않아 측정에는 영향이 없다.
 DROP TEMPORARY TABLE IF EXISTS rental_plan;
 CREATE TEMPORARY TABLE rental_plan (k INT PRIMARY KEY, item_id BIGINT, start_date DATE, days INT, status VARCHAR(30));
 INSERT INTO rental_plan

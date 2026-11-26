@@ -39,7 +39,7 @@
 
 ## 결과
 
-응답 시간 단위 ms. TPS는 해당 API 요청 수 ÷ 실행 시간(램프업·램프다운 포함, 약 454초)이라 유지 구간 TPS보다 낮다.
+응답 시간 단위 ms. TPS는 해당 API 요청 수 ÷ 그 실행의 전체 시간(램프업·램프다운 포함)이라 유지 구간 TPS보다 낮다. 실행 시간: A 100명 454.3초 · A 200명 453.4초 · A 100명 쉼 없음 182.8초 · B 100명 451.8초 · B 200명 462.5초.
 
 ### A 조회 혼합
 
@@ -57,7 +57,7 @@
 
 - 추가 행은 처리량 한계를 보려고 쉬지 않고 보낸 것이다(램프업 30초 → 2분 유지, 실행 183초, 합계 약 425 req/s). 이 부하에서 검색 p95가 목표 500ms를 넘었다.
 - 100명·쉼 1초 유지 구간의 자원(docker stats 한 번): MySQL CPU 약 64%(코어 1개 기준), 앱 각 약 20%, 앱 메모리 약 590~630MiB / 1200MiB.
-- Nginx 분배: 두 앱 18,588 : 18,592(A 100명 기준). 고르게 나뉜다.
+- Nginx 분배: 두 앱 18,466 : 18,471. A 100명 실행 구간(08:01~08:09 UTC)의 Nginx 로그만 센 값이다(k6 요청 36,907건 + 앞뒤 수동 확인 요청 약 30건). 고르게 나뉜다.
 
 ### B 예약, 다른 물품
 
@@ -67,7 +67,7 @@
 | 200 | 46,760 | 101.1 | 44,252 | 1,901 | **607 (1.30%)** | 20.1 | 26.5 | **29,997.7** | 59,996 |
 
 - 200명은 유지 구간 약 3분째(실행 약 5분째)부터 두 앱이 같이 30초씩 멈췄다. 멈춘 동안 요청은 Hikari 대기 30초 초과로 500(`CannotCreateTransactionException`), 또는 k6 60초 시간 초과로 끝났다. 멈추기 전까지는 초당 약 200건을 p95 30ms 안에 처리했다.
-- 뒤이어 같은 조건으로 쉬지 않고 보내자(100명, `THINK=0`, 70초) **수 초 만에 같은 현상이 재현됐다**: 660건 중 168건 실패(25.5%), p95 56.9초.
+- 뒤이어 같은 조건으로 쉬지 않고 보내자(100명, `THINK=0`, 70초) **수 초 만에 같은 현상이 재현됐다.** 3회 돌려 실패율 25.5%(660건 중 168건, p95 56.9초) · 7.4%(1,143건 중 85건) · 23.7%(746건 중 177건).
 - 중복 예약: B 실행 뒤 모두 0쌍.
 
 ### C 예약, 같은 물품 경합
@@ -82,6 +82,8 @@
 - 200명 C의 첫 시도는 B 200명 직후의 멈춤 꼬리에 걸려 setup 로그인 6건이 실패해 시작하지 못했다. 앱이 회복된 뒤 다시 돌린 값이다.
 
 ## 병목: 예약 뒤 알림 저장의 커넥션 풀 교착 (코드는 고치지 않았다)
+
+병목 수정은 별도 fix 브랜치에서 한다(사용자 결정). 이 브랜치는 측정 결과와 원인 확인만 남긴다.
 
 **현상**: 예약 동시 처리가 한 앱에서 약 10건(Hikari 기본 풀 크기)을 넘으면 그 앱의 예약·조회·로그인이 모두 30초씩 멈춘다. 멈춘 동안 MySQL은 열린 트랜잭션·락 대기가 0이고 앱 커넥션은 모두 쉬는 상태(Sleep)였다. Hikari 로그는 `total=10, active=10, idle=0, waiting=99`.
 
@@ -99,25 +101,25 @@ RentalController.createRental → RentalService.create → RedissonRentalLockStr
 - 이 대기는 Redisson 물품 락 안에서 일어난다(`executeWithItemLock`이 바깥). 그래서 멈춘 동안 같은 물품 락도 붙잡혀 있다.
 - 시나리오 C는 라운드당 성공이 1건이라 알림이 거의 없어서 걸리지 않았다. A(조회)는 이 경로를 타지 않는다.
 
-**후보 개선(결정 필요)** — 위에서부터 효과가 크다고 본다.
+**후보 개선(fix 브랜치에서 고른다)** — 위에서부터 효과가 크다고 본다.
 
 1. 알림 리스너를 요청 스레드 밖으로 뺀다: `@Async`(전용 실행기)로 `AFTER_COMMIT` 리스너를 돌려, 예약 커넥션·락이 풀린 뒤 알림 저장이 새 커넥션을 잡게 한다. 실시간 전달(STOMP)도 요청 응답 시간에서 빠진다. 다른 AFTER_COMMIT → `NotificationTxService` 경로(취소·인계·반납·결제·연체 알림)에도 같은 문제가 있으므로 함께 바뀐다. 실행기 큐가 넘칠 때·앱 종료 때 알림 유실을 어떻게 볼지 정해야 한다.
 2. 또는 알림 발행을 락·트랜잭션이 모두 끝난 뒤로 옮긴다(예: `RentalService.create`가 `executeWithItemLock` 반환 뒤에 보냄). 발행 지점마다 고쳐야 하고, 현재 규칙("상태 전이 트랜잭션 안에서 이벤트만 남기고 AFTER_COMMIT 리스너가 보낸다", `docs/prompts/feat/notification/notes.md`)과 다르다.
 3. 보조: Hikari `maximum-pool-size`를 늘리고(예: 20~30, MySQL `max_connections`·RDS 크기 확인 필요) `connection-timeout`을 짧게(예: 3초) 둔다. 교착이 생기는 동시 수를 높이고 멈춤을 짧게 할 뿐 원인은 그대로다.
 
-고친 뒤에는 같은 명령(B 200명, B 100명 `THINK=0`)으로 다시 재서 이 표 아래에 "개선 후" 행을 더한다.
+fix 브랜치에서 고친 뒤 같은 명령(B 200명, B 100명 `THINK=0`)으로 다시 재서 이 표 아래에 "개선 후" 행을 더한다.
 
 ## 피드 기준선 (§8-4 "적용 전")
 
 - 현재 피드는 `idx_items_status_bumped_at_id` + 위경도 bounding box 선필터 + `ST_Distance_Sphere`이고, 공간 인덱스·Geohash·캐시는 없다(`docs/erd.md` items 인덱스).
-- 이번 데이터(물품 3만, 서울 집중)에서 피드는 쉼 1초일 때 p95 약 10ms, 쉬지 않을 때 p95 387.8ms였다. 쉼 1초 부하에서는 이미 매우 빨라 "p95 50% 단축"을 보이기 어렵다. 전후 비교는 쉬지 않는 부하(`THINK=0`)나 더 큰 물품 수에서 하는 것이 맞아 보인다. 이 판단은 개선 브랜치에서 정한다.
+- 이번 데이터(물품 3만, 서울 집중)에서 피드는 쉼 1초일 때 p95 약 10ms, 쉬지 않을 때 p95 387.8ms였다. 쉼 1초 부하에서는 이미 매우 빨라 "p95 50% 단축"을 보이기 어렵다. 그래서 이 브랜치는 "적용 전" 기준선만 남긴다(인덱스·캐시 추가는 코드 변경이기도 하다). 전후 비교는 쉬지 않는 부하(`THINK=0`)나 더 큰 물품 수에서 하는 것이 맞아 보이며, 개선 브랜치에서 정한다.
 - 같은 부하에서 검색이 가장 느리다(p95 559.2ms, 이름·설명 `LIKE '%키워드%'` + 개수 쿼리). 원인 추정만 적는다. 측정은 하지 않았다.
 
 ## 재현
 
 ```bash
 docker compose -f infra/docker-compose.load.yml up -d --build
-docker compose -f infra/docker-compose.load.yml exec -T mysql mysql -urental -prental --default-character-set=utf8mb4 rental_load < scripts/load/seed.sql
+docker compose -f infra/docker-compose.load.yml exec -T mysql mysql -urental -prental --default-character-set=utf8mb4 rental_load < scripts/load/seed.sql  # PowerShell은 아래
 docker compose -f infra/docker-compose.load.yml run --rm k6 run -e VUS=100 /scripts/read-mix.js
 docker compose -f infra/docker-compose.load.yml run --rm k6 run -e VUS=100 /scripts/reserve-distinct.js
 docker compose -f infra/docker-compose.load.yml run --rm k6 run -e VUS=100 /scripts/reserve-contention.js
@@ -126,6 +128,13 @@ docker compose -f infra/docker-compose.load.yml exec -T mysql mysql -urental -pr
 # 200명은 VUS=200. C를 다시 돌릴 때는 -e ITEM_FROM=29000처럼 다른 물품을 쓴다
 ```
 
+위는 bash 기준이다. PowerShell에서는 `<` 리디렉션을 쓸 수 없어 SQL 두 줄을 `cmd /c`로 돌린다(`Get-Content` 파이프는 PowerShell 5.1에서 한글이 깨진다). 나머지 줄은 그대로다.
+
+```powershell
+cmd /c "docker compose -f infra/docker-compose.load.yml exec -T mysql mysql -urental -prental --default-character-set=utf8mb4 rental_load < scripts\load\seed.sql"
+cmd /c "docker compose -f infra/docker-compose.load.yml exec -T mysql mysql -urental -prental rental_load < scripts\load\check-duplicates.sql"
+```
+
 ## 범위 밖
 
-장애·결제 지연 주입(§8-2), 락 전략 비교(§8-1, `chore/concurrency-lock-experiment`), AI 호출(비용), 운영 환경 측정, 피드 인덱스·캐시 적용 후 측정.
+장애·결제 지연 주입(§8-2), 락 전략 비교(§8-1, 별도 브랜치), AI 호출(비용), 운영 환경 측정, 피드 인덱스·캐시 적용 후 측정.
