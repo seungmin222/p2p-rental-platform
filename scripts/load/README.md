@@ -12,6 +12,7 @@
 | `reserve-distinct.js` | 시나리오 B: 서로 다른 물품 예약 |
 | `reserve-contention.js` | 시나리오 C: 같은 물품·같은 기간 동시 예약(라운드 반복) |
 | `check-duplicates.sql` | 기간이 겹치는 활성 대여(중복 예약) 수, 시나리오 C 물품별 예약 수 |
+| `query-index/` | 조회 인덱스 실험 도구(`docs/experiments/query-index.md`): 대표 쿼리 생성 `gen-queries.mjs`, EXPLAIN 요약 `summarize-explain.mjs`, 쓰기 비용 `write-cost.sql`, LIKE·FULLTEXT 결과 비교 `fulltext-equality.mjs` |
 | `results/` | k6 결과 JSON(커밋하지 않음) |
 
 ## 안전장치
@@ -31,6 +32,8 @@ docker compose -f infra/docker-compose.load.yml logs backend1 backend2 | grep "S
 
 # 2) 더미 데이터 (약 5초)
 docker compose -f infra/docker-compose.load.yml exec -T mysql mysql -urental -prental --default-character-set=utf8mb4 rental_load < scripts/load/seed.sql
+# 물품을 늘릴 때(대여 10만은 물품 1..30000에만 둔다. 30만은 약 15초): k6에도 -e ITEM_COUNT=300000
+# docker compose -f infra/docker-compose.load.yml exec -T mysql mysql -urental -prental --default-character-set=utf8mb4 --init-command="SET @item_count=300000" rental_load < scripts/load/seed.sql
 
 # 3) 시나리오 (기본: 램프업 2분 → VUS명 5분 유지 → 30초 램프다운)
 docker compose -f infra/docker-compose.load.yml run --rm k6 run -e VUS=100 /scripts/read-mix.js
@@ -54,7 +57,7 @@ docker compose -f infra/docker-compose.load.yml logs nginx | Select-String -Patt
 ```
 
 - Git Bash에서는 `/scripts/...` 경로가 바뀌지 않게 앞에 `MSYS_NO_PATHCONV=1`을 붙인다. PowerShell·cmd에서는 `/scripts/...` 경로를 그대로 쓴다(k6 컨테이너 안 경로).
-- 환경 변수: `VUS`(가상 사용자), `RAMP`·`HOLD`(단계 길이, 예 `30s`), `THINK`(요청 사이 평균 쉬는 시간 초, 기본 1, 0이면 쉬지 않음), `LOGIN_USERS`(A에서 미리 로그인할 회원 수, 기본 200), C 전용 `ROUNDS`(기본 20)·`GAP_MS`(라운드 간격, 기본 5000)·`ITEM_FROM`(대상 물품 시작 id, 기본 30000에서 내려감).
+- 환경 변수: `ONLY`(A 전용, `feed`·`search`면 그 API만 보낸다), `ITEM_COUNT`(시드 물품 수와 같게, 기본 30000), `VUS`(가상 사용자), `RAMP`·`HOLD`(단계 길이, 예 `30s`), `THINK`(요청 사이 평균 쉬는 시간 초, 기본 1, 0이면 쉬지 않음), `LOGIN_USERS`(A에서 미리 로그인할 회원 수, 기본 200), C 전용 `ROUNDS`(기본 20)·`GAP_MS`(라운드 간격, 기본 5000)·`ITEM_FROM`(대상 물품 시작 id, 기본 30000에서 내려감).
 - 로그인은 각 스크립트 `setup()`에서 미리 한다(BCrypt 비용이 측정에 섞이지 않게). 액세스 토큰 TTL이 30분이라 한 번 실행은 30분 안에 끝나야 한다.
 - 시나리오를 다시 돌릴 때 부하로 생긴 예약만 지우려면: `DELETE FROM rental_status_histories WHERE rental_id > 100000; DELETE FROM rentals WHERE id > 100000;` (시드 대여 id는 1..100000).
 - 요청 분배 확인(bash 전용, PowerShell은 위 블록): `docker compose -f infra/docker-compose.load.yml logs nginx | grep -o "up=[^ ]*" | sort | uniq -c`. Nginx 로그는 컨테이너가 뜬 뒤 모든 실행이 쌓이므로 한 실행만 보려면 `logs --since <시작 시각> --until <끝 시각> nginx`로 구간을 자른다.

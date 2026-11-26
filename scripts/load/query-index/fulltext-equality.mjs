@@ -1,5 +1,5 @@
 // S2 채택 조건 확인: 검색 위치 조건(동네 3곳 × 범위 3개) 안에서 키워드마다 LIKE 결과와 FULLTEXT(ngram) MATCH 결과가 같은지.
-// FULLTEXT 인덱스 ft_items_name_description이 있어야 한다. 출력은 SQL(표준 출력)이고, 결과 한 행이 한 조합이다.
+// FULLTEXT 인덱스 idx_items_name_description이 있어야 한다. 출력은 SQL(표준 출력)이고, 결과 한 행이 한 조합이다.
 // only_like·only_match가 모두 0이어야 결과 id 집합과 개수가 같다.
 // 사용: node scripts/load/query-index/fulltext-equality.mjs > eq.sql && mysql ... rental_load < eq.sql
 const KEYWORDS = ['텐트', '캠핑의자', '드릴', '카메라', '삼각대', '유모차', '카시트', '스피커', '빔프로젝터',

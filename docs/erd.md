@@ -27,7 +27,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V19 | `V19__create_terms_agreements.sql` | `feat/member-extra` | 머지 |
 | V20 | `V20__create_wishes.sql` | `feat/item-wish-recent` | 머지 |
 | V21 | `V21__create_item_view_logs.sql` | `feat/item-wish-recent` | 머지 |
-| V22 | `V22__add_fulltext_index_to_items.sql` | `chore/query-index-experiment` | 작업 중 |
+| V22 | `V22__add_listing_indexes_to_items.sql` | `chore/query-index-experiment` | 작업 중 |
 
 ## 규칙
 
@@ -111,11 +111,11 @@ erDiagram
 | view_count, wish_count, chat_count INT | 비정규화 카운터, 기본 0 |
 | bumped_at DATETIME(6) | 등록 시 created_at과 동일하게 세팅 → 피드 정렬 키 |
 
-인덱스(초기안, 실험으로 개선 — 도전 과제 ④):
-- `idx_items_status_bumped_at_id (status, bumped_at DESC, id DESC)` 피드 커서 — 생성됨
+인덱스(도전 과제 ④ 실험 결과 반영, `docs/experiments/query-index.md`):
+- `idx_items_status_bumped_at_id_latitude_longitude (status, bumped_at DESC, id DESC, latitude, longitude)` 피드 커서 + 위치 조건 인덱스 안 거르기 — 생성됨(`V22`, V2의 `idx_items_status_bumped_at_id`를 대체)
 - `idx_items_owner_id_status (owner_id, status)`, `idx_items_category_id_status (category_id, status)` — 생성됨
-- `(latitude, longitude)` 또는 Geohash 컬럼 + 인덱스 / MySQL SPATIAL(POINT SRID 4326) — 피드 실험에서 결정, 아직 없음
-- 키워드 검색: 초기 LIKE → 필요 시 FULLTEXT(ngram) — 아직 없음
+- `idx_items_name_description` FULLTEXT `(name, description) WITH PARSER ngram` 키워드 검색(한글·숫자 2~100글자만, 그 밖은 LIKE) — 생성됨(`V22`)
+- SPATIAL(POINT SRID 4326)·`(status, latitude, longitude)`는 실험에서 기각(쓰기 비용·옵티마이저 미선택). Geohash는 미실험
 
 **item_images** — id, item_id, url VARCHAR(500), thumbnail_url VARCHAR(500), sort_order INT(0이 대표)
 **item_available_periods** — id, item_id, start_date, end_date (같은 물품 내 구간 겹침 금지 — 애플리케이션 검증). 인덱스 `idx_item_available_periods_item_id_start_date (item_id, start_date)`
