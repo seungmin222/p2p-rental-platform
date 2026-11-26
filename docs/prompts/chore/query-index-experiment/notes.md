@@ -1,5 +1,11 @@
 # chore/query-index-experiment 결정 기록
 
+## 요약
+- API 변경 없음. 마이그레이션 `V22__add_listing_indexes_to_items.sql`: 피드 인덱스를 `idx_items_status_bumped_at_id_latitude_longitude`로 대체, FULLTEXT ngram `idx_items_name_description` 추가. 결과 `docs/experiments/query-index.md`.
+- 코드: `ItemListingRepositoryImpl.keywordMatches`가 한글·숫자 2~100글자 검색어를 `MATCH ... AGAINST`(구문)로, 그 밖은 LIKE로 찾는다. `global/config/MySqlFunctionContributor`(`match_against` 등록, `META-INF/services`). 테스트 `ItemSearchIntegrationTest.fulltextKeywordMatchesLikeSemantics`.
+- 도구: `read-mix.js` `ONLY=feed|search`, `seed.sql` `@item_count`(`--init-command`), `lib.js` `ITEM_COUNT`, `scripts/load/query-index/`(쿼리 생성·EXPLAIN 요약·쓰기 비용·LIKE/FULLTEXT 비교).
+- 남은 일: ① 30만에서 검색 p95 2.4s(768MB) — 개수 쿼리 상한·"다음 쪽 있음" 또는 캐시(API·화면 변경) ② 피드 Redis 캐시 ③ 운영 데이터 키워드 선택도 확인 ④ 운영 RDS 버퍼 풀 크기 확인(128MB 수준이면 F3 효과가 커진다).
+
 ## 결정
 
 - **피드·검색 분리 측정**: `read-mix.js`에 `ONLY=feed|search`를 추가했다(기본은 기존 혼합). 분리하면 기존 혼합 수치(387.8/559.2ms)와 조건이 달라 F2·S0을 분리 상태로 다시 재서 새 기준선으로 썼다.
