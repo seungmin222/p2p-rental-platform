@@ -1,5 +1,10 @@
 # feat/fe-ai-draft 결정 기록 (REQ-067 프론트)
 
+## 요약
+- SCR-06 물품 등록에 "AI로 채우기" 버튼 연동: `POST /api/items/ai-draft`(multipart images) 호출, 응답의 권장 보증금은 deposit-guide 캐시에 넣는다. 백엔드 변경 없음.
+- 새 파일: `frontend/src/features/item/aiDraft.js`(덮어쓰기 판단·안내 문구), `features/item/components/AiDraftField.jsx`, `mocks/aiDraft.js`(첫 사진 파일 이름으로 결과 선택). `ItemForm.jsx`·`queries.js`(`useDraftItem`)·`api.js`(`draftItem`) 수정.
+- 남은 일: 물품 수정 화면에는 버튼을 넣지 않았다(결정 참고). 테스트는 목 기준이다.
+
 ## 결정
 - **"AI로 채우기" 버튼으로 부른다**(사용자 승인, 2026-11-26). 사진을 고를 때 자동으로 부르지 않고, 사진을 바꿔도 다시 부르지 않는다. 하루 10회 한도(`ai.draft.per-member-daily`)를 사진 고를 때마다 쓰지 않게 하려는 것이다. 다시 누르면 새로 부르고 횟수도 다시 쓴다. 새 사진이 없거나 요청 중이면 누를 수 없다.
 - 사진은 폼의 새 파일을 화면 순서대로 최대 10장(item.images와 같은 백엔드 검사) 보낸다.
