@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +39,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ItemListingRepositoryImpl implements ItemListingRepository {
 	private static final char LIKE_ESCAPE = '!';
+	/**
+	 * FULLTEXT로 찾는 검색어: 한글·10진 숫자만, 2~100글자. 2는 ngram_token_size 기본값(서버 설정)이다. 영문은 기본 불용어('a'·'i'·
+	 * 'is' 등)가 든 2-gram이 색인에서 빠져(TRUNCATE·테이블 재생성 때 서버 기본값으로 다시 만들어진다) LIKE와 결과가 달라질 수 있어
+	 * 제외한다. 100은 구문 검색 단어 수 한도(2-gram 약 128개를 넘으면 MySQL 오류 191)보다 작게 잡은 값이다.
+	 */
+	private static final Pattern FULLTEXT_KEYWORD = Pattern.compile("[\\p{IsHangul}\\p{Nd}]{2,100}");
 
 	private final JPAQueryFactory queryFactory;
 
@@ -67,9 +74,18 @@ public class ItemListingRepositoryImpl implements ItemListingRepository {
 			() -> queryFactory.select(item.count()).from(item).where(conditions).fetchOne());
 	}
 
+	/**
+	 * 이름·설명 부분 일치. 한글·숫자로만 된 한 단어({@link #FULLTEXT_KEYWORD})는 FULLTEXT(ngram) 구문 검색을 쓴다: 겹치는 2-gram이
+	 * 이어져야 해서 LIKE '%키워드%'와 결과가 같고 인덱스를 탄다(docs/experiments/query-index.md). 그 밖(한 글자, 영문, 공백·기호
+	 * 포함, 100글자 초과)은 토큰 크기·불용어·구분자 때문에 결과가 달라질 수 있어 LIKE를 그대로 쓴다.
+	 */
 	private BooleanExpression keywordMatches(String keyword) {
 		if (keyword == null) {
 			return null;
+		}
+		if (FULLTEXT_KEYWORD.matcher(keyword).matches()) {
+			return Expressions.numberTemplate(Double.class, "function('match_against', {0}, {1}, {2})", item.name,
+				item.description, Expressions.constant("\"" + keyword + "\"")).gt(0.0);
 		}
 		String pattern = containsPattern(keyword);
 		return item.name.like(pattern, LIKE_ESCAPE).or(item.description.like(pattern, LIKE_ESCAPE));

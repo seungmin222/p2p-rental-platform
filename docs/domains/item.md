@@ -48,7 +48,7 @@
 - 단계적 적용: 범위 선택(042)·끌어올리기(045)·숨김(044)·차단(056) 전에는 NORMAL·등록 시각 순으로 동작
 - 비회원/동네 미설정: 프론트가 동네 선택 화면 먼저 표시, 비회원은 regionId를 쿼리로 직접 보냄
 - 결과 없음 → 빈 목록 (프론트가 "범위 넓히기" 안내)
-- **성능 과제 ④**: 1차 구현은 bounding box(`lat BETWEEN`, `lng BETWEEN`) 선필터 + Haversine(`ST_Distance_Sphere`) 정확 필터. 이후 공간 인덱스/Geohash, Redis 캐시를 실험하고 전후 수치를 `docs/experiments/feed.md`에 기록
+- **성능 과제 ④**: 1차 구현은 bounding box(`lat BETWEEN`, `lng BETWEEN`) 선필터 + Haversine(`ST_Distance_Sphere`) 정확 필터. 이후 공간 인덱스/Geohash, Redis 캐시를 실험하고 전후 수치를 `docs/experiments/query-index.md`(인덱스)에 기록. 캐시는 미실험
 
 ## REQ-010 물품 필터링 검색 [1]
 `GET /api/items?...&page=` — 비회원 가능, 페이지 기반 20건
