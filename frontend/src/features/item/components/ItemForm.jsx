@@ -27,6 +27,7 @@ import {
   validatePricePerDay,
 } from '../itemForm';
 import { useCategories, useDepositGuide } from '../queries';
+import AiDraftField from './AiDraftField';
 import AvailablePeriodsField from './AvailablePeriodsField';
 import TradePlaceField from './TradePlaceField';
 
@@ -164,7 +165,7 @@ function useDepositHint(control) {
  *
  * @param {object} props
  * @param {object} props.initialValues itemForm.js createItemFormValues 또는 api.js toItemEditForm 모양
- * @param {boolean} [props.isEdit]
+ * @param {boolean} [props.isEdit] 수정이면 "AI로 채우기"(REQ-067)를 그리지 않는다
  * @param {string} [props.today] 등록만. 가능 기간 시작일 ≥ 오늘 검사
  * @param {boolean} props.isPending
  * @param {string} props.submitLabel
@@ -188,6 +189,8 @@ export default function ItemForm({
     setError,
     setFocus,
     setValue,
+    getValues,
+    getFieldState,
     formState: { errors },
   } = useForm({ defaultValues: initialValues, shouldFocusError: true });
   const handleError = useSubmitErrorHandler({ setError, setFocus }, isPending, {
@@ -261,6 +264,16 @@ export default function ItemForm({
             </div>
           )}
         />
+        {!isEdit && (
+          <AiDraftField
+            control={control}
+            initialValues={initialValues}
+            getValues={getValues}
+            setValue={setValue}
+            getFieldState={getFieldState}
+            disabled={isPending}
+          />
+        )}
         <TextField
           label="물품 이름"
           required

@@ -1,9 +1,11 @@
 // 물품 등록·수정·삭제·수정 조회·권장 보증금 목(openapi.json 그대로). 등록·수정한 물품은 메모리(itemDb)에만 있어 새로고침하면 시드로 돌아간다.
 // 사진은 objectURL로 보여 준다(핸들러가 페이지에서 돌아 그대로 쓸 수 있고, 새로고침하면 함께 사라진다).
+// AI 등록 보조(POST /api/items/ai-draft)도 여기 있다(사진 검사를 같이 쓴다, 시나리오는 aiDraft.js).
 // 핸들러 순서: /api/items/deposit-guide는 /api/items/:itemId와 경로가 겹쳐 handlers.js가 이 배열을 물품 상세보다 앞에 둔다.
 import { delay, http } from 'msw';
 
 import { todayInSeoul } from '../shared/lib/date';
+import { AI_DRAFT_MOCK_DELAY_MS, buildMockDraft } from './aiDraft';
 import { findMockItem, itemDb, MOCK_CATEGORIES, MOCK_MEMBERS } from './item';
 import {
   applyImageOrder,
@@ -289,6 +291,24 @@ export const itemWriteHandlers = [
       }
       record.isDeleted = true;
       return ok(null);
+    }),
+  ),
+
+  // AI 등록 보조(REQ-067). 사진 오류만 400, 나머지는 200 + status(시나리오는 aiDraft.js)
+  http.post(
+    '/api/items/ai-draft',
+    handle(async ({ request }) => {
+      requireMember(request);
+      const files = (await request.formData()).getAll('images');
+      if (!isValidImageCount(files.length)) {
+        reject('IMAGE_COUNT_INVALID');
+      }
+      const imageError = checkImageFiles(files);
+      if (imageError) {
+        reject(imageError);
+      }
+      await delay(AI_DRAFT_MOCK_DELAY_MS);
+      return ok(buildMockDraft(files[0].name));
     }),
   ),
 
