@@ -128,7 +128,7 @@ export function draftItem(images) {
   return apiClient.post('/items/ai-draft', form);
 }
 
-/** GET /api/items/deposit-guide →ItemDepositGuideResponse { minDeposit, maxDeposit }. 로그인 필요 */
+/** GET /api/items/deposit-guide → ItemDepositGuideResponse { minDeposit, maxDeposit }. 로그인 필요 */
 export function fetchDepositGuide({ categoryId, itemPrice }) {
   return apiClient.get('/items/deposit-guide', { params: { categoryId, itemPrice } });
 }

@@ -26,6 +26,10 @@ describe('AI 등록 보조 뮤테이션', () => {
     maxDeposit: 100000,
   };
 
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('DONE이면 권장 보증금 범위를 deposit-guide 키에 넣는다', async () => {
     const queryClient = new QueryClient();
     draftItem.mockResolvedValue(DONE);
@@ -43,6 +47,23 @@ describe('AI 등록 보조 뮤테이션', () => {
     draftItem.mockResolvedValue(draft);
     await new MutationObserver(queryClient, draftItemMutationOptions(queryClient)).mutate([]);
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+
+  it('응답 전에 화면을 떠나면(구독 해제) 콜백은 부르지 않는다', async () => {
+    const queryClient = new QueryClient();
+    let finishDraft;
+    draftItem.mockReturnValue(new Promise((resolve) => (finishDraft = resolve)));
+    const observer = new MutationObserver(queryClient, draftItemMutationOptions(queryClient));
+    const unsubscribe = observer.subscribe(() => {});
+    const onSuccess = vi.fn();
+
+    const pending = observer.mutate([], { onSuccess });
+    await vi.waitFor(() => expect(draftItem).toHaveBeenCalled());
+    unsubscribe();
+    finishDraft(DONE);
+    await pending;
+
+    expect(onSuccess).not.toHaveBeenCalled();
   });
 });
 
