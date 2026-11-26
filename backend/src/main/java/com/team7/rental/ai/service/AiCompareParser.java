@@ -135,7 +135,7 @@ public class AiCompareParser {
 		return keys;
 	}
 
-	/** 카테고리 추천 파서(AiCategoryParser)도 쓴다 */
+	/** 등록 초안 파서(AiDraftParser)도 쓴다 */
 	static String stripCodeFence(String text) {
 		if (!text.startsWith("```") || !text.endsWith("```") || text.length() < 6) {
 			return text;
