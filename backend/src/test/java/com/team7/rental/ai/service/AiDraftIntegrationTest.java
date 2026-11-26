@@ -38,15 +38,16 @@ import com.team7.rental.member.entity.Member;
 import com.team7.rental.support.FakeAiClient;
 import com.team7.rental.support.IntegrationTestSupport;
 
-/** AI 카테고리 추천 API (REQ-067). 실제 Redis 카운터와 category_suggestions를 확인한다. AI는 {@link FakeAiClient} */
-class AiCategoryIntegrationTest extends IntegrationTestSupport {
+/** AI 등록 보조 API (REQ-067). 실제 Redis 카운터·category_suggestions·권장 보증금 계산을 확인한다. AI는 {@link FakeAiClient} */
+class AiDraftIntegrationTest extends IntegrationTestSupport {
 
 	private static final LocalDateTime NOW = LocalDateTime.of(2099, 11, 12, 10, 0); // Redis EXPIREAT은 실제 시각과 비교하므로 미래 날짜로 고정
 	private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 	private static final String CAMPING = """
 		{"categoryCode": "CAMPING", "suggestedName": null}""";
+	/** categoryCode가 없어 형식 오류 (다시 부른다) */
 	private static final String INVALID = """
-		{"categoryCode": "CAMPING"}""";
+		{"title": "텐트", "itemPrice": 200000}""";
 
 	private static final DefaultRedisScript<Long> EXPIRE_TIME = new DefaultRedisScript<>(
 		"return redis.call('EXPIRETIME', KEYS[1])", Long.class);
@@ -70,12 +71,12 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 
 	@Test
 	@DisplayName("목록에 있는 code면 DONE과 카테고리 id·code·이름을 주고 후보는 기록하지 않는다. 하루·월 카운터가 1씩 오른다")
-	void recommendListedCategory() throws Exception {
+	void draftListedCategory() throws Exception {
 		// given
-		aiClient.respondCategory(CAMPING);
+		aiClient.respondDraft(CAMPING);
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.status").value("DONE"))
@@ -89,14 +90,82 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	@DisplayName("제목·설명·원가·대여료 초안을 주고, 보증금은 원가에 카테고리 권장 비율(CAMPING 30~50%)을 적용한다")
+	void draftAllFields() throws Exception {
+		// given
+		aiClient.respondDraft("""
+			{"categoryCode": "CAMPING", "suggestedName": null, "title": "4인용 돔 텐트",
+			 "description": "폴대·팩·스트링 포함", "itemPrice": 200000, "pricePerDay": 15000}""");
+
+		// when
+		draft(image())
+			// then
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.status").value("DONE"))
+			.andExpect(jsonPath("$.data.categoryCode").value("CAMPING"))
+			.andExpect(jsonPath("$.data.title").value("4인용 돔 텐트"))
+			.andExpect(jsonPath("$.data.description").value("폴대·팩·스트링 포함"))
+			.andExpect(jsonPath("$.data.itemPrice").value(200000))
+			.andExpect(jsonPath("$.data.pricePerDay").value(15000))
+			.andExpect(jsonPath("$.data.minDeposit").value(60000))
+			.andExpect(jsonPath("$.data.maxDeposit").value(100000));
+		FakeAiClient.DraftCall call = aiClient.draftCalls().getFirst();
+		assertThat(call.titleMax()).isEqualTo(50);
+		assertThat(call.descriptionMax()).isEqualTo(2000);
+	}
+
+	@Test
+	@DisplayName("보증금 범위는 권장 보증금 API와 같은 값이다 (ETC 30%, 원 미만 절사)")
+	void depositMatchesGuide() throws Exception {
+		// given
+		aiClient.respondDraft("""
+			{"categoryCode": "ETC", "itemPrice": 33333, "pricePerDay": 0}""");
+
+		// when
+		draft(image())
+			// then
+			.andExpect(jsonPath("$.data.categoryCode").value("ETC"))
+			.andExpect(jsonPath("$.data.pricePerDay").value(0))
+			.andExpect(jsonPath("$.data.minDeposit").value(9999))
+			.andExpect(jsonPath("$.data.maxDeposit").value(9999));
+		mockMvc.perform(get("/api/items/deposit-guide").param("categoryId", categoryId("ETC").toString())
+			.param("itemPrice", "33333")
+			.header(HttpHeaders.AUTHORIZATION, bearerToken(member.getId())))
+			.andExpect(jsonPath("$.data.minDeposit").value(9999))
+			.andExpect(jsonPath("$.data.maxDeposit").value(9999));
+	}
+
+	@Test
+	@DisplayName("범위를 벗어난 원가·대여료와 빈 제목은 그 필드만 null이고 DONE. 원가가 null이면 보증금 범위도 null이며 다시 부르지 않는다")
+	void invalidFieldsBecomeNull() throws Exception {
+		// given
+		aiClient.respondDraft("""
+			{"categoryCode": "CAMERA", "suggestedName": null, "title": "  ", "description": "미러리스 카메라",
+			 "itemPrice": 20000000, "pricePerDay": 500}""");
+
+		// when
+		draft(image())
+			// then
+			.andExpect(jsonPath("$.data.status").value("DONE"))
+			.andExpect(jsonPath("$.data.categoryCode").value("CAMERA"))
+			.andExpect(jsonPath("$.data.title").doesNotExist())
+			.andExpect(jsonPath("$.data.description").value("미러리스 카메라"))
+			.andExpect(jsonPath("$.data.itemPrice").doesNotExist())
+			.andExpect(jsonPath("$.data.pricePerDay").doesNotExist())
+			.andExpect(jsonPath("$.data.minDeposit").doesNotExist())
+			.andExpect(jsonPath("$.data.maxDeposit").doesNotExist());
+		assertThat(aiClient.draftCalls()).hasSize(1);
+	}
+
+	@Test
 	@DisplayName("모델이 ETC가 아닌 목록 code와 후보 이름을 함께 내면 후보 이름은 버리고 기록하지 않는다")
 	void dropSuggestedNameForListedCategory() throws Exception {
 		// given
-		aiClient.respondCategory("""
+		aiClient.respondDraft("""
 			{"categoryCode": "TOOL", "suggestedName": "전동공구"}""");
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(jsonPath("$.data.categoryCode").value("TOOL"))
 			.andExpect(jsonPath("$.data.suggestedCategoryName").doesNotExist());
@@ -107,11 +176,11 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	@DisplayName("목록 밖 code면 ETC와 후보 이름을 주고 category_suggestions에 PENDING 1행(물품 없음)을 남긴다")
 	void unknownCodeFallsBackToEtc() throws Exception {
 		// given
-		aiClient.respondCategory("""
+		aiClient.respondDraft("""
 			{"categoryCode": "MUSIC", "suggestedName": " 악기 "}""");
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(jsonPath("$.data.status").value("DONE"))
 			.andExpect(jsonPath("$.data.categoryId").value(categoryId("ETC")))
@@ -133,15 +202,15 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 		// given: categories는 테스트 사이에 비우지 않는 시드 테이블이라 끝나면 되돌린다
 		jdbcTemplate.update("UPDATE categories SET is_active = FALSE WHERE code = 'CAMPING'");
 		try {
-			aiClient.respondCategory("""
+			aiClient.respondDraft("""
 				{"categoryCode": "CAMPING", "suggestedName": "캠핑"}""");
 
 			// when
-			recommend(image())
+			draft(image())
 				// then
 				.andExpect(jsonPath("$.data.categoryCode").value("ETC"))
 				.andExpect(jsonPath("$.data.suggestedCategoryName").value("캠핑"));
-			assertThat(aiClient.categoryCalls().getFirst().categories()).extracting(CategoryOption::code)
+			assertThat(aiClient.draftCalls().getFirst().categories()).extracting(CategoryOption::code)
 				.doesNotContain("CAMPING")
 				.contains("ETC");
 			assertThat(suggestions.count()).isEqualTo(1);
@@ -154,10 +223,10 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	@DisplayName("ETC에 후보 이름이 없으면 기록하지 않는다")
 	void etcWithoutSuggestedName() throws Exception {
 		// given
-		aiClient.respondCategory(FakeAiClient.CATEGORY_ETC);
+		aiClient.respondDraft(FakeAiClient.DRAFT_ETC);
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(jsonPath("$.data.categoryCode").value("ETC"))
 			.andExpect(jsonPath("$.data.suggestedCategoryName").doesNotExist());
@@ -168,14 +237,14 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	@DisplayName("형식 오류 2번 뒤 성공하면 DONE. 월 카운터는 호출마다 올라 3, 하루 카운터는 요청 단위라 1")
 	void retryThenSucceed() throws Exception {
 		// given
-		aiClient.respondCategory(INVALID, "카테고리: 캠핑", CAMPING);
+		aiClient.respondDraft(INVALID, "카테고리: 캠핑", CAMPING);
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(jsonPath("$.data.status").value("DONE"))
 			.andExpect(jsonPath("$.data.categoryCode").value("CAMPING"));
-		assertThat(aiClient.categoryCalls()).hasSize(3);
+		assertThat(aiClient.draftCalls()).hasSize(3);
 		assertThat(monthlyCount()).isEqualTo("3");
 		assertThat(dailyCount()).isEqualTo("1");
 	}
@@ -184,18 +253,21 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	@DisplayName("형식 오류가 3번 이어지면 FAILED이고 모든 필드가 null. 월 카운터 3, 후보 기록 없음")
 	void retryExhausted() throws Exception {
 		// given
-		aiClient.respondCategory(INVALID, INVALID, INVALID);
+		aiClient.respondDraft(INVALID, INVALID, INVALID);
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.status").value("FAILED"))
 			.andExpect(jsonPath("$.data.categoryId").doesNotExist())
 			.andExpect(jsonPath("$.data.categoryCode").doesNotExist())
 			.andExpect(jsonPath("$.data.categoryName").doesNotExist())
-			.andExpect(jsonPath("$.data.suggestedCategoryName").doesNotExist());
-		assertThat(aiClient.categoryCalls()).hasSize(3);
+			.andExpect(jsonPath("$.data.suggestedCategoryName").doesNotExist())
+			.andExpect(jsonPath("$.data.title").doesNotExist())
+			.andExpect(jsonPath("$.data.itemPrice").doesNotExist())
+			.andExpect(jsonPath("$.data.minDeposit").doesNotExist());
+		assertThat(aiClient.draftCalls()).hasSize(3);
 		assertThat(monthlyCount()).isEqualTo("3");
 		assertThat(suggestions.count()).isZero();
 	}
@@ -204,14 +276,14 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	@DisplayName("호출이 실패하면 다시 부르지 않고 FAILED. 그 호출은 월 카운터에 센다")
 	void clientFailure() throws Exception {
 		// given
-		aiClient.failCategory(new AiClientException("API 오류"));
+		aiClient.failDraft(new AiClientException("API 오류"));
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.status").value("FAILED"));
-		assertThat(aiClient.categoryCalls()).hasSize(1);
+		assertThat(aiClient.draftCalls()).hasSize(1);
 		assertThat(monthlyCount()).isEqualTo("1");
 		assertThat(suggestions.count()).isZero();
 	}
@@ -223,12 +295,12 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 		redis.opsForValue().set(monthlyKey(), "1000");
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.status").value("LIMIT_EXCEEDED"))
 			.andExpect(jsonPath("$.data.categoryId").doesNotExist());
-		assertThat(aiClient.categoryCalls()).isEmpty();
+		assertThat(aiClient.draftCalls()).isEmpty();
 		assertThat(dailyCount()).isEqualTo("1");
 	}
 
@@ -237,13 +309,13 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	void monthlyLimitReachedDuringRetry() throws Exception {
 		// given
 		redis.opsForValue().set(monthlyKey(), "999");
-		aiClient.respondCategory(INVALID, CAMPING);
+		aiClient.respondDraft(INVALID, CAMPING);
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(jsonPath("$.data.status").value("LIMIT_EXCEEDED"));
-		assertThat(aiClient.categoryCalls()).hasSize(1);
+		assertThat(aiClient.draftCalls()).hasSize(1);
 	}
 
 	@Test
@@ -251,21 +323,21 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	void dailyLimitExceeded() throws Exception {
 		// given: 10번은 성공
 		for (int i = 0; i < 10; i++) {
-			recommend(image()).andExpect(jsonPath("$.data.status").value("DONE"));
+			draft(image()).andExpect(jsonPath("$.data.status").value("DONE"));
 		}
 		assertThat(monthlyCount()).isEqualTo("10");
 
 		// when
-		recommend(image())
+		draft(image())
 			// then
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.status").value("LIMIT_EXCEEDED"));
-		assertThat(aiClient.categoryCalls()).hasSize(10);
+		assertThat(aiClient.draftCalls()).hasSize(10);
 		assertThat(monthlyCount()).isEqualTo("10");
 		assertThat(dailyCount()).isEqualTo("11");
 
 		Member other = fixture.createMember();
-		recommend(other, image()).andExpect(jsonPath("$.data.status").value("DONE"));
+		draft(other, image()).andExpect(jsonPath("$.data.status").value("DONE"));
 	}
 
 	@Test
@@ -273,20 +345,20 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	void dailyLimitResetsNextDay() throws Exception {
 		// given
 		redis.opsForValue().set(dailyKey(NOW.toLocalDate()), "10");
-		recommend(image()).andExpect(jsonPath("$.data.status").value("LIMIT_EXCEEDED"));
+		draft(image()).andExpect(jsonPath("$.data.status").value("LIMIT_EXCEEDED"));
 
 		// when
 		testClock.fixAt(NOW.plusDays(1));
 
 		// then
-		recommend(image()).andExpect(jsonPath("$.data.status").value("DONE"));
+		draft(image()).andExpect(jsonPath("$.data.status").value("DONE"));
 	}
 
 	@Test
 	@DisplayName("월 카운터는 다음 달 2일 0시, 하루 카운터는 모레 0시(Asia/Seoul)에 만료된다")
 	void counterExpiry() throws Exception {
 		// when
-		recommend(image()).andExpect(jsonPath("$.data.status").value("DONE"));
+		draft(image()).andExpect(jsonPath("$.data.status").value("DONE"));
 
 		// then: TTL은 실제 시각 기준이라 절대 만료 시각(EXPIRETIME, Redis 7)으로 본다
 		assertThat(expireTime(monthlyKey()))
@@ -299,12 +371,12 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	@DisplayName("큰 사진은 긴 변 1024px로 줄여 보내고, 활성 카테고리 전체를 선택지로 넘긴다")
 	void downscaleAndSendCategories() throws Exception {
 		// when
-		recommend(new MockMultipartFile("images", "big.jpg", MediaType.IMAGE_JPEG_VALUE, TestImages.jpeg(1600, 800)),
+		draft(new MockMultipartFile("images", "big.jpg", MediaType.IMAGE_JPEG_VALUE, TestImages.jpeg(1600, 800)),
 			image())
 			.andExpect(jsonPath("$.data.status").value("DONE"));
 
 		// then
-		FakeAiClient.CategoryCall call = aiClient.categoryCalls().getFirst();
+		FakeAiClient.DraftCall call = aiClient.draftCalls().getFirst();
 		assertThat(call.images()).hasSize(2);
 		BufferedImage sent = decode(call.images().getFirst().data());
 		assertThat(sent.getWidth()).isEqualTo(1024);
@@ -316,7 +388,7 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	@Test
 	@DisplayName("사진이 없으면 400 IMAGE_COUNT_INVALID, 카운터를 쓰지 않는다")
 	void noImage() throws Exception {
-		recommend().andExpect(status().isBadRequest())
+		draft().andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("IMAGE_COUNT_INVALID"));
 		assertNothingCounted();
 	}
@@ -328,7 +400,7 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 		for (int i = 0; i < images.length; i++) {
 			images[i] = image();
 		}
-		recommend(images).andExpect(status().isBadRequest())
+		draft(images).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("IMAGE_COUNT_INVALID"));
 		assertNothingCounted();
 	}
@@ -338,7 +410,7 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	void invalidType() throws Exception {
 		MockMultipartFile text = new MockMultipartFile("images", "a.jpg", MediaType.IMAGE_JPEG_VALUE,
 			"not an image".getBytes(StandardCharsets.UTF_8));
-		recommend(image(), text).andExpect(status().isBadRequest())
+		draft(image(), text).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("IMAGE_INVALID_TYPE"));
 		assertNothingCounted();
 	}
@@ -348,7 +420,7 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	void sizeExceeded() throws Exception {
 		MockMultipartFile big = new MockMultipartFile("images", "big.jpg", MediaType.IMAGE_JPEG_VALUE,
 			new byte[10 * 1024 * 1024 + 1]);
-		recommend(big).andExpect(status().isBadRequest())
+		draft(big).andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.error.code").value("IMAGE_SIZE_EXCEEDED"));
 		assertNothingCounted();
 	}
@@ -356,18 +428,18 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	@Test
 	@DisplayName("로그인하지 않으면 401")
 	void unauthorized() throws Exception {
-		mockMvc.perform(multipart("/api/items/ai-category").file(image()))
+		mockMvc.perform(multipart("/api/items/ai-draft").file(image()))
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.error.code").value("AUTH_UNAUTHORIZED"));
-		assertThat(aiClient.categoryCalls()).isEmpty();
+		assertThat(aiClient.draftCalls()).isEmpty();
 	}
 
-	private ResultActions recommend(MockMultipartFile... images) throws Exception {
-		return recommend(member, images);
+	private ResultActions draft(MockMultipartFile... images) throws Exception {
+		return draft(member, images);
 	}
 
-	private ResultActions recommend(Member requester, MockMultipartFile... images) throws Exception {
-		MockMultipartHttpServletRequestBuilder request = multipart("/api/items/ai-category");
+	private ResultActions draft(Member requester, MockMultipartFile... images) throws Exception {
+		MockMultipartHttpServletRequestBuilder request = multipart("/api/items/ai-draft");
 		for (MockMultipartFile image : images) {
 			request.file(image);
 		}
@@ -375,7 +447,7 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	}
 
 	private void assertNothingCounted() {
-		assertThat(aiClient.categoryCalls()).isEmpty();
+		assertThat(aiClient.draftCalls()).isEmpty();
 		assertThat(redis.hasKey(monthlyKey())).isFalse();
 		assertThat(redis.hasKey(dailyKey(NOW.toLocalDate()))).isFalse();
 		assertThat(suggestions.count()).isZero();
@@ -390,7 +462,7 @@ class AiCategoryIntegrationTest extends IntegrationTestSupport {
 	}
 
 	private String dailyKey(LocalDate day) {
-		return AiUsageCounter.categoryKey(member.getId(), day);
+		return AiUsageCounter.draftKey(member.getId(), day);
 	}
 
 	private String monthlyCount() {

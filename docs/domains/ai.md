@@ -34,8 +34,12 @@
 - 검증(목표): 샘플 세트(정상·파손·조명 변화 각 20쌍) → 스키마 준수율 ≥99%, 파손 재현율 ≥80%, 30초 이내. 결과 `docs/experiments/ai-compare.md`
 
 ## REQ-067 AI 물품 등록 보조 [3]
-사진 업로드 → 카테고리(**활성 카테고리 code 중에서만**, 없으면 `ETC` + category_suggestions에 후보 기록), 제목·설명 초안, 유사 물품 기준 적정 대여가·보증금 제안. 사용자가 수정 후 등록.
-- 구현 현황: 카테고리 추천만 `POST /api/items/ai-category`로 구현(사진은 저장하지 않음, 결과 `DONE`·`FAILED`·`LIMIT_EXCEEDED`). 후보 기록 시점은 open-issues #52. 제목·설명 초안과 대여가·보증금 제안(`/api/items/ai-draft`)은 미구현.
+사진 업로드 → 카테고리(**활성 카테고리 code 중에서만**, 없으면 `ETC` + category_suggestions에 후보 기록), 제목·설명 초안, 추정 원가, 적정 대여가·보증금 제안. 사용자가 수정 후 등록.
+- API: `POST /api/items/ai-draft`(multipart `images`, 사진은 저장하지 않음). 응답 한 번에 카테고리·제목·설명 초안·추정 원가(`itemPrice`)·일 대여료 제안(`pricePerDay`)·권장 보증금 범위. 결과 `DONE`·`FAILED`·`LIMIT_EXCEEDED`. 후보 기록 시점은 open-issues #52.
+- 카테고리는 제안이 아니라 등록 폼에 바로 선택되는 값이다(`categoryId`). 제목·설명·원가·대여료는 폼에 채우는 초안이고 사용자가 고친다.
+- 대여가 근거(2026-11-26 사용자 결정): AI 추정만 쓴다. 프롬프트로 "비슷한 물품의 개인 간 대여 시세"를 기준으로 하게 한다. DB의 같은 카테고리 물품 가격 통계는 쓰지 않는다(시드가 적어 표본이 거의 없음).
+- 보증금은 AI에게 묻지 않는다. 추정 원가에 권장 보증금 규칙(`policies.md` §4, `GET /api/items/deposit-guide`와 같은 계산)을 적용한 범위(`minDeposit`·`maxDeposit`)만 주고, 단일 값을 미리 채우지 않는다. 원가를 고치면 deposit-guide로 다시 계산한다.
+- 부분 실패: 카테고리(`categoryCode`)가 없거나 JSON이 아니면 형식 오류로 재시도(`ai.max-retry`). 나머지 필드는 하나씩 검증해 없거나 `item.*` 범위(이름·설명 글자 수는 잘라서, 원가·대여료는 보정 없이)를 벗어나면 그 필드만 null이고 `DONE`. 원가가 null이면 보증금 범위도 null.
 
 ## REQ-068 AI 금지 품목·부적절 콘텐츠 판별 [3]
 등록 사진·설명 분석 → 금지 품목(`policies.md` §2)·부적절 게시물 탐지 → 관리자 검토 대상으로 분류(자동 삭제 아님).

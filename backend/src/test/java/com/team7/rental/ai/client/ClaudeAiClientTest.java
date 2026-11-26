@@ -16,7 +16,7 @@ import com.anthropic.models.messages.MessageParam;
 /** 요청 구성만 본다(네트워크 호출 없음). 실제 호출은 ClaudeAiClientLiveTest(@Tag ai-live) */
 class ClaudeAiClientTest {
 
-	private final AiProperties properties = new AiProperties("test-key", "claude-haiku-4-5", 1024,
+	private final AiProperties properties = new AiProperties("test-key", "claude-haiku-4-5", 1024, 2048,
 		Duration.ofSeconds(30), 2);
 	private final ClaudeAiClient client = new ClaudeAiClient(AnthropicOkHttpClient.builder()
 		.apiKey("test-key")

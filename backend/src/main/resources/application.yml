@@ -62,7 +62,10 @@ app:
     api-key: ${ANTHROPIC_API_KEY:}
     # docs/domains/ai.md 모델
     model: claude-haiku-4-5
+    # 상태 비교 응답 최대 토큰 (고정 스키마 JSON 하나)
     max-tokens: 1024
+    # 등록 보조 응답 최대 토큰 (REQ-067). 설명 초안(item.description.max 2,000자)이 들어가 더 크게 둔다
+    draft-max-tokens: 2048
     # 검증 목표 30초 이내 (ai.md). 요청 한 번의 제한 시간
     timeout: 30s
     # SDK 재시도(429·5xx·연결 오류, 과금 안 됨). 응답 형식 오류 재시도(ai.max-retry)와 별개
@@ -303,10 +306,10 @@ app:
       compare:
         # ai.compare.processing-timeout-minutes: 10분 넘게 PROCESSING이면 응답에서 FAILED (REQ-040, 명세 외)
         processing-timeout-minutes: 10
-      category:
-        # ai.category.timeout-seconds: 요청 하나에서 AI를 기다리는 총 시간 20초, 재시도 포함 (REQ-067, 명세 외)
-        timeout-seconds: 20
-        # ai.category.per-member-daily: 회원당 하루 10회. 넘으면 LIMIT_EXCEEDED (REQ-067, 명세 외)
+      draft:
+        # ai.draft.timeout-seconds: 등록 보조 요청 하나에서 AI를 기다리는 총 시간 30초, 재시도 포함 (REQ-067, 명세 외)
+        timeout-seconds: 30
+        # ai.draft.per-member-daily: 회원당 하루 10회. 넘으면 LIMIT_EXCEEDED (REQ-067, 명세 외)
         per-member-daily: 10
 
 springdoc:
