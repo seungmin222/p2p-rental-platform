@@ -116,7 +116,7 @@
 | REQ | 이름 | 담당 | 필수 | 상태 |
 | --- | --- | --- | --- | --- |
 | 063 | 문의·분쟁 접수 | A | | ✅ 백엔드·테스트(동시성은 성능 실험 때), 분쟁 종료(HELD → SCHEDULED)·관리자 처리는 057. 프론트 SCR-15 `/me/inquiries`(내 문의)·`/me/inquiries/new`(접수), SCR-08 진입 링크 ✅(`feat/fe-inquiry`, 열린 분쟁 표시 필드는 open-issues #60) |
-| 067 | AI 등록 보조 | A | | ✅ 백엔드(`feat/ai-category` → `feat/ai-draft`, `POST /api/items/ai-draft`). 프론트 SCR-06 등록 "AI로 채우기" ✅(`feat/fe-ai-draft`) |
+| 067 | AI 등록 보조 | A | | ✅ 백엔드(`feat/ai-category` → `feat/ai-draft`, `POST /api/items/ai-draft`). 프론트 SCR-06 등록 "AI로 채우기" ✅(`feat/fe-ai-draft`, 보증금 칸 채우기 `feat/fe-ai-draft-deposit`) |
 
 남은 3순위: 041 소셜 로그인 · 042 동네 범위 · 043 탈퇴 · 044 숨기기 · 045 끌어올리기 · 046 검색어 · 047 관련 물품 · 048 공유 · 050 채팅 사진 · 051 약속 · 052 키워드 알림 · 053 알림 설정 · 054 신뢰 점수 · 055 신고 · 056 차단 · 057 관리자 · 058 대여 요청 게시 · 059 배송 대여 · 060 추천 · 061 웹 푸시 · 062 노쇼 페널티 · 064 자동완성 · 065 거리순·지도 탐색 · 066 금지어 필터 · 068 AI 금지 품목 판별
 

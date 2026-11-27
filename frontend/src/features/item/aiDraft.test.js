@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getDraftDeposit,
   getDraftErrorNotice,
   getDraftFiles,
   getDraftFills,
@@ -44,23 +45,72 @@ describe('isUserEdited', () => {
   });
 });
 
+describe('getDraftDeposit', () => {
+  it.each([
+    [null, null],
+    [0, 0],
+    [600, 1000],
+    [1000, 1000],
+    [60000, 60000],
+    [3000000, 3000000],
+    [5000000, 3000000],
+  ])('권장 하한 %s → %s', (minDeposit, expected) => {
+    expect(getDraftDeposit(minDeposit)).toBe(expected);
+  });
+});
+
 describe('getDraftFills', () => {
-  it('빈 폼이면 카테고리·이름·설명·금액을 채운다(금액은 문자열, 보증금·상태는 안 채움)', () => {
+  it('빈 폼이면 카테고리·이름·설명·금액·보증금(권장 하한)을 채운다(금액은 문자열, 상태는 안 채움)', () => {
     expect(fills(DRAFT)).toEqual([
       { name: 'categoryId', value: 1 },
       { name: 'name', value: '4인용 돔 텐트' },
       { name: 'description', value: '설명' },
       { name: 'pricePerDay', value: '15000' },
       { name: 'itemPrice', value: '200000' },
+      { name: 'deposit', value: '60000' },
     ]);
+  });
+
+  it('보증금: 하한이 null이면 채우지 않고, 1,000원 미만·상한 초과는 맞춰 채운다', () => {
+    const names = fills({ ...DRAFT, minDeposit: null, maxDeposit: null }).map((fill) => fill.name);
+    expect(names).not.toContain('deposit');
+    expect(fills({ ...DRAFT, minDeposit: 600 })).toContainEqual({ name: 'deposit', value: '1000' });
+    expect(fills({ ...DRAFT, minDeposit: 5000000 })).toContainEqual({
+      name: 'deposit',
+      value: '3000000',
+    });
+    expect(fills({ ...DRAFT, minDeposit: 0 })).toContainEqual({ name: 'deposit', value: '0' });
+  });
+
+  it('보증금도 사용자가 고친 값은 덮지 않고, AI가 넣은 값은 다시 누르면 바꾼다', () => {
+    const edited = fills(DRAFT, { current: { deposit: '50000' }, aiFilled: { deposit: '40000' } });
+    expect(edited.map((fill) => fill.name)).not.toContain('deposit');
+    const refilled = fills(DRAFT, {
+      current: { deposit: '40000' },
+      aiFilled: { deposit: '40000' },
+    });
+    expect(refilled).toContainEqual({ name: 'deposit', value: '60000' });
   });
 
   it('사용자가 고친 칸과 null 필드는 건너뛴다', () => {
     const result = fills(
       { ...DRAFT, description: null, pricePerDay: null },
-      { current: { name: '내가 쓴 이름', categoryId: 3 } },
+      { current: { name: '내가 쓴 이름' } },
     );
-    expect(result.map((fill) => fill.name)).toEqual(['itemPrice']);
+    expect(result.map((fill) => fill.name)).toEqual(['categoryId', 'itemPrice', 'deposit']);
+  });
+
+  it.each([
+    ['물품 가격', { itemPrice: '300000' }],
+    ['카테고리', { categoryId: 3 }],
+  ])('사용자가 %s를 고쳤으면 보증금은 채우지 않는다', (_, current) => {
+    expect(fills(DRAFT, { current }).map((fill) => fill.name)).not.toContain('deposit');
+  });
+
+  it('물품 가격·카테고리가 AI가 넣은 값 그대로면 보증금을 다시 채운다', () => {
+    const aiFilled = { itemPrice: '100000', categoryId: 2 };
+    const result = fills(DRAFT, { current: aiFilled, aiFilled });
+    expect(result).toContainEqual({ name: 'deposit', value: '60000' });
   });
 
   it('0원은 null이 아니라 채운다', () => {
@@ -89,6 +139,23 @@ describe('getDraftNotice', () => {
       tone: 'surface',
       messages: ['AI가 초안을 채웠어요. 내용을 확인하고 고쳐 주세요'],
     });
+  });
+
+  it('보증금을 채웠을 때만 보증금 문구를 덧붙인다(보통·올림·자름)', () => {
+    const deposit = [{ name: 'deposit' }];
+    expect(getDraftNotice(DRAFT, [{ name: 'name' }]).messages).toHaveLength(1);
+    expect(getDraftNotice(DRAFT, deposit).messages[1]).toBe(
+      '보증금은 권장 범위에서 가장 낮은 금액으로 넣었어요',
+    );
+    expect(getDraftNotice({ ...DRAFT, minDeposit: 600 }, deposit).messages[1]).toBe(
+      '보증금은 등록할 수 있는 최소 금액(1,000원)으로 넣었어요',
+    );
+    expect(getDraftNotice({ ...DRAFT, minDeposit: 5000000 }, deposit).messages[1]).toBe(
+      '보증금은 등록 상한(3,000,000원)으로 넣었어요',
+    );
+    expect(getDraftNotice({ ...DRAFT, minDeposit: 0 }, deposit).messages[1]).toBe(
+      '보증금은 권장 범위에서 가장 낮은 금액으로 넣었어요',
+    );
   });
 
   it('ETC면 후보 이름을, 없으면 앞 문장만 덧붙인다', () => {

@@ -62,7 +62,7 @@ export default function AiDraftField({
       setValue(name, value, { shouldValidate: getFieldState(name).invalid });
       aiFilledRef.current[name] = value;
     }
-    setNotice(getDraftNotice(draft));
+    setNotice(getDraftNotice(draft, fills));
   }
 
   function handleClick() {

@@ -29,6 +29,13 @@ describe('buildMockDraft', () => {
     });
   });
 
+  it.each([
+    ['cheap.jpg', 600],
+    ['pricey.jpg', 5000000],
+  ])('%s → 보증금 하한 %s(등록 범위 밖 경우)', (name, minDeposit) => {
+    expect(buildMockDraft(name)).toMatchObject({ status: 'DONE', minDeposit });
+  });
+
   it('partial → 원가가 없으면 보증금 범위도 null', () => {
     expect(buildMockDraft('partial.jpg')).toMatchObject({
       status: 'DONE',
