@@ -43,8 +43,12 @@ export function isUserEdited(current, initial, aiFilled) {
   return current !== initial && current !== aiFilled;
 }
 
+/** 보증금 하한은 AI 원가·카테고리 기준이라, 사용자가 둘 중 하나를 고쳤으면 범위 안내와 어긋나 채우지 않는다 */
+const DEPOSIT_BASIS_FIELDS = ['itemPrice', 'categoryId'];
+
 /**
  * DONE 응답에서 채울 칸. null 필드와 사용자가 고친 칸은 건너뛴다.
+ * 물품 가격·카테고리를 사용자가 고쳤으면 보증금도 건너뛴다(범위 안내만 남는다).
  * @param {object} draft AiDraftResponse
  * @param {{ current: object, initial: object, aiFilled: object }} values 지금 폼 값·처음 값·AI가 넣은 값
  * @returns {{ name: string, value: unknown }[]}
@@ -53,9 +57,11 @@ export function getDraftFills(draft, { current, initial, aiFilled }) {
   if (draft.status !== 'DONE') {
     return [];
   }
+  const edited = (name) => isUserEdited(current[name], initial[name], aiFilled[name]);
+  const depositBasisEdited = DEPOSIT_BASIS_FIELDS.some(edited);
   return DRAFT_FIELDS.flatMap(({ name, pick, toValue }) => {
     const raw = pick(draft);
-    if (raw == null || isUserEdited(current[name], initial[name], aiFilled[name])) {
+    if (raw == null || edited(name) || (name === 'deposit' && depositBasisEdited)) {
       return [];
     }
     return [{ name, value: toValue ? toValue(raw) : raw }];
