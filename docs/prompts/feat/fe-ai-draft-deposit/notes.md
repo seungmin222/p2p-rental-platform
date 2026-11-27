@@ -1,5 +1,11 @@
 # feat/fe-ai-draft-deposit 결정 기록 (REQ-067 후속, 프론트)
 
+## 요약
+- API 변경 없음. `POST /api/items/ai-draft` 응답의 `minDeposit`으로 SCR-06 등록 보증금 칸을 채운다.
+- 바꾼 파일: `frontend/src/features/item/aiDraft.js`(`getDraftDeposit`·`DEPOSIT_BASIS_FIELDS`·보증금 안내 문구), `components/AiDraftField.jsx`, `mocks/aiDraft.js`(`cheap`·`pricey`).
+- 물품 가격·카테고리를 사용자가 고친 상태면 보증금은 채우지 않는다. 원가를 고쳐도 보증금 칸은 그대로다.
+- 남은 일: 없음(수정 화면에는 AI 보조가 없다).
+
 ## 결정
 - **보증금 칸을 응답의 `minDeposit`(권장 하한)으로 채운다**(사용자 결정, 2026-11-27). feat/fe-ai-draft에서는 비워 뒀다. 0원은 그대로, 0 초과 1,000원 미만은 1,000원으로 올리고, 3,000,000원을 넘으면 자른다(`item.deposit`, `aiDraft.js` `getDraftDeposit`). null이면 채우지 않는다. 덮어쓰기는 다른 칸과 같은 `isUserEdited` 규칙이라 `DRAFT_FIELDS`에 한 줄로 넣었다.
 - **응답이 왔을 때 물품 가격·카테고리 칸을 사용자가 고쳤으면 보증금 칸은 채우지 않는다**(리뷰 반영, 사용자 승인). AI 하한은 AI 원가·카테고리 기준이라 사용자 가격 기준 범위 안내와 어긋날 수 있어서다. 판단은 기존 `isUserEdited` 그대로(`DEPOSIT_BASIS_FIELDS`), 새 수치는 없다.
