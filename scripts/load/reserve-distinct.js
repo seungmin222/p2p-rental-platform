@@ -12,6 +12,9 @@ const THINK = Number(__ENV.THINK ?? 1);
 const created = new Counter('reserve_created');
 const conflict = new Counter('reserve_conflict');
 const lockTimeout = new Counter('reserve_lock_timeout');
+const concurrentUpdate = new Counter('reserve_concurrent_update');
+// 결과 파일 이름에 붙일 구성 이름(락 전략 비교, 예: RC-REDISSON)
+const LABEL = __ENV.LABEL ? `-${__ENV.LABEL}` : '';
 const failed = new Rate('reserve_failed');
 
 export const options = {
@@ -58,8 +61,11 @@ export default function (data) {
 		conflict.add(1);
 	} else if (code === 'RENTAL_LOCK_TIMEOUT') {
 		lockTimeout.add(1);
+	} else if (code === 'COMMON_CONCURRENT_UPDATE') {
+		concurrentUpdate.add(1);
 	}
-	const ok = res.status === 201 || code === 'RENTAL_PERIOD_CONFLICT';
+	// COMMON_CONCURRENT_UPDATE는 락 전략 비교의 실험 전략(낙관적 락 충돌·교착)에서만 나온다
+	const ok = res.status === 201 || code === 'RENTAL_PERIOD_CONFLICT' || code === 'COMMON_CONCURRENT_UPDATE';
 	check(res, { 'reserve 201 또는 기간 충돌 409': () => ok });
 	failed.add(!ok);
 	if (!ok && __ENV.DEBUG) {
@@ -71,4 +77,4 @@ export default function (data) {
 	}
 }
 
-export const handleSummary = makeSummary(`reserve-distinct-vus${VUS}`);
+export const handleSummary = makeSummary(`reserve-distinct-vus${VUS}${LABEL}`);

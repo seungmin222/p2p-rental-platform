@@ -40,7 +40,7 @@
 5. 캘린더(012) → 예약+중복 방지(013·014) → 상태 머신(016) → 취소(015)
 6. 인계(017) → 반납·상태 확인(018)
 7. 빌린 내역(019)·내 물품 관리(020)
-8. 동시성 테스트(2인스턴스) → 1순위 완료 판정
+8. 동시성 테스트(2인스턴스) → 1순위 완료 판정 (✅ `chore/concurrency-lock-experiment`: 기본 경로 중복 예약 0건, `docs/experiments/concurrency.md`)
 
 ## 진행 현황
 
@@ -108,9 +108,10 @@
 ### 테스트·성능 실험 (14주차)
 | 브랜치 | 내용 | 상태 |
 | --- | --- | --- |
-| `chore/load-test` | 부하 테스트: 로컬 docker 앱 2개 + k6, 더미 회원 1만·물품 3만·대여 10만 (`docs/experiments/load-test.md`, `scripts/load/`) | ✅ 실행. 조회 p95·예약 중복 0건은 목표 충족(200명까지). 예약 200명에서 알림 저장의 커넥션 풀 교착으로 멈춤 → `fix/notification-async-listener`에서 수정. 미실행(별도 브랜치): 운영 환경 짧은 확인, 피드 전후 비교(§8-4), 장애 주입(§8-2), 락 전략 비교(§8-1) |
+| `chore/load-test` | 부하 테스트: 로컬 docker 앱 2개 + k6, 더미 회원 1만·물품 3만·대여 10만 (`docs/experiments/load-test.md`, `scripts/load/`) | ✅ 실행. 조회 p95·예약 중복 0건은 목표 충족(200명까지). 예약 200명에서 알림 저장의 커넥션 풀 교착으로 멈춤 → `fix/notification-async-listener`에서 수정. 미실행(별도 브랜치): 운영 환경 짧은 확인, 피드 전후 비교(§8-4), 장애 주입(§8-2), 락 전략 비교(§8-1, → `chore/concurrency-lock-experiment`) |
 | `fix/notification-async-listener` | 커넥션 풀 교착 수정: 알림 저장 AFTER_COMMIT 리스너를 전용 실행기(`NotificationListenerExecutor`)에서 실행, 작은 풀 회귀 테스트 | ✅ 개선 후 예약 200명 실패 0·p99 38.1ms, 100명 쉼 0 실패 0·p95 약 350ms. 쉼 0에서는 알림 약 65%를 큐 포화로 버림(받아들인 한계, `docs/experiments/load-test.md`). 남은 일: 알림 묶어 저장(배치 INSERT), 운영 dropped 로그 경보 |
 | `chore/query-index-experiment` | 피드(009)·검색(010) 조회 인덱스 비교: 피드 F0~F4(단일·복합·위경도 포함·SPATIAL), 검색 S0~S2(LIKE·복합 B-tree·FULLTEXT ngram), 물품 3만·30만, 버퍼 풀 128MB·768MB (`docs/experiments/query-index.md`, `scripts/load/query-index/`) | ✅ V22 채택: 피드 `(status, bumped_at, id, latitude, longitude)`(30만·128MB p95 −48~75%, 그 밖 동일), 검색 FULLTEXT ngram(한글·숫자 2~100글자만, 3만 p95 −40%·30만 768MB −73%). 남은 일: 30만에서 검색 p95 2.4s — 개수 쿼리 상한·캐시(API 변경), 피드 Redis 캐시 |
+| `chore/concurrency-lock-experiment` | 예약(013) 동시성 비교(§8-1): 격리 수준 RC·RR × {락 없음·낙관적·비관적(물품 행·활성 대여 범위)·Redisson·`rental_dates` UK·Redisson+UK} 14개 구성, 앱 2개 + k6 (`docs/experiments/concurrency.md`, `scripts/load/concurrency/`, 실험 전략 `global/lock/experiment/`는 프로퍼티로만 켬) | ✅ **1순위 완료 판정 근거**: 기본 경로(Redisson + READ COMMITTED) 중복 예약 0건·교착 0·기타 실패 0(같은 기간 100명 60라운드, 부분 겹침, 겹치지 않는 기간 800건, 경합 없음 약 10.7만 건). 기본 전략 유지. 락 없음·RC 범위 잠금은 중복, 낙관적·RR 범위 잠금·RR UK는 교착·잘못된 거절로 기각. 물품 행 `FOR UPDATE`는 정확하고 경합 p95 약 40% 짧지만 대기 중 커넥션 점유 위험(미측정). 남은 일: 장애 주입(§8-2)에서 UK 2차 방어 판단 |
 
 ### 3순위 (착수 시 추가)
 | REQ | 이름 | 담당 | 필수 | 상태 |

@@ -10,9 +10,10 @@
 | `lib.js` | 공통: 로그인(setup 전용), 시드 규칙(소유자·상태), 결과 요약 |
 | `read-mix.js` | 시나리오 A: 피드 50%·검색 30%·상세 20%, 회원·비회원 반씩 |
 | `reserve-distinct.js` | 시나리오 B: 서로 다른 물품 예약 |
-| `reserve-contention.js` | 시나리오 C: 같은 물품·같은 기간 동시 예약(라운드 반복) |
+| `reserve-contention.js` | 시나리오 C: 같은 물품 동시 예약(라운드 반복). `PATTERN`=same(같은 기간, 기본)·partial(부분 겹침)·disjoint(겹치지 않는 기간) |
 | `check-duplicates.sql` | 기간이 겹치는 활성 대여(중복 예약) 수, 시나리오 C 물품별 예약 수 |
 | `query-index/` | 조회 인덱스 실험 도구(`docs/experiments/query-index.md`): 대표 쿼리 생성 `gen-queries.mjs`, EXPLAIN 요약 `summarize-explain.mjs`, 쓰기 비용 `write-cost.sql`, LIKE·FULLTEXT 결과 비교 `fulltext-equality.mjs` |
+| `concurrency/` | 락 전략 비교 도구(`docs/experiments/concurrency.md`): 부하 DB 전용 스키마 `schema.sql`(items.version·rental_dates), 구성마다 초기화 `reset.sql`·확인 `check.sql`, 구성 하나 `run.sh`, 전체 `run-all.sh`. 앱 설정 덮어쓰기는 `../../infra/docker-compose.load-lock.yml` |
 | `results/` | k6 결과 JSON(커밋하지 않음) |
 
 ## 안전장치
@@ -57,7 +58,7 @@ docker compose -f infra/docker-compose.load.yml logs nginx | Select-String -Patt
 ```
 
 - Git Bash에서는 `/scripts/...` 경로가 바뀌지 않게 앞에 `MSYS_NO_PATHCONV=1`을 붙인다. PowerShell·cmd에서는 `/scripts/...` 경로를 그대로 쓴다(k6 컨테이너 안 경로).
-- 환경 변수: `ONLY`(A 전용, `feed`·`search`면 그 API만 보낸다), `ITEM_COUNT`(시드 물품 수와 같게, 기본 30000), `VUS`(가상 사용자), `RAMP`·`HOLD`(단계 길이, 예 `30s`), `THINK`(요청 사이 평균 쉬는 시간 초, 기본 1, 0이면 쉬지 않음), `LOGIN_USERS`(A에서 미리 로그인할 회원 수, 기본 200), C 전용 `ROUNDS`(기본 20)·`GAP_MS`(라운드 간격, 기본 5000)·`ITEM_FROM`(대상 물품 시작 id, 기본 30000에서 내려감).
+- 환경 변수: `ONLY`(A 전용, `feed`·`search`면 그 API만 보낸다), `ITEM_COUNT`(시드 물품 수와 같게, 기본 30000), `VUS`(가상 사용자), `RAMP`·`HOLD`(단계 길이, 예 `30s`), `THINK`(요청 사이 평균 쉬는 시간 초, 기본 1, 0이면 쉬지 않음), `LOGIN_USERS`(A에서 미리 로그인할 회원 수, 기본 200), C 전용 `ROUNDS`(기본 20)·`GAP_MS`(라운드 간격, 기본 5000)·`ITEM_FROM`(대상 물품 시작 id, 기본 30000에서 내려감)·`PATTERN`(위 표). B·C 공통 `LABEL`(결과 파일 이름 뒤에 붙일 구성 이름).
 - 로그인은 각 스크립트 `setup()`에서 미리 한다(BCrypt 비용이 측정에 섞이지 않게). 액세스 토큰 TTL이 30분이라 한 번 실행은 30분 안에 끝나야 한다.
 - 시나리오를 다시 돌릴 때 부하로 생긴 예약만 지우려면: `DELETE FROM rental_status_histories WHERE rental_id > 100000; DELETE FROM rentals WHERE id > 100000;` (시드 대여 id는 1..100000).
 - 요청 분배 확인(bash 전용, PowerShell은 위 블록): `docker compose -f infra/docker-compose.load.yml logs nginx | grep -o "up=[^ ]*" | sort | uniq -c`. Nginx 로그는 컨테이너가 뜬 뒤 모든 실행이 쌓이므로 한 실행만 보려면 `logs --since <시작 시각> --until <끝 시각> nginx`로 구간을 자른다.
@@ -68,5 +69,19 @@ docker compose -f infra/docker-compose.load.yml logs nginx | Select-String -Patt
 | --- | --- |
 | 시드 진행 중 대여(RENTING, 물품 1..3000) | 어제 ~ 오늘+1~5일 |
 | 시나리오 B | 시작 오늘+1~150일, 1~3일 |
-| 시나리오 C | 오늘+160 ~ +162일 |
+| 시나리오 C | 오늘+160 ~ +162일 (partial +160 ~ +168일, disjoint +160 ~ +199일) |
 | 시드 미래 예약(RESERVED, 물품 6의 배수) | 오늘+200 ~ +228일 |
+
+## 락 전략 비교 (`chore/concurrency-lock-experiment`)
+
+결과·해석은 `docs/experiments/concurrency.md`. 위 1·2단계(기동·시드) 뒤에 한 번만 부하 DB 전용 스키마를 넣는다.
+
+```bash
+docker compose -f infra/docker-compose.load.yml exec -T mysql mysql -urental -prental rental_load < scripts/load/concurrency/schema.sql
+# 전체(약 4시간, Git Bash). 구성 하나만: scripts/load/concurrency/run.sh RR-P1 PESSIMISTIC_ITEM REPEATABLE_READ same partial
+scripts/load/concurrency/run-all.sh
+```
+
+- 전략은 앱 환경 변수로 바꾼다: `infra/docker-compose.load-lock.yml`이 `LOCK_MODE`·`LOCK_ISOLATION`·`LOCK_RETRIES`를 `app.experiment.rental-lock.*`로 넘긴다. 이 파일 없이 띄우면 기본 경로(Redisson + READ COMMITTED)다. `run.sh`는 앱 2개를 다시 만들고 Nginx를 재시작한다(컨테이너 IP가 바뀌므로).
+- 시나리오마다 `reset.sql`(부하 예약·rental_dates 삭제, 교착 수 기록) → k6 → `check.sql`(중복 쌍·생성 수·교착 수). 교착 지표(`INNODB_METRICS`)는 PROCESS 권한이 필요해 두 SQL은 root로 실행한다.
+- 출력은 `results/concurrency-<라벨>.log`(커밋하지 않음)에 쌓인다.
