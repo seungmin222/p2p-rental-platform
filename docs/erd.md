@@ -28,6 +28,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V20 | `V20__create_wishes.sql` | `feat/item-wish-recent` | 머지 |
 | V21 | `V21__create_item_view_logs.sql` | `feat/item-wish-recent` | 머지 |
 | V22 | `V22__add_listing_indexes_to_items.sql` | `chore/query-index-experiment` | 머지 |
+| V23 | `V23__add_answer_to_inquiries.sql` | `feat/admin-process` | 작업 중 |
 
 ## 규칙
 
