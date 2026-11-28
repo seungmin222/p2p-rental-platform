@@ -148,7 +148,7 @@ erDiagram
 - FK 이름: members를 세 번 참조하므로 `fk_rentals_members_{owner|renter|canceled_by}`(`conventions.md` §4).
 - 기간 겹침은 `rentals`의 시작·종료일 컬럼만으로는 유니크 제약을 걸 수 없다. 대신 아래 `rental_dates`(날짜별 점유)에 유니크 제약을 걸면 DB가 막을 수 있다. 기본 경로는 분산 락 + 검사 쿼리이고, `rental_dates`는 도전 과제 ① 비교 실험의 대상이다.
 
-**rental_dates** [1, 실험용] — item_id, rented_date DATE, rental_id FK, **UK(item_id, rented_date)**. 예약·연장 확정 시 날짜마다 1행 INSERT, 취소·결제 만료·연장 취소 시 삭제. 실험 결과로 채택이 정해지기 전에는 기본 경로에서 쓰지 않는다.
+**rental_dates** [1, 실험용] — item_id, rented_date DATE, rental_id FK, **UK(item_id, rented_date)**. 예약·연장 확정 시 날짜마다 1행 INSERT, 취소·결제 만료·연장 취소 시 삭제. 실험 결과로 채택이 정해지기 전에는 기본 경로에서 쓰지 않는다. 비교 실험(`docs/experiments/concurrency.md`)은 부하 DB에만 만들어 했고(`scripts/load/concurrency/schema.sql`, id PK + `uk_rental_dates_item_id_rented_date`), 채택하지 않아 아직 Flyway 마이그레이션이 없다.
 
 **rental_status_histories** — id, rental_id FK, from_status VARCHAR(30) NULL(생성 이력), to_status VARCHAR(30), changed_by FK→members NULL(시스템), reason VARCHAR(255) NULL(배치명 또는 사유), changed_at DATETIME(6). 인덱스 `idx_rental_status_histories_rental_id_changed_at (rental_id, changed_at)` — 생성됨(`V4`)
 **rental_cancel_agreements** [1] — id, rental_id FK, requested_by FK→members, reason VARCHAR(30)(`CancelReason`), reason_text VARCHAR(200) NULL, status VARCHAR(30)(`CancelAgreementStatus`), expires_at DATETIME(6), responded_at DATETIME(6) NULL(만료면 NULL), created_at, updated_at. 인덱스 `(rental_id, status)`, `(status, expires_at)`(만료 배치) — 생성됨(`V5`). 한 대여에 진행 중(REQUESTED이고 expires_at > now)인 요청은 1건만(대여 행 락 안에서 애플리케이션 검증). `@Version` 없음(만료는 벌크 UPDATE).

@@ -81,5 +81,5 @@
 | P5 | 보증금 분쟁 | 7일 미합의 시 관리자 확정(3순위) | 대여자 72시간 무응답 시 자동 수락. 관리자 확정 API 2개만 2순위로 앞당김 | 2순위 필수 기능(049)이 3순위 기능에 의존하던 구조 해소 | payment REQ-049, api, admin |
 | P6 | 금액 | 0원 처리 규칙 없음 | 일 대여료·보증금은 0원 또는 1,000원 이상. 0원 결제·0원 반환은 PG 생략. 보증금 상태 `NONE`·`FORFEITED` 추가 | PG는 0원·소액 결제를 처리하지 못함 | policies §1, payment, state-machines |
 | P7 | API | `POST /api/payments/{id}/cancel` 회원 공개 | 외부 API 제거, 서버 내부 호출만 | 대여자가 직접 환불을 호출할 수 있었음 | api, payment |
-| P8 | 동시성 | 분산 락 대기 3초·임대 5초 | 임대 시간 미지정(watchdog). 비교 실험에 DB 유니크 인덱스(`rental_dates`) 추가 | 임대 시간 고정 시 긴 트랜잭션 중 락 해제 → 중복 예약 가능. 원본 도전 과제 ①의 비교 대상 복원 | rental REQ-013, architecture §8, erd |
+| P8 | 동시성 | 분산 락 대기 3초·임대 5초 | 임대 시간 미지정(watchdog). 비교 실험에 DB 유니크 인덱스(`rental_dates`) 추가. 비교 결과(`docs/experiments/concurrency.md`) 기본값 유지: 중복 0·교착 0. `rental_dates`는 부하 DB에서만 만들어 쟀고 운영 스키마에는 넣지 않았다 | 임대 시간 고정 시 긴 트랜잭션 중 락 해제 → 중복 예약 가능. 원본 도전 과제 ①의 비교 대상 복원 | rental REQ-013, architecture §8, erd, experiments/concurrency |
 | P9 | 인증 | RT를 회원당 1개(`rt:{memberId}`) | 로그인(기기)별 family로 저장, 재사용 감지 시 그 family만 무효화 | 두 기기 사용 시 정상 사용자가 로그아웃되던 문제 | member REQ-002·003·005, erd |

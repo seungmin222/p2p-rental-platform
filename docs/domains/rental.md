@@ -40,8 +40,8 @@ try {
 ```
 - **임대 시간(leaseTime)을 지정하지 않는다.** `tryLock(wait, lease, unit)`처럼 임대 시간을 주면 Redisson의 watchdog 자동 연장이 꺼져, 트랜잭션이 임대 시간을 넘기면 커밋 전에 락이 풀린다. 대기 시간만 주면 watchdog이 락을 쥔 동안 연장하고, 서버가 죽으면 기본 30초 뒤 풀린다.
 - **트랜잭션 커밋이 락 해제보다 먼저** 일어나야 한다. 락 안에서 트랜잭션 메서드(별도 빈)를 호출하는 구조로 만들 것(트랜잭션 안에서 락을 잡으면 커밋 전에 락이 풀린다).
-- 락 전략은 `RentalLockStrategy` 인터페이스로 추상화해 비교 실험에서 교체 가능하게 한다. 비교 대상(원본 도전 과제 ①): 격리 수준(READ COMMITTED / REPEATABLE READ) × {낙관적 락(version), 비관적 락(`SELECT ... FOR UPDATE`), Redisson 분산 락, **DB 유니크 인덱스(날짜별 점유 테이블)**}. 결과는 `docs/experiments/concurrency.md`.
-- **DB 유니크 인덱스 방식**: `rental_dates(item_id, rented_date, rental_id)`에 UK(item_id, rented_date). 예약·연장 시 기간의 날짜마다 한 행씩 INSERT하고, 중복 키 오류가 나면 409로 바꾼다. 취소·결제 만료 시 해당 행 삭제, 반납 완료 시에는 유지(이력). 락 없이도 DB가 최종 방어선이 되므로, 실험 결과에 따라 분산 락과 **함께** 2차 방어로 쓰는 것도 선택지다. 실험 전에는 테이블만 만들고 기본 경로에서 쓰지 않는다.
+- 락 전략은 `RentalLockStrategy` 인터페이스로 추상화해 비교 실험에서 교체 가능하게 한다. 비교 대상(원본 도전 과제 ①): 격리 수준(READ COMMITTED / REPEATABLE READ) × {낙관적 락(version), 비관적 락(`SELECT ... FOR UPDATE`), Redisson 분산 락, **DB 유니크 인덱스(날짜별 점유 테이블)**}. 결과는 `docs/experiments/concurrency.md`(기본 전략 유지). 실험 구현은 `global/lock/experiment/`(`app.experiment.rental-lock.mode`를 줄 때만 켜짐)이다.
+- **DB 유니크 인덱스 방식**: `rental_dates(item_id, rented_date, rental_id)`에 UK(item_id, rented_date). 예약·연장 시 기간의 날짜마다 한 행씩 INSERT하고, 중복 키 오류가 나면 409로 바꾼다. 취소·결제 만료 시 해당 행 삭제, 반납 완료 시에는 유지(이력). 락 없이도 DB가 최종 방어선이 되므로, 실험 결과에 따라 분산 락과 **함께** 2차 방어로 쓰는 것도 선택지다. 실험은 부하 DB에만 테이블을 만들어 했다(`scripts/load/concurrency/schema.sql`). Redisson만으로 중복이 0이라 기본 경로에 넣지 않았고, 운영 테이블(Flyway)도 아직 없다. 2차 방어로 넣을지는 장애 주입(§8-2)에서 판단한다.
 
 ### 금액
 - rentalFee = pricePerDay × 일수, 결제 금액 = rentalFee + deposit

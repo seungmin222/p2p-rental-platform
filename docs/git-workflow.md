@@ -63,6 +63,7 @@
 | `docs/infra-shared-account` | 런북 `infra/README.md`·`infra/.env.prod.example`을 학교 공용 AWS 계정 제약(Access Key·IAM 생성 불가, 이름 접두사, 보안 그룹 1개, RDS 프리 티어)에 맞춤. 문서만 (코드·compose·Nginx·AWS 리소스 제외) | A |
 | `chore/load-test` | 14주차 부하 테스트: 부하 전용 compose(앱 2개·Nginx), 더미 데이터 SQL, k6 시나리오(조회 혼합·예약·같은 물품 경합), 결과표 `docs/experiments/load-test.md` (병목 수정·장애 주입·락 비교·운영 환경 측정 제외) | A |
 | `fix/notification-async-listener` | 부하 테스트에서 찾은 커넥션 풀 교착 수정: 알림 저장 AFTER_COMMIT 리스너(대여·후기)를 전용 실행기에서 실행, 작은 풀 회귀 테스트, 같은 k6 명령으로 "개선 후" 측정 (API 변경·Hikari 풀 크기 조정 제외) | A |
+| `chore/concurrency-lock-experiment` | 예약(013) 동시성 비교(architecture §8-1): 격리 수준 RC·RR × {락 없음·낙관적(물품 version)·비관적(물품 행·활성 대여 범위)·Redisson·`rental_dates` UK·Redisson+UK}, load-test 환경 + k6, 실험 전략은 프로퍼티로만 켬(`global/lock/experiment/`), 결과 `docs/experiments/concurrency.md` (기본 전략 변경·연장 경로·장애 주입·운영 측정 제외) | A |
 
 `feat/payment-deposit`(049 + 관리자 보증금 확정 API) · `feat/rental-overdue`(023·031) · `feat/chat-core`(026·027) · `feat/chat-list`(028·029) · `feat/notification`(032) · `feat/review`(034) · `feat/rental-extension`(038) · `feat/payment-settlement`(039·033) · `feat/ai-compare`(040) · `feat/member-extra`(021·036·037) · `feat/item-wish-recent`(022·035) · 프론트 `feat/fe-*`
 

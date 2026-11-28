@@ -16,7 +16,7 @@
 | 배포 | AWS EC2 t3.small ×2 + Docker Compose, RDS for MySQL, S3 + CloudFront | Spring Boot 2개 인스턴스(서버당 1개). 이미지는 GitHub Actions가 빌드해 GHCR에 올리고 서버는 pull만. 구성·런북 `infra/README.md` |
 | 외부 API | 토스페이먼츠(테스트 키, 카드만), 카카오맵 JS API, 카카오 로컬 API(좌표→행정동), Claude API(`claude-haiku-4-5`, 이미지 입력) | |
 | 문서화 | **springdoc-openapi(Swagger)** (확정) | 필드 명세는 DTO 코드 → Swagger → `docs/openapi.json` |
-| 테스트 | JUnit5, Testcontainers(MySQL·Redis·RabbitMQ), JMeter | |
+| 테스트 | JUnit5, Testcontainers(MySQL·Redis·RabbitMQ), k6(부하·동시성, docker 이미지) | 부하 도구는 기획의 JMeter 대신 k6. 부하 환경·시드·시나리오가 `scripts/load/`에 k6로 있고 docker만으로 돈다(`chore/load-test`) |
 
 > "(확정)" 표시가 없는 세부 선택(Java 21, Flyway, Testcontainers, 프론트의 Zustand·axios 등)은 기획서에 없는 **구현 제안**이다. 팀이 바꾸면 이 표를 수정한다. 라이브러리 버전은 프로젝트 생성 시점의 최신 안정 버전을 확인해 `build.gradle`/`package.json`에 고정한다.
 
@@ -124,7 +124,7 @@ STOMP 목적지는 확정(open-issues #14): 앱 `/pub/**`, 방 구독 `/topic/ch
 
 모든 과제는 **적용 전후 비교 결과를 표로 남긴다** (`docs/experiments/`에 기록 권장).
 
-1. **예약 동시성** — 격리 수준(READ COMMITTED, REPEATABLE READ) × {낙관적 락(version), 비관적 락(`SELECT ... FOR UPDATE`), Redisson 분산 락, DB 유니크 인덱스(날짜별 점유 테이블 `rental_dates`)}를 2대 이상 인스턴스에서 JMeter로 비교. TPS·평균 응답·오류율·중복 건수. 락 획득 실패·타임아웃 시 처리와 재시도 정책도 정의한다. 기본값은 **Redisson 분산 락(대기 3초, 임대 시간 미지정 → watchdog 자동 연장) + READ COMMITTED**. 임대 시간을 고정하면 watchdog이 꺼져 긴 트랜잭션 중 락이 풀릴 수 있으므로 지정하지 않는다.
+1. **예약 동시성** — 격리 수준(READ COMMITTED, REPEATABLE READ) × {낙관적 락(version), 비관적 락(`SELECT ... FOR UPDATE`), Redisson 분산 락, DB 유니크 인덱스(날짜별 점유 테이블 `rental_dates`)}를 2대 이상 인스턴스에서 k6로 비교(`docs/experiments/concurrency.md`). TPS·평균 응답·오류율·중복 건수. 락 획득 실패·타임아웃 시 처리와 재시도 정책도 정의한다. 기본값은 **Redisson 분산 락(대기 3초, 임대 시간 미지정 → watchdog 자동 연장) + READ COMMITTED**. 임대 시간을 고정하면 watchdog이 꺼져 긴 트랜잭션 중 락이 풀릴 수 있으므로 지정하지 않는다. **비교 결과(14개 구성)로 기본값을 유지했다**: 중복 0·교착 0. 락 없음·READ COMMITTED 범위 잠금은 중복, 낙관적 락·REPEATABLE READ 범위 잠금·UK는 교착이나 정상 요청 거절이 났다. 재시도 정책: 락 대기 초과는 409 `RENTAL_LOCK_TIMEOUT`으로 돌려주고 서버에서 재시도하지 않는다(실험에서 0건).
 2. **결제 정합성** — 멱등성 키, 결제 상태와 대여 상태 전이 분리, 실패 이력, PG↔내부 상태 조정(reconciliation) 배치. 지연·실패 주입 테스트.
 3. **AI 비교 신뢰성** — 큐 비동기, JSON 스키마 고정·검증 실패 재시도, 캐싱, 호출 한도, "판정이 아닌 참고".
 4. **동네 피드 성능** — 위경도 bounding box 선필터 → 거리 계산, 공간 인덱스 또는 Geohash, 커서 페이징, Redis 캐시·무효화.

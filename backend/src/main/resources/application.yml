@@ -119,6 +119,8 @@ app:
       pool-size: 4
       queue-capacity: 1000
       await-termination-seconds: 10
+  # 락 전략 비교 실험 전용(docs/experiments/concurrency.md, ExperimentRentalLockStrategy). 기본은 키 자체가 없어 실험 빈이 생기지 않는다.
+  # 부하 환경에서만 infra/docker-compose.load-lock.yml로 app.experiment.rental-lock.mode·isolation·optimistic-retries를 넘긴다
   # 약관·정책 문서 버전 (REQ-037). 본문은 resources/terms/*.md. 본문을 고치면 버전을 올린다(20자 이내).
   # 이용약관·개인정보처리방침·만 14세 확인의 버전이 바뀌면 다음 로그인 응답 requiresTermsAgreement가 true가 된다
   terms:

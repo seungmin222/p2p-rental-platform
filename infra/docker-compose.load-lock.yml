@@ -1,0 +1,13 @@
+# 락 전략 비교 실험(chore/concurrency-lock-experiment) 전용 덮어쓰기. docker-compose.load.yml 뒤에 붙여 쓴다. 사용법: scripts/load/README.md "락 전략 비교"
+#   LOCK_MODE=PESSIMISTIC_ITEM LOCK_ISOLATION=REPEATABLE_READ docker compose -f infra/docker-compose.load.yml -f infra/docker-compose.load-lock.yml up -d --no-deps --force-recreate backend1 backend2
+# 이 파일 없이 띄우면 실험 전략 빈이 생기지 않아 기본 경로(Redisson + READ COMMITTED)다. 값이 비면 실험 전략이 켜져 버리므로 LOCK_MODE는 필수다.
+x-lock-env: &lock-env
+  APP_EXPERIMENT_RENTAL_LOCK_MODE: ${LOCK_MODE:?LOCK_MODE is required (NONE, OPTIMISTIC, PESSIMISTIC_ITEM, PESSIMISTIC_RANGE, REDISSON, UNIQUE, REDISSON_UNIQUE)}
+  APP_EXPERIMENT_RENTAL_LOCK_ISOLATION: ${LOCK_ISOLATION:-READ_COMMITTED}
+  APP_EXPERIMENT_RENTAL_LOCK_OPTIMISTIC_RETRIES: ${LOCK_RETRIES:-0}
+
+services:
+  backend1:
+    environment: *lock-env
+  backend2:
+    environment: *lock-env
