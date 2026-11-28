@@ -117,13 +117,16 @@ public record PolicyProperties(
 	 * 문의·분쟁 (REQ-063)
 	 *
 	 * @param contentMax 문의 내용 최대 글자 수 (inquiry.content-max). inquiries.content VARCHAR(1000)과 같게
-	 * @param page 내 문의 목록 페이지 크기 (inquiry.page). 요청에서 size를 받지 않는다
+	 * @param page 내 문의 목록·관리자 문의 목록 페이지 크기 (inquiry.page). 요청에서 size를 받지 않는다
+	 * @param answerMax 관리자 답변 최대 글자 수 (inquiry.answer-max, REQ-057). inquiries.answer VARCHAR(1000)과 같게
 	 */
 	public record Inquiry(
 		@Positive
 		int contentMax,
 		@Positive
-		int page) {
+		int page,
+		@Positive
+		int answerMax) {
 	}
 
 	public record PageSize(@Positive

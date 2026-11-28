@@ -120,7 +120,9 @@ public enum ErrorCode {
 
 	// 문의·분쟁 (REQ-063)
 	INQUIRY_DISPUTE_NOT_ALLOWED(HttpStatus.CONFLICT, "결제가 끝난 대여만 분쟁을 접수할 수 있습니다."),
-	INQUIRY_DISPUTE_ALREADY_OPEN(HttpStatus.CONFLICT, "이 대여에 처리 중인 분쟁이 이미 있습니다.");
+	INQUIRY_DISPUTE_ALREADY_OPEN(HttpStatus.CONFLICT, "이 대여에 처리 중인 분쟁이 이미 있습니다."),
+	INQUIRY_NOT_FOUND(HttpStatus.NOT_FOUND, "문의를 찾을 수 없습니다."),
+	INQUIRY_INVALID_TRANSITION(HttpStatus.CONFLICT, "현재 처리 상태에서는 바꿀 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String message;

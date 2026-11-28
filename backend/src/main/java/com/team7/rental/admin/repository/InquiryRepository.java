@@ -1,6 +1,7 @@
 package com.team7.rental.admin.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +16,7 @@ import com.team7.rental.admin.entity.InquiryType;
 
 import jakarta.persistence.LockModeType;
 
-public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
+public interface InquiryRepository extends JpaRepository<Inquiry, Long>, InquiryAdminSearchRepository {
 
 	/** 내 문의 목록, 최신 접수 순 (idx_inquiries_member_id_id) */
 	Page<Inquiry> findByMemberIdOrderByIdDesc(Long memberId, Pageable pageable);
@@ -37,4 +38,17 @@ public interface InquiryRepository extends JpaRepository<Inquiry, Long> {
 		""")
 	List<Long> findOpenDisputeIdsForShare(@Param("rentalId")
 	Long rentalId);
+
+	/**
+	 * 처리 전 락 순서를 정하려고 종류·대여만 읽는다 (REQ-057). 둘 다 접수 뒤 바뀌지 않는다. 엔티티를 영속성 컨텍스트에 올리지 않아, 뒤이은
+	 * {@link #findByIdForUpdate}가 락 뒤의 최신 상태를 읽는다.
+	 */
+	@Query("select new com.team7.rental.admin.repository.InquiryRef(i.id, i.type, i.rentalId) from Inquiry i where i.id = :id")
+	Optional<InquiryRef> findRefById(@Param("id")
+	Long id);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select i from Inquiry i where i.id = :id")
+	Optional<Inquiry> findByIdForUpdate(@Param("id")
+	Long id);
 }
