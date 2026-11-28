@@ -105,7 +105,10 @@ function DetailSkeleton() {
     <div aria-busy="true" className="flex flex-col gap-3.5 pt-3.5">
       <Skeleton className="h-8 w-full" />
       <Skeleton className="h-4 w-3/4" />
-      <Skeleton className="h-27 w-full rounded-xl" />
+      <div className="grid grid-cols-2 gap-2">
+        <Skeleton className="aspect-[4/3] rounded-[10px]" />
+        <Skeleton className="aspect-[4/3] rounded-[10px]" />
+      </div>
       <Skeleton className="h-28 w-full rounded-xl" />
     </div>
   );
