@@ -5,17 +5,27 @@ import { getErrorMessage } from '../errorMessages';
 import { findInspection, formatShortDate } from '../rentalData';
 import AiCompareCard from './AiCompareCard';
 
-/** 사진을 누르면 원본을 새 탭으로 연다 */
-function Photo({ url, label, className }) {
+/**
+ * 사진을 누르면 원본을 새 탭으로 연다. fit="contain"은 대표 사진처럼 물품 전체가 보여야 할 때(남는 곳은 surface 여백),
+ * 기본 cover는 작은 썸네일 줄
+ */
+function Photo({ url, label, className, fit = 'cover' }) {
   return (
     <a
       href={url}
       target="_blank"
       rel="noreferrer"
       aria-label={`${label} 크게 보기`}
-      className={`block overflow-hidden rounded-[10px] bg-placeholder focus-visible:outline-2 focus-visible:outline-primary ${className}`}
+      className={`block overflow-hidden rounded-[10px] focus-visible:outline-2 focus-visible:outline-primary ${
+        fit === 'contain' ? 'bg-surface' : 'bg-placeholder'
+      } ${className}`}
     >
-      <img src={url} alt="" loading="lazy" className="size-full object-cover" />
+      <img
+        src={url}
+        alt=""
+        loading="lazy"
+        className={`size-full ${fit === 'contain' ? 'object-contain' : 'object-cover'}`}
+      />
     </a>
   );
 }
@@ -25,7 +35,7 @@ function PhotoColumn({ record, title, emptyText }) {
   if (!record) {
     return (
       <div className="flex flex-col gap-1">
-        <div className="flex h-27 items-center justify-center rounded-[10px] bg-surface text-caption text-ink-subtle">
+        <div className="flex aspect-[4/3] items-center justify-center rounded-[10px] bg-surface text-caption text-ink-subtle">
           {emptyText}
         </div>
         <span className="text-center text-xs text-ink-muted">{title}</span>
@@ -36,9 +46,9 @@ function PhotoColumn({ record, title, emptyText }) {
   return (
     <div className="flex flex-col gap-1">
       {cover ? (
-        <Photo url={cover} label={`${title} 1`} className="h-27" />
+        <Photo url={cover} label={`${title} 1`} fit="contain" className="aspect-[4/3]" />
       ) : (
-        <div className="h-27 rounded-[10px] bg-placeholder" />
+        <div className="aspect-[4/3] rounded-[10px] bg-placeholder" />
       )}
       <span className="text-center text-xs text-ink-muted">
         {title} · {formatShortDate(record.createdAt)}
@@ -87,8 +97,8 @@ export default function InspectionRecords({ query }) {
   if (query.isPending) {
     return (
       <div className="grid grid-cols-2 gap-2">
-        <Skeleton className="h-27 rounded-[10px]" />
-        <Skeleton className="h-27 rounded-[10px]" />
+        <Skeleton className="aspect-[4/3] rounded-[10px]" />
+        <Skeleton className="aspect-[4/3] rounded-[10px]" />
       </div>
     );
   }
