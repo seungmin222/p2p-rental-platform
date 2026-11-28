@@ -3,7 +3,7 @@
 ## 요약
 - API 변경 없음. 새 파일: `global/lock/experiment/`(ExperimentLockMode·ExperimentRentalLockStrategy, `app.experiment.rental-lock.mode`일 때만), 테스트 `ExperimentRentalLockStrategyIntegrationTest`, `infra/docker-compose.load-lock.yml`, `scripts/load/concurrency/`(schema·reset·check SQL, run.sh·run-all.sh), 결과 `docs/experiments/concurrency.md`. `reserve-contention.js`에 `PATTERN`, B·C에 `LABEL`.
 - 결과: 기본 경로(Redisson + READ COMMITTED) 중복 0·교착 0·기타 실패 0 → 1순위 완료 판정 근거. 락 없음·RC 범위 잠금은 중복, 낙관적·RR 범위 잠금·RR UK는 교착·잘못된 거절.
-- 물품 행 `FOR UPDATE`(P1)는 정확하고 경합 p95 약 40% 짧았다. 기본 전략은 바꾸지 않았고 사용자에게 물었다(대기 중 커넥션 점유 위험은 미측정).
+- 물품 행 `FOR UPDATE`(P1)는 정확하고 경합 p95 약 40% 짧았다. 기본 전략은 유지(사용자 결정), P1은 후보로만 남겼다(대기 중 커넥션 점유 위험은 미측정).
 - 남은 일: 장애 주입(§8-2)에서 `rental_dates` UK 2차 방어 판단(채택 시 V23 + 취소·만료 시 삭제), P1로 바꾼다면 인기 물품 경합 + 다른 API 혼합 부하로 커넥션 풀 영향 측정.
 
 ## 결정
@@ -17,4 +17,5 @@
 - **O의 version은 물품 행, 충돌은 409 COMMON_CONCURRENT_UPDATE(기존 코드)**: 겹침 판단 단위가 물품이라서. rentals INSERT의 FK 검사가 물품 행에 공유 락을 걸어, 동시에 같은 물품 행을 UPDATE하면 교착이 난다. 낙관적 락에서는 교착도 충돌로 보고 같은 재시도 규칙을 따른다.
 - **도구는 k6(JMeter 대신)**: load-test 환경·시드·경합 스크립트를 그대로 쓰고 docker만으로 돈다. architecture.md 스택 표·§8-1을 k6로 고쳤다.
 - k6 C 스크립트는 새 파일 대신 `reserve-contention.js`에 `PATTERN`(same·partial·disjoint)을 더했다. 기본값은 기존 동작 그대로.
+- **기본 전략 유지(사용자 결정)**: Redisson + READ COMMITTED. P1(물품 행 FOR UPDATE)이 경합 지연·처리량에서 앞섰지만, 대기 중 DB 커넥션을 쥐는 영향을 재지 않았고 측정이 한 PC라 Redis 왕복 비용이 작게 나왔다. P1은 후보로 결과 문서에 남기고, 커넥션 풀 영향 측정을 남은 일로 둔다.
 - 부하 DB는 query-index 실험 뒤라 물품 30만(대여 10만은 물품 1..30000)·버퍼 풀 128MB 상태 그대로 썼다. 예약 경로는 물품 1..30000만 건드린다.
