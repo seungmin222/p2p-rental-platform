@@ -1,0 +1,19 @@
+name: Traceability
+
+# PR의 커밋·notes.md 결정 기록이 추적성 규칙을 지키는지 검사한다 (agent-traceability-kit).
+# 규칙: CLAUDE.md "결정 추적성", docs/git-workflow.md §5
+on:
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  traceability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: seungmin222/agent-traceability-kit@main
+        with:
+          scope: changed
