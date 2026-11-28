@@ -116,6 +116,287 @@
         ]
       }
     },
+    "/api/admin/inquiries": {
+      "get": {
+        "description": "일반 문의·분쟁 전체, 접수 순(오래된 것 먼저). 처리 상태(status)·종류(type)로 거를 수 있다. 페이지 크기는 policies.md inquiry.page로 고정이다.",
+        "operationId": "getInquiries",
+        "parameters": [
+          {
+            "description": "처리 상태 조건. 생략하면 전체",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "처리 상태 조건. 생략하면 전체",
+              "enum": [
+                "RECEIVED",
+                "IN_PROGRESS",
+                "RESOLVED"
+              ]
+            }
+          },
+          {
+            "description": "문의 종류 조건. 생략하면 전체",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "문의 종류 조건. 생략하면 전체",
+              "enum": [
+                "GENERAL",
+                "DISPUTE"
+              ]
+            }
+          },
+          {
+            "description": "페이지 번호 (0부터). 생략하면 0",
+            "example": 0,
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0,
+              "description": "페이지 번호 (0부터). 생략하면 0",
+              "example": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseAdminInquiryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_FORBIDDEN": {
+                    "summary": "접근 권한이 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_FORBIDDEN",
+                        "details": [],
+                        "message": "접근 권한이 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_FORBIDDEN"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "관리자 문의 목록 (REQ-057)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/inquiries/{inquiryId}": {
+      "patch": {
+        "description": "처리 상태를 바꾸고 답변을 남긴다. 전이: RECEIVED → IN_PROGRESS, RECEIVED·IN_PROGRESS → RESOLVED. RESOLVED는 되돌릴 수 없고 같은 상태로는 바꾸지 않는다(409). RESOLVED에는 답변이 필요하다(이미 남긴 답변이 있으면 생략 가능). 답변은 공백만 불가, policies.md inquiry.answer-max 이하. 분쟁(DISPUTE)을 RESOLVED로 바꾸면, 그 대여에 처리 완료되지 않은 분쟁(상대방 것 포함)이 더 없을 때 정산 보류를 푼다(HELD → SCHEDULED, 지급 예정일은 그대로라 지났으면 다음 지급 배치가 지급). 알림은 보내지 않는다. 검사 순서: 400 COMMON_INVALID_INPUT(답변 형식) → 404 INQUIRY_NOT_FOUND → 409 INQUIRY_INVALID_TRANSITION → 400 COMMON_INVALID_INPUT(답변 없음).",
+        "operationId": "process",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "inquiryId",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminInquiryProcessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdminInquiryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "COMMON_INVALID_INPUT": {
+                    "summary": "입력값이 올바르지 않습니다.",
+                    "value": {
+                      "error": {
+                        "code": "COMMON_INVALID_INPUT",
+                        "details": [],
+                        "message": "입력값이 올바르지 않습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "COMMON_INVALID_INPUT"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_UNAUTHORIZED": {
+                    "summary": "로그인이 필요합니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_UNAUTHORIZED",
+                        "details": [],
+                        "message": "로그인이 필요합니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_UNAUTHORIZED"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AUTH_FORBIDDEN": {
+                    "summary": "접근 권한이 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "AUTH_FORBIDDEN",
+                        "details": [],
+                        "message": "접근 권한이 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "AUTH_FORBIDDEN"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INQUIRY_NOT_FOUND": {
+                    "summary": "문의를 찾을 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "INQUIRY_NOT_FOUND",
+                        "details": [],
+                        "message": "문의를 찾을 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "INQUIRY_NOT_FOUND"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "INQUIRY_INVALID_TRANSITION": {
+                    "summary": "현재 처리 상태에서는 바꿀 수 없습니다.",
+                    "value": {
+                      "error": {
+                        "code": "INQUIRY_INVALID_TRANSITION",
+                        "details": [],
+                        "message": "현재 처리 상태에서는 바꿀 수 없습니다."
+                      },
+                      "success": false
+                    }
+                  }
+                }
+              }
+            },
+            "description": "INQUIRY_INVALID_TRANSITION"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "관리자 문의 처리·분쟁 종료 (REQ-057)",
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
     "/api/admin/rentals/{rentalId}/deposit": {
       "patch": {
         "description": "보류 후 policies.md deposit.hold-agreement-days가 지난 건의 차감액을 관리자가 확정한다. 상한 검사는 제공자 제안과 같다(A 불가, 미반납 신고 건은 D만, 0 ≤ amount ≤ min(상한, 남은 보증금)). 제안 이력에 ADMIN_DECIDED로 남는다. 남은 보증금 − 차감액을 부분 취소로 돌려주고(0원이면 FORFEITED) 거래 완료(COMPLETED), 양측에 DEDUCTION_ACCEPTED. 대여자 응답을 기다리는 제안이 있으면 409 DEDUCTION_PROPOSAL_IN_PROGRESS(그 결과를 기다린다). 검사 순서: 400 COMMON_INVALID_INPUT → 404 RENTAL_NOT_FOUND → 409 RENTAL_INVALID_TRANSITION → 409 DEPOSIT_NOT_HELD → 409 DEPOSIT_ADMIN_DECISION_TOO_EARLY → 409 DEDUCTION_PROPOSAL_IN_PROGRESS → 400 DEDUCTION_GRADE_NOT_ALLOWED → 400 DEDUCTION_EXCEEDS_DEPOSIT → 400 DEDUCTION_EXCEEDS_CAP. 응답은 확정 뒤 보증금 정보다.",
@@ -8231,6 +8512,96 @@
           }
         }
       },
+      "AdminInquiryProcessRequest": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "description": "답변. 주면 기존 답변을 덮어쓴다. RESOLVED에는 필수(이미 남긴 답변이 있으면 생략 가능). 공백만은 불가, policies.md inquiry.answer-max(1,000자) 이하",
+            "example": "상태 확인 사진을 검토해 정산 보류를 해제했습니다."
+          },
+          "status": {
+            "type": "string",
+            "description": "바꿀 처리 상태: IN_PROGRESS 처리 중, RESOLVED 처리 완료(되돌릴 수 없다)",
+            "enum": [
+              "RECEIVED",
+              "IN_PROGRESS",
+              "RESOLVED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "AdminInquiryResponse": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string",
+            "description": "관리자 답변. 없으면 null",
+            "example": "상태 확인 사진을 검토해 정산 보류를 해제했습니다."
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "답변을 마지막으로 쓴 시각. 없으면 null",
+            "example": "2026-11-13T10:00:00"
+          },
+          "content": {
+            "type": "string",
+            "description": "문의 내용",
+            "example": "반납 후 상태 확인 결과에 이의가 있습니다."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "접수 시각",
+            "example": "2026-11-12T15:20:00"
+          },
+          "inquiryId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "문의 ID",
+            "example": 1
+          },
+          "memberId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "접수한 회원 ID",
+            "example": 3
+          },
+          "rentalId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "연결한 대여 ID. 없으면 null",
+            "example": 10
+          },
+          "status": {
+            "type": "string",
+            "description": "처리 상태: RECEIVED 접수, IN_PROGRESS 처리 중, RESOLVED 처리 완료",
+            "enum": [
+              "RECEIVED",
+              "IN_PROGRESS",
+              "RESOLVED"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "문의 종류: GENERAL 일반 문의, DISPUTE 분쟁",
+            "enum": [
+              "GENERAL",
+              "DISPUTE"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "마지막 변경 시각",
+            "example": "2026-11-13T10:00:00"
+          }
+        }
+      },
       "AiCompareResult": {
         "type": "object",
         "properties": {
@@ -8332,6 +8703,20 @@
             "type": "string",
             "description": "제목 초안 (policies.md item.name.max 이내로 자름). 만들지 못하면 null",
             "example": "코베아 4인용 돔 텐트"
+          }
+        }
+      },
+      "ApiResponseAdminInquiryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AdminInquiryResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
           }
         }
       },
@@ -8742,6 +9127,20 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/NotificationReadAllResponse"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponsePageResponseAdminInquiryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageResponseAdminInquiryResponse"
           },
           "error": {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -9803,6 +10202,17 @@
       "InquiryResponse": {
         "type": "object",
         "properties": {
+          "answer": {
+            "type": "string",
+            "description": "관리자 답변 (REQ-057). 없으면 null",
+            "example": "상태 확인 사진을 검토해 정산 보류를 해제했습니다."
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "답변을 마지막으로 쓴 시각. 없으면 null",
+            "example": "2026-11-13T10:00:00"
+          },
           "content": {
             "type": "string",
             "description": "문의 내용",
@@ -10819,6 +11229,40 @@
             "type": "string",
             "description": "제공자의 대표 동네 이름. 없으면 null",
             "example": "송도1동"
+          }
+        }
+      },
+      "PageResponseAdminInquiryResponse": {
+        "type": "object",
+        "properties": {
+          "hasNext": {
+            "type": "boolean",
+            "description": "다음 페이지가 있으면 true"
+          },
+          "items": {
+            "type": "array",
+            "description": "이 페이지의 항목",
+            "items": {
+              "$ref": "#/components/schemas/AdminInquiryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 번호 (0부터)",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "페이지 크기",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "전체 항목 수",
+            "example": 21
           }
         }
       },
