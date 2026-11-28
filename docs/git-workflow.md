@@ -130,6 +130,15 @@ scope: member | item | rental | payment | chat | notification | review | ai | ad
 ```
 요약은 한국어, 50자 내외. 한 커밋에는 한 가지 변경.
 
+추적성 규칙(CI `Traceability`, 키트 `agent-traceability-kit`):
+- PR의 모든 커밋(`style` 포함)에 REQ ID를 넣는다. 예외는 `Merge `·`Revert "`로 시작하는 커밋과 키트 설정 자체를 바꾸는 `chore(traceability)` 커밋이다.
+- notes.md 결정 항목을 추가·수정한 커밋, 그 결정을 구현한 커밋은 본문 끝에 `Decision: D-…` 줄을 둔다. squash 커밋 메시지 설정이 COMMIT_MESSAGES라 이 줄은 머지 뒤에도 남는다(설정을 PR 본문으로 바꾸지 않는다).
+```
+feat(admin): 분쟁 종료 시 정산 보류 해제 (REQ-057)
+
+Decision: D-admin-process-02
+```
+
 ## 6. PR 규칙
 
 - 제목 = 대표 커밋 메시지 형식. 본문은 `.github/pull_request_template.md`를 채운다.

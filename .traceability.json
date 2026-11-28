@@ -1,0 +1,9 @@
+{
+  "notes_glob": "docs/prompts/**/notes.md",
+  "req_pattern": "REQ-\\d{3}",
+  "commit_exempt_pattern": "^(Merge |Revert \"|chore\\(traceability\\))",
+  "deciders": ["사용자", "에이전트"],
+  "non_decision_headings": ["요약", "남은 일", "메모", "참고"],
+  "reversal_marker": "번복",
+  "correction_marker": "정정"
+}

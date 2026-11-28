@@ -2,5 +2,16 @@
   "attribution": {
     "commit": "",
     "pr": ""
+  },
+  "extraKnownMarketplaces": {
+    "agent-traceability-kit": {
+      "source": {
+        "source": "github",
+        "repo": "seungmin222/agent-traceability-kit"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "traceability@agent-traceability-kit": true
   }
 }

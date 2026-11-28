@@ -16,6 +16,7 @@ argument-hint: "[브랜치명] [REQ-xxx]"
 7. 도메인 문서의 "테스트 포인트"가 테스트로 커버되는가
 8. 현재 단계보다 높은 순위의 기능을 미리 구현하지 않았는가
 9. `docs/prompts/<브랜치명>/notes.md`에 `## 요약`이 있으면 diff와 맞는가(구현한 API, 주요 파일 경로, 남은 일)
+10. 결정 변경: `/traceability:check-reversal origin/develop`의 절차대로 검토하고, 그 결과를 아래 [불일치]에 결정 ID와 함께 넣는다
 
 프론트(`frontend/`) 변경이면 추가로 확인한다 (기준: `frontend/CLAUDE.md`):
 - 토큰을 localStorage·sessionStorage에 저장하지 않는가 (AT는 authStore 메모리만)
