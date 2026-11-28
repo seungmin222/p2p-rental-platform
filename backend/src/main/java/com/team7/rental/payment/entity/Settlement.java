@@ -113,13 +113,18 @@ public class Settlement extends BaseTimeEntity {
 		return status == SettlementStatus.SCHEDULED;
 	}
 
+	/** 분쟁 종료로 보류를 풀 수 있는지: HELD */
+	public boolean isReleasable() {
+		return status == SettlementStatus.HELD;
+	}
+
 	/**
-	 * HELD → SCHEDULED (분쟁 종료). 부르는 곳은 관리자 분쟁 처리(REQ-057)에서 만든다. 대여에 열린 분쟁이 모두 끝났을 때만 부른다.
+	 * HELD → SCHEDULED (분쟁 종료, REQ-057). 대여에 열린 분쟁이 모두 끝났을 때만 부른다(SettlementTxService.releaseForDispute).
 	 *
 	 * @throws IllegalStateException HELD가 아닐 때
 	 */
 	public void release() {
-		if (status != SettlementStatus.HELD) {
+		if (!isReleasable()) {
 			throw new IllegalStateException("보류 중인 정산이 아닙니다: id=" + id + ", status=" + status);
 		}
 		this.status = SettlementStatus.SCHEDULED;

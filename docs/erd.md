@@ -28,6 +28,7 @@ Flyway 번호의 단일 기준이다. 마이그레이션을 만드는 브랜치�
 | V20 | `V20__create_wishes.sql` | `feat/item-wish-recent` | 머지 |
 | V21 | `V21__create_item_view_logs.sql` | `feat/item-wish-recent` | 머지 |
 | V22 | `V22__add_listing_indexes_to_items.sql` | `chore/query-index-experiment` | 머지 |
+| V23 | `V23__add_answer_to_inquiries.sql` | `feat/admin-process` | 머지 |
 
 ## 규칙
 
@@ -214,7 +215,7 @@ erDiagram
 ## 관리·기타 [3]
 
 **category_suggestions** (REQ-067, 검토는 057) — id, item_id NULL FK→items, member_id FK→members, suggested_name VARCHAR(30), status(`CategorySuggestionStatus`), reviewed_by NULL FK→members, created_at, updated_at. 인덱스 `(status, id)`(검토 목록) — 생성됨(`V16`). AI 등록 보조(카테고리)가 ETC를 고르면 등록 전에 PENDING으로 기록해 item_id가 비어 있다(open-issues #52)
-**inquiries** — id, member_id FK→members, rental_id NULL FK→rentals, type(`InquiryType`), content VARCHAR(1000), status(`InquiryStatus`), created_at, updated_at. 인덱스 `(member_id, id)`(내 문의 목록), `(rental_id, status)`(열린 분쟁 검사) — 생성됨(`V15`). 분쟁(DISPUTE)은 rental_id 필수(서비스 검사)
+**inquiries** — id, member_id FK→members, rental_id NULL FK→rentals, type(`InquiryType`), content VARCHAR(1000), status(`InquiryStatus`), answer VARCHAR(1000) NULL(관리자 답변, `inquiry.answer-max`), answered_at NULL(답변을 마지막으로 쓴 시각), created_at, updated_at. answer·answered_at은 `V23`(REQ-057). 관리자 목록은 전용 인덱스 없이 PK 순. 인덱스 `(member_id, id)`(내 문의 목록), `(rental_id, status)`(열린 분쟁 검사) — 생성됨(`V15`). 분쟁(DISPUTE)은 rental_id 필수(서비스 검사)
 **appointments** (REQ-051) — id, room_id, rental_id NULL, type(HANDOVER/RETURN), scheduled_at, place, latitude, longitude
 
 ## Redis 키 규약

@@ -151,8 +151,10 @@ app:
     inquiry:
       # inquiry.content-max: 문의 내용 최대 글자 수, 공백만은 불가 (REQ-063). inquiries.content VARCHAR(1000)과 같게
       content-max: 1000
-      # inquiry.page: 내 문의 목록 페이지 크기. size 파라미터를 받지 않는다 (REQ-063)
+      # inquiry.page: 내 문의 목록(REQ-063)·관리자 문의 목록(REQ-057) 페이지 크기. size 파라미터를 받지 않는다
       page: 20
+      # inquiry.answer-max: 관리자 답변 최대 글자 수, 공백만은 불가 (REQ-057). inquiries.answer VARCHAR(1000)과 같게
+      answer-max: 1000
     chat:
       # chat.message.max: 채팅 메시지 최대 글자 수, 공백만은 불가 (REQ-027). chat_messages.content VARCHAR(1000)과 같게
       message-max: 1000

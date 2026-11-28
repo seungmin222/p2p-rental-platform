@@ -8,7 +8,7 @@ import com.team7.rental.admin.entity.InquiryType;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** 문의·분쟁 (REQ-063) */
+/** 문의·분쟁 (REQ-063). 답변은 관리자 처리(REQ-057) */
 public record InquiryResponse(
 	@Schema(description = "문의 ID", example = "1")
 	Long inquiryId,
@@ -25,11 +25,17 @@ public record InquiryResponse(
 	@Schema(description = "처리 상태: RECEIVED 접수, IN_PROGRESS 처리 중, RESOLVED 처리 완료")
 	InquiryStatus status,
 
+	@Schema(description = "관리자 답변 (REQ-057). 없으면 null", example = "상태 확인 사진을 검토해 정산 보류를 해제했습니다.")
+	String answer,
+
+	@Schema(description = "답변을 마지막으로 쓴 시각. 없으면 null", example = "2026-11-13T10:00:00")
+	LocalDateTime answeredAt,
+
 	@Schema(description = "접수 시각", example = "2026-11-12T15:20:00")
 	LocalDateTime createdAt) {
 
 	public static InquiryResponse of(Inquiry inquiry) {
 		return new InquiryResponse(inquiry.getId(), inquiry.getType(), inquiry.getRentalId(), inquiry.getContent(),
-			inquiry.getStatus(), inquiry.getCreatedAt());
+			inquiry.getStatus(), inquiry.getAnswer(), inquiry.getAnsweredAt(), inquiry.getCreatedAt());
 	}
 }

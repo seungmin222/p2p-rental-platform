@@ -102,6 +102,24 @@ public class SettlementTxService implements RentalSettlementPort {
 		return true;
 	}
 
+	/**
+	 * 분쟁 종료 시 그 대여의 정산 보류를 푼다 (REQ-057): HELD → SCHEDULED. 정산이 없거나 HELD가 아니면 그대로 둔다. 지급 예정일은 그대로라
+	 * 지났으면 다음 지급 배치가 지급한다. 호출하는 쪽이 대여 행 락을 잡고, 그 대여에 열린 분쟁이 없음을 확인한 뒤 부른다. 행 락·id 조회는
+	 * {@link #holdForDispute}와 같다.
+	 *
+	 * @return 이번에 보류를 풀었으면 true
+	 */
+	@Transactional(propagation = Propagation.MANDATORY)
+	public boolean releaseForDispute(Long rentalId) {
+		Optional<Settlement> settlement = settlementRepository.findIdByRentalId(rentalId)
+			.flatMap(settlementRepository::findByIdForUpdate);
+		if (settlement.isEmpty() || !settlement.get().isReleasable()) {
+			return false;
+		}
+		settlement.get().release();
+		return true;
+	}
+
 	/** 지급 배치 대상 id: SCHEDULED이고 지급 예정일 ≤ today */
 	@Transactional(readOnly = true)
 	public List<Long> findPayableIds(LocalDate today) {

@@ -7,6 +7,11 @@
 - 신고 목록·처리(기각/경고/이용 정지) → 결과를 신뢰 점수에 반영
 - **보증금 분쟁 조정**: HELD 7일 초과 건 목록 → 차감 금액 확정. **이 두 API(`GET /api/admin/deposits/held`, `PATCH /api/admin/rentals/{id}/deposit`)는 2순위로 앞당겨 `payment.md` REQ-049에서 먼저 구현**한다. 3순위에서는 증빙 통합 조회 화면을 붙인다
 - **증빙 통합 조회 (한 화면)**: 대여 상태 변경 이력, 인계·반납 사진과 체크리스트, AI 비교 결과, 채팅 내역, 결제·보증금·정산 기록, 차감 제안 이력
+- **문의 처리** (구현됨, `feat/admin-process`): `GET /api/admin/inquiries?status=&type=&page=`(접수 순, `inquiry.page` 고정), `PATCH /api/admin/inquiries/{id}`(status·answer)
+  - 전이는 state-machines §5 `InquiryStatus`. RESOLVED에는 답변 필수(이미 남긴 답변이 있으면 생략 가능), 답변은 공백만 불가·`inquiry.answer-max` 이하(400 `COMMON_INVALID_INPUT` details answer). 없는 문의 404 `INQUIRY_NOT_FOUND`, 허용하지 않는 전이 409 `INQUIRY_INVALID_TRANSITION`
+  - 분쟁을 RESOLVED로 바꾸면 대여 행 락 안에서 그 대여에 RESOLVED가 아닌 분쟁(상대방 것 포함)이 없을 때 정산 HELD → SCHEDULED(state-machines §3). PAID·SCHEDULED·정산 없음은 그대로
+  - 답변은 내 문의 목록(`GET /api/inquiries`)에도 `answer`·`answeredAt`으로 보인다. 처리 결과 알림은 보내지 않는다
+  - 테스트 포인트: 전이 허용·불허 전부, 답변 필수·공백·글자 수, 일반 회원 403, 분쟁 하나 남으면 HELD 유지·모두 끝나면 SCHEDULED(예정일 그대로), 정산 생성 전 종료 → SCHEDULED로 생성, PAID 유지, 종료 뒤 재접수 → 다시 HELD
 - 반환 실패(REFUND_FAILED 반복) 건 확인
 - 카테고리 관리: 추가·이름·순서·숨김(삭제 대신 isActive=false), AI 제안 후보 승인(→ 카테고리 생성)·반려
 - damage_policies 조정(카테고리별 손상 발생률 = 반납 건 중 B~D 비율, 평균 차감액 집계 화면)
@@ -16,7 +21,7 @@
 - `POST /api/inquiries`: type `GENERAL`(rentalId 선택)·`DISPUTE`(rentalId 필수). 대여를 연결하면 본인이 대여자·제공자여야 한다(403 `RENTAL_NOT_PARTICIPANT`, 없으면 404 `RENTAL_NOT_FOUND`). 내용은 공백만 불가, `inquiry.content-max` 이하
 - 분쟁: PENDING_PAYMENT 대여는 409 `INQUIRY_DISPUTE_NOT_ALLOWED`. 같은 회원·대여에 RESOLVED가 아닌 분쟁이 있으면 409 `INQUIRY_DISPUTE_ALREADY_OPEN`(상대방은 따로 접수 가능). 대여 행 락 안에서 접수해 대여 완료(정산 생성)와 한 줄로 선다. 정산 보류 규칙은 state-machines §3
 - `GET /api/inquiries?page=`: 내 문의 최신 접수 순, `inquiry.page` 고정
-- 알림 없음. 처리(IN_PROGRESS·RESOLVED, 답변)와 분쟁 종료 시 정산 HELD → SCHEDULED는 REQ-057
+- 알림 없음. 처리(IN_PROGRESS·RESOLVED, 답변)와 분쟁 종료 시 정산 HELD → SCHEDULED는 REQ-057 "문의 처리"
 
 ## REQ-058 대여 요청 게시
 원하는 물품·기간을 요청 글로 → 보유한 이웃이 응답(Peerby 모델). 별도 엔티티(rental_requests) 필요.
