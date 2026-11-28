@@ -1,17 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildHistoryDays,
   formatDateTime,
   getPaymentHistoryView,
   getRangeLabel,
   getSettlementView,
   readHistoryFilter,
   toHistoryParams,
-  validateHistoryRange,
   writeHistoryFilter,
 } from './paymentHistory';
-
-const TODAY = '2026-11-21';
 
 function payment(extra = {}) {
   return {
@@ -101,27 +99,6 @@ describe('writeHistoryFilter·toHistoryParams', () => {
       'type=PAYMENT&from=2026-10-01&to=2026-11-01',
     );
     expect(toHistoryParams(filter, 2)).toEqual({ page: 2, ...filter });
-  });
-});
-
-describe('validateHistoryRange', () => {
-  it('비었거나 순서가 맞으면 null', () => {
-    expect(validateHistoryRange({ from: '', to: '' }, TODAY)).toBeNull();
-    expect(validateHistoryRange({ from: '2026-11-01', to: '2026-11-01' }, TODAY)).toBeNull();
-    expect(validateHistoryRange({ from: '', to: '2027-01-01' }, TODAY)).toBeNull();
-  });
-
-  it('from > to', () => {
-    expect(validateHistoryRange({ from: '2026-11-02', to: '2026-11-01' }, TODAY)).toBe(
-      '시작일이 종료일보다 늦어요',
-    );
-  });
-
-  it('to를 비우면 오늘과 비교한다(서버가 오늘로 채운다)', () => {
-    expect(validateHistoryRange({ from: '2026-11-22', to: '' }, TODAY)).toBe(
-      '시작일이 오늘보다 늦어요',
-    );
-    expect(validateHistoryRange({ from: TODAY, to: '' }, TODAY)).toBeNull();
   });
 });
 
@@ -245,5 +222,16 @@ describe('getSettlementView', () => {
     expect(view.sourceLabel).toBe('취소 수수료');
     expect(view.rows[0].label).toBe('취소 수수료');
     expect(view.dateText).toBe('분쟁이 끝나면 지급돼요');
+  });
+});
+
+describe('buildHistoryDays', () => {
+  it('시작 달 ~ 오늘의 달, 오늘까지 AVAILABLE이고 미래는 UNAVAILABLE', () => {
+    const days = buildHistoryDays('2026-10', '2026-11-15');
+    expect(days[0]).toEqual({ date: '2026-10-01', status: 'AVAILABLE' });
+    expect(days.find((d) => d.date === '2026-11-15').status).toBe('AVAILABLE');
+    expect(days.find((d) => d.date === '2026-11-16').status).toBe('UNAVAILABLE');
+    expect(days.at(-1).date).toBe('2026-11-30');
+    expect(days).toHaveLength(61);
   });
 });

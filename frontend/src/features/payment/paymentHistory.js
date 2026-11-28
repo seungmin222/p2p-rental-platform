@@ -3,7 +3,13 @@
 // open-issues #44 (임시 해석, 확정 전): 한 항목 = 대여자 본인의 결제 한 건. type 필터 PAYMENT = 승인된 결제 전체,
 // REFUND = 취소 환불이 있는 건, DEPOSIT = 보증금이 동결 이후 단계로 넘어간 건. 한 결제가 여러 구분에 함께 들어가므로
 // 항목마다 "구분" 라벨은 붙이지 않고 필터로만 쓴다. 해석이 바뀌면 PAYMENT_HISTORY_TYPES와 getPaymentHistoryView만 고친다.
-import { compareDate, formatMonthDay } from '../../shared/lib/date';
+import {
+  addMonths,
+  buildMonthGrid,
+  compareDate,
+  formatMonthDay,
+  monthOf,
+} from '../../shared/lib/date';
 import { formatPrice } from '../../shared/lib/format';
 import {
   DEPOSIT_STATUS,
@@ -90,28 +96,28 @@ export function toHistoryParams({ type, from, to }, page) {
   return params;
 }
 
-/**
- * 기간 입력 검사. to를 비우면 서버가 오늘로 채우므로 오늘과 비교한다(서버도 기본값을 채운 뒤 from > to면 400).
- * 문제가 없으면 null.
- */
-/** from > to 오류 문구. 기간 시트와 서버 400(from·to)이 함께 쓴다 */
+/** from > to 오류 문구. 서버 400(from·to) 안내에 쓴다(기간 시트는 Calendar라 순서가 뒤집히지 않는다) */
 export const HISTORY_RANGE_ORDER_ERROR = '시작일이 종료일보다 늦어요';
-
-export function validateHistoryRange({ from, to }, today) {
-  if (from && !isDateString(from)) {
-    return '시작일을 확인해 주세요';
-  }
-  if (to && !isDateString(to)) {
-    return '종료일을 확인해 주세요';
-  }
-  if (from && compareDate(from, to || today) > 0) {
-    return to ? HISTORY_RANGE_ORDER_ERROR : '시작일이 오늘보다 늦어요';
-  }
-  return null;
-}
 
 function formatDot(date) {
   return date.replaceAll('-', '.');
+}
+
+/**
+ * 기간 시트 Calendar의 days: fromMonth ~ 이번 달, 오늘까지 선택 가능하고 미래는 선택 불가.
+ * Calendar는 받은 days 전체로 범위를 검사하므로 호출부는 보고 있는 달·고른 시작일의 달 중 이른 달을 넘긴다
+ * (과거 쪽에 정해진 한계가 없어 달을 넘길 때마다 넓힌다).
+ */
+export function buildHistoryDays(fromMonth, today) {
+  const days = [];
+  for (let month = fromMonth; month <= monthOf(today); month = addMonths(month, 1)) {
+    for (const date of buildMonthGrid(month)) {
+      if (date) {
+        days.push({ date, status: compareDate(date, today) > 0 ? 'UNAVAILABLE' : 'AVAILABLE' });
+      }
+    }
+  }
+  return days;
 }
 
 /** 목록 위 기간 요약 문구 */

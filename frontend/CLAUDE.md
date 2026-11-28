@@ -168,7 +168,7 @@ export const RENTAL_STATUS = {
 - 한 화면 두 탭 `?tab=payments|settlements`(기본 결제·보증금, payment.md REQ-033 "정산 내역은 같은 화면 별도 탭"). RequireAuth 안. 진입은 `/me` 메뉴 "결제·정산 내역".
 - `VITE_PAYMENT_ENABLED`가 false면 `/me` 메뉴에서 빼고, 주소로 들어오면 API를 부르지 않고 "결제 기능이 꺼져 있어요" EmptyState만 보인다.
 - queryKey: 결제 내역 `['payments', 'me', {type, from, to}]`, 정산 `['settlements', 'me']`(`paymentHistoryKeys`). 둘 다 page/hasNext `useInfiniteQuery`(size 없음 — `payment-history.page`·`settlement.page` 고정). 정산 합계(scheduledTotal·heldTotal·paidTotal)는 마지막으로 받은 페이지 값을 쓴다. 결제 승인(`useConfirmPayment`) 뒤 결제 내역을 무효화한다.
-- 결제 내역 조건은 URL `?type=&from=&to=`(`paymentHistory.js` `readHistoryFilter`·`writeHistoryFilter`, 기본값은 주소·요청에 넣지 않음, 틀린 값·from > to는 없는 것으로). 비우면 서버 기본(최근 `PAYMENT_HISTORY_DEFAULT_RANGE_MONTHS`개월)이고 화면은 "최근 3개월"이라고만 쓴다(날짜는 프론트가 계산하지 않는다). 기간은 "기간 변경" 시트(`HistoryRangeSheet`)에서 고르고, `validateHistoryRange`가 from > to(to가 비면 오늘)이면 시트 안에 오류를 보이고 "적용"을 막는다. 그래도 400(details from·to)이 오면 ErrorState "기간을 확인해 주세요" + 다시 시도 = 기본 기간으로.
+- 결제 내역 조건은 URL `?type=&from=&to=`(`paymentHistory.js` `readHistoryFilter`·`writeHistoryFilter`, 기본값은 주소·요청에 넣지 않음, 틀린 값·from > to는 없는 것으로). 비우면 서버 기본(최근 `PAYMENT_HISTORY_DEFAULT_RANGE_MONTHS`개월)이고 화면은 "최근 3개월"이라고만 쓴다(날짜는 프론트가 계산하지 않는다). 기간은 "기간 변경" 시트(`HistoryRangeSheet`)의 `Calendar`(`buildHistoryDays`: 오늘 이후 선택 불가, 최대 일수 없음)로 고른다. 시작·종료를 고르면 그 범위, 시작일만 고르면 to 없이(= 오늘까지), 아무것도 안 고르면 "적용"이 꺼지고 "최근 3개월로"만 쓴다. 그래도 400(details from·to)이 오면 ErrorState "기간을 확인해 주세요" + 다시 시도 = 기본 기간으로.
 - **open-issues #44 임시 해석은 `paymentHistory.js` 한 곳**: 구분 칩(`PAYMENT_HISTORY_TYPES` 전체·결제·환불·보증금 + 설명)과 카드 표시(`getPaymentHistoryView`). 한 결제가 여러 구분에 들어가므로 항목에 "구분" 라벨은 붙이지 않는다. 카드: 물품·결제 상태 배지(`PAYMENT_STATUS`)·종류(대여료·보증금/연장료)·결제 일시·기간·보증금 상태 배지(연장 결제는 없음)·결제 금액, 금액 줄(대여료·보증금 또는 연장료, 연체료·보증금 차감(빨강)·취소 수수료·환불 금액), 차감 사유·"환불을 처리하고 있어요"(`depositRefundPending`).
 - 정산 카드(`getSettlementView`): 물품·정산 상태 배지(`SETTLEMENT_STATUS`)·종류(거래 완료/취소 수수료)·기간, 금액 줄(대상 금액 − 플랫폼 수수료 + 보증금 차감액) = 지급액. SCHEDULED는 "M월 D일 지급 예정", PAID는 지급 일시, HELD는 "분쟁이 끝나면 지급돼요". 합계 상자는 지급 예정·보류·지급 완료 3칸 + 지급 시점 안내(`SETTLEMENT_PAYOUT_DELAY_BUSINESS_DAYS`).
 - 카드는 전체가 대여 상세(`/rentals/:rentalId`) 링크. 상태 라벨은 `features/payment/constants.js`(state-machines §2·§3·§4), 오류 문구는 `features/payment/errorMessages.js`.
@@ -256,7 +256,7 @@ export const RENTAL_STATUS = {
 - 사용감은 **기존 동네 중고거래 앱과 최대한 비슷하게**: 카드형 피드, 하단 탭, 상세 하단 고정 바(관심 · 채팅하기 · 예약하기), 채팅 상단 물품 요약, 우측 하단 "+ 물품 등록" 버튼. (특정 서비스 로고·브랜드 요소를 복제하지 않는다)
 - 가격: `12,000원/일`, 보증금 `보증금 50,000원`. 경과 시간: `3분 전`, `2일 전` (bumpedAt 기준).
 - 이미지: 목록은 thumbnailUrl + `loading="lazy"`. 등록·수정·인계·반납은 `ImageUploader`(장수·용량·형식은 `ITEM_IMAGES`·`INSPECTION_IMAGES`로 넘김). 순서 변경은 썸네일 아래 줄의 앞으로·대표로·뒤로 버튼(첫 장 = 대표, 사진 위에는 삭제만). 드래그는 넣지 않는다(모바일 브라우저가 HTML5 drag&drop을 지원하지 않음). 필요해지면 해당 화면 브랜치에서 PC 전용으로 검토.
-- 캘린더: AVAILABLE/BOOKED/UNAVAILABLE 3색 구분, 범위 선택, 1~30일 제한을 UI에서도 안내(`Calendar`, 기간은 `RENTAL_PERIOD`·라벨은 `RENTAL_DAY_STATUS`로 넘김).
+- 캘린더: AVAILABLE/BOOKED/UNAVAILABLE 3색 구분, 범위 선택, 1~30일 제한을 UI에서도 안내(`Calendar`, 기간은 `RENTAL_PERIOD`·라벨은 `RENTAL_DAY_STATUS`로 넘김). 물품 등록·수정의 가능 기간(`AvailablePeriodsField` → `PeriodCalendarSheet`)과 결제 내역 기간도 같은 `Calendar`를 `maxDays={null}`·`endLabel="종료일"`로 쓴다.
   - `days`는 지금까지 불러온 여러 달의 응답을 합쳐 넘긴다. 예약이 달을 넘을 수 있어(10/30~11/2) 범위 검사를 받은 days 전체로 하기 때문이다. days에 없는 날짜는 예약 불가로 본다.
 - 빈 상태·로딩·에러 상태를 모든 목록에 구현 (`EmptyState`, 스켈레톤).
 - 본인 물품 상세에서는 예약하기 대신 수정·관리 버튼.

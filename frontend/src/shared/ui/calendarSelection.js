@@ -41,7 +41,7 @@ export function statusOf(statusByDate, date) {
  *
  * @param {{startDate: string, endDate: string | null} | null} value
  * @param {string} date 누른 날짜 "YYYY-MM-DD"
- * @param {{statusByDate: Map<string, string>, minDays: number, maxDays: number}} options
+ * @param {{statusByDate: Map<string, string>, minDays: number, maxDays: number | null}} options maxDays null이면 TOO_LONG 검사를 하지 않는다
  * @returns {{value: object | null, reason?: string}}
  */
 export function selectDate(value, date, { statusByDate, minDays, maxDays }) {
@@ -61,7 +61,8 @@ export function selectDate(value, date, { statusByDate, minDays, maxDays }) {
     return { value, reason: SELECT_REJECT_REASON.TOO_SHORT };
   }
   const restart = { startDate: date, endDate: null };
-  if (days > maxDays) {
+  // maxDays null = 상한 없음(물품 등록의 가능 기간·결제 내역 조회 기간)
+  if (maxDays != null && days > maxDays) {
     return { value: restart, reason: SELECT_REJECT_REASON.TOO_LONG };
   }
   for (let d = startDate; compareDate(d, date) <= 0; d = addDays(d, 1)) {
