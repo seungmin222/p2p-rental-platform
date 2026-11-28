@@ -20,8 +20,11 @@ function maxOf(a, b) {
   return a > b ? a : b;
 }
 
-/** 시트가 열릴 때마다 새로 그려져 초안이 그 줄의 지금 값에서 다시 시작한다 */
-function PeriodPicker({ period, onCancel, onConfirm }) {
+/**
+ * 가능 기간 한 줄의 기간을 고르는 시트. 열린 동안만 렌더해 열 때마다 초안이 그 줄의 지금 값에서 다시 시작한다.
+ * 확인을 눌러야 onConfirm으로 반영하고, 닫기·취소는 초안(시작일만 고른 상태 포함)을 버린다.
+ */
+export default function PeriodCalendarSheet({ open, title, period, onClose, onConfirm }) {
   const today = todayInSeoul();
   const thisMonth = monthOf(today);
   const initial = period.startDate && period.endDate ? period : null;
@@ -40,7 +43,25 @@ function PeriodPicker({ period, onCancel, onConfirm }) {
   );
 
   return (
-    <>
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title={title}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} className="shrink-0">
+            취소
+          </Button>
+          <Button
+            className="flex-1"
+            disabled={!value?.endDate}
+            onClick={() => onConfirm({ startDate: value.startDate, endDate: value.endDate })}
+          >
+            확인
+          </Button>
+        </>
+      }
+    >
       {/* 좌우 8px 안쪽 여백: Calendar 머리의 월 이동 버튼이 -mr-2로 밀려 나가 가로 스크롤이 생기지 않게 */}
       <div className="-mx-2 px-2 pt-2">
         <Calendar
@@ -58,30 +79,6 @@ function PeriodPicker({ period, onCancel, onConfirm }) {
           maxMonth={maxMonth}
         />
       </div>
-      <div className="mt-5 flex gap-2">
-        <Button variant="secondary" onClick={onCancel} className="shrink-0">
-          취소
-        </Button>
-        <Button
-          className="flex-1"
-          disabled={!value?.endDate}
-          onClick={() => onConfirm({ startDate: value.startDate, endDate: value.endDate })}
-        >
-          확인
-        </Button>
-      </div>
-    </>
-  );
-}
-
-/**
- * 가능 기간 한 줄의 기간을 고르는 시트. 확인을 눌러야 onConfirm으로 반영하고,
- * 닫기·취소는 초안(시작일만 고른 상태 포함)을 버린다.
- */
-export default function PeriodCalendarSheet({ open, title, period, onClose, onConfirm }) {
-  return (
-    <BottomSheet open={open} onClose={onClose} title={title}>
-      {open && <PeriodPicker period={period} onCancel={onClose} onConfirm={onConfirm} />}
     </BottomSheet>
   );
 }

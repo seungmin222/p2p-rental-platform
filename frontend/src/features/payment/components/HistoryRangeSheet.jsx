@@ -25,7 +25,10 @@ export default function HistoryRangeSheet({ open, onClose, range, onApply }) {
   const today = todayInSeoul();
   const thisMonth = monthOf(today);
   const [value, setValue] = useState(() => toCalendarValue(range));
-  const [month, setMonth] = useState(value ? monthOf(value.startDate) : thisMonth);
+  // 주소의 from이 미래여도 넘겨 볼 수 없는 달에서 시작하지 않게 이번 달 이하로 묶는다
+  const [month, setMonth] = useState(() =>
+    value && monthOf(value.startDate) < thisMonth ? monthOf(value.startDate) : thisMonth,
+  );
   // 과거 쪽 한계가 없어 보고 있는 달(또는 고른 시작일의 달)부터 이번 달까지 넘긴다
   const fromMonth = value && monthOf(value.startDate) < month ? monthOf(value.startDate) : month;
   const days = useMemo(() => buildHistoryDays(fromMonth, today), [fromMonth, today]);
@@ -64,6 +67,7 @@ export default function HistoryRangeSheet({ open, onClose, range, onApply }) {
           minDays={1}
           maxDays={null}
           hint="시작일과 종료일을 차례로 눌러 주세요"
+          startOnlyHint="종료일을 고르거나, 이대로 적용하면 오늘까지 찾아요"
           endLabel="종료일"
           statusLabels={RANGE_STATUS_LABELS}
           maxMonth={thisMonth}

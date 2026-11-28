@@ -105,7 +105,8 @@ const NAV_BUTTON =
  * - `minDays`·`maxDays`는 정책 값을 호출부가 넘긴다(예약: RENTAL_PERIOD). 연장(REQ-038, 회당 7일)도
  *   같은 컴포넌트에 다른 값을 넘겨 쓸 수 있게 기본값을 두지 않는다. 상한이 없는 곳(물품 등록의 대여 가능
  *   기간, 결제 내역 조회 기간)은 `maxDays={null}`을 명시한다. 안내 문구는 기본이 "대여" 기준이고,
- *   대여가 아닌 곳은 `hint`(아무것도 안 고른 상태의 안내)·`endLabel`('종료일' 등)로 바꾼다.
+ *   대여가 아닌 곳은 `hint`(아무것도 안 고른 상태의 안내)·`startOnlyHint`(시작일만 고른 상태의 안내)·
+ *   `endLabel`('종료일' 등)로 바꾼다.
  * - 월을 이동해도 value는 유지된다. 거부 사유는 아래 줄에 표시하고, 범위 거부(사이 예약 불가·최대 초과)는
  *   누른 날을 새 시작일로 onChange한다. 누른 날 자체가 예약 불가이거나 최소 미만이면 value를 바꾸지 않는다.
  * - 거부 문구는 그 거부가 만든 value가 지금 value와 같을 때만 보인다. 부모가 value를 바꾸거나(초기화 등)
@@ -120,6 +121,8 @@ const NAV_BUTTON =
  * @param {number} [props.minDays] readOnly가 아니면 필수
  * @param {number | null} [props.maxDays] readOnly가 아니면 필수. null이면 상한 없음
  * @param {string} [props.hint] 아무것도 안 고른 상태의 안내(기본 "minDays~maxDays일까지 선택할 수 있어요")
+ * @param {string} [props.startOnlyHint] 시작일만 고른 상태의 안내(기본 "{endLabel}을 선택해 주세요").
+ *   시작일만으로도 적용할 수 있는 곳(결제 내역)에서 바꾼다
  * @param {string} [props.endLabel] 끝 날짜의 이름(기본 '반납일'). 안내 문구·스크린리더 라벨에 쓴다
  * @param {Record<string, {label: string}>} props.statusLabels 상태 코드 → 라벨(features의 RENTAL_DAY_STATUS). 라벨이 없는 상태는 범례에서 뺀다
  * @param {string} [props.minMonth] 이전 달 버튼 비활성 기준 "YYYY-MM"
@@ -138,6 +141,7 @@ export default function Calendar({
   minDays,
   maxDays,
   hint,
+  startOnlyHint,
   endLabel = '반납일',
   statusLabels,
   minMonth,
@@ -183,7 +187,7 @@ export default function Calendar({
     message = formatDateRange(value.startDate, value.endDate);
     messageClass = 'font-semibold text-primary';
   } else if (value?.startDate) {
-    message = `${endLabel}을 선택해 주세요`;
+    message = startOnlyHint ?? `${endLabel}을 선택해 주세요`;
   } else {
     message = hint ?? `${minDays}~${maxDays}일까지 선택할 수 있어요`;
   }
