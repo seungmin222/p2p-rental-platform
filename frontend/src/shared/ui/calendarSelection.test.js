@@ -64,6 +64,12 @@ describe('selectDate', () => {
     });
   });
 
+  it('maxDays가 null이면 상한 없이 범위를 완성한다', () => {
+    expect(selectDate(start('2026-10-15'), '2026-11-14', { ...opts, maxDays: null })).toEqual({
+      value: range('2026-10-15', '2026-11-14'),
+    });
+  });
+
   it('사이에 BOOKED가 있으면 거부 + 누른 날이 새 시작일, 이어서 범위 완성', () => {
     const rejected = selectDate(start('2026-10-12'), '2026-10-16', opts);
     expect(rejected).toEqual({
