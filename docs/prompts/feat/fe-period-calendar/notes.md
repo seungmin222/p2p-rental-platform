@@ -1,5 +1,12 @@
 # feat/fe-period-calendar 결정 기록
 
+## 요약
+
+- API 변경 없음(프론트만). SCR-06 대여 가능 기간과 SCR-12 결제 내역 기간을 `type="date"` 대신 공용 `Calendar` 시트로 고른다.
+- 새 파일: `frontend/src/features/item/components/PeriodCalendarSheet.jsx`. 바꾼 파일: `AvailablePeriodsField.jsx`, `features/payment/components/HistoryRangeSheet.jsx`, `paymentHistory.js`(`buildHistoryDays`, `validateHistoryRange` 삭제).
+- `shared/ui/Calendar.jsx`에 `maxDays={null}`(상한 없음)과 `hint`·`startOnlyHint`·`endLabel` prop을 더했다. 기본값이 기존 문구라 다른 사용처는 그대로다.
+- 남은 일: 목 화면 브라우저 확인을 못 했다(앱 안 브라우저가 MSW 서비스 워커를 등록하지 못함). 캘린더에 다른 줄 기간 표시는 범위 밖이다.
+
 SCR-06 대여 가능 기간과 SCR-12 결제 내역 기간 입력을 브라우저 `type="date"`에서 공용 `Calendar`로 바꾼다.
 
 ## 결정
