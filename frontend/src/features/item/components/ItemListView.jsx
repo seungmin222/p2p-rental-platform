@@ -3,8 +3,8 @@ import { isInitialLoadError } from '../../../shared/lib/queryState';
 import { getErrorMessage } from '../errorMessages';
 import ItemCard from './ItemCard';
 
-// 홈 그리드: 모바일 2열, PC(xl) 4열(Figma 시안 간격 12·24 / 16·32)
-const GRID = 'grid grid-cols-2 gap-x-3 gap-y-6 pt-2 xl:grid-cols-4 xl:gap-x-4 xl:gap-y-8';
+// 홈 그리드: 모바일 2열, PC(lg) 4열(Figma 시안 간격 12·24 / 16·32)
+const GRID = 'grid grid-cols-2 gap-x-3 gap-y-6 pt-2 lg:grid-cols-4 lg:gap-x-4 lg:gap-y-8';
 
 function ListSkeleton() {
   return (

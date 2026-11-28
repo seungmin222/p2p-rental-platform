@@ -3,7 +3,7 @@ import { useId } from 'react';
 import CloseIcon from './CloseIcon';
 import { useDialog } from './useDialog';
 
-/** 모바일은 화면 하단에 붙고, PC(xl)는 가운데 모달 모양. 드래그로 닫기는 하지 않는다. */
+/** 모바일은 화면 하단에 붙고, PC(lg)는 가운데 모달 모양. 드래그로 닫기는 하지 않는다. */
 export default function BottomSheet({
   open,
   onClose,
@@ -19,7 +19,7 @@ export default function BottomSheet({
     <dialog
       {...dialogProps}
       aria-labelledby={titleId}
-      className="mx-0 mt-auto mb-0 max-h-[85dvh] w-full max-w-full rounded-t-2xl bg-white p-0 text-ink shadow-xl backdrop:bg-black/50 xl:m-auto xl:w-full xl:max-w-md xl:rounded-2xl"
+      className="mx-0 mt-auto mb-0 max-h-[85dvh] w-full max-w-full rounded-t-2xl bg-white p-0 text-ink shadow-xl backdrop:bg-black/50 lg:m-auto lg:w-full lg:max-w-md lg:rounded-2xl"
     >
       {open && (
         <div className="px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">

@@ -132,14 +132,14 @@
 
 | 요소 | 모양 | 비고 |
 | --- | --- | --- |
-| `AppLayout` | 세로 flex, 본문 `max-w-5xl px-4`. PC(xl, ≥1280)는 상단 헤더 `DesktopHeader`, 모바일은 하단 탭 | 라우트 `handle.hideTabBar`면 하단 탭과 아래 여백을 뺀다 |
+| `AppLayout` | 세로 flex, 본문 `max-w-5xl px-4`. PC(`lg`, ≥896 = `--breakpoint-lg: 56rem`, Tailwind 기본 1024보다 낮춤)는 상단 헤더 `DesktopHeader`, 모바일은 하단 탭 | 라우트 `handle.hideTabBar`면 하단 탭과 아래 여백을 뺀다. PC 배치(헤더·하단 탭 숨김·홈 헤더·FAB·상세 2열·홈 4열·채팅방 높이·바텀시트 모달)는 모두 `lg:` 하나로 켜고 끈다 — 헤더만 따로 바꾸면 두 배치가 겹친다. 896은 1920 화면 반 분할 창(뷰포트 약 930) 기준 |
 | `DesktopHeader` | sticky, 높이 64, 내용은 본문과 같은 `max-w-5xl`. 로고 마크 `AppLogo`(36, `rounded-xl`, `primary` 면 + 흰 텐트 선 아이콘) → 둥근 `surface` 검색 상자(`/search` 링크, 최대 560) → 동네 ▾ → 알림·채팅·나의 대여(아이콘 22 + `text-sm`) → "+ 물품 등록" 알약(높이 44, `primary`). 검색 상자 높이 44, 글씨 `ink-muted` | Figma 시안. `useMediaQuery`로 PC에서만 그린다(동네 이름에 내 정보 조회) |
 | 하단 탭 | 높이 64, `border-t border-line`, 5칸(홈·검색·채팅·알림·나의 대여), 라벨 11px, 선택 시 아이콘 채움 + `font-semibold text-ink` | 시안(`Main.html` 64)과 같음 |
 | `PageHeader` | sticky, 높이 56, `BackButton` + 제목 `text-lg font-bold` + 오른쪽 `action` | 시안 헤더(56, 18/700)와 같음 |
 | `BackButton` | 44 원형 아이콘 버튼. 앱 안 기록이 없으면 홈으로 | 상세는 이미지 위에 `bg-white/90`로 띄운다 |
 | `BottomActionBar` | sticky 하단, `border-t border-line`, `px-4 pt-3 pb-4` + safe-area | `hideTabBar` 화면 전용 |
 | `FloatingActionButton` | 오른쪽 아래 알약 버튼(높이 52, `primary`, 그림자), 하단 탭 위 | 홈 "+ 물품 등록"(모바일만, PC는 헤더 버튼) |
-| 홈 헤더 | `PageHeader` 대신 직접 만든 sticky 헤더(동네 이름 `text-title` ▾ + 검색 아이콘). 모바일만(xl은 `DesktopHeader`) | 시안도 별도 모양 → 7.2 #20 유지 결정 |
+| 홈 헤더 | `PageHeader` 대신 직접 만든 sticky 헤더(동네 이름 `text-title` ▾ + 검색 아이콘). 모바일만(lg는 `DesktopHeader`) | 시안도 별도 모양 → 7.2 #20 유지 결정 |
 | 인증 화면 | `AuthPageLayout`(AppLayout 밖, `max-w-md`, `PageHeader` 포함) | SCR-01 |
 
 ### 4.2 목록·상태
@@ -177,9 +177,9 @@
 | --- | --- | --- | --- | --- |
 | 01 | 로그인·가입 (`LoginPage`, `SignupPage`) | `AuthPageLayout`(PageHeader) | 없음 | `TextField`, `Button` fullWidth |
 | 02 | 동네 (`RegionPage`) | `PageHeader` | 하단 탭 | 목록·검색, `EmptyState`, 안내 상자 |
-| 03 | 홈 (`HomePage`) | 직접 만든 홈 헤더(모바일), `DesktopHeader`(PC) | 하단 탭 + FAB(모바일) | `CategoryChips`(Chip), `ItemListView layout="grid"`(모바일 2열 `gap-x-3 gap-y-6`, xl 4열 `gap-x-4 gap-y-8`), 그리드 `ItemCard`(정사각형 사진 → 제목 `text-body` 2줄 → 가격 → 동네·시간 `text-xs`(xl `text-caption`) `ink-muted` → 보증금 `Badge gray` + 관심·채팅 수), 그리드 Skeleton |
+| 03 | 홈 (`HomePage`) | 직접 만든 홈 헤더(모바일), `DesktopHeader`(PC) | 하단 탭 + FAB(모바일) | `CategoryChips`(Chip), `ItemListView layout="grid"`(모바일 2열 `gap-x-3 gap-y-6`, lg 4열 `gap-x-4 gap-y-8`), 그리드 `ItemCard`(정사각형 사진 → 제목 `text-body` 2줄 → 가격 → 동네·시간 `text-xs`(lg `text-caption`) `ink-muted` → 보증금 `Badge gray` + 관심·채팅 수), 그리드 Skeleton |
 | 04 | 검색 (`SearchPage`) | `PageHeader` | 하단 탭 | 검색창, Chip, `SearchFilterSheet`(BottomSheet), `EmptyState` |
-| 05 | 물품 상세 (`ItemDetailPage`) | 이미지 위 `BackButton`(모바일) | `BottomActionBar`(하트 · 채팅하기 · 예약하기, 모바일·PC) | 캐러셀(모바일 꽉 참, xl 정사각형 `rounded-xl`), `ItemHeading`(제목 · 메타 · 가격 `text-title` · 보증금), `ItemOwnerCard`(테두리 상자), `ItemDescription`, `Calendar`, 거래 장소(흰 바탕 + 테두리 상자), `ConfirmModal`(삭제). xl: `grid-cols-[480px_1fr] gap-12`, 아래 설명 → 캘린더 \| 거래 장소 2열 |
+| 05 | 물품 상세 (`ItemDetailPage`) | 이미지 위 `BackButton`(모바일) | `BottomActionBar`(하트 · 채팅하기 · 예약하기, 모바일·PC) | 캐러셀(모바일 꽉 참, lg 정사각형 `rounded-xl`), `ItemHeading`(제목 · 메타 · 가격 `text-title` · 보증금), `ItemOwnerCard`(테두리 상자), `ItemDescription`, `Calendar`, 거래 장소(흰 바탕 + 테두리 상자), `ConfirmModal`(삭제). lg: `grid-cols-[480px_1fr] gap-12`, 아래 설명 → 캘린더 \| 거래 장소 2열 |
 | 06 | 물품 등록·수정 (`ItemFormPage`) | `PageHeader` | `BottomActionBar` | `ItemForm`(TextField·ImageUploader·Calendar·지도) |
 | 07 | 예약·결제 (`RentalReservePage`, `Payment*Page`) | `PageHeader` | `BottomActionBar` | `Calendar`, `AmountSummary`, 안내 상자, `ErrorState` |
 | 08 | 대여 상세 (`RentalDetailPage`) | `PageHeader` + 상태 `Badge` | `RentalActionBar`(BottomActionBar) | `RentalStepBar`, 시트(인계·반납·이상), `InspectionRecords` |

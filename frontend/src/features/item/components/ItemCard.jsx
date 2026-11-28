@@ -93,7 +93,7 @@ function GridItemCard({ item }) {
       <span className="mt-1">
         <PriceLine pricePerDay={item.pricePerDay} />
       </span>
-      <span className="mt-1 truncate text-xs text-ink-muted xl:text-caption">
+      <span className="mt-1 truncate text-xs text-ink-muted lg:text-caption">
         {getCardMeta(item.regionName, item.bumpedAt)}
       </span>
       <div className="mt-1.5 flex items-center justify-between gap-2">
