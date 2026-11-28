@@ -78,7 +78,7 @@ src/
 | 16 | 관리자 | `/admin/*` | 057 | 3 |
 
 - 현재 순위의 라우트만 등록한다. 아직 만들지 않은 화면은 라우트·탭을 **"준비 중" 자리표시(`ComingSoonPage`)로만** 둔다(지금은 없음). 채팅(`/chats`, `/chats/:roomId`)·알림(`/notifications`)은 `RequireAuth` 안이다. 프로필(`/users/:memberId`)·약관(`/terms/:slug`)·비밀번호 재설정(`/password-reset*`, AppLayout 밖)은 비회원도 연다.
-- 하단 탭(모바일): 홈 · 검색 · 채팅 · 알림 · 나의 대여. PC(≥1280px)는 상단 헤더 메뉴로 같은 구성.
+- 하단 탭(모바일): 홈 · 검색 · 채팅 · 알림 · 나의 대여. PC(`lg`, ≥896px — `styles/index.css`의 `--breakpoint-lg: 56rem`)는 상단 헤더 메뉴로 같은 구성. PC 배치는 전부 `lg:`로 켠다(`xl:`을 PC 기준으로 쓰지 않는다).
 - 인증 필요 라우트는 `RequireAuth`로 감싸고, 비로그인 시 `/login?redirect=...`. redirect는 `app/loginPath.js` `getSafeRedirect`로 거른다: `/`로 시작하고 `//`·`/\`로 시작하지 않으며 제어 문자가 없을 때만, `/login`·`/signup`이면 무시(오픈 리다이렉트 방지).
 - 홈·검색의 동네는 `features/item/homeRegion.js` `resolveFeedRegion`이 정한다: 로그인(AT 있음)이면 `/members/me`의 `primaryRegion`(인증이 만료·미인증이어도 피드는 보여 준다), 비회원이면 localStorage `rental.guestRegion`(`features/region/guestRegionStore.js`). 둘 다 없으면(로그인했는데 대표 동네가 없는 경우 포함) 피드 대신 안내 + `/regions` 버튼을 보이고 **자동으로 옮기지 않는다**(`/regions`에서 뒤로 가기를 누르면 홈으로 돌아와 다시 옮겨지는 루프가 생긴다). 로그인한 사용자에게는 임시 동네를 쓰지 않는다.
 
@@ -190,8 +190,8 @@ export const RENTAL_STATUS = {
 - **홈 카테고리 칩은 URL `?category=`**(`readCategoryParam`), 검색 조건(`q`·`category`·`sort`·`minPrice`·`maxPrice`·`startDate`·`endDate`·`availableOnly`)은 전부 URL 쿼리에 둔다(`features/item/searchParams.js`: 읽을 때마다 걸러 틀린 값은 없는 것으로, 기본값은 주소에 넣지 않음). 없는 카테고리(`?category=9999`)는 카테고리 목록을 받은 뒤 "전체"로 본다(`useCategoryFilter`, 목록을 받는 동안은 요청하지 않음). 바꿀 때는 replace. 같은 값이 queryKey가 된다. 키워드는 제출(엔터·검색 버튼)할 때만 반영하고, 키워드·카테고리·가격·기간·대여 가능만 중 하나도 없으면 조회하지 않는다(정렬만으로는 조회하지 않음).
 - 검색 필터(정렬·일 대여료·대여 희망 기간·대여 가능한 물품만)는 "필터" 버튼 → BottomSheet 하나(`SearchFilterSheet`)에 모으고, 카테고리는 칩. 가격 한도는 `features/item/constants.js` `ITEM_PRICE_PER_DAY`(policies `item.price-per-day`), 기간은 기존 `Calendar`(범위 선택, 최대 `RENTAL_PERIOD.MAX_DAYS`)에 `buildFilterDaysInRange`(넘겨 볼 수 있는 달 전체, 오늘부터 선택 가능)를 넘긴다.
 - 카드 표시(`itemDisplay.js`): 일 대여료 0원 → "무료"(policies `item.price-per-day`: 0원 등록 허용), 보증금 0원 → 보증금 줄·태그를 그리지 않음, "대여 중" 배지(`isRenting`)는 카드에만(`Badge tone="green"`). 신뢰 점수·거래 횟수, 지도, "이런 물품은 어때요?", 알림 아이콘(홈 헤더)은 2·3순위라 그리지 않는다.
-- 홈은 사진 그리드(`ItemListView layout="grid"`: 모바일 2열, xl 4열, 카드 테두리·구분선 없음), 검색은 한 줄 목록(`layout` 기본 `list`). 그리드 카드는 정사각형 사진 → 제목 → 가격 → "동네 · 경과 시간" → 보증금 회색 태그(`Badge tone="gray"`) + 관심·채팅 수(표시만, 채팅 0은 숨김). 피드·검색 카드 응답에는 `isWished`가 없어 사진 위 하트는 그리지 않는다(관심은 상세·관심 목록에서 누른다).
-- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 카카오맵(보기 전용, 저장된 위경도에 마커) + 주소 텍스트, 지도를 못 불러오거나 좌표가 없으면 주소 텍스트만(REQ-030). 내 물품(`isOwner`)이면 예약하기 대신 수정·삭제 버튼. 버튼 줄은 하트 · 채팅하기(outline) · 예약하기(primary, 더 넓게) — 하트는 아래 "관심·최근 본 화면 규칙", 채팅하기는 채팅 화면 규칙대로 방으로 간다. 배치는 모바일: 사진 → 제목·가격·보증금 → 판매자 카드 → 설명 → 캘린더 → 거래 장소, PC(xl): 왼쪽 사진(정사각형) · 오른쪽 제목·가격·보증금·판매자 카드, 그 아래 설명 → 캘린더 | 거래 장소. 버튼 줄은 모바일·PC 모두 하단 고정 바(가격은 본문에 있어 바에 넣지 않는다). 없는·삭제된 물품과 잘못된 id는 ErrorState + 홈(`features/item/itemId.js` `parseItemId`: 양의 안전한 정수가 아니면 요청하지 않음). 이미지는 스와이프, 키보드 화살표, 이전·다음 버튼(터치 기기에서는 숨김)으로 넘긴다.
+- 홈은 사진 그리드(`ItemListView layout="grid"`: 모바일 2열, lg 4열, 카드 테두리·구분선 없음), 검색은 한 줄 목록(`layout` 기본 `list`). 그리드 카드는 정사각형 사진 → 제목 → 가격 → "동네 · 경과 시간" → 보증금 회색 태그(`Badge tone="gray"`) + 관심·채팅 수(표시만, 채팅 0은 숨김). 피드·검색 카드 응답에는 `isWished`가 없어 사진 위 하트는 그리지 않는다(관심은 상세·관심 목록에서 누른다).
+- 상세: 대여 캘린더는 `Calendar`의 `readOnly`(선택 불가, 이번 달부터, 월을 넘길 때마다 그 달만 부름), 거래 장소는 카카오맵(보기 전용, 저장된 위경도에 마커) + 주소 텍스트, 지도를 못 불러오거나 좌표가 없으면 주소 텍스트만(REQ-030). 내 물품(`isOwner`)이면 예약하기 대신 수정·삭제 버튼. 버튼 줄은 하트 · 채팅하기(outline) · 예약하기(primary, 더 넓게) — 하트는 아래 "관심·최근 본 화면 규칙", 채팅하기는 채팅 화면 규칙대로 방으로 간다. 배치는 모바일: 사진 → 제목·가격·보증금 → 판매자 카드 → 설명 → 캘린더 → 거래 장소, PC(lg): 왼쪽 사진(정사각형) · 오른쪽 제목·가격·보증금·판매자 카드, 그 아래 설명 → 캘린더 | 거래 장소. 버튼 줄은 모바일·PC 모두 하단 고정 바(가격은 본문에 있어 바에 넣지 않는다). 없는·삭제된 물품과 잘못된 id는 ErrorState + 홈(`features/item/itemId.js` `parseItemId`: 양의 안전한 정수가 아니면 요청하지 않음). 이미지는 스와이프, 키보드 화살표, 이전·다음 버튼(터치 기기에서는 숨김)으로 넘긴다.
 - 로그인·로그아웃은 `queryClient.clear()`로 이전 사용자의 `['items', id]`(isOwner)를 지운다. 단, 로그아웃은 홈으로 먼저 이동한 뒤 AT를 지우므로 홈이 내 정보를 다시 부르면 서버가 이미 세션을 끝낸 경우 401 → 로그인 화면으로 가 버린다. 그래서 홈·검색은 `useMe({ enabled: 로그인 여부, refetchOnMount: refetchIfInvalidated })`로 이미 받은 내 정보를 **무효화됐을 때만** 다시 받는다(대표 동네를 바꾸면 무효화되고, `/regions`에는 구독자가 없어 홈에 들어올 때 받는다. 받는 동안은 이전 동네 대신 로딩). 로그아웃 경로는 무효화를 거치지 않는다. 로그아웃 직후에는 이전 내 정보가 남아 있어도 `resolveFeedRegion`이 로그인 여부(AT)가 false면 보지 않는다.
 - 오류 문구는 `features/item/errorMessages.js` 한 곳(code → 문구).
 
@@ -269,7 +269,7 @@ export const RENTAL_STATUS = {
 - Button variant는 시안 5가지에 맞춘다: `primary`(채움) · `outline`(주 색상 외곽선) · `secondary`(회색 면) · `danger`(위험 **외곽선**) · 비활성(`disabled`). 크기 기본 `md` 48px, 좁은 곳은 `sm` 44px.
 - 토스트: `import { toast } from '../shared/ui'` → `toast.show({ message, tone })`(tone `default`·`danger`). `<Toaster />`는 App에 한 곳만 있다. 모달 안의 오류는 토스트 대신 모달 안에 표시(모달이 top layer라 토스트가 가려짐).
 - 하단 고정 바가 있는 화면은 라우트에 `handle: { hideTabBar: true }`를 달면 AppLayout이 하단 탭을 숨긴다. 바는 `BottomActionBar`(본문이 가려지지 않게 자리도 확보).
-- PC(xl) 상단 헤더는 `DesktopHeader`: 로고 마크(`AppLogo`, 텐트 아이콘, 링크 aria-label "동네 대여 홈") → 검색 상자(`/search` 링크) → 동네 ▾(`useFeedRegion`, `/regions`) → 알림·채팅·나의 대여 → "+ 물품 등록". 동네 때문에 내 정보를 부르므로 `useMediaQuery(XL_MEDIA_QUERY)`로 PC에서만 그린다. 홈의 모바일 헤더와 FAB는 xl에서 숨긴다.
+- PC(lg) 상단 헤더는 `DesktopHeader`: 로고 마크(`AppLogo`, 텐트 아이콘, 링크 aria-label "동네 대여 홈") → 검색 상자(`/search` 링크) → 동네 ▾(`useFeedRegion`, `/regions`) → 알림·채팅·나의 대여 → "+ 물품 등록". 동네 때문에 내 정보를 부르므로 `useMediaQuery(PC_MEDIA_QUERY)`로 PC에서만 그린다. 홈의 모바일 헤더와 FAB는 lg에서 숨긴다.
 - 날짜: 대여 기간(`startDate`·`endDate`, 캘린더)은 `"YYYY-MM-DD"` 문자열로만 다루고 `shared/lib/date.js`로 계산한다. `new Date('YYYY-MM-DD')`를 쓰지 않는다(UTC 자정이라 시간대에 따라 하루 밀림). 오늘 날짜는 `todayInSeoul()`. 서버 일시(오프셋 없음)는 `parseServerDateTime`이 서울 시각으로 해석.
 - 정책 수치(장수·용량·기간)는 shared/ui에 기본값으로 두지 않는다. `features/*/constants.js`에 policies.md 키 주석과 함께 두고 props로 넘긴다.
 

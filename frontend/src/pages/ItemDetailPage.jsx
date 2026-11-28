@@ -32,9 +32,9 @@ function DetailSkeleton() {
     <div
       aria-busy="true"
       aria-label="불러오는 중"
-      className="flex flex-col gap-4 xl:grid xl:grid-cols-[480px_1fr] xl:gap-12 xl:pt-8"
+      className="flex flex-col gap-4 lg:grid lg:grid-cols-[480px_1fr] lg:gap-12 lg:pt-8"
     >
-      <Skeleton className="-mx-4 aspect-[390/236] rounded-none xl:mx-0 xl:aspect-square xl:rounded-xl" />
+      <Skeleton className="-mx-4 aspect-[390/236] rounded-none lg:mx-0 lg:aspect-square lg:rounded-xl" />
       <div className="flex flex-col gap-4">
         <Skeleton className="h-10 w-1/2" />
         <Skeleton className="h-8 w-2/3" />
@@ -173,7 +173,7 @@ function NotFound() {
 /**
  * SCR-05 물품 상세(REQ-011). 토큰을 보내 isOwner가 로그인 사용자 기준이다.
  * 모바일: 사진 → 제목·가격·보증금 → 판매자 → 설명 → 캘린더 → 거래 장소 + 하단 바.
- * PC(xl): 왼쪽 사진 · 오른쪽 제목·가격·보증금·판매자, 그 아래 설명 → 캘린더 | 거래 장소 + 하단 바(Figma 시안).
+ * PC(lg): 왼쪽 사진 · 오른쪽 제목·가격·보증금·판매자, 그 아래 설명 → 캘린더 | 거래 장소 + 하단 바(Figma 시안).
  */
 export default function ItemDetailPage() {
   const { id } = useParams();
@@ -199,20 +199,20 @@ export default function ItemDetailPage() {
   }
   return (
     <>
-      <div className="xl:grid xl:grid-cols-[480px_1fr] xl:items-start xl:gap-12 xl:pt-8">
+      <div className="lg:grid lg:grid-cols-[480px_1fr] lg:items-start lg:gap-12 lg:pt-8">
         <ItemImageCarousel images={item.images} name={item.name}>
-          <BackButton className="absolute top-2 left-2 bg-white/90 text-ink hover:bg-white xl:hidden" />
+          <BackButton className="absolute top-2 left-2 bg-white/90 text-ink hover:bg-white lg:hidden" />
         </ItemImageCarousel>
-        <div className="flex flex-col gap-6 pt-6 xl:pt-2">
+        <div className="flex flex-col gap-6 pt-6 lg:pt-2">
           <ItemHeading item={item} />
           <ItemOwnerCard owner={item.owner} />
         </div>
       </div>
-      <div className="flex flex-col gap-7 pt-6 pb-8 xl:mt-10 xl:border-t xl:border-line xl:pt-8">
+      <div className="flex flex-col gap-7 pt-6 pb-8 lg:mt-10 lg:border-t lg:border-line lg:pt-8">
         <ItemDescription description={item.description} />
-        <div className="flex flex-col gap-7 border-t border-line pt-7 xl:grid xl:grid-cols-2 xl:items-start xl:gap-12 xl:border-t-0 xl:pt-0">
+        <div className="flex flex-col gap-7 border-t border-line pt-7 lg:grid lg:grid-cols-2 lg:items-start lg:gap-12 lg:border-t-0 lg:pt-0">
           <ItemCalendar itemId={item.itemId} />
-          <div className="border-t border-line pt-7 xl:border-t-0 xl:pt-0">
+          <div className="border-t border-line pt-7 lg:border-t-0 lg:pt-0">
             <ItemTradePlace
               address={item.address}
               latitude={item.latitude}

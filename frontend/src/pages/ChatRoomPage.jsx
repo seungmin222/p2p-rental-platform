@@ -18,7 +18,7 @@ import { STOMP_STATUS } from '../shared/ws';
 
 // 화면 전체 높이 칼럼(PC는 상단 헤더 64px을 뺀다). 본문 좌우 여백(px-4)을 상쇄해 꽉 채운다
 const COLUMN =
-  '-mx-4 flex h-dvh flex-col xl:mx-auto xl:h-[calc(100dvh-4rem)] xl:w-full xl:max-w-2xl xl:border-x xl:border-line';
+  '-mx-4 flex h-dvh flex-col lg:mx-auto lg:h-[calc(100dvh-4rem)] lg:w-full lg:max-w-2xl lg:border-x lg:border-line';
 
 function RoomHeader({ room }) {
   const name = room ? getCounterpartName(room.counterpart) : null;

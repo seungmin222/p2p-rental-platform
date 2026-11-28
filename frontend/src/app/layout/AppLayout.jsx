@@ -18,7 +18,7 @@ function tabLinkClassName({ isActive }) {
 }
 
 /**
- * 모바일(~1279px)은 하단 탭, PC(xl, 1280px~)는 상단 헤더. 본문은 중앙 정렬 최대 폭 컨테이너.
+ * 모바일(~895px)은 하단 탭, PC(lg, 896px~ — 반 분할 창 포함)는 상단 헤더. 본문은 중앙 정렬 최대 폭 컨테이너.
  * 하단 고정 바가 있는 화면은 라우트 handle.hideTabBar로 하단 탭을 숨긴다.
  */
 export default function AppLayout() {
@@ -37,7 +37,7 @@ export default function AppLayout() {
 
       {/* 세로 flex: hideTabBar 화면의 BottomActionBar(sticky, mt-auto)가 본문이 짧아도 화면 아래에 붙도록. 그 화면은 바가 마지막이라 아래 여백 없음 */}
       <main
-        className={`mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 ${hideTabBar ? '' : 'pb-[calc(5rem+env(safe-area-inset-bottom))] xl:pb-8'}`}
+        className={`mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 ${hideTabBar ? '' : 'pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-8'}`}
       >
         <Outlet />
       </main>
@@ -45,7 +45,7 @@ export default function AppLayout() {
       {!hideTabBar && (
         <nav
           aria-label="하단 탭"
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] xl:hidden"
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
         >
           <ul className="mx-auto grid max-w-5xl grid-cols-5">
             {NAV_ITEMS.map((item) => (

@@ -3,7 +3,7 @@ import { Link, NavLink } from 'react-router';
 import ChatUnreadBadge from '../../features/chat/components/UnreadBadge';
 import { useFeedRegion } from '../../features/item/useFeedRegion';
 import NotificationUnreadBadge from '../../features/notification/components/NotificationUnreadBadge';
-import { useMediaQuery, XL_MEDIA_QUERY } from '../../shared/hooks/useMediaQuery';
+import { PC_MEDIA_QUERY, useMediaQuery } from '../../shared/hooks/useMediaQuery';
 import { Skeleton } from '../../shared/ui';
 import AppLogo from './AppLogo';
 import NavIcon from './NavIcon';
@@ -147,10 +147,10 @@ function DesktopHeaderContent() {
 }
 
 /**
- * PC(xl, 1280px~) 상단 헤더(Figma 시안): 로고 마크(AppLogo) → 검색 상자 → 동네 ▾ → 알림·채팅·나의 대여 → "+ 물품 등록".
+ * PC(lg, 896px~) 상단 헤더(Figma 시안): 로고 마크(AppLogo) → 검색 상자 → 동네 ▾ → 알림·채팅·나의 대여 → "+ 물품 등록".
  * 내용은 본문과 같은 폭(max-w-5xl). 동네 이름 때문에 내 정보를 부르므로 모바일에서는 아예 그리지 않는다.
  */
 export default function DesktopHeader() {
-  const isDesktop = useMediaQuery(XL_MEDIA_QUERY);
+  const isDesktop = useMediaQuery(PC_MEDIA_QUERY);
   return isDesktop ? <DesktopHeaderContent /> : null;
 }

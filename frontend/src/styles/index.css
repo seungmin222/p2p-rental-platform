@@ -74,6 +74,10 @@
 @theme {
   --font-sans: 'IBM Plex Sans KR', ui-sans-serif, system-ui, sans-serif;
 
+  /* PC 배치 기준(상단 헤더·2열 등은 lg:). 1920 화면을 반으로 나눈 창(뷰포트 약 930px)도 PC로 보이도록 기본 64rem보다 낮춘다.
+     useMediaQuery.js PC_MEDIA_QUERY와 같은 값 */
+  --breakpoint-lg: 56rem;
+
   --color-primary: #1f6f54; /* 버튼·강조 */
   --color-primary-hover: #174f3d;
   --color-primary-soft: #e8f1ec; /* 선택·배지 */
